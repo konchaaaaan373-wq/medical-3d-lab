@@ -54,8 +54,8 @@
 | 46 | Orbital part of inferior frontal gyrus | 下前頭回眼窩部 | 左/右 | 左大脳半球 › 前頭葉 › 下前頭回 | 大脳皮質 | Z-Anatomy / BodyParts3D |
 | 47 | Orbital sulci (H-shaped orbital sulci) | 眼窩溝（H字状） | 左/右 | 左大脳半球 › 前頭葉 › 大脳溝 | 大脳皮質 | Z-Anatomy / BodyParts3D |
 | 48 | Orbital sulci (Lateral Orbital sulcus) | 眼窩溝（外側眼窩溝） | 左/右 | 左大脳半球 › 前頭葉 › 大脳溝 | 大脳皮質 | Z-Anatomy / BodyParts3D |
-| 49 | Paracentral gyrus and sulcus | 中心傍小葉・中心傍溝 | 左/右 | 左大脳半球 › 前頭葉 › 大脳回・大脳溝 | 大脳皮質 | Z-Anatomy / BodyParts3D |
-| 50 | Paracentral sulcus | 中心傍溝 | 左/右 | 左大脳半球 › 前頭葉 › 大脳溝 | 大脳皮質 | Z-Anatomy / BodyParts3D |
+| 49 | Paracentral gyrus and sulcus | 中心傍小葉・中心傍溝 | 左/右 | 左大脳半球 › 前頭葉・頭頂葉 › 大脳回・大脳溝 | 大脳皮質 | Z-Anatomy / BodyParts3D |
+| 50 | Paracentral sulcus | 中心傍溝 | 左/右 | 左大脳半球 › 前頭葉・頭頂葉 › 大脳溝 | 大脳皮質 | Z-Anatomy / BodyParts3D |
 | 51 | Precentral gyrus | 中心前回 | 左/右 | 左大脳半球 › 前頭葉 › 大脳回 | 大脳皮質 | Z-Anatomy / BodyParts3D |
 | 52 | Precentral sulcus (inferior part) | 中心前溝（下部） | 左/右 | 左大脳半球 › 前頭葉 › 大脳溝 | 大脳皮質 | Z-Anatomy / BodyParts3D |
 | 53 | Precentral sulcus (Superior part) | 中心前溝（上部） | 左/右 | 左大脳半球 › 前頭葉 › 大脳溝 | 大脳皮質 | Z-Anatomy / BodyParts3D |
@@ -98,10 +98,10 @@
 | 90 | Sulcus interm prim-Jensen | 第一中間溝（Jensen 溝） | 左/右 | 左大脳半球 › 終脳 › 大脳溝 | 大脳皮質 | Z-Anatomy / BodyParts3D |
 | 91 | Inferior temporal gyrus | 下側頭回 | 左/右 | 左大脳半球 › 側頭葉 › 大脳回 | 大脳皮質 | Z-Anatomy / BodyParts3D |
 | 92 | Inferior temporal sulcus | 下側頭溝 | 左/右 | 左大脳半球 › 側頭葉 › 大脳溝 | 大脳皮質 | Z-Anatomy / BodyParts3D |
-| 93 | Lateral occipitotemporal gyrus | 外側後頭側頭回 | 左/右 | 左大脳半球 › 側頭葉 › 大脳回 | 大脳皮質 | Z-Anatomy / BodyParts3D |
+| 93 | Lateral occipitotemporal gyrus | 外側後頭側頭回 | 左/右 | 左大脳半球 › 側頭葉・後頭葉 › 大脳回 | 大脳皮質 | Z-Anatomy / BodyParts3D |
 | 94 | Medial occipitotemporal gyrus (Parahippocampal) | 海馬傍回（元アトラス区画） | 左/右 | 左大脳半球 › 側頭葉 › 大脳回 | 大脳皮質 | Z-Anatomy / BodyParts3D |
 | 95 | Middle temporal gyrus | 中側頭回 | 左/右 | 左大脳半球 › 側頭葉 › 大脳回 | 大脳皮質 | Z-Anatomy / BodyParts3D |
-| 96 | Occipitotemporal sulcus (Lateral part) | 後頭側頭溝（外側部） | 左/右 | 左大脳半球 › 側頭葉 › 大脳溝 | 大脳皮質 | Z-Anatomy / BodyParts3D |
+| 96 | Occipitotemporal sulcus (Lateral part) | 後頭側頭溝（外側部） | 左/右 | 左大脳半球 › 側頭葉・後頭葉 › 大脳溝 | 大脳皮質 | Z-Anatomy / BodyParts3D |
 | 97 | Superior temporal gyrus (Lateral part) | 上側頭回（外側部） | 左/右 | 左大脳半球 › 側頭葉 › 大脳回 | 大脳皮質 | Z-Anatomy / BodyParts3D |
 | 98 | Superior temporal sulcus | 上側頭溝 | 左/右 | 左大脳半球 › 側頭葉 › 大脳溝 | 大脳皮質 | Z-Anatomy / BodyParts3D |
 | 99 | Temporal plane | 側頭平面 | 左/右 | 左大脳半球 › 側頭葉 › 大脳皮質 | 大脳皮質 | Z-Anatomy / BodyParts3D |
@@ -123,7 +123,7 @@
 | 115 | Anterior hypothalamus | 視床下部前部 | 左/右 | 左間脳 › 間脳 › 視床下部 | 間脳 | Neudorfer 2020 |
 | 116 | Anterior nuclei of thalamus | 視床前核群 | 左/右 | 左間脳 › 間脳 › 視床 | 間脳 | Najdenovska 2018 |
 | 117 | Habenula | 手綱 | 正中 | 正中 › 間脳 › 視床上部 | 間脳 | Z-Anatomy / BodyParts3D |
-| 118 | Intralaminar and lateral posterior nuclei | 視床 CL–LP–PuM 区画（髄板内核・後外側核・内側視床枕を含む） | 左/右 | 左間脳 › 間脳 › 視床 | 間脳 | Najdenovska 2018 |
+| 118 | Intralaminar and lateral posterior nuclei | 視床 CL–LP–PuM 区画（外側中心核・後外側核・内側視床枕を含む） | 左/右 | 左間脳 › 間脳 › 視床 | 間脳 | Najdenovska 2018 |
 | 119 | Lateral geniculate body | 外側膝状体 | 右/左 | 右間脳 › 間脳 › 膝状体 | 間脳 | Z-Anatomy / BodyParts3D |
 | 120 | Lateral hypothalamus | 視床下部外側部 | 左/右 | 左間脳 › 間脳 › 視床下部 | 間脳 | Neudorfer 2020 |
 | 121 | Mamillary body | 乳頭体 | 左/右 | 左間脳 › 間脳 › 視床下部 | 間脳 | Z-Anatomy / BodyParts3D |
@@ -190,7 +190,7 @@
 - **淡蒼球内節**: 大脳基底核から視床・脳幹へ出力する主要な核の一つです。
 - **被殻**: 運動、習慣、強化学習の回路に関わる大脳基底核です。
 - **下垂体前葉**: 視床下部による調節を受け、複数のホルモンを分泌する腺性の内分泌組織です。
-- **視床下部前部、視床前核群、手綱、視床 CL–LP–PuM 区画（髄板内核・後外側核・内側視床枕を含む） ほか17件**: 中継、恒常性、神経内分泌系に関わる間脳の構造です。
+- **視床下部前部、視床前核群、手綱、視床 CL–LP–PuM 区画（外側中心核・後外側核・内側視床枕を含む） ほか17件**: 中継、恒常性、神経内分泌系に関わる間脳の構造です。
 - **下垂体後葉**: 視床下部と連続する神経組織で、視床下部で作られたホルモンを貯蔵・放出します。
 - **第四脳室**: 橋・延髄と小脳の間にある脳脊髄液腔です。
 - **第三脳室**: 左右の間脳の間の正中部にある脳脊髄液腔です。
@@ -205,19 +205,26 @@
 - **脚間窩**: 正中の構造を左右のメッシュに分けて収録しています。
 - **延髄**: 元データには左側のメッシュのみ収録されており、右側はありません（F-122）。
 - **大脳脚底**: 上流メタデータはこのメッシュを小脳に分類していますが、Terminologia Anatomica の basis pedunculi は中脳の構造で、このメッシュも橋の前方、中脳の腹側に位置しています。メッシュの境界自体は解剖学者による検証を受けていません。
+- **中心傍小葉・中心傍溝**: 中心傍小葉は前頭葉側と頭頂葉側の両方にまたがるため、ここでは前頭葉・頭頂葉の両方の下に表示しています。元アトラスの上流ナビゲーション区分では前頭葉のみに分類されています。
+- **中心傍溝**: 中心傍小葉は前頭葉側と頭頂葉側の両方にまたがるため、ここでは前頭葉・頭頂葉の両方の下に表示しています。元アトラスの上流ナビゲーション区分では前頭葉のみに分類されています。
 - **島皮質**: 上流のラベルには中心下回とその溝の名も含まれていますが、表示されているメッシュは弁蓋部の下にある島皮質であり、外側面の中心下回ではありません。
 - **帯状回・帯状溝（前中部／aMCC）**: このモデルでは、採用したアトラス区分に従い、前中部帯状皮質（aMCC）と前部帯状皮質（ACC）を区別します。現在の選択項目にACCの独立ラベルはありません。これは、ACC自体が脳に存在しないという意味ではありません。名称の対応は、表示形状と細胞構築学的・機能的境界の一致を保証しません。
-- **扁桃体皮質内側核群**: 元モデルが複数の核・ラベルを統合したアトラス区画。構成する元ラベルの id は未記録（F-123）。
-- **視床下部前部**: 元モデルが複数の核・ラベルを統合したアトラス区画。構成する元ラベルの id は未記録（F-123）。
-- **視床前核群**: Najdenovska 2018 の拡散 MRI に基づく 7 区画のひとつ。境界は組織学的な核境界ではない。
-- **視床 CL–LP–PuM 区画（髄板内核・後外側核・内側視床枕を含む）**: Najdenovska 2018 の拡散 MRI に基づく 7 区画のひとつ。境界は組織学的な核境界ではない。
-- **視床下部外側部**: 元モデルが複数の核・ラベルを統合したアトラス区画。構成する元ラベルの id は未記録（F-123）。
-- **視床背内側核**: Najdenovska 2018 の拡散 MRI に基づく 7 区画のひとつ。境界は組織学的な核境界ではない。
+- **外側後頭側頭回**: この区画は側頭葉側と後頭葉側の両方にまたがるため、ここでは側頭葉・後頭葉の両方の下に表示しています。元アトラスの上流ナビゲーション区分では側頭葉のみに分類されています。
+- **後頭側頭溝（外側部）**: この区画は側頭葉側と後頭葉側の両方にまたがるため、ここでは側頭葉・後頭葉の両方の下に表示しています。元アトラスの上流ナビゲーション区分では側頭葉のみに分類されています。
+- **扁桃体基底外側核群（外側核を除く統合区画）**: 元アトラス（CIT168 扁桃体アトラス）の 3 元ラベル（[2, 3, 6]）を統合したアトラス区画。固定版の生成スクリプトで、別ラベルの外側核（[1]）を含まないことを確認。docs/asset-provenance/brain-merged-parcels.md を参照（F-123）。
+- **扁桃体皮質内側核群**: 元アトラス（CIT168 扁桃体アトラス）の 4 元ラベル（[5, 7, 8, 9]）を統合したアトラス区画。固定版の生成スクリプトから確認。docs/asset-provenance/brain-merged-parcels.md を参照（F-123）。
+- **中隔核群**: 元データでは左右を分けない 1 つのメッシュとして収録。正中の表示はデータ上の格納単位で、解剖学的な正中構造であることを保証しない。
+- **視床下部前部**: 固定版の生成スクリプトで片側 6 元ラベルを統合したアトラス区画（Neudorfer 2020 の入力ボリューム）。docs/asset-provenance/brain-merged-parcels.md を参照（F-123）。
+- **視床前核群**: Najdenovska 2018 の拡散 MRI に基づく 7 区画のひとつ。境界は組織学的な核境界ではない。7 区画それぞれのボリューム対応は docs/asset-provenance/brain-merged-parcels.md に記録。
+- **手綱**: 元データでは左右を分けない 1 つのメッシュとして収録。正中の表示はデータ上の格納単位で、解剖学的な正中構造であることを保証しない。
+- **視床 CL–LP–PuM 区画（外側中心核・後外側核・内側視床枕を含む）**: Najdenovska 2018 の拡散 MRI に基づく 7 区画のひとつ。境界は組織学的な核境界ではない。「CL」はより広い髄板内核群ではなく外側中心核（central lateral nucleus）を指す。固定版の生成スクリプトにおけるボリューム対応は docs/asset-provenance/brain-merged-parcels.md に記録。
+- **視床下部外側部**: 固定版の生成スクリプトでは片側 1 元ラベルから構築（Neudorfer 2020 の入力ボリューム）。単一の組織学的核であることを保証するものではありません。docs/asset-provenance/brain-merged-parcels.md を参照（F-123）。
+- **視床背内側核**: Najdenovska 2018 の拡散 MRI に基づく 7 区画のひとつ。境界は組織学的な核境界ではない。7 区画それぞれのボリューム対応は docs/asset-provenance/brain-merged-parcels.md に記録。
 - **視交叉**: 正中の構造を左右のメッシュに分けて収録しています。
-- **視床下部後部**: 元モデルが複数の核・ラベルを統合したアトラス区画。構成する元ラベルの id は未記録（F-123）。
-- **視索前野**: 元モデルが複数の核・ラベルを統合したアトラス区画。構成する元ラベルの id は未記録（F-123）。
-- **視床枕**: Najdenovska 2018 の拡散 MRI に基づく 7 区画のひとつ。境界は組織学的な核境界ではない。
-- **視床下部隆起部**: 元モデルが複数の核・ラベルを統合したアトラス区画。構成する元ラベルの id は未記録（F-123）。
-- **視床前腹側核（VA）**: Najdenovska 2018 の拡散 MRI に基づく 7 区画のひとつ。境界は組織学的な核境界ではない。
-- **腹外側部 背側区画（VLD）**: Najdenovska 2018 の拡散 MRI に基づく 7 区画のひとつ。境界は組織学的な核境界ではない。
-- **腹外側部 腹側区画（VLV）**: Najdenovska 2018 の拡散 MRI に基づく 7 区画のひとつ。境界は組織学的な核境界ではない。
+- **視床下部後部**: 固定版の生成スクリプトでは片側 1 元ラベルから構築（Neudorfer 2020 の入力ボリューム）。単一の組織学的核であることを保証するものではありません。docs/asset-provenance/brain-merged-parcels.md を参照（F-123）。
+- **視索前野**: 固定版の生成スクリプトでは片側 1 元ラベルから構築（Neudorfer 2020 の入力ボリューム）。単一の組織学的核であることを保証するものではありません。docs/asset-provenance/brain-merged-parcels.md を参照（F-123）。
+- **視床枕**: Najdenovska 2018 の拡散 MRI に基づく 7 区画のひとつ。境界は組織学的な核境界ではない。7 区画それぞれのボリューム対応は docs/asset-provenance/brain-merged-parcels.md に記録。
+- **視床下部隆起部**: 固定版の生成スクリプトで片側 4 元ラベルを統合したアトラス区画（Neudorfer 2020 の入力ボリューム）。docs/asset-provenance/brain-merged-parcels.md を参照（F-123）。
+- **視床前腹側核（VA）**: Najdenovska 2018 の拡散 MRI に基づく 7 区画のひとつ。境界は組織学的な核境界ではない。7 区画それぞれのボリューム対応は docs/asset-provenance/brain-merged-parcels.md に記録。
+- **腹外側部 背側区画（VLD）**: Najdenovska 2018 の拡散 MRI に基づく 7 区画のひとつ。境界は組織学的な核境界ではない。7 区画それぞれのボリューム対応は docs/asset-provenance/brain-merged-parcels.md に記録。
+- **腹外側部 腹側区画（VLV）**: Najdenovska 2018 の拡散 MRI に基づく 7 区画のひとつ。境界は組織学的な核境界ではない。7 区画それぞれのボリューム対応は docs/asset-provenance/brain-merged-parcels.md に記録。

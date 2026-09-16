@@ -248,7 +248,7 @@ export const BETA_PUBLICATION_DECISIONS = Object.freeze([
     assetRevisions: Object.freeze({
       'brain-atlas-glb': '76a49ea4526a4880613aec7a02756bd7301b0b9d0680d7cae33e197b672c5453',
     }),
-    sceneRevision: Object.freeze({ cardRevision: 21, modelDigest: 'baa87eb0a12d6de4' }),
+    sceneRevision: Object.freeze({ cardRevision: 22, modelDigest: 'ca071d10b89c3b31' }),
     /** What was actually exercised. Not a plan — a list of what was done. */
     scope: Object.freeze({
       structures: Object.freeze([

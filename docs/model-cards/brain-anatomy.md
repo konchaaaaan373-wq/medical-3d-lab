@@ -146,7 +146,9 @@ colour for left/right homologues, and vary hue, saturation and lightness inside
 the parent lobe family. Natural-anatomy shades use a constrained low-saturation
 range with small deterministic lightness differences between named meshes. The
 same selector also updates the legend swatches; neither mode changes anatomical
-identity or geometry.
+identity or geometry. **Colour aids identification and grouping; it does not
+show real tissue colour, functional localisation, vascular territory, exact
+boundaries or positional accuracy.**
 
 **A viewpoint is fitted to the band nothing is covering.** The scene reports the
 box around what it is currently drawing — not the whole atlas, since at layer 0
@@ -318,6 +320,15 @@ An AI-assisted terminology/hierarchy/copy check was recorded on 2026-09-16
 with verdict **hold** and 24 findings; it is not a clinical attestation and
 does not change the review status above. See
 [`docs/clinical-reviews/brain-anatomy-ai-terminology-check-2026-09-16.md`](../clinical-reviews/brain-anatomy-ai-terminology-check-2026-09-16.md).
+A re-review of the resulting revision 21 (also 2026-09-16, against `880eded`)
+found 16 of the original 24 findings resolved and 8 unresolved or partly
+addressed, verdict **revise**; it is likewise not a clinical attestation. The
+`Revision 21 → 22` entry below addresses most of that re-review's remaining
+findings (#6, #8, #12, #15, #17, #18, #21, R2-25, R2-28, R2-29); it does not
+close #2 (the insula/subcentral-gyrus boundary) or #12's LUT-name
+cross-check, which need either a landmark-annotated image or independent
+access to the original atlas lookup tables that this repository does not
+have.
 
 **Revision 20 → 21 (2026-09-16).** Label, hierarchy and copy corrections driven
 by that check, all in `src/data/brainAnatomy.js`; no geometry, no ids and no
@@ -346,5 +357,81 @@ parietal lobes, and others — see the check record for the full list). The
 detail-colour palette seed also moved (`palette-v2930` → `palette-v38601`)
 because the `Base of peduncle` colour-family change required re-finding a seed
 that keeps all 147 named structures perceptually distinct; since the seed is
-in every hash, every colour-map shade changed, while natural-anatomy shades did
-not. Colour encodes no anatomy (§6).
+in every hash, every colour-map shade changed (147/147). Natural-anatomy
+shades are not seeded, but `brainColorKey()` feeds both modes, so the same
+category/region correction for `Base of peduncle` changes its natural-anatomy
+shade too — 1 of 147 labels (2 structures, left and right); the other 146 are
+unchanged in natural-anatomy mode. Colour aids identification and grouping; it
+does not show real tissue colour, functional localisation, vascular territory,
+exact boundaries or positional accuracy (§6).
+
+**Revision 21 → 22 (2026-09-16).** Driven by the 2026-09-16 re-review of
+revision 21 (`880eded`, verdict revise, 8 unresolved/partial findings). No
+geometry, no atlas ids and no colour changed in this revision — every change
+is to copy, notes, a display-only breadcrumb override and per-view UI text.
+
+- **#25/§R2-29 — colour wording corrected.** The claim that natural-anatomy
+  shades were unaffected by the revision-21 palette move was wrong:
+  `brainColorKey()` feeds both modes, so `Base of peduncle` (2 structures)
+  also changed in natural-anatomy mode; the other 146 labels did not. "Colour
+  encodes no anatomy" is replaced with the re-review's own wording: colour
+  aids identification and grouping and does not show real tissue colour,
+  functional localisation, vascular territory, exact boundaries or
+  positional accuracy (§6, and `docs/beta-publication/brain-anatomy.md`).
+- **#17 — the ATTRIBUTION.md "about 7 mm" generalisation is retracted**, in
+  `public/assets/brain/ATTRIBUTION.md`, matching the wording already in §5
+  above (registration approximation across several population atlases; the
+  upstream ~7.2 mm figure is a red-nucleus position check, not a bound for
+  every structure).
+- **#12/F-123 — merged-parcel source label ids recovered from the pinned
+  upstream generator script**, recorded in
+  [`docs/asset-provenance/brain-merged-parcels.md`](../asset-provenance/brain-merged-parcels.md)
+  (amygdala Lateral/Basolateral/Central/Corticomedial; hypothalamic
+  preoptic/anterior/tuberal/lateral/posterior per-side label counts; thalamic
+  volume order and the CL–LP–PuM left/right index). The five hypothalamic
+  `STRUCTURE_NOTE` entries no longer share one "integrated parcel" wording:
+  preoptic, lateral and posterior are single-source-label parcels per side;
+  only anterior (6 labels) and tuberal (4 labels) actually combine several.
+  Corticomedial group and Basolateral complex each cite their specific source
+  ids. What is **not** verified is stated plainly in that document: original
+  lookup-table names, regeneration from source volumes, and input-file
+  hashes.
+- **#8 — the CL–LP–PuM thalamic label now names CL explicitly**: "視床
+  CL–LP–PuM 区画（外側中心核・後外側核・内側視床枕を含む）", with a note
+  naming CL as the central lateral nucleus specifically (not the broader
+  intralaminar group) and pointing at the provenance record above.
+- **#6/#21 — a display-only `regionNames` override** on `LABEL_PLACEMENT`
+  makes the breadcrumb for the paracentral lobule's two meshes read "Frontal
+  and parietal lobes/前頭葉・頭頂葉" and for the lateral occipitotemporal
+  gyrus/sulcus read "Temporal and occipital lobes/側頭葉・後頭葉", matching
+  what their own description already said. This touches only the breadcrumb:
+  `region`/`regionJa` and `brainColorKey()` still resolve from the unchanged
+  upstream region, so colour is untouched (asserted in
+  `tests/brain-anatomy.test.js`). Each also gets a note stating the upstream
+  navigation region is the single lobe it was filed under.
+- **#15 — Habenula and Septal nuclei** now carry a note stating the source
+  data records each as one mesh that does not distinguish left and right, so
+  the midline display is the data's storage unit, not a guaranteed
+  anatomical midline structure.
+- **#18/R2-26 — view-bound notices.** `VIEW_SPECS` in
+  `BrainAnatomyScene.js` carries an optional `notice`/`noticeJa` per
+  viewpoint, exposed through `getAnatomyViews()`/`getInspectionViews()` and
+  rendered by `InspectionPanel.js` as one line under the viewpoint buttons
+  whenever the active view declares one. Left and right medial views state
+  that the contralateral hemisphere is hidden and this is not a midsagittal
+  section; right medial and inferior additionally state that this model has
+  no right medulla oblongata mesh (F-122) and that this is a data gap, not a
+  normal left/right asymmetry. Lateral, anterior, posterior and superior
+  views carry no notice.
+- **R2-28 — export tooling.** `scripts/export-anatomy-labels.mjs` renames
+  its per-structure table to "271 選択可能構造一覧" (`structures.md`,
+  replacing the stale `meshes.md`) and adds `description_key` (which of
+  structure/region/category/default resolved a row's description, via the
+  new `brainCopySource()` helper in `src/data/brainAnatomy.js`) and
+  `has_note` columns.
+
+Sources in scope: `src/data/brainAnatomy.js`,
+`src/scenes/nervous/scenes/brainAnatomy/BrainAnatomyScene.js`,
+`src/components/InspectionPanel.js`. `src/components/InspectionPanel.js` is
+shared UI, not a medical source, and is not part of the revision digest below
+— see `docs/model-cards/revisions.json`.

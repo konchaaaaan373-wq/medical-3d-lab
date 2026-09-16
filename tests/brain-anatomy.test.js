@@ -4,7 +4,7 @@ import { readFileSync } from 'node:fs';
 import { createHash } from 'node:crypto';
 import * as THREE from 'three';
 import BrainAnatomyScene from '../src/scenes/nervous/scenes/brainAnatomy/index.js';
-import { BRAIN_COLOR_MODES, brainColor, brainStructureInfo } from '../src/data/brainAnatomy.js';
+import { BRAIN_COLOR_MODES, brainColor, brainColorKey, brainStructureInfo } from '../src/data/brainAnatomy.js';
 
 test('brain anatomy adopts individually named atlas meshes instead of proxy lobes', () => {
   const scene = buildScene();
@@ -147,6 +147,33 @@ test('medial views expose the selected hemisphere without moving anatomy', () =>
   assert.equal(left.material.opacity, 1);
   assert.equal(right.material.opacity, 1, 'leaving a medial view restores the contralateral hemisphere');
   for (const [mesh, position] of positions) assert.ok(mesh.position.equals(position));
+  scene.dispose();
+});
+
+test('only the medial and inferior views carry a display notice, and it is bilingual', () => {
+  const scene = buildScene();
+  const byId = new Map(scene.getAnatomyViews().map((view) => [view.id, view]));
+
+  for (const id of ['left-lateral', 'right-lateral', 'anterior', 'posterior', 'superior']) {
+    assert.equal(byId.get(id).notice, undefined, `${id} carries no notice`);
+    assert.equal(byId.get(id).noticeJa, undefined, `${id} carries no notice`);
+  }
+
+  // Both medial views: a 3D display with the contralateral hemisphere hidden
+  // is not a midsagittal section (D-2 of the 2026-09-16 AI re-review).
+  for (const id of ['left-medial', 'right-medial']) {
+    assert.match(byId.get(id).notice, /[Nn]ot a midsagittal section/);
+    assert.match(byId.get(id).noticeJa, /正中矢状断ではありません/);
+  }
+
+  // Right medial and inferior additionally flag the missing right medulla
+  // mesh (F-122) as a data gap, not a normal left/right asymmetry.
+  for (const id of ['right-medial', 'inferior']) {
+    assert.match(byId.get(id).notice, /no right medulla oblongata mesh/);
+    assert.match(byId.get(id).noticeJa, /右側延髄の形状を収録していません/);
+  }
+  assert.doesNotMatch(byId.get('left-medial').notice, /medulla/);
+
   scene.dispose();
 });
 
@@ -468,6 +495,94 @@ test('fine hierarchy keeps epithalamus and cerebellar vermis distinct', () => {
   });
   assert.deepEqual(habenula.hierarchyJa, ['正中', '間脳', '視床上部']);
   assert.deepEqual(culmen.hierarchyJa, ['正中', '小脳', '小脳虫部']);
+});
+
+test('a display-only region override changes the breadcrumb but never the colour or the region field', () => {
+  const paracentral = brainStructureInfo({
+    bx_id: 261, bx_cat: 'cortex', bx_label: 'Paracentral gyrus and sulcus',
+    bx_side: 'left', bx_region: 'Frontal lobe',
+  });
+  assert.deepEqual(paracentral.hierarchyJa, ['左大脳半球', '前頭葉・頭頂葉', '大脳回・大脳溝']);
+  // `region`/`regionJa` (as opposed to the breadcrumb) and colour are derived
+  // from the true upstream region, `Frontal lobe`, not from the display
+  // override — #6/#21 of the 2026-09-16 AI re-review asked only for the
+  // breadcrumb to change.
+  assert.equal(paracentral.region, 'Frontal lobe');
+  assert.equal(paracentral.regionJa, '前頭葉');
+  assert.match(paracentral.noteJa, /前頭葉のみに分類/);
+
+  const lateralOT = brainStructureInfo({
+    bx_id: 169, bx_cat: 'cortex', bx_label: 'Lateral occipitotemporal gyrus',
+    bx_side: 'left', bx_region: 'Temporal lobe',
+  });
+  assert.deepEqual(lateralOT.hierarchyJa, ['左大脳半球', '側頭葉・後頭葉', '大脳回']);
+  assert.equal(lateralOT.region, 'Temporal lobe');
+  assert.equal(lateralOT.regionJa, '側頭葉');
+
+  // Colour is keyed off the true region (via brainColorKey), which the
+  // display override never touches: the paracentral parcel's colour key
+  // still matches a plain frontal-lobe structure's, not a temporal one's.
+  assert.equal(
+    brainColorKey({ bx_cat: 'cortex', bx_label: 'Paracentral gyrus and sulcus', bx_region: 'Frontal lobe' }),
+    brainColorKey({ bx_cat: 'cortex', bx_label: 'Middle frontal gyrus', bx_region: 'Frontal lobe' })
+  );
+  assert.notEqual(
+    brainColorKey({ bx_cat: 'cortex', bx_label: 'Paracentral gyrus and sulcus', bx_region: 'Frontal lobe' }),
+    brainColorKey({ bx_cat: 'cortex', bx_label: 'Lateral occipitotemporal gyrus', bx_region: 'Temporal lobe' })
+  );
+});
+
+test('CL in the thalamic CL–LP–PuM parcel names the central lateral nucleus, not the intralaminar group', () => {
+  const info = brainStructureInfo({
+    bx_cat: 'diencephalon', bx_label: 'Intralaminar and lateral posterior nuclei',
+    bx_side: 'left', bx_region: 'Diencephalon',
+  });
+  assert.equal(info.nameJa, '視床 CL–LP–PuM 区画（外側中心核・後外側核・内側視床枕を含む）');
+  assert.match(info.noteJa, /外側中心核/);
+  assert.match(info.note, /central lateral nucleus/);
+  assert.match(info.noteJa, /brain-merged-parcels\.md/);
+});
+
+test('the hypothalamic parcels no longer share one "integrated parcel" note — 3 of 5 are single-label', () => {
+  for (const label of ['Preoptic hypothalamus', 'Lateral hypothalamus', 'Posterior hypothalamus']) {
+    const info = brainStructureInfo({
+      bx_cat: 'diencephalon', bx_label: label, bx_side: 'left', bx_region: 'Diencephalon',
+    });
+    assert.match(info.noteJa, /片側 1 元ラベル/, `${label} is single-label per side`);
+    assert.doesNotMatch(info.noteJa, /6 元ラベル|4 元ラベル/, `${label} is not described as multi-label`);
+  }
+  const anterior = brainStructureInfo({
+    bx_cat: 'diencephalon', bx_label: 'Anterior hypothalamus', bx_side: 'left', bx_region: 'Diencephalon',
+  });
+  assert.match(anterior.noteJa, /6 元ラベル/);
+  const tuberal = brainStructureInfo({
+    bx_cat: 'diencephalon', bx_label: 'Tuberal hypothalamus', bx_side: 'left', bx_region: 'Diencephalon',
+  });
+  assert.match(tuberal.noteJa, /4 元ラベル/);
+});
+
+test('amygdala notes cite the recovered source label ids and the provenance record', () => {
+  const corticomedial = brainStructureInfo({
+    bx_cat: 'deep_grey', bx_label: 'Corticomedial group', bx_side: 'left', bx_region: 'Telencephalon',
+  });
+  assert.match(corticomedial.noteJa, /\[5, 7, 8, 9\]/);
+  assert.match(corticomedial.noteJa, /brain-merged-parcels\.md/);
+
+  const basolateral = brainStructureInfo({
+    bx_cat: 'deep_grey', bx_label: 'Basolateral complex', bx_side: 'left', bx_region: 'Telencephalon',
+  });
+  assert.match(basolateral.noteJa, /\[2, 3, 6\]/);
+  assert.match(basolateral.noteJa, /外側核（\[1\]）を含まない/);
+});
+
+test('median single-mesh structures say the midline is a storage unit, not an anatomical guarantee', () => {
+  for (const label of ['Habenula', 'Septal nuclei']) {
+    const info = brainStructureInfo({
+      bx_cat: 'diencephalon', bx_label: label, bx_side: 'median', bx_region: 'Diencephalon',
+    });
+    assert.match(info.noteJa, /左右を分けない 1 つのメッシュ/, `${label} explains its midline storage`);
+    assert.match(info.noteJa, /解剖学的な正中構造であることを保証しない/, `${label} does not overclaim`);
+  }
 });
 
 test('capitalized brainstem nuclei and cerebellar peduncles keep their fine families', () => {

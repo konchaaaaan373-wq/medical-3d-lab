@@ -335,6 +335,15 @@ GLB の 271 メッシュそのものの照合も未実施です。レビュー �
 - 完了の定義: 画像がレビューアに渡り、その受領と所見が記録に残る
   （次の版のレビュー記録、または本項の更新として）。
 
+**追記（2026-09-16、再レビュー R2-27）**：提出済みの `verify-images/` 8 枚のうち
+大脳脚底の検証画像（`1-352-*.png`）には改名前の日本語名「小脳脚基部」が写って
+おり、対象コミットでの改名（大脳脚底への変更）を証明する画像になっていない。
+352/353 の 2 枚は rename 前に撮られたものと確定した。この 8 枚・16 枚は**この
+セッションでは撮り直していない**——撮影には実ブラウザ（`npm run verify:anatomy`
+系）が必要で、CLAUDE.md により実ブラウザ検証は 1 本ずつ・時間のかかる作業として
+別工程（撮影エージェント）に委ねる。撮影時は commit・selected id・表示状態を
+manifest に記録すること（R2-27 が指摘した欠落）。
+
 ### F-122 上流由来の片側だけのメッシュ（延髄） — 原因不明、鏡像複製はしない — P2（2026-09-16）
 
 AI照合の指摘13（付録A #5）で、**延髄が左側のみ**の独立ラベルを持つことが
@@ -377,7 +386,7 @@ collateral sulcus.r"`）。`extras.bx_label`（`brainStructureInfo()` が参照�
 - 完了の定義: 検索がこの構造をヒットすることを確認し（またはトリム／正規化の
   修正を入れて）、原因と結果を本項の更新として記録する。
 
-### F-123 Najdenovska／CIT168 由来の統合区画に、元ラベル id の対応記録がない — P2（2026-09-16）
+### F-123 Najdenovska／CIT168 由来の統合区画に、元ラベル id の対応記録がない — P2（2026-09-16、一部解消）
 
 AI照合の指摘8・10・11・12は、視床の拡散MRI由来7区画（Najdenovska）、扁桃体の
 Basolateral complex 等、視床下部5領域が、**元アトラスの複数ラベルを統合した
@@ -392,6 +401,27 @@ Basolateral complex 等、視床下部5領域が、**元アトラスの複数ラ
 - 完了の定義: 統合区画（Basolateral complex、Corticomedial group、視床
   7区画、視床下部 5 領域など）について、元ラベル id の対応が記録され、
   情報カードまたは根拠台帳から参照できる。
+
+**状態の更新（2026-09-16、再レビュー §2.2 の推奨状態）**：「GLB内にIDなし」から
+「固定版の生成コードから数値IDを回収済み」に前進。ATTRIBUTION が固定する上流
+`itayinbarr/brainproject` @ `2929e94f521a8ddceab26bc100a98dc06b0da060` の
+`scripts/build_nuclei.py`（blob `87d08baed296d1d14ed012e43b1ba521264b3e0b`）を読み、
+扁桃体（Lateral [1] / Basolateral [2,3,6] / Central [4] / Corticomedial
+[5,7,8,9]）、視床下部（視索前・外側・後部は片側 1 元ラベル、前部 6、隆起部 4）、
+視床（Najdenovska 7区画の左 0–6・右 7–13 のボリューム対応、CL–LP–PuM は左 4・
+右 11）を
+[`docs/asset-provenance/brain-merged-parcels.md`](asset-provenance/brain-merged-parcels.md)
+に記録した。`src/data/brainAnatomy.js` の `STRUCTURE_NOTE` もこの対応表を反映し、
+視床下部 5 領域を一律「統合区画」とする表現をやめて片側 1 ラベル由来（視索前・
+外側・後部）と複数ラベル統合（前部 6・隆起部 4）を区別した。
+
+**まだ残ること**：(1) 元 LUT（原アトラス論文）の全構成名との突き合わせ
+（数値 id が原著の何という核・区画に対応するかの再確認）、(2) この対応表が
+実際に配信中の `brain.glb` を生成したスクリプトと一致することの個別資産対応
+記録、(3) 入力ボリュームファイル（`amyg_iAmyNuc_1mm_MNI.nii.gz` 等）自体の
+ハッシュ再確認。いずれも
+[`docs/asset-provenance/brain-merged-parcels.md`](asset-provenance/brain-merged-parcels.md)
+§5 に明記。
 
 ---
 

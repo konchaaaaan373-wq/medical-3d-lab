@@ -12,11 +12,11 @@ at pictures. **No anatomist has judged this geometry or these labels.**
 
 | | |
 | --- | --- |
-| **Decided at** | 2026-09-16 (re-taken: label, hierarchy and copy corrections from the AI terminology check) |
+| **Decided at** | 2026-09-16 (re-taken: findings from the 2026-09-16 re-review of revision 21) |
 | **Decided by** | Claude Sonnet, acting as implementer |
 | **Role** | `engineering` — software behaviour, not anatomical or clinical judgement |
 | **Asset revision** | `brain-atlas-glb` @ `sha256:76a49ea4526a4880613aec7a02756bd7301b0b9d0680d7cae33e197b672c5453` |
-| **Scene revision** | model card revision **21**, source digest `baa87eb0a12d6de4` |
+| **Scene revision** | model card revision **22**, source digest `ca071d10b89c3b31` |
 | **Scene sources under that digest** | [`src/data/brainAnatomy.js`](../../src/data/brainAnatomy.js), [`src/scenes/nervous/scenes/brainAnatomy/BrainAnatomyScene.js`](../../src/scenes/nervous/scenes/brainAnatomy/BrainAnatomyScene.js), [`src/scenes/shared/anatomy/tapGesture.js`](../../src/scenes/shared/anatomy/tapGesture.js) |
 
 The decision is pinned to **both** revisions in
@@ -157,10 +157,17 @@ the upstream metadata filed it under the cerebellum — so its colour family
 moves from cerebellum to brainstem. Keeping all 147 named structures
 perceptually distinct after that move required a new detail-palette seed
 (`palette-v2930` → `palette-v38601`), and the seed is part of every hash, so
-**every colour-map shade changed**, not only that label's. Natural-anatomy
-shades are unaffected. Colour is a viewing aid and encodes no anatomy
-(model card §6); earlier colour-map screenshots under `docs/screenshots/`
-therefore no longer match the shipped shades. Other
+**every colour-map shade changed**, not only that label's (147/147 labels).
+**Natural-anatomy shades are not seeded and did not need re-finding, but they
+are not exempt from the category move either**: `brainColorKey()` feeds both
+modes, and for `Base of peduncle` the category/region correction changes which
+colour family (cerebellum → brainstem) the natural-anatomy calculation looks
+up too. So natural-anatomy shades changed for the one corrected label (2
+structures, left and right); the other 146 labels are unchanged in that mode.
+Colour aids identification and grouping; it does not show real tissue colour,
+functional localisation, vascular territory, exact boundaries or positional
+accuracy (model card §6). Earlier colour-map screenshots under
+`docs/screenshots/` therefore no longer match the shipped shades. Other
 corrections: a hierarchy regex bug that put "Collateral sulcus" and "Posterior
 transverse collateral sulcus" under 外側溝 instead of 大脳溝; plural "sulci"
 labels and the two cortical poles now have their own families instead of the
@@ -172,6 +179,44 @@ the paracentral lobule, the insula mesh's name, and the Najdenovska/Neudorfer
 atlas-sourced parcels). This record is taken again because what a reader is
 told about several structures changed, even though nothing about what is drawn
 or selectable did.
+
+**Revision 21 → 22.** A 2026-09-16 re-review of revision 21 (`880eded`,
+verdict revise) found 16 of its 24 original findings resolved and 8
+unresolved or partly addressed. This revision addresses most of the
+remainder — no geometry, no atlas ids and no colour changed:
+
+- The natural-anatomy colour claim in the "Revision 20 → 21" paragraph above
+  is corrected: `Base of peduncle` (2 structures) changed in natural-anatomy
+  mode too, not only in colour-map mode; the other 146 labels did not, and
+  the model-card §6 colour wording is replaced with the re-review's own
+  sentence about what colour does and does not encode.
+- `public/assets/brain/ATTRIBUTION.md`'s "about 7 mm" generalisation for
+  every registered deep structure is retracted, matching model card §5.
+- Merged-parcel source label ids (amygdala, hypothalamus, thalamus) were
+  recovered from the pinned upstream generator script and recorded in
+  [`docs/asset-provenance/brain-merged-parcels.md`](../asset-provenance/brain-merged-parcels.md);
+  the five hypothalamic notes no longer claim uniformly that all are
+  "integrated parcels" — three of five are single-source-label parcels per
+  side.
+- The CL–LP–PuM thalamic label spells out CL as the central lateral nucleus.
+- A **display-only** `regionNames` override on two label pairs (the
+  paracentral lobule's two meshes; the lateral occipitotemporal gyrus and
+  sulcus) makes their breadcrumb show both lobes their own description
+  already names, without changing `region`, `brainColorKey()` or colour.
+- Habenula and Septal nuclei carry a note that their midline display is the
+  source data's single-mesh storage unit, not a guaranteed anatomical
+  midline structure.
+- **View-bound notices.** `VIEW_SPECS` carries an optional `notice`/
+  `noticeJa` per viewpoint. Left and right medial views now state, from the
+  viewpoint itself rather than only from a hidden layer-stage description,
+  that the contralateral hemisphere is hidden and this is not a midsagittal
+  section; right medial and inferior additionally state that this model has
+  no right medulla oblongata mesh (F-122), so a reader looking at either
+  view cannot mistake the gap for a normal asymmetry. `InspectionPanel.js`
+  renders the active view's notice as one line under the viewpoint buttons.
+- The label-export script's per-structure table is renamed "271 選択可能
+  構造一覧" (`structures.md`, replacing the stale `meshes.md`) and gains
+  `description_key`/`has_note` columns.
 
 Each time the gate closed and the production build stopped shipping the scene
 until this record was taken again — the mechanism working. An earlier decision

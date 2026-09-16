@@ -124,6 +124,19 @@ const REGION_NAMES = {
  * corrected placement). `family` replaces only the narrowest hierarchy level,
  * leaving the upstream side/region position alone — for a label whose broad
  * position is fine but whose fine-grained grouping is not.
+ *
+ * `regionNames` is different from all three: it replaces only the *displayed*
+ * breadcrumb entry — the pair shown to a reader — and never the `region`
+ * field itself. `brainColorKey()` and every colour family are derived from
+ * `region` (via `LABEL_PLACEMENT[...].region ?? metadata.bx_region`), which
+ * `regionNames` does not touch, so a label using it keeps its existing colour
+ * and category. This exists for parcels whose upstream single-region
+ * placement omits a lobe its own description names: the paracentral lobule
+ * spans the frontal and parietal lobes, and the lateral occipitotemporal
+ * gyrus/sulcus span the temporal and occipital lobes, but the upstream
+ * `bx_region` names only one each (#6/#21 of the 2026-09-16 AI terminology
+ * check, unresolved as of the 2026-09-16 re-review). The upstream navigation
+ * region the atlas actually filed each pair under is noted per entry below.
  */
 const LABEL_PLACEMENT = {
   // TA98 basis pedunculi is a midbrain structure; the upstream metadata files
@@ -149,6 +162,24 @@ const LABEL_PLACEMENT = {
   },
   Neurohypophysis: {
     family: ['Pituitary gland (diencephalon-associated endocrine organ)', '下垂体（間脳関連の内分泌器官）'],
+  },
+  // The paracentral lobule straddles the central sulcus and spans a
+  // frontal-lobe part and a parietal-lobe part (see STRUCTURE_COPY above).
+  // The upstream navigation region for both meshes is 前頭葉 (Frontal lobe).
+  'Paracentral gyrus and sulcus': {
+    regionNames: ['Frontal and parietal lobes', '前頭葉・頭頂葉'],
+  },
+  'Paracentral sulcus': {
+    regionNames: ['Frontal and parietal lobes', '前頭葉・頭頂葉'],
+  },
+  // These two atlas parcels span the temporal and occipital lobes (see
+  // STRUCTURE_COPY above). The upstream navigation region for both meshes is
+  // 側頭葉 (Temporal lobe).
+  'Lateral occipitotemporal gyrus': {
+    regionNames: ['Temporal and occipital lobes', '側頭葉・後頭葉'],
+  },
+  'Occipitotemporal sulcus (Lateral part)': {
+    regionNames: ['Temporal and occipital lobes', '側頭葉・後頭葉'],
   },
 };
 
@@ -210,7 +241,7 @@ const STRUCTURE_JA = {
   'Insula (Subcentral gyrus and ant. and post. sulci)': '島皮質',
   'Interpeduncular fossa': '脚間窩',
   'Intraparietal sulcus': '頭頂間溝',
-  'Intralaminar and lateral posterior nuclei': '視床 CL–LP–PuM 区画（髄板内核・後外側核・内側視床枕を含む）',
+  'Intralaminar and lateral posterior nuclei': '視床 CL–LP–PuM 区画（外側中心核・後外側核・内側視床枕を含む）',
   'Lat Fis-ant-Horizont': '外側溝前水平枝',
   'Lat Fis-ant-Vertical': '外側溝前上行枝',
   'Lat Fis-post': '外側溝後枝',
@@ -358,10 +389,15 @@ const HYPOTHALAMUS_LABELS = new Set([
   'Tuberal hypothalamus',
 ]);
 
-/** The 5 of the 6 hypothalamic labels above sourced from Neudorfer et al. (2020); Mamillary body is a classically named individual nucleus, not one of the 5 combined parcels. */
-const NEUDORFER_HYPOTHALAMUS_LABELS = new Set(
-  [...HYPOTHALAMUS_LABELS].filter((label) => label !== 'Mamillary body')
-);
+/**
+ * 5 of the 6 hypothalamic labels above are sourced from Neudorfer et al.
+ * (2020); Mamillary body is a classically named individual nucleus, not one
+ * of the 5. Of those 5, only Anterior (6 source labels/side) and Tuberal (4
+ * source labels/side) are actually combined parcels — Preoptic, Lateral and
+ * Posterior are each a single source label per side. See
+ * docs/asset-provenance/brain-merged-parcels.md and the individual
+ * `STRUCTURE_NOTE` entries below (F-123, corrected 2026-09-16).
+ */
 
 const CEREBELLAR_VERMIS_LABELS = new Set([
   'Central lobule',
@@ -400,30 +436,85 @@ const STRUCTURE_NOTE = {
     'A midline structure recorded here as separate left and right meshes.',
     '正中の構造を左右のメッシュに分けて収録しています。'
   ),
+  Habenula: copy(
+    'The source data records this as one mesh that does not distinguish left and right. Its midline display reflects the source data\'s storage unit, not a guarantee that it is an anatomically midline structure.',
+    '元データでは左右を分けない 1 つのメッシュとして収録。正中の表示はデータ上の格納単位で、解剖学的な正中構造であることを保証しない。'
+  ),
+  'Septal nuclei': copy(
+    'The source data records this as one mesh that does not distinguish left and right. Its midline display reflects the source data\'s storage unit, not a guarantee that it is an anatomically midline structure.',
+    '元データでは左右を分けない 1 つのメッシュとして収録。正中の表示はデータ上の格納単位で、解剖学的な正中構造であることを保証しない。'
+  ),
+  'Paracentral gyrus and sulcus': copy(
+    'Shown here under both the frontal and parietal lobes because the paracentral lobule spans a part of each. The atlas\'s own upstream navigation files this mesh under the frontal lobe alone.',
+    '中心傍小葉は前頭葉側と頭頂葉側の両方にまたがるため、ここでは前頭葉・頭頂葉の両方の下に表示しています。元アトラスの上流ナビゲーション区分では前頭葉のみに分類されています。'
+  ),
+  'Paracentral sulcus': copy(
+    'Shown here under both the frontal and parietal lobes because the paracentral lobule spans a part of each. The atlas\'s own upstream navigation files this mesh under the frontal lobe alone.',
+    '中心傍小葉は前頭葉側と頭頂葉側の両方にまたがるため、ここでは前頭葉・頭頂葉の両方の下に表示しています。元アトラスの上流ナビゲーション区分では前頭葉のみに分類されています。'
+  ),
+  'Lateral occipitotemporal gyrus': copy(
+    'Shown here under both the temporal and occipital lobes because this atlas parcel spans a part of each. The atlas\'s own upstream navigation files this mesh under the temporal lobe alone.',
+    'この区画は側頭葉側と後頭葉側の両方にまたがるため、ここでは側頭葉・後頭葉の両方の下に表示しています。元アトラスの上流ナビゲーション区分では側頭葉のみに分類されています。'
+  ),
+  'Occipitotemporal sulcus (Lateral part)': copy(
+    'Shown here under both the temporal and occipital lobes because this atlas parcel spans a part of each. The atlas\'s own upstream navigation files this mesh under the temporal lobe alone.',
+    'この区画は側頭葉側と後頭葉側の両方にまたがるため、ここでは側頭葉・後頭葉の両方の下に表示しています。元アトラスの上流ナビゲーション区分では側頭葉のみに分類されています。'
+  ),
   'Corticomedial group': copy(
-    'A parcel combining several source nuclei/labels into one atlas region. The individual source label ids it was built from are not recorded (F-123).',
-    '元モデルが複数の核・ラベルを統合したアトラス区画。構成する元ラベルの id は未記録（F-123）。'
+    'An atlas parcel combining 4 source labels ([5, 7, 8, 9]) of the CIT168 amygdala atlas into one region, per the pinned upstream generator script. See docs/asset-provenance/brain-merged-parcels.md (F-123).',
+    '元アトラス（CIT168 扁桃体アトラス）の 4 元ラベル（[5, 7, 8, 9]）を統合したアトラス区画。固定版の生成スクリプトから確認。docs/asset-provenance/brain-merged-parcels.md を参照（F-123）。'
+  ),
+  'Basolateral complex': copy(
+    'An atlas parcel combining 3 source labels ([2, 3, 6]) of the CIT168 amygdala atlas, confirmed by the pinned upstream generator script to exclude the separately labelled lateral nucleus ([1]). See docs/asset-provenance/brain-merged-parcels.md (F-123).',
+    '元アトラス（CIT168 扁桃体アトラス）の 3 元ラベル（[2, 3, 6]）を統合したアトラス区画。固定版の生成スクリプトで、別ラベルの外側核（[1]）を含まないことを確認。docs/asset-provenance/brain-merged-parcels.md を参照（F-123）。'
   ),
 };
 
 /** The 7 Najdenovska (2018) diffusion-MRI thalamic parcels ship one shared note. */
 const NAJDENOVSKA_NOTE = copy(
-  'One of 7 parcels from Najdenovska et al. (2018), derived from diffusion MRI. Its boundaries are not histological nuclear boundaries.',
-  'Najdenovska 2018 の拡散 MRI に基づく 7 区画のひとつ。境界は組織学的な核境界ではない。'
+  'One of 7 parcels from Najdenovska et al. (2018), derived from diffusion MRI. Its boundaries are not histological nuclear boundaries. The volume correspondence for each of the 7 parcels is recorded in docs/asset-provenance/brain-merged-parcels.md.',
+  'Najdenovska 2018 の拡散 MRI に基づく 7 区画のひとつ。境界は組織学的な核境界ではない。7 区画それぞれのボリューム対応は docs/asset-provenance/brain-merged-parcels.md に記録。'
 );
 
-/** The 5 Neudorfer (2020) hypothalamic parcels ship one shared note, like Corticomedial group. */
-const NEUDORFER_HYPOTHALAMUS_NOTE = copy(
-  'A parcel combining several source nuclei/labels into one atlas region. The individual source label ids it was built from are not recorded (F-123).',
-  '元モデルが複数の核・ラベルを統合したアトラス区画。構成する元ラベルの id は未記録（F-123）。'
+/**
+ * Three of the five Neudorfer (2020) hypothalamic parcels are built from a
+ * single source label per side, not from several combined labels — a prior
+ * note that treated all five as one kind of "integrated parcel" overstated it
+ * for these three (F-123, corrected 2026-09-16). See
+ * docs/asset-provenance/brain-merged-parcels.md for the per-parcel source ids.
+ */
+const NEUDORFER_SINGLE_LABEL_NOTE = copy(
+  'Built from a single source label per side in the pinned upstream generator script (Neudorfer et al. 2020 input volume). This does not guarantee the source atlas volume contains only one cytoarchitectonic nucleus at that id. See docs/asset-provenance/brain-merged-parcels.md (F-123).',
+  '固定版の生成スクリプトでは片側 1 元ラベルから構築（Neudorfer 2020 の入力ボリューム）。単一の組織学的核であることを保証するものではありません。docs/asset-provenance/brain-merged-parcels.md を参照（F-123）。'
+);
+
+const NEUDORFER_ANTERIOR_NOTE = copy(
+  'An atlas parcel combining 6 source labels per side in the pinned upstream generator script (Neudorfer et al. 2020 input volume). See docs/asset-provenance/brain-merged-parcels.md (F-123).',
+  '固定版の生成スクリプトで片側 6 元ラベルを統合したアトラス区画（Neudorfer 2020 の入力ボリューム）。docs/asset-provenance/brain-merged-parcels.md を参照（F-123）。'
+);
+
+const NEUDORFER_TUBERAL_NOTE = copy(
+  'An atlas parcel combining 4 source labels per side in the pinned upstream generator script (Neudorfer et al. 2020 input volume). See docs/asset-provenance/brain-merged-parcels.md (F-123).',
+  '固定版の生成スクリプトで片側 4 元ラベルを統合したアトラス区画（Neudorfer 2020 の入力ボリューム）。docs/asset-provenance/brain-merged-parcels.md を参照（F-123）。'
 );
 
 for (const label of THALAMUS_LABELS) {
   STRUCTURE_NOTE[label] = NAJDENOVSKA_NOTE;
 }
-for (const label of NEUDORFER_HYPOTHALAMUS_LABELS) {
-  STRUCTURE_NOTE[label] = NEUDORFER_HYPOTHALAMUS_NOTE;
-}
+// CL = central lateral nucleus. This parcel's name spells that out instead of
+// the broader "intralaminar nuclei" group, because the pinned generator
+// script's volume correspondence (see docs/asset-provenance/brain-merged-
+// parcels.md) is for this specific Najdenovska parcel, not for every
+// intralaminar nucleus.
+STRUCTURE_NOTE['Intralaminar and lateral posterior nuclei'] = copy(
+  'One of 7 parcels from Najdenovska et al. (2018), derived from diffusion MRI. Its boundaries are not histological nuclear boundaries. "CL" here names the central lateral nucleus specifically, not the broader intralaminar nuclear group; its volume correspondence in the pinned upstream generator script is recorded in docs/asset-provenance/brain-merged-parcels.md.',
+  'Najdenovska 2018 の拡散 MRI に基づく 7 区画のひとつ。境界は組織学的な核境界ではない。「CL」はより広い髄板内核群ではなく外側中心核（central lateral nucleus）を指す。固定版の生成スクリプトにおけるボリューム対応は docs/asset-provenance/brain-merged-parcels.md に記録。'
+);
+STRUCTURE_NOTE['Preoptic hypothalamus'] = NEUDORFER_SINGLE_LABEL_NOTE;
+STRUCTURE_NOTE['Lateral hypothalamus'] = NEUDORFER_SINGLE_LABEL_NOTE;
+STRUCTURE_NOTE['Posterior hypothalamus'] = NEUDORFER_SINGLE_LABEL_NOTE;
+STRUCTURE_NOTE['Anterior hypothalamus'] = NEUDORFER_ANTERIOR_NOTE;
+STRUCTURE_NOTE['Tuberal hypothalamus'] = NEUDORFER_TUBERAL_NOTE;
 
 const STRUCTURE_COPY = {
   'Cingulate gyrus and sulcus (Middle anterior part)': copy(
@@ -678,7 +769,11 @@ export function brainStructureInfo(metadata = {}) {
   const translated = STRUCTURE_JA[atlasLabel] ?? STRUCTURE_JA[label];
   const sideNames = sideHierarchy(side, category, region);
   const familyNames = placement?.family ?? structureFamily(atlasLabel, category);
-  const hierarchy = uniqueHierarchy([sideNames, regionNames, familyNames]);
+  // Display-only: shown in the breadcrumb in place of `regionNames`, but never
+  // fed to `region`/`regionJa` below, `brainColorKey()` or any colour family —
+  // see the LABEL_PLACEMENT doc comment above `regionNames`.
+  const displayRegionNames = placement?.regionNames ?? regionNames;
+  const hierarchy = uniqueHierarchy([sideNames, displayRegionNames, familyNames]);
 
   return {
     id: metadata.bx_id,
@@ -705,6 +800,29 @@ export function brainStructureInfo(metadata = {}) {
     noteJa: note?.ja ?? null,
     source: metadata.bx_source || 'Z-Anatomy / BodyParts3D',
   };
+}
+
+/**
+ * Which table `brainStructureInfo()` actually resolved a mesh's description
+ * from, in the same fallback order it uses: an exact per-structure entry,
+ * then the region, then the category, then the generic default. Exposed so
+ * the review export (`scripts/export-anatomy-labels.mjs`) can show, per row,
+ * whether a description is specific to that structure or inherited — R2-28 of
+ * the 2026-09-16 AI re-review.
+ *
+ * @param {object} metadata
+ * @returns {'structure'|'region'|'category'|'default'}
+ */
+export function brainCopySource(metadata = {}) {
+  const atlasLabel = metadata.bx_label || 'Unnamed structure';
+  const label = DISPLAY_LABELS[atlasLabel] ?? atlasLabel;
+  const placement = LABEL_PLACEMENT[atlasLabel];
+  const category = placement?.category ?? (metadata.bx_cat || 'cortex');
+  const region = placement?.region ?? (metadata.bx_region || BRAIN_CATEGORY_NAMES[category]?.[0] || 'Brain');
+  if (STRUCTURE_COPY[atlasLabel] ?? STRUCTURE_COPY[label]) return 'structure';
+  if (REGION_COPY[region]) return 'region';
+  if (CATEGORY_COPY[category]) return 'category';
+  return 'default';
 }
 
 function copy(en, ja) {

@@ -31,10 +31,10 @@
  *   --out <dir>   where to write the two markdown files (default:
  *                 docs/clinical-reviews/packets/brain-anatomy-labels/)
  */
-import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { dirname, join, resolve } from 'node:path';
 
-import { brainStructureInfo } from '../src/data/brainAnatomy.js';
+import { brainCopySource, brainStructureInfo } from '../src/data/brainAnatomy.js';
 
 const ROOT = resolve(dirname(new URL(import.meta.url).pathname), '..');
 const GLB_PATH = join(ROOT, 'public/assets/brain/brain.glb');
@@ -78,6 +78,8 @@ for (const node of gltf.nodes) {
     hierarchyJa: info.breadcrumbJa,
     descriptionJa: info.descriptionJa,
     noteJa: info.noteJa,
+    descriptionKey: brainCopySource(extras),
+    hasNote: Boolean(info.noteJa),
   });
 }
 
@@ -129,27 +131,34 @@ for (const { row } of uniqueRows) {
   if (row.noteJa) labelsMd += `- **${row.nameJa}**: ${row.noteJa}\n`;
 }
 
-// (b) One row per mesh (271, left/right/midline kept separate) --------------
+// (b) One row per selectable structure (271, left/right/midline kept separate) —
+// a `bx_id`/structure is not the same thing as a rendered mesh: 271 of these
+// draw from 397 meshes (R2-28 of the 2026-09-16 AI re-review). ------------
 
-let meshesMd = '# brain-anatomy — 271 メッシュ一覧（生成物・手編集禁止）\n\n';
-meshesMd +=
-  '`node scripts/export-anatomy-labels.mjs` の出力です。左右別・メッシュ単位で階層と説明文の' +
-  '割当を再照合するための一覧です。**手で書き換えないでください。** 資産や翻訳が変わったら再生成してください。\n\n';
-meshesMd +=
-  '| bx_id | raw_label | node | bx_cat | bx_region | bx_side | bx_source | bx_parent | 日本語 | 階層（日本語） |\n';
-meshesMd += '|---|---|---|---|---|---|---|---|---|---|\n';
+let structuresMd = '# brain-anatomy — 271 選択可能構造一覧（生成物・手編集禁止）\n\n';
+structuresMd +=
+  '`node scripts/export-anatomy-labels.mjs` の出力です。左右別・構造単位（`bx_id`）で階層と説明文の' +
+  '割当を再照合するための一覧です。1 行 = 1 選択可能構造（`bx_id`）で、描画メッシュ数（397）とは別の数え方です。' +
+  '**手で書き換えないでください。** 資産や翻訳が変わったら再生成してください。\n\n';
+structuresMd +=
+  '| bx_id | raw_label | node | bx_cat | bx_region | bx_side | bx_source | bx_parent | 日本語 | 階層（日本語） | description_key | has_note |\n';
+structuresMd += '|---|---|---|---|---|---|---|---|---|---|---|---|\n';
 const sortedMeshRows = [...meshRows].sort(
   (a, b) => a.rawLabel.localeCompare(b.rawLabel) || String(a.side).localeCompare(String(b.side))
 );
 for (const row of sortedMeshRows) {
-  meshesMd += `| ${row.id} | ${row.rawLabel} | ${row.node} | ${row.cat} | ${row.region} | ${row.side} | ${row.source} | ${row.parent} | ${row.nameJa} | ${row.hierarchyJa} |\n`;
+  structuresMd += `| ${row.id} | ${row.rawLabel} | ${row.node} | ${row.cat} | ${row.region} | ${row.side} | ${row.source} | ${row.parent} | ${row.nameJa} | ${row.hierarchyJa} | ${row.descriptionKey} | ${row.hasNote ? 'yes' : 'no'} |\n`;
 }
 
 if (!existsSync(outDir)) mkdirSync(outDir, { recursive: true });
 const labelsPath = join(outDir, 'labels-and-descriptions.md');
-const meshesPath = join(outDir, 'meshes.md');
+const structuresPath = join(outDir, 'structures.md');
+const staleMeshesPath = join(outDir, 'meshes.md');
 writeFileSync(labelsPath, labelsMd);
-writeFileSync(meshesPath, meshesMd);
+writeFileSync(structuresPath, structuresMd);
+// meshes.md is the old name for this same table (R2-28) and is deleted here
+// so a reviewer cannot open a stale copy that this run no longer updates.
+if (existsSync(staleMeshesPath)) rmSync(staleMeshesPath);
 
 console.log(`${uniqueRows.length} unique labels -> ${labelsPath}`);
-console.log(`${meshRows.length} meshes -> ${meshesPath}`);
+console.log(`${meshRows.length} selectable structures -> ${structuresPath}`);

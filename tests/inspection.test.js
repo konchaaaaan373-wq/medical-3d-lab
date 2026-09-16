@@ -97,6 +97,41 @@ test('the panel exposes view, background, labels and reset as display-only callb
   }
 });
 
+test('a view-bound notice shows only for the view that declares one, in both languages', () => {
+  const restoreDocument = installFakeDocument();
+  try {
+    const views = [
+      { id: 'lateral', label: 'Lateral', labelJa: '外側' },
+      {
+        id: 'medial', label: 'Medial', labelJa: '内側',
+        notice: 'Not a midsagittal section.', noticeJa: '正中矢状断ではありません。',
+      },
+    ];
+    const panel = createInspectionPanel({ views, activeView: 'lateral' });
+    const notice = findByClass(panel.element, 'inspection-view-notice')[0];
+
+    assert.equal(notice.hidden, true, 'the initial view has no notice');
+
+    findByClass(panel.element, 'inspection-view')[1].click();
+    assert.equal(notice.hidden, false, 'switching to a view with a notice reveals it');
+    assert.equal(findByClass(notice, 'lang-en')[0].textContent, 'Not a midsagittal section.');
+    assert.equal(findByClass(notice, 'lang-ja')[0].textContent, '正中矢状断ではありません。');
+
+    findByClass(panel.element, 'inspection-view')[0].click();
+    assert.equal(notice.hidden, true, 'switching back to a view without a notice hides it again');
+
+    // A view applied from outside the panel's own buttons — a route or a
+    // preferred-view jump — goes through setView(), which must update the
+    // notice the same way a click does.
+    panel.setView('medial');
+    assert.equal(notice.hidden, false);
+    panel.setView('lateral');
+    assert.equal(notice.hidden, true);
+  } finally {
+    restoreDocument();
+  }
+});
+
 test('the app mounts inspection for every scene without a path into medical setters', () => {
   const source = readFileSync(new URL('../src/app/App.js', import.meta.url), 'utf8');
   assert.match(source, /inspectionPanel = createInspectionPanel\(\{/);
