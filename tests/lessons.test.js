@@ -23,7 +23,7 @@ test('the ledger is well-formed and every guard it names still exists', () => {
 
   // Something was actually read. An empty parse would satisfy every assertion
   // above it, which is L-01 — the lesson this file exists to not repeat.
-  assert.ok(lessons.length >= 17, `only ${lessons.length} lesson(s) parsed`);
+  assert.ok(lessons.length >= 18, `only ${lessons.length} lesson(s) parsed`);
   assert.ok(humanOnly.length > 0, 'a ledger where everything is mechanically caught is not being honest');
 });
 
@@ -96,6 +96,36 @@ test('the three fields are all required', () => {
       `a lesson with no ${missing} passed`,
     );
   }
+});
+
+test('a required field that is present but empty is refused', () => {
+  // `- **症状**:` with nothing after it parses to an empty string, and a
+  // `has()` check accepts it. The first version did, so the ledger reported
+  // itself well-formed while an entry stated none of the three facts — this
+  // file's own subject, found in review rather than by the loop.
+  const empty = [
+    '### L-99 something',
+    '- **症状**:',
+    '- **どう見つかったか**:   ',
+    '- **いま何が捕まえるか**: **人だけ**',
+  ].join('\n');
+  const { problems } = auditLessons({ markdown: empty });
+  assert.deepEqual(problems, [
+    'L-99 (line 1): **症状** is empty',
+    'L-99 (line 1): **どう見つかったか** is empty',
+  ]);
+
+  // But a field whose text starts on the wrapped next line is legal, so
+  // emptiness is read after the parse rather than during it. Rejecting this
+  // would push people to cram the first line, which is how L-02 got written.
+  const wrapped = [
+    '### L-99 something',
+    '- **症状**:',
+    '  the sentence starts here',
+    '- **どう見つかったか**: y',
+    '- **いま何が捕まえるか**: **人だけ**',
+  ].join('\n');
+  assert.deepEqual(auditLessons({ markdown: wrapped }).problems, []);
 });
 
 test('a number is never reused', () => {

@@ -127,7 +127,16 @@ export function auditLessons({ markdown, exists = existsSync, scripts = [] }) {
     seen.set(lesson.id, lesson.title);
 
     for (const required of REQUIRED_FIELDS) {
-      if (!lesson.fields.has(required)) problems.push(`${where}: no **${required}** field`);
+      // Present *and* saying something. `- **症状**:` with nothing after it
+      // parses to an empty string, and a `has()` check accepts it — so the
+      // ledger would report itself well-formed while an entry stated none of
+      // the three facts. Emptiness is read after the parse, not during it,
+      // because a field whose text starts on the wrapped next line is legal.
+      if (!lesson.fields.has(required)) {
+        problems.push(`${where}: no **${required}** field`);
+      } else if (lesson.fields.get(required).trim() === '') {
+        problems.push(`${where}: **${required}** is empty`);
+      }
     }
 
     const guard = lesson.fields.get(REQUIRED_FIELDS[2]) ?? '';
