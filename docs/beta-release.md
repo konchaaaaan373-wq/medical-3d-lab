@@ -17,8 +17,9 @@
 範囲は臓器名では固定しません——**ゲートを通った解剖シーンから 1 つずつ**開きます
 （[ADR 2026-09-14](architecture/adr-2026-09-14-anatomy-beta-by-organ.md)）。
 
-現在公開しているのは **10 件**です。脳に加えて、B1（肺・肝・腎）、
-B2（胃・食道・腸・胆道・膵）、B3（皮膚）を 2026-09-14 に開きました。
+現在公開しているのは **11 件**です。脳に加えて、B1（肺・肝・腎）、
+B2（胃・食道・腸・胆道・膵）、B3（皮膚）を 2026-09-14 に、
+心臓を 2026-09-15 に開きました。
 記録は [`beta-publication/`](beta-publication/)、レンダーの証跡は
 [`screenshots/pub-b1/`](screenshots/pub-b1/)、
 [`screenshots/pub-b2/`](screenshots/pub-b2/)、
@@ -35,10 +36,15 @@ B2（胃・食道・腸・胆道・膵）、B3（皮膚）を 2026-09-14 に開�
 断面を描けば、内腔が実質になります。いまは構造ごとに宣言し、中空のものは
 「面を張らず開く」ようにしています。
 
-`heart-anatomy` は候補として登録済みで、**シーンは存在します**（`alpha`）。
-開かない理由は 2 つで、どちらもゲートが返します——読み込んでいる 2 本の GLB が
-`devAssets.js` の候補 asset で asset release gate を通っていないこと、
-この release の公開判断記録が無いことです。
+**`heart-anatomy` は 2026-09-15 に開きました。** 長く止めていた 2 つの理由を、
+順に片付けた日です——2 本の GLB が asset pipeline を通り
+（[`decisions/HEART-ASSET-ADOPTION.md`](decisions/HEART-ASSET-ADOPTION.md)）、
+その hash に結びついた公開判断記録ができました
+（[`beta-publication/heart-anatomy.md`](beta-publication/heart-anatomy.md)）。
+**pin されているのはどちらの配布元の hash でもありません**——2 本とも
+頂点法線の縮退で glTF 検証に落ちるので、そこだけ直した派生を pin しています。
+
+ゲートがいま各候補について何を言うかは、書き写すのではなく訊いてください。
 
 ```
 node -e "import('./src/catalog/release.js').then(m=>console.log(
