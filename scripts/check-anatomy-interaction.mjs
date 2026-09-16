@@ -458,6 +458,41 @@ try {
     await page.mouse.move(box.x + 4, box.y + 4);
     await page.waitForTimeout(250);
   };
+  /**
+   * Wait for the camera to stop, rather than for a number of milliseconds.
+   *
+   * The controls damp: the view keeps moving for seconds after the button comes
+   * up, asymptotically. Measuring on a timeout therefore measures *when* the
+   * measurement happened as much as what is there, and the narrower the subject
+   * the sooner that bites — a shoulder is a few frame-percent across at the
+   * humerus, so a point sampled mid-motion is background a second later.
+   *
+   * Rest is two consecutive samples with the camera and its target in the same
+   * place. A timeout here is not a failure of the product — the caller carries
+   * on and the checks that follow say what they see.
+   */
+  const settleCamera = async () => {
+    await page
+      .waitForFunction(
+        () => {
+          const viewer = window.__app?.viewer;
+          if (!viewer?.camera || !viewer?.controls?.target) return true;
+          const { position } = viewer.camera;
+          const { target } = viewer.controls;
+          const now = [position.x, position.y, position.z, target.x, target.y, target.z];
+          const before = window.__cameraRest;
+          window.__cameraRest = now;
+          return Boolean(before) && now.every((value, index) => Math.abs(value - before[index]) < 1e-4);
+        },
+        null,
+        { timeout: 8000, polling: 150 }
+      )
+      .catch(() => {});
+    await page.evaluate(() => {
+      delete window.__cameraRest;
+    });
+  };
+
   const EMPTY = 'Select a structure on the model or in the list.';
   const clickAt = async (fx, fy) => {
     await page.mouse.click(box.x + box.width * fx, box.y + box.height * fy);
@@ -482,23 +517,38 @@ try {
     await page.waitForTimeout(90);
     return (await canvas.evaluate((element) => element.style.cursor)) === 'pointer';
   };
-  const modelPoints = [];
-  const emptyPoints = [];
-  // Worked outwards from the middle rather than across a coarse grid. A grid
-  // of five columns spanning 0.30–0.66 is still an assumption — that the
-  // subject is wide — and a spine, a hand or a standing skeleton is not: they
-  // are a couple of frame-percent across at the middle, and every sample
-  // missed. "The model is not drawn" was then reported for a model that was
-  // drawn, centred, and perfectly clickable.
-  for (const fy of [0.45, 0.34, 0.56, 0.26, 0.64, 0.2, 0.72]) {
-    for (const fx of [0.5, 0.44, 0.56, 0.38, 0.62, 0.3, 0.68, 0.22]) {
-      if (modelPoints.length >= 6 && emptyPoints.length >= 2) break;
-      const hit = await overModel(fx, fy);
-      if (hit && modelPoints.length < 6) modelPoints.push([fx, fy]);
-      if (!hit && emptyPoints.length < 6) emptyPoints.push([fx, fy]);
+  // Measured once the view has stopped moving, not while it is still arriving.
+  await settleCamera();
+
+  /**
+   * Sample the frame for points that are over the model *right now*.
+   *
+   * Worked outwards from the middle rather than across a coarse grid. A grid of
+   * five columns spanning 0.30–0.66 is still an assumption — that the subject
+   * is wide — and a spine, a hand or a standing skeleton is not: they are a
+   * couple of frame-percent across at the middle, and every sample missed.
+   * "The model is not drawn" was then reported for a model that was drawn,
+   * centred, and perfectly clickable.
+   *
+   * A function rather than a one-off, because the answer expires: see
+   * `remeasure` below.
+   */
+  const sample = async () => {
+    const over = [];
+    const off = [];
+    for (const fy of [0.45, 0.34, 0.56, 0.26, 0.64, 0.2, 0.72]) {
+      for (const fx of [0.5, 0.44, 0.56, 0.38, 0.62, 0.3, 0.68, 0.22]) {
+        if (over.length >= 6 && off.length >= 2) break;
+        const hit = await overModel(fx, fy);
+        if (hit && over.length < 6) over.push([fx, fy]);
+        if (!hit && off.length < 6) off.push([fx, fy]);
+      }
     }
-  }
-  await restPointer();
+    await restPointer();
+    return { over, off };
+  };
+
+  let { over: modelPoints, off: emptyPoints } = await sample();
   if (modelPoints.length < 4) {
     die(
       `only ${modelPoints.length} of the sampled points are over the model. Either the model is not ` +
@@ -510,14 +560,17 @@ try {
   // The farthest miss from the middle of what was found, not the first one: a
   // near miss beside a narrow subject is background now and may not be after a
   // drag, and the point is used to check that clicking nothing clears.
-  const centre = modelPoints.reduce(
-    (sum, [fx, fy]) => [sum[0] + fx / modelPoints.length, sum[1] + fy / modelPoints.length],
-    [0, 0]
-  );
-  const away = ([fx, fy]) => Math.hypot(fx - centre[0], fy - centre[1]);
-  const emptyPoint = [...(emptyPoints.length
-    ? emptyPoints.reduce((best, point) => (away(point) > away(best) ? point : best))
-    : [0.04, 0.94])];
+  const farthestMiss = () => {
+    const centre = modelPoints.reduce(
+      (sum, [fx, fy]) => [sum[0] + fx / modelPoints.length, sum[1] + fy / modelPoints.length],
+      [0, 0]
+    );
+    const away = ([fx, fy]) => Math.hypot(fx - centre[0], fy - centre[1]);
+    return [...(emptyPoints.length
+      ? emptyPoints.reduce((best, point) => (away(point) > away(best) ? point : best))
+      : [0.04, 0.94])];
+  };
+  const emptyPoint = farthestMiss();
 
   // 1. A click on the model names a structure, in both languages, with a path.
   //    The last point that *hit* is remembered, because a point that misses
@@ -614,16 +667,60 @@ try {
   await page.mouse.move(box.x + box.width * dragFromX, box.y + box.height * dragFromY, { steps: 20 });
   await page.mouse.up();
   await restPointer();
+  // Reversed is not the same as stopped: see `settleCamera`.
+  await settleCamera();
   if (afterDrag.en !== pinned.en) {
     problems.push(`a drag changed the selection from "${pinned.en}" to "${afterDrag.en}"`);
   }
 
+  // Everything below clicks the model, and where the model *is* was measured
+  // before the turn. Reversing the drag was supposed to make that still true
+  // and does not: the controls damp, so a press that is given back its own path
+  // does not give back its own rotation, and the shoulder came back from a
+  // turn-and-return at (-2.23, 3.38, 4.24) having left from (-3.60, 2.20, 6.60)
+  // — a third of the way round the joint. That was measured, after three
+  // separate runs each blamed the product for a different step: "after Show all
+  // … it did not come back", "recolouring left 0 rows marked selected", and a
+  // selection reported lost that the scene still held. One stale array, three
+  // false accusations.
+  //
+  // So the view is measured again instead of being assumed restored. The turn
+  // has already been judged by then — `afterDrag` is read above — and a view
+  // this cannot find the model in is still a finding, from `sample`'s own
+  // floor below.
+  const remeasure = async () => {
+    const fresh = await sample();
+    if (fresh.over.length < 4) {
+      problems.push(
+        `after turning the model and turning it back, only ${fresh.over.length} sampled point(s) are over ` +
+          'it — the checks below click where the model was, so they would be measuring the frame, not the scene'
+      );
+      return false;
+    }
+    modelPoints = fresh.over;
+    emptyPoints = fresh.off;
+    const replacement = farthestMiss();
+    emptyPoint[0] = replacement[0];
+    emptyPoint[1] = replacement[1];
+    // And a point that *names* something, for the steps that need one pinned.
+    for (const point of modelPoints) {
+      if ((await clickAt(point[0], point[1])).en !== EMPTY) {
+        lastHitPoint = point;
+        return true;
+      }
+    }
+    problems.push('after the drag, none of the points over the model named a structure when clicked');
+    return false;
+  };
+  await remeasure();
+
   // 3. Clicking the background clears rather than keeping a stale card.
-  //    Confirmed to still be background first. The point was chosen before the
-  //    drag, and beside a subject with a large open outline — a ring of lips
-  //    around a mouth — a pixel that read as background then can be over the
-  //    model now. Checking it again costs one pointer move and stops the check
-  //    reporting the product for the instrument's own staleness.
+  //    Confirmed to still be background first. `remeasure` above chose it from
+  //    the current view, but beside a subject with a large open outline — a
+  //    ring of lips around a mouth — a pixel that read as background during the
+  //    sweep can be over the model by the time it is clicked. Checking it again
+  //    costs one pointer move and stops the check reporting the product for the
+  //    instrument's own staleness.
   if (await overModel(emptyPoint[0], emptyPoint[1])) {
     for (const candidate of [[0.04, 0.94], [0.04, 0.06], [0.96, 0.94]]) {
       if (!(await overModel(candidate[0], candidate[1]))) {
@@ -746,7 +843,22 @@ try {
     await page.waitForTimeout(400);
     const afterRestore = await read();
     if (afterRestore.en === EMPTY) {
-      problems.push('after Show all, clicking the model selected nothing — it did not come back');
+      // Two different failures wear this symptom, and saying the wrong one
+      // costs a day: the model may not have come back, or it may be there and
+      // no longer under the point this clicked. Asked rather than assumed —
+      // the scene answers for what is under the pointer, so look before
+      // naming it.
+      const stillThere = [];
+      for (const [fx, fy] of modelPoints) {
+        if (await overModel(fx, fy)) stillThere.push([fx, fy]);
+      }
+      await restPointer();
+      problems.push(
+        stillThere.length
+          ? `after Show all, clicking (${lastHitPoint.join(', ')}) selected nothing, but ${stillThere.length} of ` +
+            `${modelPoints.length} points are over the model — the model came back and the view moved`
+          : 'after Show all, no sampled point is over the model — it did not come back'
+      );
     }
   }
 

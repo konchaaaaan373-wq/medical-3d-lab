@@ -335,25 +335,6 @@ conda-forge には存在しません。したがって CDM のフィールド名
   内部構造を当たり判定に出す）。そのうえで名前つき tour を付け直す
 - 完了の定義: 開いた視点から 4 点が 4 種類を指し、`verify:anatomy` がそれに固定される
 
-### F-127 肩: Show all のあとモデルをクリックしても何も選べない — P1（2026-09-16）
-
-`npm run verify:anatomy -- --scene shoulder-anatomy --preview` が実測で報告:
-
-```
-1 problem(s):
-  - after Show all, clicking the model selected nothing — it did not come back
-```
-
-**機能不具合です。** 隠した構造を「すべて表示」で戻したあと、モデルが
-ピック不能になります。同じ run の中で lung / liver / knee は同じ検査を通っており、
-`OrganAnatomyScene` 共通の退行ではなさそうですが、**1 回しか観測していません**。
-
-- 肩は名前つき tour（大結節・烏口肩峰靱帯・上腕骨頭・上腕骨骨幹部）を持ちました。
-  tour は正しく、シーンが正しくありません
-- やること: 再現を確認し、`_applyLayers` / `_isPickable` と
-  `showAllHiddenStructures` の相互作用を疑う（F-119 で足した経路）
-- 完了の定義: 再現手順つきで原因を特定し、回帰テストを足したうえで直す
-
 ### F-122 完成した臓器 37 件が「決定が無い」だけで公開されていない — P1（2026-09-15）
 
 `betaPublicationGap()` を足して測りました。**β が公開しているのは 2 臓器ですが、
@@ -2313,36 +2294,6 @@ disclaimer 文字列は model card（markdown）と同じものを使うので�
 
 ---
 
-### F-91 `tests/feedback.test.js` の consent 2 件が main で失敗している — P1（product shell / 所有者未定）
-
-**再現条件.** `origin/main` の `fee3c6d`（"B6: refine product shell UX and consent flow"）を
-そのまま checkout して `node --test tests/feedback.test.js` を実行すると、
-16 件中 2 件が失敗します。**この統合 branch を作る前から赤で、
-正常解剖の取り込みとは無関係です**（同一 SHA の worktree で確認済み）。
-
-```
-not ok - consent: refusing is offered as plainly as accepting
-not ok - consent: the banner appears only while the question is unanswered
-```
-
-**原因.** B6 が `src/components/ConsentBanner.js` を作り替え、テストが
-記述している形と合わなくなりました。
-
-- テストは `button('denied'` / `button('granted'` を探しますが、実装の
-  ヘルパは `choice('denied', …)` / `choice('granted', …)` に改名されています。
-  **保護している規則（拒否が承諾と同じ明確さで提示され、拒否が DOM 上先で、
-  どちらも事前選択されていない）は新実装でも成立**しており、regex を
-  実装に合わせれば済みます
-- もう 1 件は `if (telemetry.consent !== 'unset') return null` の存在を
-  要求しますが、新実装は回答後も `aria-pressed` を持つ設定行として残る
-  設計に変わっています。**これは UX の判断**であり、テストを消すか
-  実装を戻すかは shell の所有者が決めることです
-
-**Claude② はどちらにも手を入れていません。** 外側 UI shell は担当外で、
-片方だけ直すと「半端に手入れされたファイル」が残るためです。
-
----
-
 ### F-90 orbit controls の `maxDistance = 55` が、シーンの framing を黙って上書きする — P2（shared Viewer / future integration owner）
 
 **再現条件.** `src/controls/createControls.js` の既定は
@@ -2618,6 +2569,75 @@ CSS ヘルパーが retire できたのは **L-04 の 1 件だけ**で、3 件�
 ---
 
 ## Resolved
+
+- **F-127 肩: Show all のあとモデルをクリックしても何も選べない** — 解決（2026-09-16）。
+  **F-127 の断定が間違っていました。** 元の項目は「**機能不具合です**」
+  「tour は正しく、**シーンが正しくありません**」と書いています。
+  どちらも、1 回の赤を見ただけで原因を名指ししたものです。測った結果は逆で、
+  **シーンは正しく、検査の側が嘘をついていました**。
+
+  切り分けの実測（`window.__app` から直接読んだ値）:
+
+  - Show all の直後、**モデルは完全に戻っています**——
+    `hidden=0 faded=0/20`、opacity は 20 構造すべて `1.00`、
+    `elementFromPoint` は `CANVAS`、section plane 無し
+  - 同じ瞬間にサンプルし直すと、**6 点中 5 点がモデルの上にあります**。
+    当たらないのは検査がクリックしていた 1 点だけ
+  - その点は**ドラッグの前**に測った点です。カメラは
+    `(-3.60, 2.20, 6.60)` から `(-2.23, 3.38, 4.24)` へ移っていました
+
+  原因は「**ドラッグを逆にたどってもビューは戻らない**」こと。controls は damping
+  するので、同じ経路を返しても同じ回転は返りません。肩は関節の 1/3 周ぶん
+  ずれていました。ずれた古い点を後段が使い続けるので、**run ごとに別のステップが
+  赤くなります**——実際に 3 種類出ました: 「after Show all … it did not come back」、
+  「recolouring left 0 rows marked selected in the tree」、そして
+  シーンがまだ保持している選択を「失われた」と報告するもの。
+  **1 本の古い配列が、3 つの濡れ衣を着せていました。**
+
+  直したのは検査です。`scripts/check-anatomy-interaction.mjs` に:
+
+  - `settleCamera()` — 時間ではなく**静止**を待つ（2 回連続で camera と target が
+    同じ位置）。CLAUDE.md の「待つときは、時間ではなく状態を待つ」の実装
+  - `remeasure()` — ドラッグ判定を終えた**あとに測り直す**。
+    ビューが変わったなら、変わったビューで測る。
+    測り直して 4 点に満たなければ、それ自体を finding として報告します
+  - Show all の失敗メッセージを 2 つに分けました。「戻ってこなかった」のか
+    「戻ってきたが視点が動いた」のかを、**その場でサンプルして**言い分けます
+
+  赤の確認: `remeasure()` を入れる前の同じスクリプトは肩で
+  `recolouring left 0 rows marked selected in the tree` を報告し、入れると緑。
+  shoulder / knee / liver / lung / heart / brain の 6 シーンで実測しました。
+  教訓は `docs/verification-lessons.md` L-22。
+
+- **F-91 `tests/feedback.test.js` の consent 2 件が main で失敗している** — 解決（2026-09-16、他者の修正で）。
+  `node --test tests/feedback.test.js` は **17/17 緑**です。
+  F-91 が挙げた 2 件のうち:
+
+  - 「refusing is offered as plainly as accepting」は残っており、
+    regex が実装の改名に追従しています（`/choice\('denied'/`、
+    順序も `choice('denied') < choice('granted')` で見ています）
+  - 「the banner appears only while the question is unanswered」は**無くなり**、
+    `consent: the setting remains available after the question is answered` に
+    置き換わっています。F-91 が「shell の所有者が決めること」とした UX 判断は、
+    **設定として残す**方向で決まったということです
+
+  F-91 は「誰かが決めるまで赤いまま」の項目で、決まったので閉じます。
+  こちらからは何も変更していません——**確かめて記録しただけ**です。
+
+- **F-122 完成した臓器 37 件が「決定が無い」だけで公開されていない** — 決定（2026-09-16）。
+  オーナーの判断: **いまは 4 臓器（脳・心臓・肺・肝）で十分**。加えて
+  **hero に出せない臓器は公開しない**（F-128 と同じ規則、`release.js` が所有）。
+
+  つまり F-122 が測った「37 件は記録待ちなだけ」は事実のまま残りますが、
+  **記録を書く順番は距離ではなく hero が決めます**。次に 1 件開けるときに要るのは
+  「名前つき tour ＋ 公開判断記録」に加えて、その臓器の**軽量 hero モデル**です。
+  現在 `ORGAN_HERO_BUILDERS` にあって未公開なのは kidney だけで、
+  それは F-126（クリックで指せる構造が 2 つしかない）で止まっています。
+
+  この項目は「オーナーが決めるまで動かせない」ものだったので、決まった時点で閉じます。
+  再び広げると決めたときは、**新しい番号で**開き直してください——
+  そのときの費用は F-122 が測った数字（procedural 1 件あたり 2 分未満）と
+  hero モデル 1 本です。
 
 - **F-128 公開できる臓器は hero builder のある 5 つに限られる** — **決定**（2026-09-16）。
   オーナー判断: **「hero に出せない臓器は公開しない。まずその 4 臓器でいい。」**
