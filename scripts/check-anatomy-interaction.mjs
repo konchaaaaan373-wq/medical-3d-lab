@@ -235,9 +235,30 @@ const SCENE_POINTS = {
     [0.44, 0.417, 'Segment IVa — Left medial superior'],
   ],
   // One kidney, the other, and twice on the opened one.
-  'kidney-anatomy': [[0.30, 0.45], [0.70, 0.45], [0.31, 0.58], [0.68, 0.36]],
+  // Re-measured 2026-09-16: the safe-area fit (#112) moved this scene and the
+  // previous four points hit **nothing at all**, so the drive could not run.
+  // These four are over the model, and they are deliberately **unnamed**: all
+  // four resolve, but to only two structures — "Right kidney" twice and "Renal
+  // cortex" twice, out of 32 in the part tree. Naming them would pin a tour
+  // that claims two, which is F-126's point. Re-measure and name when the
+  // opening view reaches more of the organ.
+  'kidney-anatomy': [
+    [0.1617, 0.45],
+    [0.5617, 0.45],
+    [0.0817, 0.45],
+    [0.5617, 0.34],
+  ],
   // Fundus, body, antrum, and the duodenum it empties into.
-  'stomach-anatomy': [[0.62, 0.33], [0.59, 0.45], [0.53, 0.62], [0.40, 0.82]],
+  // Re-measured 2026-09-16, same story as the kidney: the previous points hit
+  // nothing after #112. Unnamed for the same reason — of eight structures the
+  // opening view reaches "Cardia" and "Body", and the points below the middle
+  // row answer inconsistently from run to run (F-126).
+  'stomach-anatomy': [
+    [0.4217, 0.45],
+    [0.4817, 0.45],
+    [0.4217, 0.56],
+    [0.3617, 0.26],
+  ],
   // The colon frame, clockwise from the ascending limb.
   'intestine-anatomy': [[0.35, 0.44], [0.49, 0.24], [0.69, 0.50], [0.52, 0.76]],
   // Head, neck, body, tail — the gland runs across the frame.
@@ -1509,6 +1530,7 @@ try {
     const openButton = page.locator('.anatomy-panel-open');
     if (!(await openButton.isVisible())) problems.push('there is no Parts button to open the sheet with');
 
+    at('opening the parts sheet on a phone');
     await openButton.focus();
     await openButton.click();
     await page.waitForTimeout(400);
@@ -1636,6 +1658,7 @@ try {
     const rows = page.locator('.anatomy-tree-leaf:visible');
     const count = await rows.count();
     const deep = rows.nth(Math.min(20, count - 1));
+    at('selecting a row well down the list, in the phone sheet');
     await deep.scrollIntoViewIfNeeded();
     const deepName = (await deep.locator('.lang-en').first().textContent()).trim();
     await deep.click();
@@ -2155,7 +2178,17 @@ try {
   // findings collected before it. Breaking the modal boundary made a later
   // click time out, and the timeout discarded the sentence that said why — so
   // the run reported a stack trace where it had already worked out the cause.
-  problems.push(`the drive stopped while ${step}: ${error.message.split('\n')[0]}`);
+  // The step label is whatever `at()` was last given, and a section that forgets
+  // to update it makes every failure inside it read as the previous step's.
+  // That happened: a click intercepted by the canvas at phone size was reported
+  // as "while opening the Display tab", and F-135 was filed against a tab that
+  // clicks in 1.3 seconds. So the locator Playwright was actually waiting for
+  // goes in the finding too, where a stale label cannot hide it.
+  const waitingFor = (error.message.match(/waiting for (locator\([^\n]*)/) ?? [])[1];
+  problems.push(
+    `the drive stopped while ${step}: ${error.message.split('\n')[0]}` +
+      (waitingFor ? ` — waiting for ${waitingFor}` : '')
+  );
   // The first line says a click timed out; the rest says what it was waiting
   // for — covered, out of view, still moving — and that is the part somebody
   // reading this needs.
