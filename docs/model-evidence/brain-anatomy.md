@@ -47,8 +47,8 @@ to the source meshes.
 | **Claim** | Every unique label currently exposed by this asset has a deliberate Japanese display name and a side → region → anatomical-family hierarchy. |
 | **Source** | The 147 unique source labels in the GLB; standard Japanese gross-anatomy terminology; the cingulate sources above for aMCC/pMCC distinctions. |
 | **Implementation** | `STRUCTURE_JA`, `structureFamily()` and `sideHierarchy()` in `brainAnatomy.js`. The original English atlas label is retained separately as `atlasName`. |
-| **Assumption** | Translation improves learning but does not prove the upstream mesh boundary. Independent review of the complete Japanese term set is still outstanding. |
-| **Validation** | `every selectable atlas label has a deliberate Japanese name and hierarchy` parses the shipped GLB and tests all 147 unique selectable labels. |
+| **Assumption** | Translation improves learning but does not prove the upstream mesh boundary. Independent review of the complete Japanese term set is still outstanding. A small `LABEL_PLACEMENT` override table now corrects hierarchy placement for labels whose upstream `bx_cat`/`bx_region` is wrong or misleading (e.g. `Base of peduncle`, upstream-filed under the cerebellum though Terminologia Anatomica's *basis pedunculi* is a midbrain structure); everything it does not name still passes upstream metadata straight through. |
+| **Validation** | `every selectable atlas label has a deliberate Japanese name and hierarchy` parses the shipped GLB and tests all 147 unique selectable labels. The 2026-09-16 AI-assisted terminology/hierarchy/copy check (not a clinical attestation; [record](../clinical-reviews/brain-anatomy-ai-terminology-check-2026-09-16.md)) drove this round of label, hierarchy and copy corrections, and its findings are what `LABEL_PLACEMENT` and the added tests fix. |
 
 ### 3. Both colour modes are viewing aids, not anatomical evidence
 

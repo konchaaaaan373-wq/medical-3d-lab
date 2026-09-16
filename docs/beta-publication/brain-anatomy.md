@@ -12,11 +12,11 @@ at pictures. **No anatomist has judged this geometry or these labels.**
 
 | | |
 | --- | --- |
-| **Decided at** | 2026-09-15 (re-taken twice: a branch of the tree gained a way to be hidden whole, and then what a hide announces was corrected) |
-| **Decided by** | Claude Opus 5, acting as B3-1 implementer |
+| **Decided at** | 2026-09-16 (re-taken: label, hierarchy and copy corrections from the AI terminology check) |
+| **Decided by** | Claude Sonnet, acting as implementer |
 | **Role** | `engineering` — software behaviour, not anatomical or clinical judgement |
 | **Asset revision** | `brain-atlas-glb` @ `sha256:76a49ea4526a4880613aec7a02756bd7301b0b9d0680d7cae33e197b672c5453` |
-| **Scene revision** | model card revision **20**, source digest `2ab8c472db1731bc` |
+| **Scene revision** | model card revision **21**, source digest `baa87eb0a12d6de4` |
 | **Scene sources under that digest** | [`src/data/brainAnatomy.js`](../../src/data/brainAnatomy.js), [`src/scenes/nervous/scenes/brainAnatomy/BrainAnatomyScene.js`](../../src/scenes/nervous/scenes/brainAnatomy/BrainAnatomyScene.js), [`src/scenes/shared/anatomy/tapGesture.js`](../../src/scenes/shared/anatomy/tapGesture.js) |
 
 The decision is pinned to **both** revisions in
@@ -145,6 +145,33 @@ a control that says it undoes the reveal. Both are now one place:
 `_visibilityChanged()` applies the pass, announces the hidden set, announces an
 isolation it ended, and throws the stale snapshot away.
 `tests/brain-anatomy.test.js` fails on the old behaviour for both.
+
+**Revision 20 → 21.** The 2026-09-16 AI-assisted terminology/hierarchy/copy
+check (not a clinical attestation; see
+[`docs/clinical-reviews/brain-anatomy-ai-terminology-check-2026-09-16.md`](../clinical-reviews/brain-anatomy-ai-terminology-check-2026-09-16.md))
+drove label, hierarchy and copy corrections in `src/data/brainAnatomy.js`. No
+geometry, no mesh selection and no atlas ids changed. Category placement moved
+for one label — `Base of peduncle`, from the cerebellum to the brainstem,
+because Terminologia Anatomica's *basis pedunculi* is a midbrain structure and
+the upstream metadata filed it under the cerebellum — so its colour family
+moves from cerebellum to brainstem. Keeping all 147 named structures
+perceptually distinct after that move required a new detail-palette seed
+(`palette-v2930` → `palette-v38601`), and the seed is part of every hash, so
+**every colour-map shade changed**, not only that label's. Natural-anatomy
+shades are unaffected. Colour is a viewing aid and encodes no anatomy
+(model card §6); earlier colour-map screenshots under `docs/screenshots/`
+therefore no longer match the shipped shades. Other
+corrections: a hierarchy regex bug that put "Collateral sulcus" and "Posterior
+transverse collateral sulcus" under 外側溝 instead of 大脳溝; plural "sulci"
+labels and the two cortical poles now have their own families instead of the
+generic cortex/gyri fallback; the aqueduct of midbrain, septum pellucidum and
+choroid plexus are filed under ventricular-system families without describing
+the septum or plexus as CSF spaces; several Japanese names and provenance notes
+were corrected (VA/VLD/VLV thalamic nuclei, the basolateral amygdala complex,
+the paracentral lobule, the insula mesh's name, and the Najdenovska/Neudorfer
+atlas-sourced parcels). This record is taken again because what a reader is
+told about several structures changed, even though nothing about what is drawn
+or selectable did.
 
 Each time the gate closed and the production build stopped shipping the scene
 until this record was taken again — the mechanism working. An earlier decision

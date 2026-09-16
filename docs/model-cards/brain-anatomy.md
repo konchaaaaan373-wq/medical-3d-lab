@@ -318,3 +318,33 @@ An AI-assisted terminology/hierarchy/copy check was recorded on 2026-09-16
 with verdict **hold** and 24 findings; it is not a clinical attestation and
 does not change the review status above. See
 [`docs/clinical-reviews/brain-anatomy-ai-terminology-check-2026-09-16.md`](../clinical-reviews/brain-anatomy-ai-terminology-check-2026-09-16.md).
+
+**Revision 20 → 21 (2026-09-16).** Label, hierarchy and copy corrections driven
+by that check, all in `src/data/brainAnatomy.js`; no geometry, no ids and no
+mesh selection changed. `Base of peduncle` moves from the cerebellum to the
+brainstem/midbrain (Terminologia Anatomica's *basis pedunculi* is a midbrain
+structure) via a new `LABEL_PLACEMENT` override, with a note naming the
+upstream cerebellum tag it corrects — this is the one label whose **colour**
+family also changes, from cerebellum to brainstem, as a direct consequence of
+the category correction. `Insula (Subcentral gyrus and ant. and post. sulci)`
+is now named 島皮質: rendering confirmed the mesh is the insular cortex under
+the opercula, not the lateral-surface subcentral gyrus the upstream label also
+names. The `structureFamily()` regex that matched "lateral sulcus" no longer
+matches the substring inside "Col**lateral sulcus**" or "Posterior transverse
+collateral sulcus", both of which now read 大脳溝 instead of 外側溝. Plural
+"sulci" labels (e.g. "Orbital sulci") and the two cortical poles now get their
+own families instead of falling to the generic 大脳皮質/大脳回 fallback. The
+aqueduct of midbrain, septum pellucidum and choroid plexus are filed under
+ventricular-system families without describing the septum or plexus as CSF
+spaces. The seven Najdenovska (2018) thalamic parcels, the `Corticomedial
+group` and five Neudorfer (2020) hypothalamic parcels now carry a note citing
+their source and stating they are not histological nuclear boundaries (F-123).
+Several Japanese names were corrected for accuracy or to mark them explicitly
+as atlas subdivisions rather than standard nuclei (VA/VLD/VLV thalamic nuclei,
+the basolateral amygdala complex, the paracentral lobule spanning frontal and
+parietal lobes, and others — see the check record for the full list). The
+detail-colour palette seed also moved (`palette-v2930` → `palette-v38601`)
+because the `Base of peduncle` colour-family change required re-finding a seed
+that keeps all 147 named structures perceptually distinct; since the seed is
+in every hash, every colour-map shade changed, while natural-anatomy shades did
+not. Colour encodes no anatomy (§6).

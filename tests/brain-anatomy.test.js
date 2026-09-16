@@ -437,7 +437,8 @@ test('cingulate terminology distinguishes aMCC from an unavailable ACC mesh', ()
   assert.equal(info.nameJa, '帯状回・帯状溝（前中部／aMCC）');
   assert.deepEqual(info.hierarchyJa, ['左大脳半球', '辺縁葉', '帯状皮質']);
   assert.equal(info.preferredView, 'left-medial');
-  assert.match(info.noteJa, /前部帯状皮質（ACC）ではありません/);
+  assert.match(info.noteJa, /ACCの独立ラベルはありません/);
+  assert.match(info.note, /no independent ACC label/);
 
   const bytes = readFileSync(new URL('../public/assets/brain/brain.glb', import.meta.url));
   const jsonLength = bytes.readUInt32LE(12);
@@ -482,6 +483,84 @@ test('capitalized brainstem nuclei and cerebellar peduncles keep their fine fami
   });
   assert.equal(floccularPeduncle.hierarchy.at(-1), 'Cerebellar peduncles');
   assert.equal(floccularPeduncle.hierarchyJa.at(-1), '小脳脚');
+});
+
+test('"Collateral sulcus" and its posterior transverse variant are cerebral sulci, not the lateral sulcus', () => {
+  // The unfixed regex (`/Lat Fis|lateral sulcus/i`) matched the "lateral
+  // sulcus" substring inside "Col*lateral sulcus*", so both of these fell
+  // under 外側溝 instead of 大脳溝 (2026-09-16 AI terminology check, #3).
+  for (const label of ['Collateral sulcus', 'Posterior transverse collateral sulcus']) {
+    const info = brainStructureInfo({
+      bx_cat: 'cortex', bx_label: label, bx_side: 'left', bx_region: 'Telencephalon',
+    });
+    assert.equal(info.hierarchy.at(-1), 'Cerebral sulci');
+    assert.equal(info.hierarchyJa.at(-1), '大脳溝');
+  }
+});
+
+test('plural "sulci" labels and cortical poles get their own families instead of falling to 大脳皮質/大脳回', () => {
+  const orbitalSulci = brainStructureInfo({
+    bx_cat: 'cortex', bx_label: 'Orbital sulci (H-shaped orbital sulci)', bx_side: 'left', bx_region: 'Frontal lobe',
+  });
+  assert.equal(orbitalSulci.hierarchy.at(-1), 'Cerebral sulci');
+  assert.equal(orbitalSulci.hierarchyJa.at(-1), '大脳溝');
+
+  for (const label of ['Occipital pole', 'Temporal pole']) {
+    const info = brainStructureInfo({
+      bx_cat: 'cortex', bx_label: label, bx_side: 'left',
+      bx_region: label === 'Occipital pole' ? 'Occipital lobe' : 'Temporal lobe',
+    });
+    assert.equal(info.hierarchy.at(-1), 'Cerebral poles');
+    assert.equal(info.hierarchyJa.at(-1), '大脳の極');
+  }
+});
+
+test('the aqueduct of midbrain is filed under the ventricular system, not generic brainstem anatomy', () => {
+  const info = brainStructureInfo({
+    bx_cat: 'brainstem', bx_label: 'Aqueduct of midbrain', bx_side: 'median', bx_region: 'Brainstem',
+  });
+  assert.equal(info.hierarchy.at(-1), 'Ventricular system');
+  assert.equal(info.hierarchyJa.at(-1), '脳室系');
+  // The side/region position stays with the brainstem/midbrain it runs
+  // through — only the fine family moves.
+  assert.equal(info.region, 'Brainstem');
+  assert.equal(info.regionJa, '脳幹');
+});
+
+test('base of peduncle is corrected to the midbrain, and its note names the upstream cerebellum tag', () => {
+  const info = brainStructureInfo({
+    bx_cat: 'cerebellum', bx_label: 'Base of peduncle', bx_side: 'left', bx_region: 'Cerebellum',
+  });
+  assert.equal(info.nameJa, '大脳脚底');
+  assert.equal(info.category, 'brainstem');
+  assert.equal(info.categoryNameJa, '脳幹');
+  assert.equal(info.region, 'Midbrain');
+  assert.equal(info.regionJa, '中脳');
+  assert.deepEqual(info.hierarchyJa, ['左中脳', '中脳', '中脳表面解剖']);
+  assert.match(info.noteJa, /小脳/, 'the note names the upstream placement it corrects');
+  assert.match(info.note, /cerebellum/i, 'the note names the upstream placement it corrects');
+});
+
+test('septum pellucidum and choroid plexus are not described as CSF spaces', () => {
+  const septum = brainStructureInfo({
+    bx_cat: 'ventricles', bx_label: 'Septum pellucidum', bx_side: 'median', bx_region: 'Telencephalon',
+  });
+  const plexus = brainStructureInfo({
+    bx_cat: 'ventricles', bx_label: 'Choroid plexus', bx_side: 'left', bx_region: 'ventricles',
+  });
+  for (const info of [septum, plexus]) {
+    assert.doesNotMatch(info.descriptionJa, /脳脊髄液腔(そのもの)?です/);
+    assert.doesNotMatch(info.description, /is a( connected)? cerebrospinal-fluid space/i);
+    assert.equal(info.hierarchy.at(-1), 'Ventricular system — related structures');
+    assert.equal(info.hierarchyJa.at(-1), '脳室系の関連構造');
+  }
+  // The shared fallback used by any remaining ventricle mesh must still read
+  // correctly — i.e. it must not claim every ventricular-system mesh is a CSF
+  // space either.
+  const unlabelledVentricleMesh = brainStructureInfo({
+    bx_cat: 'ventricles', bx_label: 'Some unlisted ventricular mesh', bx_side: 'median', bx_region: 'ventricles',
+  });
+  assert.doesNotMatch(unlabelledVentricleMesh.descriptionJa, /^脳内で連続する脳脊髄液腔の一部です。$/);
 });
 
 const FIXTURE_STRUCTURES = [
