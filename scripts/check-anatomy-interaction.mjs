@@ -133,6 +133,16 @@ const shotsDir = value('--shots');
  * that list on this pass: a larger model is a model a grid can hit.
  */
 const SCENE_POINTS = {
+  // **The artery's point was re-measured on 2026-09-16**, at (0.4175, 0.38).
+  // The safe-area fit stopped approximating a perspective camera, which moved
+  // every model, and (0.42, 0.40) came off a vessel a few frame-thousandths
+  // wide onto the left ventricle behind it. A sweep at 0.005 puts the artery
+  // between 0.4125 and 0.4225 at this height, with the great cardiac vein
+  // immediately to its right — the two run together in the anterior
+  // interventricular groove, and the vein is the one in front. This point is
+  // the middle of that band rather than either measured edge, because an edge
+  // is what the last one was.
+  //
   // Across the front of the heart, right to left as the screen shows it: the
   // right atrium, the right ventricle that makes up most of the anterior
   // surface, a coronary artery on it, and a great vessel leaving above. Chosen
@@ -144,7 +154,7 @@ const SCENE_POINTS = {
   'heart-anatomy': [
     [0.22, 0.45, 'Right atrium'],
     [0.38, 0.50, 'Right ventricle'],
-    [0.42, 0.40, 'Left anterior descending artery'],
+    [0.4175, 0.38, 'Left anterior descending artery'],
     [0.30, 0.30, 'Ascending aorta'],
   ],
   // The brain's own tour, named — which it was not until 2026-09-15, and the
