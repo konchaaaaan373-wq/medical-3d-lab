@@ -52,6 +52,13 @@ test('a selector naming a longer class is not a match', () => {
   assert.equal(fontSizePx(css, '.copy'), 15, '.copy-inner is a different class');
   assert.equal(fontSizePx(css, '.copy-inner'), 9);
   assert.deepEqual(rulesNaming(css, '.copy').map((rule) => rule.selectors), ['.copy:hover']);
+
+  // Nor by a descendant: `.copy span` styles the span. An earlier draft
+  // accepted those, so this sheet answered 16 and a floor check passed while
+  // the copy itself stayed at 10px.
+  const nested = '.copy { font-size: 10px; }\n.copy span { font-size: 16px; }';
+  assert.equal(fontSizePx(nested, '.copy'), 10);
+  assert.deepEqual(rulesNaming(nested, '.copy').map((rule) => rule.selectors), ['.copy']);
 });
 
 test('an at-rule does not swallow the rules nested inside it', () => {
@@ -61,6 +68,46 @@ test('an at-rule does not swallow the rules nested inside it', () => {
   const css = '.copy { font-size: 16px; }\n@media (max-width: 720px) {\n  .copy { font-size: 12px; }\n}';
   assert.equal(fontSizePx(css, '.copy'), 12, 'the media override is a size the class reaches');
   assert.deepEqual([...rulesOf(css)].map((rule) => rule.selectors), ['.copy', '.copy']);
+});
+
+test('a top-level at-rule does not take the next rule down with it', () => {
+  // `@import` ends in a semicolon and has no block, so it folds into the
+  // following rule's selector chunk. Dropping chunks that start with `@` threw
+  // that rule away: `browser-first-release-polish.css` opens with two imports
+  // and lost its first real rule outright.
+  const css = "@import './a.css';\n@import './b.css';\n.copy { font-size: 13px; }";
+  assert.deepEqual([...rulesOf(css)].map((rule) => rule.selectors), ['.copy']);
+  assert.equal(fontSizePx(css, '.copy'), 13);
+
+  // And the real sheet that opens with two imports keeps its first rule. Named
+  // rather than counted, because counting it needs the tokenizer this module
+  // exists to be the only copy of — and the guard below catches that.
+  const sheet = read('src/styles/browser-first-release-polish.css');
+  const rules = [...rulesOf(sheet)];
+  assert.ok(sheet.startsWith('@import'), 'this sheet is the fixture because it opens with imports');
+  assert.ok(
+    rules.some((rule) => rule.selectors.startsWith("#ui[data-view='learning']")),
+    'the rule the imports were folded into was dropped',
+  );
+  assert.deepEqual(rules.filter((rule) => rule.selectors.includes('@import')), []);
+});
+
+test('a size marked !important is still a size', () => {
+  // `!important` is about the cascade, not the value. Carrying it into the
+  // value made a `px` unit test reject the declaration, so a below-floor size
+  // slipped past the type floor — hidden by the very thing that makes it
+  // harder to override.
+  assert.equal(declaration('font-size: 10px !important;', 'font-size'), '10px');
+  assert.equal(fontSizePx('.copy { font-size: 10px !important; }', '.copy'), 10);
+});
+
+test('a property name must start at a declaration boundary', () => {
+  // `z-index` otherwise matches inside `--overlay-z-index`, and a custom
+  // property declared after a real one answers in its place — which in the
+  // departure guard would hide the layer sitting above the veil.
+  assert.equal(declaration('z-index: 999; --overlay-z-index: 1;', 'z-index'), '999');
+  assert.equal(declaration('--overlay-z-index: 1;', 'z-index'), null);
+  assert.equal(declaration('font-size: 12px; --x-font-size: 9px;', 'font-size'), '12px');
 });
 
 test('a class that sets no size answers null, not zero', () => {

@@ -41,25 +41,35 @@ const withoutComments = (css) => css.replace(/\/\*[\s\S]*?\*\//g, '');
  */
 export function* rulesOf(css) {
   for (const [, selectors, body] of withoutComments(css).matchAll(/([^{}]+)\{([^{}]*)\}/g)) {
-    const text = selectors.trim().replace(/\s+/g, ' ');
-    if (text.startsWith('@')) continue;
+    // `@import`/`@charset`/`@layer a, b;` end in a semicolon and have no block
+    // of their own, so they sit at the top of a sheet and fold into the *next*
+    // rule's selector chunk. Dropping the chunk drops that rule with them:
+    // `browser-first-release-polish.css` opens with two `@import` lines, and
+    // its first real rule was being lost outright. Strip the at-rules, keep
+    // the selector.
+    let text = selectors.trim().replace(/\s+/g, ' ');
+    while (/^@[\w-]+[^;{}]*;/.test(text)) text = text.replace(/^@[\w-]+[^;{}]*;/, '').trim();
+    if (text === '' || text.startsWith('@')) continue;
     yield { selectors: text, names: text.split(',').map((one) => one.trim()), body };
   }
 }
 
 /**
- * Whether a selector applies to exactly this class.
+ * Whether a selector targets exactly this compound selector.
  *
  * `.locked-copy` is named by `.locked-copy`, `.locked-copy:hover` and
- * `.locked-copy.is-open`, and *not* by `.locked-copy-inner` — which a
+ * `.locked-copy.is-open`, and *not* by `.locked-copy-inner` — which an
  * `includes()` test would have wrong in both directions.
+ *
+ * And **not** by `.locked-copy span`, which styles the span and not the copy.
+ * An earlier draft accepted descendants, so `.copy { 10px }` followed by
+ * `.copy span { 16px }` answered 16 and a floor check passed while the element
+ * itself stayed at 10px.
  */
 const namesClass = (selector, className) =>
   selector === className
   || selector.startsWith(`${className}.`)
-  || selector.startsWith(`${className}:`)
-  || selector.startsWith(`${className} `)
-  || selector.endsWith(` ${className}`);
+  || selector.startsWith(`${className}:`);
 
 /**
  * Every rule whose selector list names the class, in source order.
@@ -83,8 +93,17 @@ export function rulesNaming(css, className) {
  * @param {string} property
  */
 export function declaration(body, property) {
-  const found = [...body.matchAll(new RegExp(`${property}:\\s*([^;}]+)`, 'g'))].at(-1);
-  return found ? found[1].trim() : null;
+  // Anchored at a declaration boundary: without it, `z-index` matches inside
+  // `--overlay-z-index`, so a custom property declared after a real one
+  // answers in its place.
+  const name = property.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  const found = [...body.matchAll(new RegExp(`(?<![-\\w])${name}:\\s*([^;}]+)`, 'g'))].at(-1);
+  if (!found) return null;
+  // `!important` is about the cascade, not the value. Keeping it made
+  // `font-size: 10px !important` fail a `px` unit test and slip past the type
+  // floor entirely — a below-floor size hidden by the very thing that makes it
+  // harder to override.
+  return found[1].replace(/\s*!\s*important\s*$/i, '').trim();
 }
 
 /**
