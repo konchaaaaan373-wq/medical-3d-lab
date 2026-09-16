@@ -259,13 +259,22 @@ for (const slug of scenes) {
 await browser.close();
 server.close();
 
-// The table, on stdout, so it can be read or redirected. The names are what
-// the click actually resolved to, which is what makes a stale point legible.
+// The table, on stdout, so it can be read or redirected.
+//
+// **Each point carries the name the click resolved to**, because that is the
+// only part of a measurement that stays checkable. `check-anatomy-interaction`
+// holds a point to a third element and asks nothing of a bare pair, so a table
+// emitted as coordinates alone is one a later layout or framing change can
+// slide onto other structures with the run still green — which is F-123, and
+// the 35 coordinate-only rows in `SCENE_POINTS` came out of this loop.
+// Printing the name in a comment beside the row is not the same thing: a
+// comment is not read by anything, and the brain's drifted for a week.
+const quoted = (name) => `'${name.replace(/\\/g, '\\\\').replace(/'/g, "\\'")}'`;
 for (const slug of scenes) {
   const entry = measured[slug];
   if (!entry?.chosen?.length) continue;
-  console.log(`  // ${entry.chosen.map((point) => point.name).join(', ')}.`);
-  console.log(`  '${slug}': [${entry.chosen.map((point) => `[${point.fx}, ${point.fy}]`).join(', ')}],`);
+  const points = entry.chosen.map((point) => `[${point.fx}, ${point.fy}, ${quoted(point.name)}]`);
+  console.log(`  '${slug}': [\n    ${points.join(',\n    ')},\n  ],`);
 }
 
 if (jsonOut) writeFileSync(jsonOut, `${JSON.stringify(measured, null, 1)}\n`);

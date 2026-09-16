@@ -1152,3 +1152,28 @@ test('beta gap: a supplied catalogue is the one the gate is asked about', () => 
     'an explicitly supplied resolveScene was ignored'
   );
 });
+
+test('the tour generator emits the name it measured, not a comment beside it', () => {
+  // Found by review (Codex, P1). `measure-anatomy-points.mjs` knows what each
+  // point resolved to — it rejects a candidate that repeats a name — and then
+  // printed the paste-ready row as bare `[fx, fy]` pairs with the names in a
+  // comment above. `check-anatomy-interaction.mjs` holds a point to a third
+  // element and asks nothing of a bare pair, so every table this loop produced
+  // was unverifiable the moment it was pasted: that is where the 35
+  // coordinate-only rows in `SCENE_POINTS` came from, and why the brain's four
+  // points could name different structures for a week with the drive green.
+  //
+  // The script opens a browser at import, so its source is read as text — the
+  // same shape `tests/derived-asset-pipeline.test.js` uses for the repair.
+  const source = readFileSync('scripts/measure-anatomy-points.mjs', 'utf8');
+  const emit = source.slice(source.indexOf('// The table, on stdout'), source.indexOf('if (jsonOut)'));
+  assert.notEqual(emit.length, 0, 'the generator no longer has a table-emitting loop to check');
+
+  const row = emit.match(/console\.log\(`\s*'\$\{slug\}': \[(.*?)\);/s);
+  assert.ok(row, `the generated row is no longer a single console.log: ${emit}`);
+  assert.match(
+    emit,
+    /\[\$\{point\.fx\}, \$\{point\.fy\}, \$\{quoted\(point\.name\)\}\]/,
+    'the generated points dropped the measured name — a pasted tour of bare pairs verifies nothing'
+  );
+});
