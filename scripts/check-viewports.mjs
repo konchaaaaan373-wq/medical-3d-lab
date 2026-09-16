@@ -713,22 +713,41 @@ async function hideUiRoundTrip(page) {
       return { seen: true };
     });
 
+  /**
+   * Leave the page the way this found it, whatever happened in between.
+   *
+   * Everything after this measures the same page — the Tab walk, the target
+   * sizes, the overflow — so an interface left hidden turns one finding into
+   * a screenful of them. The shortcut first, because it is the product's own
+   * path; but focus is on the button that was just clicked, and a keydown from
+   * a control inside `#ui` is stopped before it reaches the window shortcut
+   * (`installUiShortcutGuard` in `src/app/sceneShellBridge.js`), so focus has
+   * to leave first. The class comes off by hand only if both fail: a check
+   * that cannot restore the page must not also hide the rest of the run.
+   */
+  const restore = async () => {
+    if (await uiHidden(false)) return;
+    await resetFocus(page);
+    await page.keyboard.press('h');
+    if (await uiHidden(false)) return;
+    await page.evaluate(() => document.getElementById('ui')?.classList.remove('is-hidden'));
+  };
+
   const before = await look();
   if (!before.seen) return { control: true, offered: false, why: before.why };
 
   await toggle.click({ noWaitAfter: true });
   const hid = await uiHidden(true);
-  const during = await look();
-
-  if (during.seen) {
+  // Only worth looking at while it is actually hidden. If the click did
+  // nothing, pressing again would hide the interface rather than measure it.
+  const during = hid ? await look() : null;
+  let back = null;
+  if (during?.seen) {
     await toggle.click({ noWaitAfter: true });
-    return { control: true, offered: true, hid, during, back: await uiHidden(false) };
+    back = await uiHidden(false);
   }
-  // The rest of the run measures this page, so put it back the way the reader
-  // cannot: through the shortcut, which is also what repaints the button.
-  await page.keyboard.press('h');
-  await uiHidden(false);
-  return { control: true, offered: true, hid, during, back: null };
+  await restore();
+  return { control: true, offered: true, hid, during, back };
 }
 
 /**
@@ -1476,15 +1495,20 @@ try {
         if (surface.needsRenderer) {
           const hideUi = await hideUiRoundTrip(page);
           if (!hideUi.control) {
-            problems.push(`${where}: a scene surface with no "hide interface" control`);
+            // An engine with no WebGL2 gets the renderer fallback, which has no
+            // scene chrome to hide. That is the runner talking, and the rest of
+            // this file is careful to record it as a note rather than a defect.
+            const missing = `${where}: a scene surface with no "hide interface" control`;
+            if (rendererDown()) notes.push(`${missing} — the renderer did not start on this engine`);
+            else problems.push(missing);
           } else if (!hideUi.offered) {
             notes.push(`${where}: the "hide interface" control is not offered here — ${hideUi.why}`);
           } else if (!hideUi.hid) {
             problems.push(`${where}: pressing "hide interface" did not hide the interface`);
-          } else if (!hideUi.during.seen) {
+          } else if (!hideUi.during?.seen) {
             problems.push(
               `${where}: hiding the interface hid the only control that brings it back — ` +
-                `${hideUi.during.why}`,
+                `${hideUi.during?.why}`,
             );
           } else if (hideUi.back === false) {
             problems.push(`${where}: the interface did not come back when the control was pressed again`);
