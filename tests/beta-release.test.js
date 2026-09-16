@@ -1066,20 +1066,45 @@ test("a decision's scope names exactly what the browser drive is held to", () =>
   // `tests/derived-asset-pipeline.test.js` uses for the repair script.
   const source = readFileSync('scripts/check-anatomy-interaction.mjs', 'utf8');
 
+  // **Only what is inside the table.** Reading the whole file found the heart's
+  // and the brain's tours after a merge had spliced them into the doc comment
+  // *above* `SCENE_POINTS`, where the drive cannot see them: the run reported
+  // "no authored click tour for heart-anatomy" and clicked four measured points
+  // instead, while this test went on confirming the four names the record
+  // claims. A guard that reads commented-out code is the thing it exists to
+  // catch, so the search is bounded to the object literal itself.
+  const tableOpen = source.indexOf('const SCENE_POINTS = {');
+  assert.notEqual(tableOpen, -1, 'the drive no longer has a SCENE_POINTS table to read');
+  const table = source.slice(tableOpen, source.indexOf('\n};', tableOpen));
+
   /** The names authored for one scene's tour, or null when it has none. */
   const tourNames = (sceneId) => {
-    const open = source.indexOf(`'${sceneId}': [`);
+    const open = table.indexOf(`'${sceneId}': [`);
     if (open === -1) return null;
-    const block = source.slice(open, source.indexOf('\n  ],', open));
+    const block = table.slice(open, table.indexOf('\n  ],', open));
     const names = [...block.matchAll(/\[\s*[\d.]+\s*,\s*[\d.]+\s*,\s*'([^']+)'/g)].map((m) => m[1]);
     return names.length ? names : null;
   };
 
+  // **Which scenes have one, named.** "Skip a scene with no named tour" is the
+  // right rule — F-123 records that most published scenes still have none — and
+  // on its own it is also how a tour disappears without anything going red: a
+  // merge moved the heart's four rows into the comment above the table, the
+  // drive fell back to four measured points, and this loop skipped the scene it
+  // had been tying. A scene named here must keep its tour; taking one off this
+  // list is a deliberate edit, which is the whole point.
+  assert.deepEqual(
+    BETA_PUBLICATION_DECISIONS.map((decision) => decision.sceneId).filter((id) => tourNames(id)),
+    ['heart-anatomy', 'brain-anatomy'],
+    'a published scene gained or lost its named click tour — if it lost one, the drive is no longer ' +
+      'held to the structures its publication record claims'
+  );
+
   let tied = 0;
   for (const decision of BETA_PUBLICATION_DECISIONS) {
     const names = tourNames(decision.sceneId);
-    // A scene with no named tour is exactly the gap F-123 records; it is not
-    // asserted here, because there is nothing machine-checked to assert against.
+    // A scene with no named tour is exactly the gap F-123 records; the list
+    // above is what keeps that from quietly becoming every scene.
     if (!names) continue;
     tied += 1;
     // The scope lives beside the decision rather than in it — the gate runs in

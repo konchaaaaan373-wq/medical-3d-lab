@@ -125,15 +125,47 @@ export async function stubPaidSurfaces(page) {
     });
   });
 
-  // The account layer asks who is signed in and what they are entitled to. A
-  // reviewer is nobody: the preview grants are what open the surfaces, and
-  // answering "no session, no entitlements" keeps the account state honest
-  // rather than inventing a user who does not exist.
+  // The account layer asks who is signed in and what they are entitled to. The
+  // answer is "nobody, and nothing": the preview grants are what open the
+  // surfaces, so the account state stays honest rather than inventing a
+  // subscription. It also means `--locked` shows a real signed-in reader who
+  // has simply not bought anything, which is the surface being measured.
   await page.route('**/.netlify/functions/entitlements*', (route) =>
     route.fulfill({
       status: 200,
       contentType: 'application/json',
       body: JSON.stringify({ user: null, entitlements: ['free'], subscriptions: [] }),
+    }));
+
+  // Whether this deployment can sell at all, which is a *different* endpoint
+  // from the prices and is the one that decides the notice. Stubbing only
+  // `plan-catalog` left "purchasing is not enabled on this deploy" on screen
+  // with a full price list loaded behind it.
+  await page.route('**/.netlify/functions/billing-status*', (route) =>
+    route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify({ billingConfigured: true }),
+    }));
+
+  // Prices, so the purchase surface is the one a reader actually meets rather
+  // than "purchasing is not enabled on this deploy". Without it `--locked`
+  // measures a deploy's configuration instead of the product: real-looking
+  // numbers in the shape `plan-catalog` returns, with `available: true` so the
+  // buy control renders.
+  await page.route('**/.netlify/functions/plan-catalog*', (route) =>
+    route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify({
+        billingConfigured: true,
+        commerceReady: true,
+        plans: {
+          patient: { available: true, active: true, currency: 'jpy', unitAmount: 1200, recurring: { interval: 'month', intervalCount: 1 } },
+          education: { available: true, active: true, currency: 'jpy', unitAmount: 1800, recurring: { interval: 'month', intervalCount: 1 } },
+          complete: { available: true, active: true, currency: 'jpy', unitAmount: 2400, recurring: { interval: 'month', intervalCount: 1 } },
+        },
+      }),
     }));
   await page.route('**/auth/v1/**', (route) =>
     route.fulfill({

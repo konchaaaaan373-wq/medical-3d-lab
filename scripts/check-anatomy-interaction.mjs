@@ -99,6 +99,40 @@ const shotsDir = value('--shots');
  * it is on, so the run says "right ventricle, left ventricle, aortic arch,
  * pulmonary trunk" and not just "four structures".
  *
+ * These are read off a render of each scene's opening view at this script's own
+ * viewport, and each one is named for what the click actually resolved to.
+ * They are re-measured when a scene's opening pose or its geometry moves; a
+ * point that stops hitting is a question about the render, not a number to
+ * nudge.
+ *
+ * **The whole table was re-measured twice on 2026-09-14**: once when the organ
+ * scenes started answering `getSubjectBounds()` in the shape the framing reads,
+ * and again when the safe-area fit stopped approximating a perspective camera
+ * (F-127) and every model moved. Re-measuring is a command rather than an
+ * afternoon with a screenshot:
+ *
+ *   VITE_ALLOW_PREVIEW=1 npm run build
+ *   npm run points:anatomy -- --preview
+ *
+ * It sweeps a grid over each scene's opening view and keeps four points that
+ * land on different structures, far enough apart to be four tests, and
+ * **inside** what they hit rather than on its edge — `measure-anatomy-points.mjs`
+ * says why that last one is not optional.
+ *
+ * And a third time when the scene stopped opening at a framing it was about to
+ * abandon (F-129), which moved every model again — this time towards filling
+ * the frame rather than away from it, so the sweep finds more.
+ *
+ * Twenty-five scenes measured four points on the coarse grid; nine more needed
+ * `--dense`, which is what a subject a few frame-percent across is for. Three
+ * kept the points they already had, because the sweep could not better them:
+ * the oesophagus is one thin tube, and `skeleton-overview` and `hand-anatomy`
+ * are the compositions F-104 is about. **A measurement that cannot find a
+ * point is not a licence to nudge one**, so those three are left where they
+ * were and the check says what it finds. `lymphatic-drainage` came back from
+ * that list on this pass: a larger model is a model a grid can hit.
+ */
+const SCENE_POINTS = {
   // Across the front of the heart, right to left as the screen shows it: the
   // right atrium, the right ventricle that makes up most of the anterior
   // surface, a coronary artery on it, and a great vessel leaving above. Chosen
@@ -135,40 +169,6 @@ const shotsDir = value('--shots');
     [0.50, 0.50, 'Middle temporal gyrus'],
     [0.50, 0.42, 'Angular gyrus'],
   ],
- * These are read off a render of each scene's opening view at this script's own
- * viewport, and each one is named for what the click actually resolved to.
- * They are re-measured when a scene's opening pose or its geometry moves; a
- * point that stops hitting is a question about the render, not a number to
- * nudge.
- *
- * **The whole table was re-measured twice on 2026-09-14**: once when the organ
- * scenes started answering `getSubjectBounds()` in the shape the framing reads,
- * and again when the safe-area fit stopped approximating a perspective camera
- * (F-125) and every model moved. Re-measuring is a command rather than an
- * afternoon with a screenshot:
- *
- *   VITE_ALLOW_PREVIEW=1 npm run build
- *   npm run points:anatomy -- --preview
- *
- * It sweeps a grid over each scene's opening view and keeps four points that
- * land on different structures, far enough apart to be four tests, and
- * **inside** what they hit rather than on its edge — `measure-anatomy-points.mjs`
- * says why that last one is not optional.
- *
- * And a third time when the scene stopped opening at a framing it was about to
- * abandon (F-127), which moved every model again — this time towards filling
- * the frame rather than away from it, so the sweep finds more.
- *
- * Twenty-five scenes measured four points on the coarse grid; nine more needed
- * `--dense`, which is what a subject a few frame-percent across is for. Three
- * kept the points they already had, because the sweep could not better them:
- * the oesophagus is one thin tube, and `skeleton-overview` and `hand-anatomy`
- * are the compositions F-104 is about. **A measurement that cannot find a
- * point is not a licence to nudge one**, so those three are left where they
- * were and the check says what it finds. `lymphatic-drainage` came back from
- * that list on this pass: a larger model is a model a grid can hit.
- */
-const SCENE_POINTS = {
   // Trachea, Right upper lobe, Left upper lobe, Right middle lobe.
   'lung-anatomy': [[0.365, 0.18], [0.215, 0.465], [0.515, 0.465], [0.215, 0.655]],
   // Segment VIII — Right anterior superior, Segment IVa — Left medial superior, Segment III — Left lateral inferior, Segment VI — Right posterior inferior.

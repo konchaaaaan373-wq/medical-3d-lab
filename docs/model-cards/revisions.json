@@ -542,8 +542,8 @@
       "src/scenes/shared/anatomy/OrganAnatomyScene.js",
       "src/scenes/shared/anatomy/tapGesture.js"
     ],
-    "cardRevision": 10,
-    "modelDigest": "8d9ec8a513e73346",
+    "cardRevision": 11,
+    "modelDigest": "4160906fde1e1fcc",
     "cardUpdatedAt": "2026-09-16"
   },
   {

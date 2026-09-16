@@ -57,7 +57,7 @@ const B2_EVIDENCE = Object.freeze([
  * What batch B3's one decision cites.
  *
  * B3 opened as three scenes and finished as one: the eye and the ear pass the
- * interaction check and were held on what their renders showed (F-126), which
+ * interaction check and were held on what their renders showed (F-128), which
  * is why the framing fix and the screenshots are part of this batch's evidence
  * rather than a separate change.
  */

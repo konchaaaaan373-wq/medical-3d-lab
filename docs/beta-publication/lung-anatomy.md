@@ -27,7 +27,7 @@ geometry of the lung itself.
 **The model changed, so the decision was taken again.** Two shared changes,
 neither of them to this organ's geometry:
 
-- **The scene now opens at the framing it was going to settle on** (F-127).
+- **The scene now opens at the framing it was going to settle on** (F-129).
   The camera used to rest where a band the shell had not finished laying out
   put it, and the re-framing that should have corrected that was being
   discarded by a guard that could not tell a reader apart from a thousandth of
@@ -39,7 +39,7 @@ neither of them to this organ's geometry:
 
 `npm run verify:anatomy` passes on this scene, and on all thirty-eight, with
 step 0 added: the framing a scene opens at is now measured against the framing
-it resets to, so F-127 cannot come back quietly. **No anatomist has looked at
+it resets to, so F-129 cannot come back quietly. **No anatomist has looked at
 this model, and nothing below has changed about that.**
 
 ## What was checked

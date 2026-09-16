@@ -38,7 +38,7 @@ const MUST_STAY_LAZY = {
   'data/educationGuides.js': 'the paid lesson content',
   'data/copdTeaching.js': "COPD's causal story and lesson modules",
   'data/asthmaTeaching.js': "asthma's causal story and lesson modules",
-  // F-126, and the same mistake in a new place: the release gate imported
+  // F-109, and the same mistake in a new place: the release gate imported
   // `catalog/clinicalReview.js` to read one enum, and brought every scope,
   // source and unresolved limitation any reviewer has written with it — 22.8 kB
   // gzipped, a quarter of the entry budget, in front of a first paint that

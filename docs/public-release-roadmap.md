@@ -152,18 +152,18 @@ made a five-scene batch affordable.
 skin; all three passed `verify:anatomy`, and the renders published one of
 them. The eye opens as a white ball with three rectus muscles across its
 fundus and the ear's cochlea is a coil spring — neither is a gate failure and
-neither is publishable (F-126). What B3 did find in the shared layer was the
+neither is publishable (F-128). What B3 did find in the shared layer was the
 framing: the safe-area fit was an orthographic calculation on a perspective
 camera, and it had ten viewpoints across eight of the nine published scenes
-outside the band (F-125). **Three batches, three defects in shared code that
+outside the band (F-127). **Three batches, three defects in shared code that
 only a picture showed.**
 
 | Batch | Scenes | State |
 | --- | --- | --- |
 | B1 | `lung-anatomy`, `liver-anatomy`, `kidney-anatomy` | **Open, 2026-09-14.** Three defects found in the renders and fixed first (F-44, F-101, F-102); records in [`beta-publication/`](beta-publication/) |
 | B2 | `stomach`, `esophagus`, `intestine`, `biliary`, `pancreas` | **Open, 2026-09-14.** The renders found that a cut through a hollow organ was being faced — a stomach drawn as a lump of tissue — and the fix is what the batch is about |
-| B3 | `skin-anatomy` | **Open, 2026-09-14.** Began as `eye`, `ear`, `skin`; the renders found the safe-area fit was cutting subjects off, an arteriole hidden behind its venule, and a viewpoint named for structures it did not show (F-124, F-125) |
-| — | `eye-anatomy`, `ear-anatomy` | Held out of B3 on what their renders showed, not on the gate (F-126) |
+| B3 | `skin-anatomy` | **Open, 2026-09-14.** Began as `eye`, `ear`, `skin`; the renders found the safe-area fit was cutting subjects off, an arteriole hidden behind its venule, and a viewpoint named for structures it did not show (F-126, F-127) |
+| — | `eye-anatomy`, `ear-anatomy` | Held out of B3 on what their renders showed, not on the gate (F-128) |
 | B4 | `knee`, `shoulder`, `hip`, `elbow`, `hand`, `foot`, `spine` | Not started |
 | B5 | `thyroid`, `adrenal`, `spleen`, `lymph-node` | Not started |
 | B6 | `bladder`, `uterus`, `prostate`, `male-tract`, `breast`, `pelvic-floor` | Not started |

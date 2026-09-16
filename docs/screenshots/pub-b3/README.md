@@ -7,15 +7,15 @@ these pictures did.
 | | |
 | --- | --- |
 | **Published** | `skin-anatomy` |
-| **Held** | `eye-anatomy`, `ear-anatomy` (F-126) |
+| **Held** | `eye-anatomy`, `ear-anatomy` (F-128) |
 | **Assets** | none — all three are procedural |
 | **Browser** | Chromium (Playwright `chromium-1194`), headless, SwiftShader WebGL2 |
 | **`before/skin/`** | the three frames that each showed a defect |
 | **`after/skin/`** | every viewpoint, by structure, after the three fixes |
-| **`fit/after/`** | three published scenes re-framed by the fit correction (F-125) |
+| **`fit/after/`** | three published scenes re-framed by the fit correction (F-127) |
 | **`held/`** | why the eye and the ear are not in this batch |
-| **`framing-at-load/`** | a discrepancy found while fixing the check (F-127) |
-| **`eye-after/`** | three of the eye's four defects, fixed (F-126) |
+| **`framing-at-load/`** | a discrepancy found while fixing the check (F-129) |
+| **`eye-after/`** | three of the eye's four defects, fixed (F-128) |
 | **How** | `npm run shots:anatomy -- --scene <slug> --preview --out <dir>` at 1280×720, interface hidden |
 
 ## 1. The frame was cutting the block in half
@@ -28,7 +28,7 @@ perspective camera, and a cube 3.2 across seen from under four units away has
 a near face a third closer than its centre.
 
 `after/skin/the-cut-face--by-structure.png` is the same viewpoint with the fit
-solving the projection instead (F-125).
+solving the projection instead (F-127).
 
 **This was never only about the skin.** Measured over the nine scenes already
 published, the old fit put ten viewpoints across eight of them outside the
@@ -93,7 +93,7 @@ small and why nothing is published before somebody looks.
 `framing-at-load/nose-anatomy-load.png` and `--after-reset.png` are the same
 scene at the same viewpoint, one click and one press of "reset the display"
 apart, with no camera move between them, and the model is plainly larger in the
-second. It was two defects on top of each other (F-127), and both are fixed:
+second. It was two defects on top of each other (F-129), and both are fixed:
 
 - The re-framing that runs when the shell finishes marking itself was being
   discarded every time, by a guard that asked whether the reader had moved the
