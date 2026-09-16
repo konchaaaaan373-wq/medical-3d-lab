@@ -115,10 +115,42 @@ body {
   --shadow: 0 15px 36px rgba(31, 43, 49, 0.18);
 }
 
-/* "Hide UI" for clean screen captures. */
-#ui.is-hidden > *:not(.ui-toggle):not(.label-layer) {
-  opacity: 0;
+/*
+ * "Hide UI" for clean screen captures — and the way back out of it.
+ *
+ * This rule used to read `> *:not(.ui-toggle):not(.label-layer)`, so the
+ * exception for the button that reverses it was always the intent. It just
+ * never matched anything: the toggle is not a child of `#ui`, it sits three
+ * levels down in `.top-bar > .rail > .rail-buttons`, and a child combinator
+ * only ever saw `.top-bar`. Hiding the interface therefore hid the control
+ * that brings it back, leaving the H key — which nothing on screen names —
+ * as the only way out.
+ *
+ * `visibility`, not `opacity`, is what fixes that rather than a longer
+ * selector: an `opacity: 0` ancestor cannot be undone by a descendant at any
+ * depth, while `visibility: hidden` is exactly the property a descendant is
+ * allowed to turn back on. Same reasoning as `#ui.is-story` in `ui.css`,
+ * which reaches for it for the neighbouring reason — a control nobody can
+ * see should not be in the tab order either.
+ */
+#ui.is-hidden > *:not(.label-layer) {
+  visibility: hidden;
   pointer-events: none;
+}
+
+/* The one control, addressed by the stable name `App.js` gives it rather than
+   by `.ui-toggle` — the language switch wears that class too, and a capture
+   that keeps a second button is not the clean frame this is for. */
+#ui.is-hidden [data-control='hideUi'] {
+  visibility: visible;
+  pointer-events: auto;
+}
+
+/* Except for a scripted capture, which sets `is-capture` itself and needs no
+   way back — it is a program. Nothing in the app adds this class;
+   `scripts/capture-anatomy-views.mjs` does, so its frames stay empty. */
+#ui.is-hidden.is-capture [data-control='hideUi'] {
+  visibility: hidden;
 }
 
 #ui.is-hidden .label-layer {

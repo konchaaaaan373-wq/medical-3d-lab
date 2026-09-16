@@ -651,6 +651,87 @@ const resetFocus = (page) =>
   });
 
 /**
+ * Does the interface come back?
+ *
+ * "Hide UI" empties the frame for a screen capture, and the button that did it
+ * is the only thing on screen that says how to undo it — the H shortcut is
+ * written in a code comment, not anywhere a reader can see. So that one button
+ * has to survive the state it creates.
+ *
+ * It did not, and the way it failed is one nothing else here would catch. The
+ * rule that clears the frame exempted `.ui-toggle`, but as a *child* of `#ui`,
+ * and the button lives three levels down in `.top-bar > .rail > .rail-buttons`
+ * — so the exemption matched nothing and the button faded out with the panels
+ * around it. `opacity: 0` keeps an element laid out and hit-testable, which is
+ * why Playwright's own `isVisible()` answers yes on a button no one can see:
+ * the question has to be asked of the boxes above it, not only of the button.
+ *
+ * Measured as a round trip, and only where the control is offered to begin
+ * with, so a viewport that does not show it is not failed for not showing it.
+ */
+async function hideUiRoundTrip(page) {
+  const toggle = page.locator('#ui [data-control="hideUi"]');
+  if ((await toggle.count()) !== 1) return { control: false };
+
+  const uiHidden = (want) =>
+    page
+      .waitForFunction(
+        (expected) => document.getElementById('ui')?.classList.contains('is-hidden') === expected,
+        want,
+        { timeout: 5_000 },
+      )
+      .then(() => true, () => false);
+
+  // What a person would see, in the browser's own terms.
+  const look = () =>
+    toggle.evaluate((node) => {
+      const name = (element) => {
+        if (!element) return 'nothing';
+        const classes = String(element.className ?? '').trim().split(/\s+/).filter(Boolean);
+        return `${element.tagName.toLowerCase()}${classes.length ? `.${classes.join('.')}` : ''}`;
+      };
+      const box = node.getBoundingClientRect();
+      if (box.width < 1 || box.height < 1) return { seen: false, why: 'it has no box' };
+      // Its own `visibility`, not its ancestors': the whole point of the
+      // property is that a descendant may turn it back on, and the computed
+      // value here already accounts for whatever the boxes above it said.
+      const own = getComputedStyle(node);
+      if (own.visibility !== 'visible') return { seen: false, why: `its visibility is ${own.visibility}` };
+      // `opacity` is the opposite case. It composites down the tree and no
+      // descendant can undo it, so every box above this one has to be asked.
+      let opacity = 1;
+      for (let element = node; element; element = element.parentElement) {
+        opacity *= Number(getComputedStyle(element).opacity);
+      }
+      if (opacity < 0.1) {
+        return { seen: false, why: `the boxes above it multiply out to opacity ${opacity.toFixed(2)}` };
+      }
+      const at = document.elementFromPoint(box.left + box.width / 2, box.top + box.height / 2);
+      if (!(at === node || node.contains(at))) {
+        return { seen: false, why: `a click at its centre would land on ${name(at)}` };
+      }
+      return { seen: true };
+    });
+
+  const before = await look();
+  if (!before.seen) return { control: true, offered: false, why: before.why };
+
+  await toggle.click({ noWaitAfter: true });
+  const hid = await uiHidden(true);
+  const during = await look();
+
+  if (during.seen) {
+    await toggle.click({ noWaitAfter: true });
+    return { control: true, offered: true, hid, during, back: await uiHidden(false) };
+  }
+  // The rest of the run measures this page, so put it back the way the reader
+  // cannot: through the shortcut, which is also what repaints the button.
+  await page.keyboard.press('h');
+  await uiHidden(false);
+  return { control: true, offered: true, hid, during, back: null };
+}
+
+/**
  * Walk the whole focus ring with the Tab key, marking every stop.
  *
  * The first thing this was written to check — "does Tab eventually reach the
@@ -1389,6 +1470,26 @@ try {
         });
 
         const kind = surface.needsRenderer ? 'scene' : 'reading';
+
+        // Before anything else opens a panel: the frame has to be the one a
+        // reader arrives at, and this check leaves it exactly as it found it.
+        if (surface.needsRenderer) {
+          const hideUi = await hideUiRoundTrip(page);
+          if (!hideUi.control) {
+            problems.push(`${where}: a scene surface with no "hide interface" control`);
+          } else if (!hideUi.offered) {
+            notes.push(`${where}: the "hide interface" control is not offered here — ${hideUi.why}`);
+          } else if (!hideUi.hid) {
+            problems.push(`${where}: pressing "hide interface" did not hide the interface`);
+          } else if (!hideUi.during.seen) {
+            problems.push(
+              `${where}: hiding the interface hid the only control that brings it back — ` +
+                `${hideUi.during.why}`,
+            );
+          } else if (hideUi.back === false) {
+            problems.push(`${where}: the interface did not come back when the control was pressed again`);
+          }
+        }
 
         // The inspection surface ships closed, so nothing inside it was ever
         // measured: its controls were untappable on a phone for a whole
