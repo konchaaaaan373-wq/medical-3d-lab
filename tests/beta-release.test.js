@@ -34,6 +34,7 @@ import {
 import { assetById } from '../src/catalog/assetManifest.js';
 import { sceneRevisionPin } from '../src/catalog/modelRevisions.js';
 import { hasOrganModel } from '../src/app/organModels.js';
+import { HERO_ROTATION } from '../src/data/landingHero.js';
 import { modelProfileForScene } from '../src/catalog/modelProfiles.js';
 import { createLockedSurface } from '../src/app/LockedSurface.js';
 import { createSceneFailureFallback } from '../src/app/SceneFailureFallback.js';
@@ -993,17 +994,35 @@ test('a published organ is one the hero can show', () => {
   // This is a *product* rule, not a technical limit. The hero is the surface
   // most visitors meet first; an organ that cannot appear there is published
   // into a place nobody arrives at.
+  //
+  // **Reaching the hero takes two things, and neither implies the other.** The
+  // first version of this test asked only for geometry, and review caught that
+  // it would pass for an organ that never appears: the kidney has had a builder
+  // throughout and no `HERO_ORGANS` entry, so publishing it would have left it
+  // off the hero with this rule still green — falling back to the indirect
+  // chooser-count failure this test exists to replace.
+  const shown = new Set(HERO_ROTATION.map((entry) => entry.organ));
   for (const organId of PUBLIC_MANIFEST.organs) {
+    // 1. Geometry: something for the hero to draw.
     assert.equal(
       hasOrganModel(organId),
       true,
       `"${organId}" is published and the hero has no model for it — either add one to ` +
         'ORGAN_HERO_BUILDERS or do not publish the organ'
     );
+    // 2. Declaration: `heroOrgansForModels` keeps only the candidates listed in
+    //    HERO_ORGANS, so an organ missing from it is silently absent from the
+    //    rotation however good its geometry is.
+    assert.equal(
+      shown.has(organId),
+      true,
+      `"${organId}" is published and the hero never shows it — add an entry to ` +
+        'HERO_ORGANS in src/data/landingHero.js, or do not publish the organ'
+    );
   }
 
   // And the other direction is deliberately *not* asserted: a hero model for an
-  // organ the beta does not open is fine — the kidney has had one throughout,
-  // and is held back by F-126 rather than by anything here.
+  // organ the beta does not open is fine — the kidney has one and is held back
+  // by F-126 rather than by anything here.
   assert.ok(hasOrganModel('kidney'), 'the kidney still has its hero model, unpublished');
 });
