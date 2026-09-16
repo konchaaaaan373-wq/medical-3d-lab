@@ -322,7 +322,7 @@ const notes = [];
  */
 let step = 'opening the scene';
 const at = (what) => { step = what; };
-const observed = { structures: [], views: [], colorModes: [], selectableCount: null, treeRows: null, labels: [], openingFraming: null };
+const observed = { structures: [], tour: [], views: [], colorModes: [], selectableCount: null, treeRows: null, labels: [], openingFraming: null };
 
 const browser = await chromium.launch({
   executablePath: chromiumExecutable(chromium),
@@ -730,6 +730,7 @@ try {
   for (const [fx, fy, expected] of clickPoints) {
     const hit = await clickAt(fx, fy);
     tour.push({ fx, fy, expected: expected ?? null, got: hit.en === EMPTY ? null : hit.en });
+    observed.tour = tour;
     if (hit.en === EMPTY) continue;
     lastHitPoint = [fx, fy];
     observed.structures.push(hit);
@@ -1969,6 +1970,20 @@ console.log(`  structures named by click: ${observed.structures.map((s) => `${s.
 // can be written from the run.
 for (const structure of observed.structures) {
   console.log(`    ${structure.en} / ${structure.ja} — ${structure.where}`);
+}
+// **Every point, including the ones that hit nothing.** The line above lists
+// what was *named*, which silently drops a miss — so a `--points` sweep of
+// twenty-one candidates comes back as eighteen names that cannot be matched to
+// the coordinates that produced them, and the reader is left counting. That is
+// how an hour went into finding one artery. A probe is only an instrument if it
+// says which point gave which answer.
+if (observed.tour.length) {
+  console.log('  point by point:');
+  for (const stop of observed.tour) {
+    const said = stop.got ?? 'nothing';
+    const held = stop.expected && stop.expected !== stop.got ? `  (authored: ${stop.expected})` : '';
+    console.log(`    ${stop.fx}, ${stop.fy} -> ${said}${held}`);
+  }
 }
 console.log(`  viewpoints: ${observed.views.join(', ') || 'none'}`);
 console.log(`  colour modes: ${observed.colorModes.join(', ') || 'none'}`);
