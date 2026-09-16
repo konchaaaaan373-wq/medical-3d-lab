@@ -56,6 +56,19 @@ export const HERO_ORGANS = Object.freeze([
     lineEn: 'Rotate and zoom the heart to inspect the spatial relationship between its structures.',
     lineJa: '心臓を回転・拡大し、部位ごとの位置関係を確認できます。',
   }),
+  // Published 2026-09-16. A published organ that is not declared here can never
+  // reach the hero: `heroOrgansForModels` keeps only the candidates the release
+  // actually opens, so an entry missing from this list is an organ the chooser
+  // silently cannot show. That is the shape of bug F-121 was about.
+  Object.freeze({
+    organ: 'liver',
+    sceneId: 'liver-anatomy',
+    upgradeSceneId: 'liver-anatomy',
+    kickerEn: 'ANATOMY',
+    kickerJa: '解剖',
+    lineEn: 'Rotate and zoom the liver to inspect how its segments and the gallbladder are arranged.',
+    lineJa: '肝臓を回転・拡大し、区域と胆嚢の位置関係を確認できます。',
+  }),
 ]);
 
 /**

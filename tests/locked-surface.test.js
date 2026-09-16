@@ -7,6 +7,7 @@ import { resolveRoute } from '../src/app/router.js';
 import { BETA_ORGANS, RELEASED_SCENES } from '../src/catalog/release.js';
 import { openModelDestination } from '../src/catalog/publicManifest.js';
 import { organById } from '../src/catalog/taxonomy.js';
+import { sceneById } from '../src/catalog/index.js';
 import { FakeElement, findByClass, installFakeDocument } from './helpers/fake-dom.js';
 
 /**
@@ -61,7 +62,26 @@ test('the locked page names no published model in its own prose', () => {
   assert.ok(actions, 'the page has an actions row');
 
   const inTheLink = new Set(textOf(actions));
-  const prose = nonEmpty(textOf(element).filter((line) => !inTheLink.has(line)), 'the page prose');
+
+  // The locked scene's own catalogue entry is not this page talking about the
+  // release — it is the page saying what the withheld model is. COPD's
+  // description calls it a twelve-unit **lung** model, which was fine while the
+  // lung was withheld and still is: the organ it names is its own subject, not
+  // somewhere the reader is being sent. Publishing `lung-anatomy` on 2026-09-16
+  // made a substring check unable to tell those apart, so the scene's own title
+  // and description are excluded the same way the link's text already is.
+  //
+  // This is narrower than it looks. Everything the page adds around that entry
+  // — the sentences that were wrong once — is still held to naming no published
+  // organ at all.
+  const own = sceneById(resolveRoute('#/copd').sceneId);
+  const ownCopy = new Set(
+    [own?.title, own?.titleJa, own?.description, own?.descriptionJa].filter(Boolean)
+  );
+  const prose = nonEmpty(
+    textOf(element).filter((line) => !inTheLink.has(line) && !ownCopy.has(line)),
+    'the page prose'
+  );
 
   // Every organ the beta could open, named or not — because the sentence that
   // was wrong named one that was not open yet. If a published model is to be

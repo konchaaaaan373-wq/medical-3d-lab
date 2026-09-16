@@ -50,7 +50,7 @@ const brain = () => ({ ...sceneById('brain-anatomy') });
 
 test('beta release: the beta is anatomy, and it is not a list of organs', () => {
   assert.equal(RELEASE_CHANNEL, 'beta');
-  assert.deepEqual([...BETA_ANATOMY_CANDIDATES], ['brain-anatomy', 'heart-anatomy']);
+  assert.deepEqual([...BETA_ANATOMY_CANDIDATES], ['brain-anatomy', 'heart-anatomy', 'liver-anatomy']);
   assert.equal(RELEASED_SCENES.length + LOCKED_SCENES.length, SCENES.length);
   assert.equal(
     new Set([...RELEASED_SCENES, ...LOCKED_SCENES].map((scene) => scene.id)).size,
@@ -73,9 +73,11 @@ test('beta release: the beta is anatomy, and it is not a list of organs', () => 
   // a deliberate edit to the gate rather than a side effect of adding a scene.
   // The heart joined on 2026-09-15, which is what the whole gate was built to
   // make hard: an adopted asset, a discharged licence, and a publication
-  // decision pinned to both hashes and to the scene revision.
-  assert.deepEqual(RELEASED_SCENES.map((scene) => scene.id), ['brain-anatomy', 'heart-anatomy']);
-  assert.deepEqual([...PUBLIC_MANIFEST.organs], ['brain', 'heart']);
+  // decision pinned to both hashes and to the scene revision. The lung and the
+  // liver joined on 2026-09-16 — procedural, so no asset and no licence, and
+  // the pin is the scene revision alone.
+  assert.deepEqual(RELEASED_SCENES.map((scene) => scene.id), ['brain-anatomy', 'heart-anatomy', 'liver-anatomy']);
+  assert.deepEqual([...PUBLIC_MANIFEST.organs], ['brain', 'heart', 'liver']);
 });
 
 test('beta release: the heart that opened is the anatomy scene, and only that one', () => {
@@ -346,7 +348,7 @@ test('release channel: a channel is a name for a policy, and a name alone opens 
   // and that a registered-but-unselected policy publishes nothing by existing.
   assert.equal(RELEASE_CHANNEL, 'beta');
   assert.ok(Object.keys(RELEASE_POLICIES).includes('beta'));
-  assert.deepEqual(RELEASED_SCENES.map((scene) => scene.id), ['brain-anatomy', 'heart-anatomy']);
+  assert.deepEqual(RELEASED_SCENES.map((scene) => scene.id), ['brain-anatomy', 'heart-anatomy', 'liver-anatomy']);
 
   const brain = sceneById('brain-anatomy');
   const disease = sceneById('heart-failure');

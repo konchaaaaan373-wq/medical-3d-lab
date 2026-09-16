@@ -125,7 +125,7 @@ export const RELEASE_CHANNEL = 'beta';
  * because `tests/beta-release.test.js` runs that old rule against the gate, so
  * that restoring it fails loudly rather than quietly.
  */
-export const BETA_ORGANS = Object.freeze(['brain', 'heart']);
+export const BETA_ORGANS = Object.freeze(['brain', 'heart', 'liver']);
 
 /**
  * The scenes the beta would open **if they pass**.
@@ -135,7 +135,30 @@ export const BETA_ORGANS = Object.freeze(['brain', 'heart']);
  * until the scene is built and its record filed, and nothing is quietly
  * substituted for it in the meantime.
  */
-export const BETA_ANATOMY_CANDIDATES = Object.freeze(['brain-anatomy', 'heart-anatomy']);
+export const BETA_ANATOMY_CANDIDATES = Object.freeze([
+  'brain-anatomy',
+  'heart-anatomy',
+  // Added 2026-09-16, on the repository owner's decision to widen the beta a
+  // few organs at a time rather than all at once. These three are procedural:
+  // no external asset, so no licence obligation and nothing but the scene
+  // revision to pin. Three others were examined in the same pass and are *not*
+  // here — kidney and stomach expose only two click-reachable structures from
+  // their opening view, and the shoulder's run reported a real defect. Being
+  // gate-clear was never the bar; see docs/follow-ups.md F-124 and F-125.
+  //
+  // The knee was calibrated and passes its drive, and is still not here: the
+  // landing hero must be able to show every published organ, and only brain,
+  // heart, lungs, liver and kidney have a hero builder. Publishing it would
+  // leave a published organ the chooser cannot draw. F-126.
+  //
+  // The lung is not here either, and it was in this list until the hero drive
+  // was run against it: at its opening pose the centre of the frame falls in
+  // the gap between the two lungs, so the first Enter on the hero selects
+  // nothing and only works after the reader turns the model. That is the
+  // silent-Enter failure F-121 was about, on the surface most visitors meet
+  // first. F-127.
+  'liver-anatomy',
+]);
 
 /**
  * The next release **adds to** this one rather than replacing it.
@@ -239,6 +262,50 @@ export const DECISION_ROLES = Object.freeze(['engineering', 'anatomy-expert', 'c
  * with. `src/catalog/modelRevisions.js` says what is in scope and why.
  */
 export const BETA_PUBLICATION_DECISIONS = Object.freeze([
+  Object.freeze({
+    sceneId: 'liver-anatomy',
+    decidedAt: '2026-09-16',
+    decidedBy: Object.freeze({
+      name: "Repository owner's decision of 2026-09-16; implemented by Claude Opus 5",
+      role: 'engineering',
+    }),
+    record: 'docs/beta-publication/liver-anatomy.md',
+    assetRevisions: Object.freeze({}),
+    sceneRevision: Object.freeze({ cardRevision: 12, modelDigest: 'bd72a3cc7f8d1479' }),
+    scope: Object.freeze({
+      structures: Object.freeze([
+        'Segment VIII \u2014 Right anterior superior',
+        'Segment III \u2014 Left lateral inferior',
+        'Segment V \u2014 Right anterior inferior',
+        'Gallbladder',
+      ]),
+      views: Object.freeze([
+        'the authored viewpoints offered, one applied by the drive',
+        'both colour modes, neither of which changes the selection',
+      ]),
+      interactions: Object.freeze([
+        'a click names a structure and the panel gives it in both languages with a place in the hierarchy',
+        'the part tree lists 27 structures and selection agrees in both directions',
+        'a drag is not a click, including a drag that ends where it began',
+        'a branch of the tree is hidden and shown again in one press',
+        'isolation wins over a hide and over a viewpoint',
+      ]),
+    }),
+    evidence: Object.freeze([
+      'scripts/check-anatomy-interaction.mjs',
+      'tests/organ-anatomy-scenes.test.js',
+      'tests/beta-release.test.js',
+      'src/app/anatomyContract.js',
+    ]),
+    unverified: Object.freeze([
+      'no anatomist has judged this geometry, its labels or their Japanese terminology — anatomyExpertReview is pending',
+      'no clinician has reviewed this scene; the registry records it as pending',
+      '**the geometry is procedural, not specimen-derived** — the Couinaud segments are drawn as separable volumes in the right arrangement, not reconstructed from a specimen, so segment boundaries carry no measured accuracy',
+      '**a Couinaud segment is a vascular territory, not a visible surface** — the divisions this model draws are a teaching convention; a real liver shows no such lines',
+      '23 of the 27 structures were not individually opened',
+      'one browser engine, desktop only: no touch, Safari, Firefox or screen reader',
+    ]),
+  }),
   Object.freeze({
     sceneId: 'heart-anatomy',
     decidedAt: '2026-09-15',

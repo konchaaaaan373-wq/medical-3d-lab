@@ -18,8 +18,11 @@
 export const LANDING_MODEL_ORDER = Object.freeze([
   'brain-anatomy',
   'heart-anatomy',
-  'lung-anatomy',
+  // Published 2026-09-16. The open models lead the page, so it sits above the
+  // lung rather than after it: a visitor who stops reading part way down has
+  // seen only models that open.
   'liver-anatomy',
+  'lung-anatomy',
   'kidney-anatomy',
   'stomach-anatomy',
   'intestine-anatomy',
@@ -33,7 +36,6 @@ export const LANDING_MODEL_ORDER = Object.freeze([
   'uterus-anatomy',
   'prostate-anatomy',
   'male-tract-anatomy',
-  'knee-anatomy',
   'shoulder-anatomy',
   'hip-anatomy',
   'eye-anatomy',
@@ -48,6 +50,7 @@ export const LANDING_MODEL_ORDER = Object.freeze([
   'oral-anatomy',
   'pelvic-floor-anatomy',
   'hand-anatomy',
+  'knee-anatomy',
   'foot-anatomy',
   'skeleton-overview',
   'neck-anatomy',
