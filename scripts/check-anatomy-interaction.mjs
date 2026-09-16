@@ -260,19 +260,48 @@ const SCENE_POINTS = {
   'male-tract-anatomy': [[0.28, 0.78], [0.34, 0.68], [0.49, 0.47], [0.62, 0.56]],
   // Both femoral condyles, the patella in front of them, and the tibial
   // plateau below — four bones of the joint from one view.
+  // Three, not four, and every one in the same column: after the safe-area fit
+  // (#112) the knee is drawn as a vertical sliver about a tenth of the frame
+  // wide — the drive reports it spanning 0.32..0.42 — so a fourth point on a
+  // distinct structure is not there to be had. How narrowly this scene is
+  // framed is F-134.
+  //
+  // Named from **the drive's own run**, not from `points:anatomy`. The tool's
+  // answers did not hold here: it named 0.365,0.37 "Patella" and the drive read
+  // "Quadriceps tendon" at the same point, one row off all the way down. Which
+  // of the two is right about a scene is L-26, which the lung hit first; the
+  // drive is the one whose answer this table has to satisfy, so the sentinel
+  // pass it prints is what these names came from. **Do not measure these two
+  // with `points:anatomy`.**
   'knee-anatomy': [
-    [0.45, 0.37, 'Lateral femoral condyle'],
-    [0.56, 0.37, 'Medial femoral condyle'],
-    [0.52, 0.44, 'Patella'],
-    [0.46, 0.56, 'Lateral tibial plateau'],
+    [0.3617, 0.34, 'Quadriceps tendon'],
+    [0.3617, 0.45, 'Patella'],
+    [0.3617, 0.56, 'Patellar tendon'],
   ],
-  // The tubercle, the ligament arching over it, the humeral head and the shaft.
-  // The old second point sat at (0.60, 0.45), off the model entirely.
+  // **One name, not four — this scene cannot currently carry a named tour.**
+  //
+  // The safe-area fit (#112) left the shoulder spanning 0.28..0.38 of the frame
+  // (F-134), and inside a tenth of the frame every point is near an edge. Two
+  // consecutive runs, same build, same coordinates, disagreed:
+  //
+  //   (0.3617, 0.34)  "Coracoid process"   then  "Scapula"
+  //   (0.3017, 0.34)  "Glenoid labrum"     then  "Articular cartilage"
+  //
+  // So those two are left as coordinates: the drive still requires them to land
+  // on the model and to resolve to *a* structure, which is a real check, and it
+  // no longer asserts an identity this framing cannot hold still. The one point
+  // that named the same structure on both runs keeps its name. Re-measure the
+  // rest when F-134 gives the joint a normal share of the frame — the previous
+  // four names (tubercle, coracoacromial ligament, humeral head, shaft) were
+  // measured at the old framing and every one of them now hits nothing.
+  //
+  // Measured through the drive's own sentinel pass, not `points:anatomy`, which
+  // disagrees with it here (L-26).
   'shoulder-anatomy': [
-    [0.44, 0.46, 'Greater tubercle'],
-    [0.48, 0.36, 'Coracoacromial ligament'],
-    [0.45, 0.62, 'Head of the humerus'],
-    [0.48, 0.68, 'Humerus (shaft)'],
+    [0.3617, 0.26, 'Coracoclavicular ligament'],
+    [0.3617, 0.34],
+    [0.3017, 0.34],
+    [0.3617, 0.45],
   ],
   // The pelvis, the socket, the head in it, and the femur below.
   'hip-anatomy': [[0.58, 0.34], [0.50, 0.44], [0.45, 0.45], [0.42, 0.66]],
@@ -869,12 +898,22 @@ try {
   await page.mouse.up();
   await restPointer();
   const afterDrag = await read();
-  // Orbit back to where the sweep happened, by **exactly reversing the drag**.
-  // Every check below clicks a point that had something under it *before* the
-  // turn, which is only still true if the camera is put back. Approximately
-  // back was enough for a dense organ and not for a narrow one: a spine is a
-  // few frame-percent wide, and a few pixels of leftover rotation moved every
-  // one of those points off it.
+  // Orbit back towards where the sweep happened, by giving the drag its own
+  // path in reverse.
+  //
+  // **It does not put the camera back, and nothing below may assume it does.**
+  // This comment used to say it did — "only still true if the camera is put
+  // back" — and that was measured false: the controls damp, so a press given
+  // back its own path is not given back its own rotation. The shoulder left
+  // from (-3.60, 2.20, 6.60) and came back at (-2.23, 3.38, 4.24), a third of
+  // the way round the joint, with the canvas the same size and nothing hidden.
+  // Believing the claim cost a day and a follow-up (F-127) that accused the
+  // scene of losing a selection it was still holding.
+  //
+  // Approximate is enough for what this step *asks* — did a drag select
+  // something — and that is all it is for. Every later point is asked for
+  // again, through `liveModelPoint`, rather than remembered from before the
+  // turn.
   await page.mouse.move(box.x + box.width * dragToX, box.y + box.height * dragToY);
   await page.mouse.down();
   await page.mouse.move(box.x + box.width * dragFromX, box.y + box.height * dragFromY, { steps: 20 });
