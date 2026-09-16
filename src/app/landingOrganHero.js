@@ -171,9 +171,9 @@ export function createLandingOrganHero({
   }, [
     el('p', { class: 'landing-sr-only', id: 'landing-demo-viewport-instructions' }, dual(
       'Use arrow keys to rotate, plus and minus to zoom, and Home to reset the view. '
-        + 'Press Enter to name the structure at the centre of the view, and Escape to clear it.',
+        + 'Press Enter to name the structure nearest the centre of the view, and Escape to clear it.',
       '矢印キーで回転、+／−で拡大縮小、Homeで初期視点に戻します。'
-        + 'Enterキーで画面中央の部位の名称を表示し、Escapeキーで解除します。'
+        + 'Enterキーで画面中央にいちばん近い部位の名称を表示し、Escapeキーで解除します。'
     )),
   ]);
 
