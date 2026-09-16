@@ -125,7 +125,7 @@ export const RELEASE_CHANNEL = 'beta';
  * because `tests/beta-release.test.js` runs that old rule against the gate, so
  * that restoring it fails loudly rather than quietly.
  */
-export const BETA_ORGANS = Object.freeze(['brain', 'heart', 'liver']);
+export const BETA_ORGANS = Object.freeze(['brain', 'heart', 'lungs', 'liver']);
 
 /**
  * The scenes the beta would open **if they pass**.
@@ -156,7 +156,10 @@ export const BETA_ANATOMY_CANDIDATES = Object.freeze([
   // the gap between the two lungs, so the first Enter on the hero selects
   // nothing and only works after the reader turns the model. That is the
   // silent-Enter failure F-121 was about, on the surface most visitors meet
-  // first. F-129.
+  // first. F-129 — **fixed**, which is why the lung is here now: Enter walks
+  // outward from the centre when the centre is empty, so the gap between the
+  // two lungs no longer swallows the first press.
+  'lung-anatomy',
   'liver-anatomy',
 ]);
 
@@ -262,6 +265,54 @@ export const DECISION_ROLES = Object.freeze(['engineering', 'anatomy-expert', 'c
  * with. `src/catalog/modelRevisions.js` says what is in scope and why.
  */
 export const BETA_PUBLICATION_DECISIONS = Object.freeze([
+  Object.freeze({
+    sceneId: 'lung-anatomy',
+    decidedAt: '2026-09-16',
+    decidedBy: Object.freeze({
+      name: "Repository owner's decision of 2026-09-16; implemented by Claude Opus 5",
+      role: 'engineering',
+    }),
+    record: 'docs/beta-publication/lung-anatomy.md',
+    /** Procedural geometry: no external asset, so nothing to pin but the scene. */
+    assetRevisions: Object.freeze({}),
+    sceneRevision: Object.freeze({ cardRevision: 12, modelDigest: 'a3dd5027ef0dcf44' }),
+    scope: Object.freeze({
+      structures: Object.freeze([
+        'Right upper lobe',
+        'Right middle lobe',
+        'Left upper lobe',
+        'Left main bronchus',
+      ]),
+      views: Object.freeze([
+        'six authored viewpoints offered and one applied by the drive: anterior, posterior, right and left lateral, the right lung from its mediastinal surface, and a coronal section',
+        'both colour modes — lobes-and-vessels and natural tissue — neither of which changes the selection',
+      ]),
+      interactions: Object.freeze([
+        'a click names a structure and the panel gives it in both languages with a place in the hierarchy',
+        'the part tree lists 83 structures and selection agrees in both directions',
+        'a drag is not a click, including a drag that ends where it began',
+        'a branch of the tree is hidden and shown again in one press: the pulmonary vessels, 34 structures, go in a single press',
+        'isolation wins over a hide and over a viewpoint',
+        'on the landing hero a keyboard names a structure on the first Enter, without turning the model first — which is what F-129 was about, and what held this scene back',
+      ]),
+    }),
+    evidence: Object.freeze([
+      'scripts/check-anatomy-interaction.mjs',
+      'scripts/check-hero-input.mjs',
+      'tests/organ-anatomy-scenes.test.js',
+      'tests/beta-release.test.js',
+      'tests/landing.test.js',
+      'src/app/anatomyContract.js',
+    ]),
+    unverified: Object.freeze([
+      'no anatomist has judged this geometry, its labels or their Japanese terminology — anatomyExpertReview is pending, the same footing the brain, heart and liver are published on',
+      'no clinician has reviewed this scene; the registry records it as pending',
+      '**the geometry is procedural, not specimen-derived** — the shapes are authored to be recognisable and correctly arranged, and nothing here is measured from a cadaver or a scan, so no dimension, proportion or surface detail is a measurement',
+      'no label appeared on the model from the drive\u2019s angle, so the structure is named in the panel rather than on the mesh (F-40: one anchor point decides for the whole structure)',
+      '79 of the 83 structures were not individually opened',
+      'one browser engine, desktop only: no touch, Safari, Firefox or screen reader',
+    ]),
+  }),
   Object.freeze({
     sceneId: 'liver-anatomy',
     decidedAt: '2026-09-16',

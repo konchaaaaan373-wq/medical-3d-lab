@@ -1067,11 +1067,17 @@ html[data-route='landing'] {
   outline-offset: -4px;
 }
 
-/* What Enter will name.
+/* Where Enter aims from.
    A keyboard has no pointer, so the middle of the frame is where the model is
    asked "what is this?" — and an aim nobody can see is not an aim. Drawn only
    while the viewport holds keyboard focus, so it never appears for a reader who
-   is pointing at the model directly. */
+   is pointing at the model directly.
+
+   It marks the centre, not the structure that will be named. Those are the same
+   thing whenever anything is drawn at the centre, which is every organ
+   published so far; for an organ with a gap down the middle Enter names the
+   nearest structure instead, and the instructions say so. Do not read this
+   circle as a promise about which mesh answers. */
 .landing-demo-viewport:focus-visible::after {
   content: '';
   position: absolute;

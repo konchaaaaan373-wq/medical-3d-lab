@@ -5,6 +5,7 @@ import * as THREE from 'three';
 
 import { createLanding } from '../src/app/Landing.js';
 import { createLandingOrganHero } from '../src/app/landingOrganHero.js';
+import { nameNearestToCentre } from '../src/app/landingOrganViewport.js';
 import { mountLandingOrganViewport, shouldLoadDetail } from '../src/app/landingOrganViewport.js';
 import {
   LANDING_FLOW_BUDGETS,
@@ -265,13 +266,13 @@ test('landing: the public models are live organs, not a card index', () => {
     const viewports = findByClass(mounted.element, 'landing-demo-viewport');
     const links = findByClass(mounted.element, 'landing-cta');
 
-    // Three published models since 2026-09-16 (two from 2026-09-15). What this
+    // Four published models since 2026-09-16 (two from 2026-09-15). What this
     // test is for has not changed: the landing page shows **one organ, live**,
     // and never turns into a grid of cards as the published set grows — which
     // is the failure mode each new model makes more tempting. The literal is
     // kept rather than read from the manifest on both sides, so that widening
     // the release has to come here and be looked at.
-    assert.equal(PUBLIC_MANIFEST.count, 3);
+    assert.equal(PUBLIC_MANIFEST.count, 4);
     assert.equal(findByClass(mounted.element, 'landing-scene-card').length, 0);
     assert.equal(viewports.length, 1, 'one organ on screen, however many are published');
     // The chooser the design always said a second model would bring: with one
@@ -279,7 +280,7 @@ test('landing: the public models are live organs, not a card index', () => {
     // drawn. There is one control per published organ, and they are controls
     // over the single live viewport rather than cards standing in for it.
     assert.equal(controls.length, PUBLIC_MANIFEST.count);
-    assert.equal(controls.length, 3);
+    assert.equal(controls.length, 4);
     // The link follows whichever organ the rotation put up today, rather than
     // being pinned to the brain.
     const shown = mounted.organHero.organ;
@@ -1293,9 +1294,14 @@ test('landing hero: the instructions describe the input the reader actually has'
     assert.match(collectText(card).join(' '), /クリックすると/);
 
     // The screen-reader instructions carry the third input: no pointer at all.
+    // "いちばん近い" is load-bearing, not a flourish: Enter names the structure
+    // *nearest* the centre, because an organ with a gap down the middle has
+    // nothing at the exact centre and used to name nothing at all (F-129).
+    // Promising the centre again would put the instructions back in front of
+    // behaviour that no longer matches them.
     const instructions = findByClass(hero.element, 'landing-sr-only')
       .find((node) => node.getAttribute('id') === 'landing-demo-viewport-instructions');
-    assert.match(collectText(instructions).join(' '), /Enterキーで画面中央の部位/);
+    assert.match(collectText(instructions).join(' '), /Enterキーで画面中央にいちばん近い部位/);
 
     hero.destroy();
     assert.equal(listeners.size, 0, 'the hero stops listening when it ends');
@@ -1457,4 +1463,49 @@ test('landing hero: the picked structure is named on the model, in both language
     if (previousWindow === undefined) delete globalThis.window;
     else globalThis.window = previousWindow;
   }
+});
+
+test('hero aim: the centre wins, and a gap down the middle does not silence Enter', () => {
+  const rect = { width: 480, height: 360 };
+  const asked = [];
+  /** A scene whose structures sit wherever `hit` says. */
+  const sceneWhere = (hit) => ({
+    selectAtCanvasPoint(x, y) {
+      asked.push([x, y]);
+      return hit(x, y);
+    },
+  });
+
+  // 1. Anything at the centre wins, and nothing else is ever asked. This is the
+  //    brain, the heart and the liver — the fix must not move their aim.
+  asked.length = 0;
+  assert.equal(nameNearestToCentre(sceneWhere(() => true), rect), true);
+  assert.deepEqual(asked, [[240, 180]], 'the centre was not asked first, or not asked alone');
+
+  // 2. A gap down the middle: nothing within 40px of the centre, tissue beyond.
+  //    This is the lungs, and it used to name nothing at all.
+  asked.length = 0;
+  const gap = sceneWhere((x, y) => Math.hypot(x - 240, y - 180) > 40);
+  assert.equal(nameNearestToCentre(gap, rect), true, 'Enter found nothing beside the gap');
+  const [firstHitX, firstHitY] = asked.at(-1);
+  assert.ok(
+    Math.hypot(firstHitX - 240, firstHitY - 180) <= 60,
+    `named something ${Math.round(Math.hypot(firstHitX - 240, firstHitY - 180))}px out, which is not "in front of you"`
+  );
+
+  // 3. An empty model names nothing rather than reaching into the corners.
+  asked.length = 0;
+  assert.equal(nameNearestToCentre(sceneWhere(() => false), rect), false);
+  const reach = Math.min(rect.width, rect.height) * 0.32;
+  for (const [x, y] of asked) {
+    assert.ok(
+      Math.hypot(x - 240, y - 180) <= reach + 1,
+      `asked ${Math.round(Math.hypot(x - 240, y - 180))}px from the centre, past the ${Math.round(reach)}px reach`
+    );
+    assert.ok(x >= 0 && y >= 0 && x <= rect.width && y <= rect.height, 'asked outside the canvas');
+  }
+
+  // 4. A scene with no keyboard entry point is left alone rather than crashed.
+  assert.equal(nameNearestToCentre({}, rect), false);
+  assert.equal(nameNearestToCentre(null, rect), false);
 });
