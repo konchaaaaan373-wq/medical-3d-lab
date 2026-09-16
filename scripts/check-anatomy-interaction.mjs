@@ -735,14 +735,18 @@ try {
     : [0.04, 0.94])];
 
   /**
-   * How far across the frame the model reaches, at one row, asked rather than
-   * measured from a picture: the scene sets the cursor over its own geometry,
-   * which is the same signal the points above were found with.
+   * How far across the frame the model reaches, **at one row**, asked rather
+   * than measured from a picture: the scene sets the cursor over its own
+   * geometry, which is the same signal the points above were found with.
+   *
+   * One row is the right measure for the check below, which compares the same
+   * row before and after a reset. It is the wrong measure for comparing one
+   * scene with another — see `modelSilhouette`.
    */
-  const modelSpan = async (fy) => {
+  const modelSpan = async (fy, step = 0.02) => {
     let first = null;
     let last = null;
-    for (let fx = 0.02; fx <= 0.96; fx += 0.02) {
+    for (let fx = 0.02; fx <= 0.96; fx += step) {
       const at = Number(fx.toFixed(3));
       if (await overModel(at, fy)) {
         if (first === null) first = at;
@@ -751,6 +755,39 @@ try {
     }
     await restPointer();
     return first === null ? null : [first, last];
+  };
+
+  /**
+   * The widest the model gets anywhere down the frame, and how much of the
+   * frame's height it occupies at all.
+   *
+   * `modelSpan(0.45)` was read across scenes as if it were a width, and it is
+   * not: it is a cross-section at mid-height. A knee is a vertical subject
+   * whose widest part is not at 0.45, a liver is a compact one whose widest
+   * part very nearly is, and comparing the two rows produced "the joints are
+   * 2.6x narrower than the published organs" — a ratio between two quantities
+   * that were never the same quantity, which then became a target for how big
+   * to make the joints. Codex caught it on #117.
+   *
+   * Coarser than `modelSpan` on purpose: 4% of the frame per step over nine
+   * rows costs about a quarter of a minute, and the question it answers —
+   * roughly how much of the frame does this scene use — does not need 2%.
+   */
+  const modelSilhouette = async () => {
+    let widest = null;
+    let widestRow = null;
+    let rowsOnModel = 0;
+    const rows = [0.15, 0.24, 0.33, 0.42, 0.5, 0.58, 0.67, 0.76, 0.85];
+    for (const fy of rows) {
+      const span = await modelSpan(fy, 0.04);
+      if (!span) continue;
+      rowsOnModel += 1;
+      if (!widest || span[1] - span[0] > widest[1] - widest[0]) {
+        widest = span;
+        widestRow = fy;
+      }
+    }
+    return widest ? { widest, widestRow, rowsOnModel, rows: rows.length } : null;
   };
 
   // 0. The framing a scene opens at is the framing it returns to.
@@ -769,6 +806,17 @@ try {
   //    Checked here because it is invisible anywhere else: both framings are
   //    valid poses, the scene is not broken, and the only symptom is that the
   //    first thing a reader sees is not the composition the scene meant.
+  const silhouette = await modelSilhouette();
+  if (silhouette) {
+    observed.silhouette = silhouette;
+    notes.push(
+      `silhouette: widest ${silhouette.widest[0]}..${silhouette.widest[1]} ` +
+        `(${(silhouette.widest[1] - silhouette.widest[0]).toFixed(2)} of the frame) at fy=${silhouette.widestRow}; ` +
+        `on the model at ${silhouette.rowsOnModel} of ${silhouette.rows} rows. ` +
+        'Compare scenes with this, not with the mid-height span below.'
+    );
+  }
+
   const openingSpan = await modelSpan(0.45);
   if (!openingSpan) {
     notes.push('the model does not cross the middle of the frame, so the opening framing was not measured');
@@ -797,7 +845,7 @@ try {
         // cannot be the grid's own resolution.
         if (moved > 0.04) {
           problems.push(
-            `the scene opens framed differently from how it resets: the model spans ` +
+            `the scene opens framed differently from how it resets: across the frame's middle row the model spans ` +
               `${openingSpan[0]}..${openingSpan[1]} of the frame at first and ` +
               `${resetSpan[0]}..${resetSpan[1]} after "reset the display", with nothing ` +
               'moved in between. The reader sees the first one.'
@@ -2109,8 +2157,8 @@ console.log(`  part tree rows: ${observed.treeRows ?? 'none'}`);
 if (observed.openingFraming) {
   const { opening, reset } = observed.openingFraming;
   console.log(
-    `  the model spans ${opening[0]}..${opening[1]} of the frame when the scene opens, ` +
-      `${reset[0]}..${reset[1]} after a display reset`
+    `  across the frame's middle row the model spans ${opening[0]}..${opening[1]} when the scene opens, ` +
+      `${reset[0]}..${reset[1]} after a display reset (one row — for the scene's width see the silhouette note)`
   );
 }
 console.log(
