@@ -795,22 +795,32 @@ try {
    * much of the frame does this scene use — does not need 2%, and 4% per step
    * halves a sweep the call site measures at about three minutes.
    *
-   * The rows include 0.45, the row `modelSpan` is called at below, so "the
-   * widest anywhere" can never come back narrower than the mid-height span the
-   * summary prints beside it. Without it the knee reported a silhouette of 0.12
-   * and a middle row of 0.14 in the same run — the wider number being from a
-   * row this sweep had not looked at.
+   * Two row sets, because the sweep answers two questions and they want
+   * different samples.
+   *
+   * `OCCUPANCY_ROWS` is evenly spaced, and only those rows count towards "on
+   * the model at N of M rows" — that fraction is meant to say how much of the
+   * frame's *height* a scene reaches, and an uneven grid turns it into a
+   * density-weighted count instead. 0.45 sits 0.03 from 0.42 while every other
+   * gap is 0.08–0.09, so putting it in the same set gave all four scenes
+   * exactly one extra row: not a measurement, the signature of an extra sample
+   * in a band they all cross. Codex caught it on #120.
+   *
+   * The width, though, has to consider 0.45, because `modelSpan(0.45)` is
+   * printed beside it and "the widest anywhere" must never come back narrower
+   * than a row the same output tells the reader to ignore. Without it the knee
+   * reported a silhouette of 0.12 and a middle row of 0.14 in one run.
    */
   const modelSilhouette = async () => {
     let widest = null;
     let widestRow = null;
     let rowsOnModel = 0;
     const coarse = [];
-    const rows = [0.15, 0.24, 0.33, 0.42, 0.45, 0.5, 0.58, 0.67, 0.76, 0.85];
-    for (const fy of rows) {
+    const OCCUPANCY_ROWS = [0.15, 0.24, 0.33, 0.42, 0.5, 0.58, 0.67, 0.76, 0.85];
+    for (const fy of [...OCCUPANCY_ROWS, 0.45]) {
       const span = await modelSpan(fy, 0.04);
       if (!span) continue;
-      rowsOnModel += 1;
+      if (OCCUPANCY_ROWS.includes(fy)) rowsOnModel += 1;
       coarse.push([fy, span]);
       if (!widest || span[1] - span[0] > widest[1] - widest[0]) {
         widest = span;
@@ -849,7 +859,7 @@ try {
         widestRow = bestRow;
       }
     }
-    return widest ? { widest, widestRow, rowsOnModel, rows: rows.length } : null;
+    return widest ? { widest, widestRow, rowsOnModel, rows: OCCUPANCY_ROWS.length } : null;
   };
 
   // 0. The framing a scene opens at is the framing it returns to.
