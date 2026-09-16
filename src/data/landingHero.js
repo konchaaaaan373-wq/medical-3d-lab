@@ -61,6 +61,15 @@ export const HERO_ORGANS = Object.freeze([
   // actually opens, so an entry missing from this list is an organ the chooser
   // silently cannot show. That is the shape of bug F-121 was about.
   Object.freeze({
+    organ: 'lungs',
+    sceneId: 'lung-anatomy',
+    upgradeSceneId: 'lung-anatomy',
+    kickerEn: 'ANATOMY',
+    kickerJa: '解剖',
+    lineEn: 'Rotate and zoom the lungs to inspect how the lobes and the airways between them are arranged.',
+    lineJa: '肺を回転・拡大し、肺葉と気道の位置関係を確認できます。',
+  }),
+  Object.freeze({
     organ: 'liver',
     sceneId: 'liver-anatomy',
     upgradeSceneId: 'liver-anatomy',
