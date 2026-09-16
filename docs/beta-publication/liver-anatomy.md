@@ -47,19 +47,31 @@ hits nothing, or if the four together name fewer than four distinct structures.
 
 | point | English | Japanese | hierarchy |
 | --- | --- | --- | --- |
-| (0.35, 0.40) | Segment VIII — Right anterior superior | VIII区域（右前上区域） | Right liver › Right anterior sector › Couinaud segment |
-| (0.66, 0.45) | Segment III — Left lateral inferior | III区域（左外側下区域） | Left liver › Left lateral sector › Couinaud segment |
-| (0.45, 0.62) | Segment V — Right anterior inferior | V区域（右前下区域） | Right liver › Right anterior sector › Couinaud segment |
-| (0.42, 0.75) | Gallbladder | 胆嚢 | Biliary › Gallbladder › Gallbladder |
+| (0.29, 0.227) | Segment VIII — Right anterior superior | VIII区域（右前上区域） | Right liver › Right anterior sector › Couinaud segment |
+| (0.215, 0.323) | Segment VII — Right posterior superior | VII区域（右後上区域） | Right liver › Right posterior sector › Couinaud segment |
+| (0.477, 0.323) | Segment II — Left lateral superior | II区域（左外側上区域） | Left liver › Left lateral sector › Couinaud segment |
+| (0.44, 0.417) | Segment IVa — Left medial superior | IVa区域（左内側上区域） | Left liver › Left medial sector › Couinaud segment |
+
+**These four replaced an earlier four on 2026-09-16, and the tour changed shape
+rather than moving.** The originals — segments VIII, III and V with the
+gallbladder beneath them — were measured against a safe-area fit that
+approximated a perspective camera with an orthographic sum. Solving each corner
+exactly moved every model, and re-run against the corrected fit two of those
+four hit nothing while a third named its neighbour. A sweep at the new framing
+reaches four Couinaud segments and does not reach the gallbladder, so **this
+record no longer claims the biliary system**; the row above that said so is
+gone rather than re-pointed. Every value in this table is read from the run's
+own output, including the Japanese terms and the hierarchy paths.
 
 That the tour is *named* is not incidental. Before this record was taken, these
 points carried bare coordinates, and the run reported only that four clicks
-named *something*. Measured, all four points already named four different structures — this scene was the one of four examined that needed no repair, and now it is held to that. `brain-anatomy` spent a week with a
+named *something*. Measured, all four points already named four different structures — this scene was the one of four examined that needed no repair. It needed one later all the same, when the framing moved under it, and the run said so on the first pass because the table above is asserted rather than described. `brain-anatomy` spent a week with a
 publication record describing structures its clicks had stopped naming, for
 exactly this reason — see [`brain-anatomy.md`](brain-anatomy.md).
 
-- The tour crosses **both livers and the biliary system**: two right-sector
-  segments, one left-lateral segment, and the gallbladder beneath them.
+- The tour crosses **both livers**: two right-sector segments (VIII anterior
+  superior, VII posterior superior) and two left (II lateral superior, IVa
+  medial superior). It does not reach the gallbladder at this framing.
 
 - The part tree lists 27 rows, one per structure, and selection agrees in
   both directions.
