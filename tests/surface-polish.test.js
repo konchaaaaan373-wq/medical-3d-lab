@@ -1,5 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
+
+import { customProperties, fontSizePx, rulesOf } from '../scripts/lib/css.mjs';
 import { readFileSync } from 'node:fs';
 
 const read = (path) => readFileSync(new URL(`../${path}`, import.meta.url), 'utf8');
@@ -18,13 +20,15 @@ function contrast(foreground, background) {
 }
 
 function routeTokens(css, route) {
-  const blocks = [...css.matchAll(new RegExp(`html\\[data-route=['"]${route}['"]\\]\\s*\\{([^}]+)\\}`, 'g'))]
-    .map((match) => match[1]);
-  assert.ok(blocks.length > 0, `${route} route token block must exist`);
+  // Through the shared reader rather than a hand-built `[^}]+` body: that
+  // spelling lets an at-rule's opening brace swallow the first rule nested
+  // inside it, so a token overridden inside a `@media` block was read as part
+  // of one enormous declaration list.
+  const selects = (selectors) => new RegExp(`html\\[data-route=['"]${route}['"]\\]`).test(selectors);
+  assert.ok([...rulesOf(css)].some((rule) => selects(rule.selectors)), `${route} route token block must exist`);
+  const tokens = customProperties(css, selects);
   return Object.fromEntries(
-    blocks.flatMap((block) =>
-      [...block.matchAll(/--([a-z-]+):\s*(#[0-9a-f]{6})/gi)].map((match) => [match[1], match[2]])
-    )
+    Object.entries(tokens).filter(([, value]) => /^#[0-9a-f]{6}$/i.test(value))
   );
 }
 
@@ -63,7 +67,11 @@ test('reading routes use direct headings and legal prose remains body-sized', ()
   assert.match(trust, /モデルの公開状態と医学レビュー/);
   assert.doesNotMatch(trust, /Maturity and medical review are different claims/);
   assert.match(legal, /Model information/);
-  assert.match(css, /\.legal-body p\s*\{[^}]*font-size:\s*16px/s);
+  // The size `.legal-body p` ends up with, not "somewhere after that selector
+  // there is a 16px": the anchored form reads the first `font-size` it finds
+  // after one spelling of the selector, which is two of this repo's recorded
+  // ways to measure the wrong rule (L-02, L-03).
+  assert.equal(fontSizePx(css, '.legal-body p'), 16);
 });
 
 test('new light-route tokens clear small-text contrast', () => {
