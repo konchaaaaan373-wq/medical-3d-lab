@@ -54,6 +54,9 @@
  * checked here instead.
  *
  * Options:
+ *   --silhouette    also measure how wide the model gets anywhere down the
+ *                   frame, for comparing one scene with another. Costs about
+ *                   three minutes a scene, so it is off by default.
  *   --dist <dir>    built site to serve (default: dist)
  *   --scene <slug>  scene route to drive (default: brain-anatomy)
  *   --points <list> where to click, as "fx,fy fx,fy …" in canvas fractions.
@@ -814,7 +817,13 @@ try {
   //    Checked here because it is invisible anywhere else: both framings are
   //    valid poses, the scene is not broken, and the only symptom is that the
   //    first thing a reader sees is not the composition the scene meant.
-  const silhouette = await modelSilhouette();
+  // Off unless asked for. Measured: the sweep is about three hundred pointer
+  // moves, each one a raycast and a repaint under software GL, and it put three
+  // minutes on a scene that takes two and a half. `verify:anatomy` runs every
+  // scene in series and the brain alone is ten minutes, so a measurement that
+  // answers a cross-scene question — how much of the frame does this one use —
+  // does not belong in every run. Pass `--silhouette` when that is the question.
+  const silhouette = flag('--silhouette') ? await modelSilhouette() : null;
   if (silhouette) {
     observed.silhouette = silhouette;
     notes.push(
