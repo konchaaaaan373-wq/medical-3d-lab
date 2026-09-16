@@ -1,5 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
+
+import { declaration, rulesOf } from '../scripts/lib/css.mjs';
 import { readFileSync } from 'node:fs';
 import { SCENE_MANIFEST } from '../src/catalog/scenes.js';
 import { activeUsesForScene } from '../src/access/features.js';
@@ -99,9 +101,22 @@ test('compact navigation and safety copy do not regress below twelve pixels', ()
     'utf8'
   );
 
-  assert.doesNotMatch(
-    `${typography}\n${releasePolish}`,
-    /font-size:\s*(?:[0-9](?:\.\d+)?|1[01](?:\.\d+)?)px/,
+  // Through the shared reader, so a `font-size` written inside a comment is not
+  // a failure and the message names the rule rather than the sheet. Searching
+  // the raw text for a small size reports "somewhere in here" and makes a
+  // comment explaining a past 10px into a red build (L-06).
+  const small = [];
+  for (const [sheet, css] of [['ui-hierarchy-typography.css', typography], ['browser-first-release-polish.css', releasePolish]]) {
+    for (const rule of rulesOf(css)) {
+      const size = declaration(rule.body, 'font-size');
+      if (size === null || !/^[0-9.]+px$/.test(size)) continue;
+      const px = Number.parseFloat(size);
+      if (px < 12) small.push(`${sheet}: ${rule.selectors} is ${px}px`);
+    }
+  }
+  assert.deepEqual(
+    small,
+    [],
     'model navigation and persistent medical caveats must remain readable on compact screens'
   );
 

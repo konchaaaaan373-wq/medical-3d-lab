@@ -35,6 +35,7 @@
  */
 import { readFileSync, readdirSync, writeFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
+import { declaration, rulesOf } from './lib/css.mjs';
 
 /** Below this, in px, a declaration is counted. */
 export const TYPE_FLOOR_PX = 12;
@@ -42,33 +43,17 @@ export const TYPE_FLOOR_PX = 12;
 const STYLES_DIR = fileURLToPath(new URL('../src/styles/', import.meta.url));
 const BASELINE = fileURLToPath(new URL('../tests/type-floor-baseline.json', import.meta.url));
 
-/**
- * Every rule in a stylesheet, as `[selectorText, body]`.
- *
- * Comments come off first. A rule with an explanation above it carries that
- * comment into its selector chunk, which is how an earlier guard came to skip
- * precisely the rules somebody had bothered to document.
- */
-function* rulesOf(css) {
-  const withoutComments = css.replace(/\/\*[\s\S]*?\*\//g, '');
-  // `[^{}]*` for the body rather than `[^}]*`: an at-rule's opening brace would
-  // otherwise swallow the first rule inside it.
-  for (const [, selectors, body] of withoutComments.matchAll(/([^{}]+)\{([^{}]*)\}/g)) {
-    yield [selectors.trim().replace(/\s+/g, ' '), body];
-  }
-}
-
 /** @returns {Record<string, Record<string, number>>} sheet -> selector -> px */
 export function measureTypeFloor(dir = STYLES_DIR) {
   const found = {};
   for (const name of readdirSync(dir).filter((file) => file.endsWith('.css')).sort()) {
     const css = readFileSync(`${dir}${name}`, 'utf8');
-    for (const [selectors, body] of rulesOf(css)) {
+    for (const { selectors, body } of rulesOf(css)) {
       // The last declaration wins inside one body too — reading the first
       // reports a size the browser never uses.
-      const size = [...body.matchAll(/font-size:\s*([0-9.]+)px/g)].at(-1)?.[1];
-      if (size === undefined) continue;
-      const px = Number(size);
+      const size = declaration(body, 'font-size');
+      if (size === null || !/^[0-9.]+px$/.test(size)) continue;
+      const px = Number.parseFloat(size);
       if (px >= TYPE_FLOOR_PX) continue;
       found[name] ??= {};
       // A selector declared twice in one sheet keeps the smallest it reaches,

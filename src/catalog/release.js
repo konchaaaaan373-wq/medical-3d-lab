@@ -144,19 +144,19 @@ export const BETA_ANATOMY_CANDIDATES = Object.freeze([
   // revision to pin. Three others were examined in the same pass and are *not*
   // here — kidney and stomach expose only two click-reachable structures from
   // their opening view, and the shoulder's run reported a real defect. Being
-  // gate-clear was never the bar; see docs/follow-ups.md F-124 and F-125.
+  // gate-clear was never the bar; see docs/follow-ups.md F-126 and F-127.
   //
   // The knee was calibrated and passes its drive, and is still not here: the
   // landing hero must be able to show every published organ, and only brain,
   // heart, lungs, liver and kidney have a hero builder. Publishing it would
-  // leave a published organ the chooser cannot draw. F-126.
+  // leave a published organ the chooser cannot draw. F-128.
   //
   // The lung is not here either, and it was in this list until the hero drive
   // was run against it: at its opening pose the centre of the frame falls in
   // the gap between the two lungs, so the first Enter on the hero selects
   // nothing and only works after the reader turns the model. That is the
   // silent-Enter failure F-121 was about, on the surface most visitors meet
-  // first. F-127.
+  // first. F-129.
   'liver-anatomy',
 ]);
 
