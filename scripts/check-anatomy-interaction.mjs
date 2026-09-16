@@ -201,11 +201,18 @@ const SCENE_POINTS = {
   // structure, per main's reasoning that a tour of four lobes says less
   // than one that also crosses the tree between the lungs; the sweep
   // reaches the trachea rather than the left main bronchus at this framing.
+  // **Measured with the drive itself, not with the sweep.** `points:anatomy`
+  // reads a scene at the framing it opens at; the drive runs its tour after
+  // the framing check, which resets the display. On this scene those two
+  // are not the same — it opens spanning 0.22..0.50 of the frame and rests
+  // at 0.20..0.52 (F-133) — so a tour measured by the sweep failed in the
+  // drive on points the sweep had just confirmed. Every point below was
+  // read from `--points` output in the frame the tour is held to.
   'lung-anatomy': [
-    [0.365, 0.18, 'Trachea'],
-    [0.29, 0.37, 'Right upper lobe'],
-    [0.44, 0.37, 'Left upper lobe'],
-    [0.215, 0.56, 'Right middle lobe'],
+    [0.37, 0.30, 'Trachea'],
+    [0.25, 0.42, 'Right upper lobe'],
+    [0.49, 0.56, 'Left upper lobe'],
+    [0.25, 0.68, 'Right middle lobe'],
   ],
   // Four Couinaud segments, one per click, spanning both livers: two right-sector
   // (VIII anterior superior, VII posterior superior) and two left (II lateral
