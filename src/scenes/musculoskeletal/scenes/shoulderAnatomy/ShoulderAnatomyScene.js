@@ -36,6 +36,14 @@ export class ShoulderAnatomyScene extends OrganAnatomyScene {
    *  fills the frame's width at an aspect of 0.74. */
   static framing = { minHorizontalAspect: 0.78 };
 
+  /**
+   * The humeral shaft is drawn and is not what the frame is for: same reason as
+   * the knee's, same follow-up (F-134). The scapula, the clavicle and the head
+   * are the joint; the arm hanging off it decided the distance and left the
+   * shoulder a tenth of the frame wide.
+   */
+  static contextTags = ['shaft'];
+
   static colorModes = SHOULDER_COLOR_MODES;
 
   static views = [

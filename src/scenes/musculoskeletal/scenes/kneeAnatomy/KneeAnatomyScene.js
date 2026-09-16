@@ -42,6 +42,19 @@ export class KneeAnatomyScene extends OrganAnatomyScene {
    */
   static framing = { minHorizontalAspect: 0.45 };
 
+  /**
+   * The shafts are drawn and are not what the frame is for.
+   *
+   * Fitting the whole of them made the joint a tenth of the frame wide, against
+   * 0.26–0.28 for the published organs (F-134): long bones make the subject
+   * tall, height decides the distance, and the width is left over. They stay on
+   * screen — a reader tells a knee from an elbow partly by which way its bones
+   * run, and the femur arriving from above is half of what "the knee is this
+   * bone moving on the tibia" means — they are just not in the box the camera
+   * measures itself against.
+   */
+  static contextTags = ['shaft'];
+
   static colorModes = KNEE_COLOR_MODES;
 
   static views = [

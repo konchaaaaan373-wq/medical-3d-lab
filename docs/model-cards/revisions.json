@@ -486,8 +486,8 @@
       "src/scenes/shared/anatomy/OrganAnatomyScene.js",
       "src/scenes/shared/anatomy/tapGesture.js"
     ],
-    "cardRevision": 10,
-    "modelDigest": "f22a7e3bec309557",
+    "cardRevision": 11,
+    "modelDigest": "cac40fcae9b468fe",
     "cardUpdatedAt": "2026-09-16"
   },
   {
@@ -500,8 +500,8 @@
       "src/scenes/shared/anatomy/OrganAnatomyScene.js",
       "src/scenes/shared/anatomy/tapGesture.js"
     ],
-    "cardRevision": 11,
-    "modelDigest": "a8eeb6cdf13f1d7d",
+    "cardRevision": 12,
+    "modelDigest": "b9dd3e95b331cb8d",
     "cardUpdatedAt": "2026-09-16"
   },
   {
