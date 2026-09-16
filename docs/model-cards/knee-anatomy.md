@@ -104,8 +104,8 @@ No dimension here is a measurement.
   hidden and nothing is shortened**; only the box the camera fits to is
   narrower. Measured: a click tour that could name three structures, all in one
   column, now names four across three columns and three rows.
-  This scene is a **tall** subject and is framed as one — it reaches across 8 of
-  9 sampled rows where the published organs reach 4 or 5, and its widest point
+  This scene is a **tall** subject and is framed as one — it reaches across 9 of
+  10 sampled rows where the published organs reach 5 or 6, and its widest point
   is 0.16 of the frame against their 0.28–0.32. That is a shape, not a defect;
   F-134 was closed on it.
 - **A cut draws the face it leaves, where there is one to draw.** For a solid

@@ -106,7 +106,7 @@ No dimension here is a measurement.
   candidates came back "Glenoid labrum" — the tour now names three distinct
   structures, each confirmed by two consecutive runs.
   Like the knee this is a **tall** subject and is framed as one: it reaches
-  across 7 of 9 sampled rows where the published organs reach 4 or 5, and its
+  across 8 of 10 sampled rows where the published organs reach 5 or 6, and its
   widest point is 0.22 of the frame against their 0.28–0.32.
 - **A cut draws the face it leaves, where there is one to draw.** For a solid
   part the cross-section is computed from the triangles the plane crosses and
