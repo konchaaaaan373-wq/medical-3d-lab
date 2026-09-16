@@ -1530,6 +1530,7 @@ try {
     const openButton = page.locator('.anatomy-panel-open');
     if (!(await openButton.isVisible())) problems.push('there is no Parts button to open the sheet with');
 
+    at('opening the parts sheet on a phone');
     await openButton.focus();
     await openButton.click();
     await page.waitForTimeout(400);
@@ -1657,6 +1658,7 @@ try {
     const rows = page.locator('.anatomy-tree-leaf:visible');
     const count = await rows.count();
     const deep = rows.nth(Math.min(20, count - 1));
+    at('selecting a row well down the list, in the phone sheet');
     await deep.scrollIntoViewIfNeeded();
     const deepName = (await deep.locator('.lang-en').first().textContent()).trim();
     await deep.click();
@@ -2176,7 +2178,17 @@ try {
   // findings collected before it. Breaking the modal boundary made a later
   // click time out, and the timeout discarded the sentence that said why — so
   // the run reported a stack trace where it had already worked out the cause.
-  problems.push(`the drive stopped while ${step}: ${error.message.split('\n')[0]}`);
+  // The step label is whatever `at()` was last given, and a section that forgets
+  // to update it makes every failure inside it read as the previous step's.
+  // That happened: a click intercepted by the canvas at phone size was reported
+  // as "while opening the Display tab", and F-135 was filed against a tab that
+  // clicks in 1.3 seconds. So the locator Playwright was actually waiting for
+  // goes in the finding too, where a stale label cannot hide it.
+  const waitingFor = (error.message.match(/waiting for (locator\([^\n]*)/) ?? [])[1];
+  problems.push(
+    `the drive stopped while ${step}: ${error.message.split('\n')[0]}` +
+      (waitingFor ? ` — waiting for ${waitingFor}` : '')
+  );
   // The first line says a click timed out; the rest says what it was waiting
   // for — covered, out of view, still moving — and that is the part somebody
   // reading this needs.

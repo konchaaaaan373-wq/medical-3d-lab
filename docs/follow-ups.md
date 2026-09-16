@@ -364,46 +364,47 @@ conda-forge には存在しません。したがって CDM のフィールド名
 測っていません。** 「どこの関節か」は骨の走行で読めるので良い、というのが
 こちらの判断ですが、判断であって測定ではありません。
 
-### F-135 腎: 「表示」タブが押せず、drive がそこで止まる — P1（2026-09-16）
+### F-135 腎: 電話サイズでシートを開くと、一覧の行が canvas に遮られて押せない — P1（2026-09-16）
 
-`npm run verify:anatomy -- --scene kidney-anatomy --preview` が**2 run 連続**で:
+**この項目は最初「『表示』タブが押せない」と書いていました。全部違います。**
+実測したら**「表示」タブは 1275ms で普通に押せます**。止まっていたのは別の場所で、
+それを取り違えたのは**検査が失敗した場所を誤って報告する**からでした（下）。
+
+実際の失敗（Playwright の call log をそのまま）:
 
 ```
-1 problem(s):
-  - the drive stopped while opening the Display tab: locator.click: Timeout 30000ms exceeded.
+- waiting for locator('.anatomy-tree-leaf:visible').nth(1)
+  - locator resolved to <button ... class="anatomy-tree-leaf" data-structure="whole-kidney">
+  - attempting click action
+    - element is visible, enabled and stable
+    - scrolling into view if needed
+    - done scrolling
+    - <canvas width="375" height="667" data-engine="three.js r169"></canvas>
+      from <div id="stage">…</div> subtree intercepts pointer events
 ```
 
-**flake ではありません**（同一ビルド・連続 2 回）。タブ自体は常に生成されるので
-（`AnatomyPanel.js` の `TABS` は 3 件固定）、**生成されていない**のではなく
-**クリックを受け取れない**状態です。Playwright の `click()` は可視・安定・
-pointer events 受信可能になるまで待つので、そのどれかが満たされていません。
+つまり **375×667（電話）でパーツシートを開いた状態で、一覧の行が
+canvas に遮られて押せません。** シートは開いているのに、その中の行より
+stage が上にいます。F-31（「答えが読者の見えない場所にあってはならない」）の
+すぐ隣の問題です。
 
-**原因は特定していません。** 推測は書きません（L-27）。測るなら、その瞬間の
-タブの bounding box と、その中心に `elementFromPoint` が何を返すかです——
-F-127 で使ったのと同じ手です。
+**もう 1 つ: `.nth(1)` は「見えている行が 2 つしかない」ことを意味します**
+（`rows.nth(Math.min(20, count - 1))` が 1 を選んだ）。32 構造のツリーで、
+電話のシートに見えている行が 2 つ。これも測ってから書くべきことですが、
+枝が畳まれているためと思われます——**確かめていません**。
 
-**drive はここで止まるので、「表示」タブより下は未測定です。**
-ただし**初出のこの行は範囲を盛っていました**（Codex 指摘）。
-「表示」タブを押すのは drive のかなり後ろで、その前に
-部位ツリーと 3D の一致・isolate・Show all・グループの一括非表示・
-キーボードでのツリー操作は**すでに走って通っています**。
+**検査の側の欠陥（こちらが本体かもしれません）**: 失敗の報告は
+`at()` に最後に渡されたラベルを使います。電話の節はラベルを更新していなかったので、
+**電話での失敗が「while opening the Display tab」として報告されました**。
+そのまま信じて F-135 を書き、無関係なタブを 2 回測っています。
 
-実際に未測定なのは、その後ろの 3 つだけです:
-
-- モデル上のラベル（3c）
-- 色モードの切替が選択を動かさないこと（4）
-- 名前つき視点への移動が選択を動かさないこと（5）
-
-**それでも P1 です。** 視点は腎の内部構造（髄質・腎杯・腎盂）に到達する
-主要な手段で、F-126 が指しているのもそこだからです。
-
-- 腎は**未公開臓器で唯一 hero モデルを持つ**ので、β を広げるなら最初に来ます。
-  その 1 件が、検査の半分を通っていません
-- やること: 上記を測って原因を特定し、直す。直したら drive を最後まで通す
+- 直したこと: 失敗の 1 行に **Playwright が実際に待っていた locator** を併記します
+  （ラベルが古くても隠れない）。電話の節にも `at()` を入れました
+- やること: 電話のシートで stage が行の上に来る理由を特定して直す。
+  そのうえで「見えている行が 2 つ」も測る
 - 完了の定義: `npm run verify:anatomy -- --scene kidney-anatomy --preview` が
-  最後まで走り、緑になること。**`--preview` が要ります**——腎は未公開なので
-  production ビルドには入っておらず、ルートは "to be updated" を返します
-  （`VITE_ALLOW_PREVIEW=1 npm run build` で作ったビルドに対して実行）
+  最後まで走り、緑になること（`--preview` が要ります——腎は未公開なので
+  production ビルドには入っていません）
 
 ### F-126 腎は 32 構造のうち 2 つしかクリックで指せない（胃は 8 のうち 3） — P2（2026-09-16）
 
