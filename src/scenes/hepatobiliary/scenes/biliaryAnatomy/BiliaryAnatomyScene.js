@@ -52,6 +52,13 @@ export class BiliaryAnatomyScene extends OrganAnatomyScene {
    * fills the frame's width at an aspect of 0.83. The two junction close-ups
    * need much more and crop on purpose.
    */
+  /**
+   * Ducts and a gallbladder: walls around bile, so a cut opens them. The
+   * pancreatic head is the solid organ in the picture and is faced — it says
+   * so where it is declared.
+   */
+  static hollowByDefault = true;
+
   static framing = { minHorizontalAspect: 0.9 };
 
   /** The bowel is drawn so "where does bile go" has an answer. */
@@ -152,7 +159,7 @@ export class BiliaryAnatomyScene extends OrganAnatomyScene {
 
     const fadeForTheDuct = { ghostAt: 0.4, ghostOpacity: 0.16 };
     for (const [id] of tree.index) {
-      declare(id, [tree.mesh(id)], id === 'pancreatic-head' ? fadeForTheDuct : {});
+      declare(id, [tree.mesh(id)], id === 'pancreatic-head' ? { ...fadeForTheDuct, hollow: false } : {});
     }
     // The two things the duct runs behind and through. They fade rather than
     // leave, because the papilla is a marker on the bowel's wall and a marker on

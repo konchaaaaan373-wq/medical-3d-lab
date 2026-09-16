@@ -22,6 +22,7 @@
     "cards": "node scripts/render-social-cards.mjs",
     "cards:check": "node scripts/check-social-cards.js",
     "verify:anatomy": "node scripts/check-anatomy-interaction.mjs",
+    "points:anatomy": "node scripts/measure-anatomy-points.mjs",
     "verify:hero-input": "node scripts/check-hero-input.mjs",
     "shots:anatomy": "node scripts/capture-anatomy-views.mjs",
     "shots:phone": "node scripts/capture-phone-states.mjs",

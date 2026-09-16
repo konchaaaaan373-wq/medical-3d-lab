@@ -3,6 +3,7 @@ import { buildAnatomyTree } from '../../../app/anatomyContract.js';
 import { createStudioLights } from '../lighting.js';
 import { disposeObject } from '../../../utils/dispose.js';
 import { clamp, damp, lerp, smoothstep } from '../../../utils/math.js';
+import { sectionFaceGeometry } from '../geometry/sectionFace.js';
 import { createTapTracker } from './tapGesture.js';
 
 /**
@@ -88,6 +89,8 @@ export class OrganAnatomyScene {
     this.hiddenTags = new Set();
     this.section = null;
     this.sectionPlane = null;
+    /** The faces drawn where the section plane passes through a solid. */
+    this.caps = [];
 
     this.progress = 0;
     this.displayProgress = 0;
@@ -176,6 +179,24 @@ export class OrganAnatomyScene {
          * pays for it.
          */
         doubleSided: false,
+        /**
+         * A shell that stands for a hollow organ, not the boundary of a solid.
+         *
+         * It decides what a cut leaves. `sectionFace` computes the outline of
+         * the solid a closed mesh bounds, which is what a cut liver or kidney
+         * shows; run over a stomach it draws the whole silhouette in gastric
+         * pink and says the stomach is a lump of tissue. A cut bag shows a
+         * lumen, and the honest way to draw one with a wall that has no
+         * thickness is not to draw a face at all — the cut simply opens the
+         * bag, and what is behind it is the inside of the far wall.
+         *
+         * Per structure, because an organ is rarely all one or the other: the
+         * biliary scene is ducts around a solid pancreatic head, and the
+         * stomach's sphincter is a ring of muscle in a wall that is a surface.
+         * A scene whose parts are mostly hollow says so once with
+         * `static hollowByDefault = true` and overrides the exceptions.
+         */
+        hollow: this.constructor.hollowByDefault ?? false,
         ...structure,
         meshes,
         currentOpacity: 1,
@@ -602,13 +623,25 @@ export class OrganAnatomyScene {
    * named after too small to point at. A scene can narrow this by tagging what
    * is context; by default it is everything drawn.
    *
-   * Offered because the shared framing works from an authored pose and an
-   * aspect ratio, and a bounds-aware framing needs this. It costs one pass
-   * over the meshes and is computed on demand.
+   * **It is also not the same thing at every viewpoint.** A viewpoint can take
+   * a side away and it can cut the organ open, and both change what there is to
+   * frame: the coronal view of the kidney is a cut through both organs, and a
+   * box around the *uncut* pair describes a subject half of which is no longer
+   * drawn. Measured against it, the camera stood far enough back for the whole
+   * pair and centred on a point between them — so the remaining halves sat at
+   * the two edges of the frame with the middle of the picture empty. So a
+   * hidden structure is left out here, and what a cut has taken away is taken
+   * away here too.
+   *
+   * Isolation deliberately does not narrow it. The reader asking to see one
+   * structure alone has not asked the camera to move, and a frame that dived at
+   * every isolate and pulled back at every "show all" would be answering a
+   * question about the part tree with a camera move.
    *
    * @param {{ excludeTags?: string[] }} [options]
+   * @returns {THREE.Box3} never empty while anything is drawn
    */
-  getSubjectBounds({ excludeTags = this.constructor.contextTags ?? [] } = {}) {
+  getSubjectBox({ excludeTags = this.constructor.contextTags ?? [] } = {}) {
     // `Box3.expandByObject` refreshes a mesh's own world matrix and not its
     // parents', so a scene that has not rendered yet reports every organ at the
     // origin: the kidney came back the right size in the wrong place, which is
@@ -617,9 +650,42 @@ export class OrganAnatomyScene {
     const box = new THREE.Box3();
     for (const structure of this.structures) {
       if (structure.tags.some((tag) => excludeTags.includes(tag))) continue;
+      if (structure.tags.some((tag) => this.hiddenTags.has(tag))) continue;
       for (const mesh of structure.meshes) box.expandByObject(mesh);
     }
-    return box.isEmpty() ? new THREE.Box3().setFromObject(this.root) : box;
+    if (box.isEmpty()) return new THREE.Box3().setFromObject(this.root);
+    return this.sectionPlane ? clipBoxToHalfSpace(box, this.sectionPlane) : box;
+  }
+
+  /**
+   * The subject in the shape the framing asks for: a centre and eight corners.
+   *
+   * `src/app/framing.js` projects those corners onto the camera's own axes,
+   * which is how a subject that is not a sphere gets a frame that is not built
+   * around one. It reads `bounds.centre` and `bounds.corners` and **leaves the
+   * pose untouched for anything else it is handed** — which is what this used
+   * to hand it. Every procedural organ scene therefore opted out, silently, of
+   * both the safe-area fit and the orbit limits that the brain and the heart
+   * get: the authored pose was used as-is, so the model sat where the pose put
+   * it rather than in the band the header, the console and the docked parts
+   * panel leave for it.
+   *
+   * `null` when nothing is drawn, which the caller reads as "do not move the
+   * camera" rather than as a subject at the origin.
+   *
+   * @param {{ excludeTags?: string[] }} [options]
+   * @returns {{centre: THREE.Vector3, corners: THREE.Vector3[]}|null}
+   */
+  getSubjectBounds(options) {
+    const box = this.getSubjectBox(options);
+    if (box.isEmpty()) return null;
+    const corners = [];
+    for (const x of [box.min.x, box.max.x]) {
+      for (const y of [box.min.y, box.max.y]) {
+        for (const z of [box.min.z, box.max.z]) corners.push(new THREE.Vector3(x, y, z));
+      }
+    }
+    return { centre: box.getCenter(new THREE.Vector3()), corners };
   }
 
   getAnatomyViews() {
@@ -678,6 +744,7 @@ export class OrganAnatomyScene {
     if (!section) {
       this.section = null;
       this.sectionPlane = null;
+      this._disposeSectionCaps();
       for (const mesh of this.selectables) mesh.material.clippingPlanes = null;
       if (renderer && this._clippingWas !== undefined) {
         renderer.localClippingEnabled = this._clippingWas;
@@ -692,6 +759,121 @@ export class OrganAnatomyScene {
     this.section = section;
     this.sectionPlane = new THREE.Plane(new THREE.Vector3(...section.normal).normalize(), section.constant ?? 0);
     for (const mesh of this.selectables) mesh.material.clippingPlanes = [this.sectionPlane];
+    this._buildSectionCaps();
+  }
+
+  /**
+   * Draw the face the cut leaves.
+   *
+   * A clipping plane removes fragments; it does not close what it opens. On
+   * the kidney that reads correctly, because the cortex shell has pyramids,
+   * columns and calyces behind it and the cut is a way of seeing them. On an
+   * organ whose parts are hollow shells it does not: the transverse liver was
+   * eight open segments seen from the inside, with the portal branches as
+   * stubs floating in mid-air, and the coronal lung was a pair of translucent
+   * domes. Neither reads as a cut organ, which is what the viewpoint calls it.
+   *
+   * So the cross-section is computed from the triangles, once, when the cut is
+   * applied, and drawn as an ordinary mesh in the structure's own colour —
+   * `geometry/sectionFace.js` says how, and why it is not the stencil count
+   * the first version of this used.
+   *
+   * **Only structures the plane crosses.** Everything wholly on one side has
+   * no face, and looking for one costs a pass over its triangles for nothing.
+   * A structure whose mesh is not closed gets no face either: `sectionFace`
+   * returns `null` rather than closing a loop over a boundary that is part of
+   * the model.
+   */
+  _buildSectionCaps() {
+    this._disposeSectionCaps();
+    const plane = this.sectionPlane;
+    if (!plane) return;
+
+    this.root.updateMatrixWorld(true);
+    // Just inside the solid. On the plane exactly, the clip test that keeps
+    // the half is deciding on zero, and a face flickers along the edge of its
+    // own cut as the model turns.
+    const bias = (this.getSubjectBox({ excludeTags: [] }).getSize(new THREE.Vector3()).length() || 1) * 1e-4;
+
+    // Two structures can be cut in the same place: the portal branches run
+    // *through* the segments, so a vein's face and its segment's face are the
+    // same plane at the same depth, and the depth buffer flickered between
+    // them a hundred and thirty pixels at a time. Rank by size and let the
+    // smaller one win — inside a liver, the thing inside the other thing is
+    // the smaller one — using a polygon offset, which is the tie-break the
+    // depth buffer has for exactly this.
+    const ranked = new Map();
+    const crossings = [];
+    for (const structure of this.structures) {
+      // A hollow viscus is opened by a cut, not faced by one.
+      if (structure.hollow) continue;
+      for (const mesh of structure.meshes) {
+        if (!meshCrossesPlane(mesh, plane)) continue;
+        mesh.geometry.computeBoundingSphere();
+        crossings.push({ mesh, radius: mesh.geometry.boundingSphere?.radius ?? 0 });
+      }
+    }
+    crossings.sort((a, b) => b.radius - a.radius);
+    crossings.forEach((entry, rank) => ranked.set(entry.mesh, rank));
+
+    for (const structure of this.structures) {
+      if (structure.hollow) continue;
+      const faces = [];
+      for (const mesh of structure.meshes) {
+        if (!ranked.has(mesh)) continue;
+        // The cut is computed in the mesh's own coordinates, so the face can
+        // ride the mesh: whatever the organ does to it above — position,
+        // scale, a parent group — the face goes with it.
+        const local = plane.clone().applyMatrix4(new THREE.Matrix4().copy(mesh.matrixWorld).invert());
+        const geometry = sectionFaceGeometry(mesh.geometry, local);
+        if (!geometry) continue;
+        const material = new THREE.MeshStandardMaterial({
+          color: mesh.userData.baseColor.clone(),
+          roughness: 0.78,
+          metalness: 0,
+          side: THREE.DoubleSide,
+          transparent: true,
+          opacity: structure.currentOpacity,
+          polygonOffset: true,
+          polygonOffsetFactor: -1,
+          polygonOffsetUnits: -1 - ranked.get(mesh),
+        });
+        const face = new THREE.Mesh(geometry, material);
+        face.position.copy(local.normal).multiplyScalar(bias);
+        face.renderOrder = mesh.renderOrder;
+        face.userData.sectionCap = true;
+        mesh.add(face);
+        faces.push(face);
+      }
+      if (faces.length) this.caps.push({ structureId: structure.id, faces });
+    }
+    this._syncSectionCaps();
+  }
+
+  /** Faces follow what the structures are doing: the colour, and how visible. */
+  _syncSectionCaps() {
+    for (const cap of this.caps) {
+      const structure = this.byId.get(cap.structureId);
+      if (!structure) continue;
+      const colour = structure.meshes[0].userData.baseColor;
+      for (const face of cap.faces) {
+        face.visible = !structure.hidden && structure.currentOpacity > 0.012;
+        face.material.opacity = structure.currentOpacity;
+        face.material.depthWrite = structure.currentOpacity > 0.9;
+        if (!face.material.color.equals(colour)) face.material.color.copy(colour);
+      }
+    }
+  }
+
+  _disposeSectionCaps() {
+    for (const cap of this.caps) {
+      for (const face of cap.faces) {
+        face.removeFromParent();
+        face.geometry.dispose();
+        face.material.dispose();
+      }
+    }
+    this.caps = [];
   }
 
   // --- colour ---------------------------------------------------------------
@@ -733,6 +915,7 @@ export class OrganAnatomyScene {
       }
       this._refreshHighlight(structure);
     }
+    if (this.caps.length) this._syncSectionCaps();
     if (this.selected) {
       this.selection = this._info(this.selected);
       for (const listener of this.listeners) listener(this.selection);
@@ -792,7 +975,14 @@ export class OrganAnatomyScene {
 
       let target;
       if (structure.hidden) target = 0;
-      else if (this.isolatedId === structure.id) target = structure.baseOpacity;
+      // **Isolating shows the structure, whatever it looks like in situ.**
+      // This left it at `baseOpacity`, which is right for the parts that are
+      // opaque and useless for the ones that are not: "show me only this"
+      // answered with a cornea at eight per cent is a blank frame — and a
+      // structure you cannot see in place is exactly the one a reader isolates.
+      // Nothing else is drawn, so there is nothing left for it to be
+      // see-through against.
+      else if (this.isolatedId === structure.id) target = 1;
       else {
         // A cut has already taken the tissue in front away, so what is inside
         // is *there* — gating it on the slider as well would leave the reader
@@ -808,7 +998,14 @@ export class OrganAnatomyScene {
         target = lerp(structure.baseOpacity, structure.ghostOpacity, ghost) * reveal;
       }
 
-      const opacity = snap ? target : damp(structure.currentOpacity, target, 10, dt);
+      // An ease that halves the distance every frame never arrives, so a scene
+      // at rest is still changing in the fifth decimal — and a model that never
+      // stops changing cannot be photographed. Two frames of a settled cut
+      // liver differed by one pixel for that reason, which is invisible to a
+      // reader and fatal to a check that waits for the picture to stop moving.
+      // Close enough is arrival; the same reason `createRandom` is seeded.
+      const eased = snap ? target : damp(structure.currentOpacity, target, 10, dt);
+      const opacity = Math.abs(target - eased) < 0.0005 ? target : eased;
       structure.currentOpacity = opacity;
       // Solid tissue leaves the transparent pass entirely.
       //
@@ -833,6 +1030,7 @@ export class OrganAnatomyScene {
         mesh.visible = opacity > 0.012;
       }
     }
+    if (this.caps.length) this._syncSectionCaps();
   }
 
   /** Nothing to point at by default; a subclass with landmarks overrides it. */
@@ -854,6 +1052,7 @@ export class OrganAnatomyScene {
       this.viewer.renderer.localClippingEnabled = this._clippingWas;
       this._clippingWas = undefined;
     }
+    this._disposeSectionCaps();
     this.listeners.clear();
     this.hoverListeners.clear();
     this.statusListeners.clear();
@@ -876,4 +1075,73 @@ function clonePose(view) {
     position: new THREE.Vector3(...view.position),
     target: new THREE.Vector3(...(view.target ?? [0, 0, 0])),
   };
+}
+
+/**
+ * The box around what is left of `box` on the kept side of `plane`.
+ *
+ * A clipping plane keeps the half-space the plane's normal points into — the
+ * same side `_getStructureAt` accepts a hit from — and the region that leaves
+ * is a convex solid whose corners are the box corners that survived plus the
+ * points where the plane crosses the box's edges. Taking the box of exactly
+ * those points is the cut's own extent rather than an estimate of it, for any
+ * plane: the section planes in use are axis-aligned today, and a diagonal one
+ * would be framed just as correctly without anybody remembering this.
+ *
+ * The result is an outer bound of the cut *geometry*, not of the box: it can be
+ * larger than what the cut actually leaves. That is the right way round for
+ * framing, which must not crop the subject.
+ *
+ * A cut that removes the whole subject returns the box unchanged. There is
+ * nothing to frame in that case and the pose the viewpoint authored is a better
+ * answer than an empty box at the origin.
+ */
+/**
+ * Does the plane pass through this mesh, rather than past it?
+ *
+ * Measured on the world bounding box, which can say yes for a mesh the plane
+ * misses — a box is not its contents. That is the right way to be wrong here:
+ * a face the stencil finds empty costs a draw, and a face skipped for a solid
+ * the plane really does cross is a hole in the cut.
+ */
+function meshCrossesPlane(mesh, plane) {
+  const box = new THREE.Box3().setFromObject(mesh);
+  if (box.isEmpty()) return false;
+  let inside = false;
+  let outside = false;
+  for (const x of [box.min.x, box.max.x]) {
+    for (const y of [box.min.y, box.max.y]) {
+      for (const z of [box.min.z, box.max.z]) {
+        if (plane.distanceToPoint(corner.set(x, y, z)) >= 0) inside = true;
+        else outside = true;
+        if (inside && outside) return true;
+      }
+    }
+  }
+  return false;
+}
+const corner = new THREE.Vector3();
+
+function clipBoxToHalfSpace(box, plane) {
+  const corners = [];
+  for (const x of [box.min.x, box.max.x]) {
+    for (const y of [box.min.y, box.max.y]) {
+      for (const z of [box.min.z, box.max.z]) corners.push(new THREE.Vector3(x, y, z));
+    }
+  }
+  const kept = corners.filter((corner) => plane.distanceToPoint(corner) >= 0);
+  // The twelve edges, as index pairs into the corner order built above.
+  const EDGES = [
+    [0, 1], [0, 2], [0, 4], [1, 3], [1, 5], [2, 3],
+    [2, 6], [3, 7], [4, 5], [4, 6], [5, 7], [6, 7],
+  ];
+  for (const [a, b] of EDGES) {
+    const from = corners[a];
+    const to = corners[b];
+    const dFrom = plane.distanceToPoint(from);
+    const dTo = plane.distanceToPoint(to);
+    if ((dFrom >= 0) === (dTo >= 0)) continue;
+    kept.push(from.clone().lerp(to, dFrom / (dFrom - dTo)));
+  }
+  return kept.length ? new THREE.Box3().setFromPoints(kept) : box;
 }

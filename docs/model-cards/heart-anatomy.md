@@ -360,6 +360,14 @@ the Japanese names are deliberate but unreviewed.
   or zooming. The share is measured from pictures and is expected to be
   re-measured when the organ or the vessel subtree changes.
 
+  **The two numbers standing in the code today are not measurements.** The
+  shared fit stopped approximating a perspective camera with an orthographic
+  sum on 2026-09-14, which had been over-filling the band by about an eighth on
+  a subject as deep as this one; the shares were scaled by that much so the
+  composition the pictures were measured at survives the correction. They are
+  the first thing to check against pictures the next time this scene is
+  rendered — which is when its candidate assets pass the asset release gate.
+
   There are two of them, and the second one says why. On a frame taller than it
   is wide there is no panel down the side, so what runs out first is the
   subject's own shape — this heart is wider than it is tall. Measured at
@@ -403,10 +411,13 @@ watertight. It is not a patient's heart and not a surgical reference.
 
 **Catalog status:** `alpha`
 
-**Publication:** closed. The great vessels the beta's list asks for are now in
-the model, and **that is not what opens the gate**: the scene rests on candidate
-assets that have been through no asset pipeline — no manifest record, no licence
-decision, no discharged obligations, none of the five QA gates — and no
-publication decision exists. `betaPublicationProblems('heart-anatomy')` reports
-the candidate by name. No clinical review and no anatomist review exists, and
-none is implied by this card.
+**Publication:** open, as of 2026-09-15. The two candidate files went through
+the asset pipeline — manifest record, licence decision, discharged obligations,
+the QA gates — and a publication decision was taken against the repaired
+derivatives named in
+[`docs/decisions/HEART-ASSET-ADOPTION.md`](../decisions/HEART-ASSET-ADOPTION.md);
+the record is [`docs/beta-publication/heart-anatomy.md`](../beta-publication/heart-anatomy.md)
+and the scope it was taken over is in `src/catalog/publicationScopes.js`.
+**What is open is the anatomy scene and nothing more.** No clinical review and
+no anatomist review exists, and none is implied by this card — the registry
+records both as pending, which is the same footing the brain is published on.

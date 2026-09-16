@@ -103,13 +103,24 @@ export function clip(value, limit) {
  * "Hepatorenal syndrome — the haemodynamic mechanism" is 49 characters and has
  * to fit on two lines without touching the badges.
  */
-export function titleSize(text) {
+export function titleSize(text, scale = 1) {
   const length = String(text ?? '').length;
-  if (length <= 18) return 82;
-  if (length <= 30) return 68;
-  if (length <= 44) return 56;
-  return 46;
+  const size = length <= 18 ? 82 : length <= 30 ? 68 : length <= 44 ? 56 : 46;
+  return Math.round(size * scale);
 }
+
+/**
+ * How far the title may be stepped down when the card still does not fit.
+ *
+ * The size above is keyed on how many characters a title has, and characters
+ * are a proxy for how wide it is: "Interactive stomach anatomy" and
+ * "Interactive biliary anatomy" are both twenty-seven characters, and only one
+ * of them wraps to a second line. Rather than tune the thresholds for whichever
+ * organ was published last, the renderer measures the card and takes a step
+ * off the title if it has to — the same way it already takes characters off the
+ * description.
+ */
+export const TITLE_SCALES = Object.freeze([1, 0.88, 0.78]);
 
 /** Japanese sets denser than Latin at the same point size, so it is set smaller. */
 export const subtitleSize = (text) => (String(text ?? '').length <= 22 ? 40 : 32);
@@ -140,7 +151,7 @@ export const BODY_BUDGET = { start: 82, floor: 24, step: 6 };
  */
 export function socialCardHtml(
   scene,
-  { system = null, reviewStatus = 'pending', bodyChars = BODY_BUDGET.start } = {}
+  { system = null, reviewStatus = 'pending', bodyChars = BODY_BUDGET.start, titleScale = 1 } = {}
 ) {
   const maturity = MATURITY[scene.status] ?? MATURITY.prototype;
   const review = REVIEW[reviewStatus] ?? REVIEW.pending;
@@ -148,6 +159,7 @@ export function socialCardHtml(
 
   return card({
     eyebrow: systemLabel,
+    titleScale,
     title: clip(scene.titleEn, 56),
     titleJa: clip(scene.titleJa, 30),
     body: clip(scene.descriptionJa, bodyChars),
@@ -180,7 +192,7 @@ const TONES = {
   plain: { border: '#2b3648', ink: '#a7b6ce' },
 };
 
-function card({ eyebrow, title, titleJa, body, badges }) {
+function card({ eyebrow, title, titleJa, body, badges, titleScale = 1 }) {
   const badge = ({ text, tone }) => {
     const colours = TONES[tone] ?? TONES.plain;
     return `<span class="badge" style="border-color:${colours.border};color:${colours.ink}">${escapeHtml(text)}</span>`;
@@ -228,7 +240,7 @@ function card({ eyebrow, title, titleJa, body, badges }) {
   }
   h1 {
     margin-top: 18px;
-    font-size: ${titleSize(title)}px;
+    font-size: ${titleSize(title, titleScale)}px;
     line-height: 1.04; letter-spacing: -0.035em; font-weight: 750;
     max-width: 22ch;
   }

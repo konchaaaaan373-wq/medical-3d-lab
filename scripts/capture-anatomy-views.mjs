@@ -36,6 +36,7 @@
  *                    `--recipe all` for every one it offers)
  *   --width <px>     viewport width (default: 1280)
  *   --height <px>    viewport height (default: 720)
+ *   --layer <0..1>   set the anatomical-layer slider before rendering
  *   --no-labels      turn the structure labels off before rendering
  *   --preview        unlock the build (needs VITE_ALLOW_PREVIEW=1 at build time)
  *   --headed         show the browser
@@ -44,6 +45,7 @@ import { existsSync, mkdirSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 
 import { chromiumExecutable } from './lib/browser.mjs';
+import { differingPixels, settledPixels } from './lib/frames.mjs';
 import { serveDist } from './lib/serve-dist.mjs';
 import { DEV_ASSET_ROOT } from '../src/catalog/devAssets.js';
 
@@ -61,6 +63,7 @@ const sceneSlug = value('--scene', 'brain-anatomy');
 const outDir = value('--out', 'shots');
 const onlyViews = values('--view');
 const onlyModes = values('--mode');
+const layer = value('--layer') === null ? null : Number(value('--layer'));
 const onlyRecipes = values('--recipe');
 const width = Number(value('--width', '1280'));
 const height = Number(value('--height', '720'));
@@ -149,6 +152,29 @@ try {
 
   const box = await page.locator('canvas').first().boundingBox();
   if (!box) die('the scene rendered no canvas');
+
+  /**
+   * Put the anatomical-layer slider where the caller asked before shooting.
+   *
+   * Without this every set is the state the scene opens in, which for a scene
+   * whose structures arrive with depth is a picture of the outside of it. The
+   * oesophagus was the case that made it obvious: its "where the arch and
+   * bronchus cross" viewpoint is named after two structures that appear at a
+   * quarter of the way along the slider, so a set shot at rest showed a
+   * viewpoint with its subject missing — and nothing in the picture said why.
+   */
+  if (layer !== null) {
+    if (!(layer >= 0 && layer <= 1)) die('--layer takes a number between 0 and 1');
+    const slider = page.locator('.console .slider, .slider').first();
+    if (!(await slider.count())) die('the scene offers no anatomical-layer slider to set');
+    await slider.evaluate((element, value) => {
+      const max = Number(element.max || 1);
+      element.value = String(Math.round(value * max));
+      element.dispatchEvent(new Event('input', { bubbles: true }));
+    }, layer);
+    // The layer eases like everything else; the settle below still decides.
+    await page.waitForTimeout(600);
+  }
   // By its stable name, not by its title: the title is prose and prose follows
   // the reader's language, so this used to stop finding the button whenever the
   // interface was in Japanese — which is the default.
@@ -183,10 +209,16 @@ try {
    * Two frames are kept only when they are identical **and** painted. Headless
    * WebGL sometimes hands back a frame with nothing drawn — the model gone and
    * only the DOM annotations over the background — and two of those in a row
-   * are identical and worthless. A frame of this model compresses to hundreds
-   * of kilobytes and an empty one to under twenty, so the floor separates them;
-   * it is a coarse test and it is the only one available from outside the
-   * canvas, so it is a floor rather than a judgement of the picture.
+   * are identical and worthless.
+   *
+   * "Painted" used to mean "the PNG is over 40 kB", on the reasoning that a
+   * frame of a model compresses to hundreds of kilobytes and an empty one to
+   * under twenty. That is a proxy for the thing, and it threw away real
+   * pictures: a cut liver is mostly large flat fields of one colour, which is
+   * exactly what PNG compresses best, and its two section frames came in at
+   * 29 kB and were dropped as empty every single run. The frame is decoded and
+   * measured now — what fraction of it is not the background colour — which is
+   * the question the floor was standing in for.
    *
    * Both limits are hard: at most `ATTEMPTS` shots and at most `PATIENCE`
    * milliseconds. Whatever has not settled by then is reported as not settled
@@ -196,19 +228,69 @@ try {
    */
   const ATTEMPTS = 20;
   const PATIENCE = 60000;
-  const PAINTED_BYTES = 40000;
+  /** Share of the frame that has to be something other than the background. */
+  const PAINTED_FRACTION = 0.01;
+
+  /**
+   * How much of this frame is not the background, measured by decoding it.
+   *
+   * The background is read from a corner rather than assumed: the scene offers
+   * three of them (black, light grey, white) and a test that knew only one
+   * would call the other two empty.
+   */
+  const paintedFraction = (bytes) =>
+    page.evaluate(async (dataUrl) => {
+      const image = await new Promise((done, fail) => {
+        const element = new Image();
+        element.onload = () => done(element);
+        element.onerror = fail;
+        element.src = dataUrl;
+      });
+      const canvas = document.createElement('canvas');
+      canvas.width = image.width;
+      canvas.height = image.height;
+      const context = canvas.getContext('2d', { willReadFrequently: true });
+      context.drawImage(image, 0, 0);
+      const { data } = context.getImageData(0, 0, canvas.width, canvas.height);
+      const at = (x, y) => (y * canvas.width + x) * 4;
+      const background = at(2, 2);
+      let painted = 0;
+      let counted = 0;
+      // Every fourth pixel each way: sixteen times faster, and the answer is a
+      // fraction rather than a count.
+      for (let y = 0; y < canvas.height; y += 4) {
+        for (let x = 0; x < canvas.width; x += 4) {
+          const i = at(x, y);
+          counted += 1;
+          const delta = Math.max(
+            Math.abs(data[i] - data[background]),
+            Math.abs(data[i + 1] - data[background + 1]),
+            Math.abs(data[i + 2] - data[background + 2])
+          );
+          if (delta > 6) painted += 1;
+        }
+      }
+      return counted ? painted / counted : 0;
+    }, `data:image/png;base64,${bytes.toString('base64')}`);
+
   const captureSettled = async (path) => {
     const deadline = Date.now() + PATIENCE;
     let previous = null;
+    let closest = null;
     for (let attempt = 0; attempt < ATTEMPTS && Date.now() < deadline; attempt += 1) {
       const bytes = await page.screenshot({ clip: box });
-      if (bytes.length > PAINTED_BYTES && previous?.equals(bytes)) {
-        writeFileSync(path, bytes);
-        return attempt;
+      if (previous) {
+        const differing = await differingPixels(page, previous, bytes);
+        closest = closest === null ? differing : Math.min(closest, differing);
+        if (differing <= settledPixels(box) && (await paintedFraction(bytes)) > PAINTED_FRACTION) {
+          writeFileSync(path, bytes);
+          return attempt;
+        }
       }
       previous = bytes;
       await page.waitForTimeout(400);
     }
+    if (closest !== null) console.error(`    closest two frames still differed by ${closest} pixel(s)`);
     return null;
   };
 
@@ -270,7 +352,10 @@ try {
       await page.waitForTimeout(300);
     }
   }
-  console.log(`\n${sceneSlug} at ${width}x${height}: ${views.length} viewpoint(s) x ${modes.length} colour mode(s) -> ${outDir}`);
+  const at = layer === null ? 'the layer the scene opens at' : `layer ${layer}`;
+  console.log(
+    `\n${sceneSlug} at ${width}x${height}, ${at}: ${views.length} viewpoint(s) x ${modes.length} colour mode(s) -> ${outDir}`
+  );
   if (unsettled) die(`${unsettled} frame(s) never settled; the set is not comparable.`);
 } finally {
   await browser.close();

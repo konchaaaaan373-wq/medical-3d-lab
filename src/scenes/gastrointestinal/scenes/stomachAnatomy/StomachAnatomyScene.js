@@ -109,7 +109,10 @@ export class StomachAnatomyScene extends OrganAnatomyScene {
     };
 
     // The wall is what steps back; everything the slider is for is behind it.
-    const wall = { ghostAt: 0.6, ghostOpacity: 0.16 };
+    // `hollow` is the other thing this wall is: a surface standing for a bag,
+    // so the coronal cut opens the stomach rather than filling its outline
+    // with gastric pink and calling the stomach solid.
+    const wall = { ghostAt: 0.6, ghostOpacity: 0.16, hollow: true };
     for (const part of stomach.parts) declare(part.id, [part.mesh], wall);
     declare('esophagus', [stomach.esophagus.object], wall);
     declare('pyloric-sphincter', [stomach.sphincter]);

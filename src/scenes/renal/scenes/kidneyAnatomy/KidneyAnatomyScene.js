@@ -219,7 +219,13 @@ export class KidneyAnatomyScene extends OrganAnatomyScene {
       structures,
       dispose: () => {
         detailed.dispose();
-        landmark.dispose();
+        // The landmark build has no `dispose` of its own — only the `parts`
+        // build carves anything that owns memory — and calling it threw on the
+        // way out of the scene, before `disposeObject` had released a single
+        // geometry. Optional here for the same reason it is optional on the
+        // bladder: a builder that has nothing to release says so by not
+        // offering the method.
+        landmark.dispose?.();
         ureters.left.dispose();
         ureters.right.dispose();
         bladder.dispose?.();

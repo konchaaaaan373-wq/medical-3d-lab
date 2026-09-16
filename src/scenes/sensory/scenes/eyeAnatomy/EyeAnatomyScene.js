@@ -55,13 +55,22 @@ export class EyeAnatomyScene extends OrganAnatomyScene {
     },
     // What an ophthalmoscope shows: the front of the eye out of the way, the
     // disc nasal and the macula temporal to it.
+    //
+    // The four recti go too, and they are the reason this note is long. They
+    // are outside the sclera, in front of the equator, and the geometry that
+    // puts them there is right — but from in front, looking past the front of
+    // the eye at the back wall, the near ones project *over* the fundus. Three
+    // red straps lay across it. Nothing was in the wrong place and the picture
+    // was wrong anyway, which is the difference between a model being correct
+    // and a view being a view of something. An ophthalmoscope does not show
+    // them either.
     {
       id: 'fundus',
       label: 'The fundus',
       labelJa: '眼底',
       position: [0, 0, 3.0],
       target: [0, 0, -0.7],
-      hideTags: ['anterior', 'media'],
+      hideTags: ['anterior', 'media', 'muscle'],
     },
     {
       id: 'posterior',
@@ -118,21 +127,36 @@ export class EyeAnatomyScene extends OrganAnatomyScene {
 
     // The transparent parts are transparent at rest. `baseOpacity` is where a
     // scene says so: set on the material in the builder it lasts one frame.
-    // These are low because they stack — a double-sided shell is two layers,
-    // and cornea plus chamber is four of them over the iris and pupil a reader
-    // recognises an eye by. At a fifth each the eye was a white ball. They are
-    // not lower still because isolating a structure shows it at `baseOpacity`,
-    // and a cornea nobody can see is not a cornea a reader can isolate.
+    //
+    // **These are much lower than they look, and they were still too high.**
+    // What is in front of the pupil is a stack, and a stack multiplies: the
+    // cornea is a shell with a wall, so a ray through it crosses two surfaces,
+    // and drawn double-sided it crossed four. Measured on the opening view,
+    // the pupil — `#0b080c`, the one thing a reader recognises an eye by —
+    // rendered at luminance **161** with the old values and **21** with the
+    // cornea and the chamber taken away entirely. The eye was a white ball,
+    // which is what the note that used to be here said and then set values
+    // that kept it one.
+    //
+    // A real cornea is not a white veil: it is a highlight, a rim, and
+    // otherwise nothing. So it is drawn as one. It stopped being double-sided
+    // — the section shows its cut edge from the half that stays — and the two
+    // are now thin enough that the iris reads brown and the pupil reads dark.
+    // They can be, because **isolating a structure now shows it solid**
+    // (`OrganAnatomyScene`); the old note said they could not go lower
+    // because "a cornea nobody can see is not a cornea a reader can isolate",
+    // which was true of the isolate, not of the cornea.
+    //
     // No `ghostAt`: it is see-through at rest, so there is nothing for the
     // slider to get out of the way, and a structure that starts transparent is
     // not one of the layers that steps back.
-    declare('cornea', { baseOpacity: 0.16, doubleSided: true });
+    declare('cornea', { baseOpacity: 0.06 });
     declare('iris', { ghostAt: 0.55, ghostOpacity: 0.16, doubleSided: true });
     declare('pupil', { ghostAt: 0.55, ghostOpacity: 0.12 });
     declare('lens', { baseOpacity: 0.62, preferredView: 'sagittal-section' });
     declare('ciliary-body', { preferredView: 'sagittal-section' });
 
-    declare('anterior-chamber', { baseOpacity: 0.08, preferredView: 'sagittal-section' });
+    declare('anterior-chamber', { baseOpacity: 0.04, preferredView: 'sagittal-section' });
     declare('vitreous-body', { baseOpacity: 0.1, preferredView: 'sagittal-section' });
 
     declare('optic-disc', { preferredView: 'fundus' });
