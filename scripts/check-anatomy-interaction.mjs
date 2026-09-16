@@ -302,9 +302,6 @@ const SCENE_POINTS = {
     [0.3617, 0.56, 'Patellar tendon'],
   ],
 
-
-
-
   // Three structures, named again. With the humeral shaft in the framing box
   // (F-134) this scene could hold **one** name still from run to run — three of
   // its four candidates all came back "Glenoid labrum", and two points swapped
@@ -318,9 +315,6 @@ const SCENE_POINTS = {
     [0.3617, 0.34, 'Coracoid process'],
     [0.4217, 0.45, 'Scapula'],
   ],
-
-
-
   // The pelvis, the socket, the head in it, and the femur below.
   'hip-anatomy': [[0.58, 0.34], [0.50, 0.44], [0.45, 0.45], [0.42, 0.66]],
   // Into the funnel from in front: the midline, the ring on each side of it, and the floor below.
@@ -770,7 +764,11 @@ try {
   const modelSpan = async (fy, step = 0.02) => {
     let first = null;
     let last = null;
-    for (let fx = 0.02; fx <= 0.96; fx += step) {
+    // The bound carries a tolerance because `fx` is accumulated: adding 0.02
+    // forty-seven times lands on 0.9600000000000003, which fails a bare
+    // `<= 0.96` — so the sweep stopped at 0.94 and reported every model that
+    // reaches the right edge as 2% of the frame narrower than it is.
+    for (let fx = 0.02; fx <= 0.96 + 1e-9; fx += step) {
       const at = Number(fx.toFixed(3));
       if (await overModel(at, fy)) {
         if (first === null) first = at;
@@ -793,16 +791,22 @@ try {
    * that were never the same quantity, which then became a target for how big
    * to make the joints. Codex caught it on #117.
    *
-   * Coarser than `modelSpan` on purpose: 4% of the frame per step over nine
-   * rows costs about a quarter of a minute, and the question it answers —
-   * roughly how much of the frame does this scene use — does not need 2%.
+   * Coarser than `modelSpan` on purpose: the question it answers — roughly how
+   * much of the frame does this scene use — does not need 2%, and 4% per step
+   * halves a sweep the call site measures at about three minutes.
+   *
+   * The rows include 0.45, the row `modelSpan` is called at below, so "the
+   * widest anywhere" can never come back narrower than the mid-height span the
+   * summary prints beside it. Without it the knee reported a silhouette of 0.12
+   * and a middle row of 0.14 in the same run — the wider number being from a
+   * row this sweep had not looked at.
    */
   const modelSilhouette = async () => {
     let widest = null;
     let widestRow = null;
     let rowsOnModel = 0;
     const coarse = [];
-    const rows = [0.15, 0.24, 0.33, 0.42, 0.5, 0.58, 0.67, 0.76, 0.85];
+    const rows = [0.15, 0.24, 0.33, 0.42, 0.45, 0.5, 0.58, 0.67, 0.76, 0.85];
     for (const fy of rows) {
       const span = await modelSpan(fy, 0.04);
       if (!span) continue;
@@ -820,15 +824,19 @@ try {
     // Re-sweeping only its winner would have published the smaller number as
     // the model's width.
     //
-    // So every row within one coarse step of the coarse maximum is swept again
-    // at full resolution, and the widest of those is the answer — two or three
-    // rows in practice rather than nine.
+    // So every row that could still be the widest is swept again at full
+    // resolution, and the widest of those is the answer. **The window is the
+    // whole of that quantisation, 8%, not one step.** At one step a row the
+    // coarse pass under-read by 5% is dropped although its true width can
+    // exceed the winner's, which is the same mistake one row up: the coarse
+    // grid is a subset of the fine one, so it only ever under-reads, by up to
+    // one step at each end.
     if (widest) {
       const coarseBest = widest[1] - widest[0];
       let best = null;
       let bestRow = null;
       for (const [fy, span] of coarse) {
-        if (span[1] - span[0] < coarseBest - 0.04) continue;
+        if (span[1] - span[0] < coarseBest - 0.08) continue;
         const fine = await modelSpan(fy);
         if (!fine) continue;
         if (!best || fine[1] - fine[0] > best[1] - best[0]) {
@@ -860,12 +868,21 @@ try {
   //    Checked here because it is invisible anywhere else: both framings are
   //    valid poses, the scene is not broken, and the only symptom is that the
   //    first thing a reader sees is not the composition the scene meant.
-  // Off unless asked for. Measured: the sweep is about three hundred pointer
-  // moves, each one a raycast and a repaint under software GL, and it put three
-  // minutes on a scene that takes two and a half. `verify:anatomy` runs every
-  // scene in series and the brain alone is ten minutes, so a measurement that
-  // answers a cross-scene question — how much of the frame does this one use —
-  // does not belong in every run. Pass `--silhouette` when that is the question.
+  const openingSpan = await modelSpan(0.45);
+
+  // Off unless asked for, and taken **after** the row above rather than before
+  // it. Measured: the sweep is about three hundred pointer moves, each one a
+  // raycast and a repaint under software GL, and it put three minutes on a
+  // scene that takes two and a half. `verify:anatomy` runs every scene in
+  // series and the brain alone is ten minutes, so a measurement that answers a
+  // cross-scene question — how much of the frame does this one use — does not
+  // belong in every run. Pass `--silhouette` when that is the question.
+  //
+  // Ordering matters for the same reason the check below exists: it is about
+  // the framing a scene *opens* at, and three minutes of pointer moves between
+  // the scene opening and that row is three minutes for a late re-frame to
+  // happen unseen, which would leave "opens differently from how it resets"
+  // green about the drift it was written to catch.
   const silhouette = flag('--silhouette') ? await modelSilhouette() : null;
   if (silhouette) {
     observed.silhouette = silhouette;
@@ -875,9 +892,10 @@ try {
         `on the model at ${silhouette.rowsOnModel} of ${silhouette.rows} rows. ` +
         'Compare scenes with this, not with the mid-height span below.'
     );
+  } else if (flag('--silhouette')) {
+    notes.push('silhouette: the model was not found on any of the rows swept, so no width was measured');
   }
 
-  const openingSpan = await modelSpan(0.45);
   if (!openingSpan) {
     notes.push('the model does not cross the middle of the frame, so the opening framing was not measured');
   } else {
@@ -2230,7 +2248,10 @@ if (observed.openingFraming) {
   const { opening, reset } = observed.openingFraming;
   console.log(
     `  across the frame's middle row the model spans ${opening[0]}..${opening[1]} when the scene opens, ` +
-      `${reset[0]}..${reset[1]} after a display reset (one row — for the scene's width see the silhouette note)`
+      `${reset[0]}..${reset[1]} after a display reset (one row — ` +
+      // Pointing at a note that is only printed with `--silhouette` reads, on
+      // every default run, as a note the reader has failed to find.
+      `${observed.silhouette ? "for the scene's width see the silhouette note" : "for the scene's width pass --silhouette"})`
   );
 }
 console.log(
