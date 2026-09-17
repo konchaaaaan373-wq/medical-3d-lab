@@ -137,6 +137,14 @@ export function framePose(pose, aspect, view = 'data', fovDegrees = 42, bottomIn
  * the real elements rather than assumed. `coverage` is the share of the band
  * the subject should take: a starting composition, not a threshold.
  *
+ * The default went 0.78 -> 0.88 when the distance below stopped being an
+ * orthographic approximation. The old sum over-filled the band by about a
+ * eighth on a typical organ — which is why 0.78 looked right — so keeping it
+ * would have shrunk every composition that had already been measured from
+ * pictures by that much. The two changes together leave the nine published
+ * scenes the size they were and give the skin block, which the approximation
+ * was cutting off, a frame that holds it.
+ *
  * @param {{position: any, target: any}} pose the viewpoint to adjust
  * @param {object} options
  * @param {{centre: any, corners: any[]}} options.bounds the subject, in world space
@@ -145,7 +153,7 @@ export function framePose(pose, aspect, view = 'data', fovDegrees = 42, bottomIn
  * @param {{left?: number, right?: number, top?: number, bottom?: number}} [options.insets]
  * @param {number} [options.coverage]
  */
-export function fitPoseToSafeArea(pose, { bounds, aspect, fovDegrees, insets = {}, coverage = 0.78 }) {
+export function fitPoseToSafeArea(pose, { bounds, aspect, fovDegrees, insets = {}, coverage = 0.88 }) {
   const unchanged = { position: pose.position.clone(), target: pose.target.clone() };
   if (!bounds?.centre || !bounds.corners?.length || !(coverage > 0)) return unchanged;
   const left = clamp01(insets.left);
@@ -168,30 +176,59 @@ export function fitPoseToSafeArea(pose, { bounds, aspect, fovDegrees, insets = {
   rightAxis.normalize();
   const upAxis = rightAxis.clone().cross(forward).normalize();
 
-  let halfWidth = 0;
-  let halfHeight = 0;
+  const tanVertical = Math.tan((fovDegrees * Math.PI) / 180 / 2);
+  const tanHorizontal = tanVertical * aspect;
+  // Where the band's centre sits in normalised device coordinates, and how far
+  // out from it the subject is allowed to reach. `coverage` shrinks the band
+  // about its own centre, so it is a margin on all four sides rather than a
+  // fudge factor on a distance.
+  const centreX = left - right;
+  const centreY = bottom - top;
+  const reachX = coverage * bandWidth;
+  const reachY = coverage * bandHeight;
+
+  // Each corner is asked how far back the camera has to be for *it* to land
+  // inside that reach, and the answer is the farthest of those.
+  //
+  // This used to take the subject's half-width and half-height, divide by the
+  // frame's half-angle and pan afterwards — an orthographic sum on a
+  // perspective camera, twice over. A corner nearer the camera than the centre
+  // projects larger than the sum says, and the pan moves it further across the
+  // frame than it moves the centre. So a subject with depth was framed to
+  // overflow, and the deeper it was against its distance the worse the error.
+  // The skin block is where it stopped being invisible: a cube 3.2 across
+  // viewed from under four units away, its near face a third closer than its
+  // centre, and "the cut face" put the whole subcutaneous layer off the bottom
+  // of the frame on a fit that reported success.
+  //
+  // Both corrections are in the inequality below, which is the projection
+  // solved for the distance rather than approximated: with the camera at
+  // `distance` and the pan that goes with it, no corner leaves the reach.
+  let spread = 0;
+  let distance = 0;
   for (const corner of bounds.corners) {
     const offset = corner.clone().sub(bounds.centre);
-    halfWidth = Math.max(halfWidth, Math.abs(offset.dot(rightAxis)));
-    halfHeight = Math.max(halfHeight, Math.abs(offset.dot(upAxis)));
+    const across = offset.dot(rightAxis);
+    const up = offset.dot(upAxis);
+    // How much farther from the camera than the centre this corner is; negative
+    // for the near ones, which are the ones that used to be got wrong.
+    const along = offset.dot(forward);
+    spread = Math.max(spread, Math.abs(across), Math.abs(up));
+    distance = Math.max(
+      distance,
+      across / (reachX * tanHorizontal) - (along * (centreX + reachX)) / reachX,
+      (along * (centreX - reachX)) / reachX - across / (reachX * tanHorizontal),
+      up / (reachY * tanVertical) - (along * (centreY + reachY)) / reachY,
+      (along * (centreY - reachY)) / reachY - up / (reachY * tanVertical)
+    );
   }
-  if (!(halfWidth > 0) || !(halfHeight > 0)) return unchanged;
-
-  const tanVertical = Math.tan((fovDegrees * Math.PI) / 180 / 2);
-  // The band is only part of the frame, so the frame has to cover more than the
-  // band by exactly the share the panels have taken.
-  const distance = Math.max(
-    (halfHeight / coverage / bandHeight) / tanVertical,
-    (halfWidth / coverage / bandWidth) / (aspect * tanVertical)
-  );
+  if (!(spread > 0) || !(distance > 0)) return unchanged;
 
   const target = bounds.centre.clone();
   const position = target.clone().addScaledVector(forward, -distance);
 
-  // Where the band's centre is, in normalised device coordinates, and the world
-  // shift that puts the subject there. Both ends move, so this is a pan.
-  const centreX = left - right;
-  const centreY = bottom - top;
+  // The world shift that puts the band's centre where the subject is. Both ends
+  // move, so this is a pan; the distance above was solved with it in hand.
   if (centreX !== 0 || centreY !== 0) {
     const frameHalfHeight = distance * tanVertical;
     const shift = rightAxis

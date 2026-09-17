@@ -36,12 +36,22 @@ export const SITE_CARD = 'site';
 
 const systemById = new Map(SYSTEMS.map((system) => [system.id, system]));
 
-/** The markup a scene's card would be drawn from, at a given description length. */
-export const htmlForScene = (scene, bodyChars) =>
+/**
+ * The markup a scene's card would be drawn from, at the description length and
+ * title size the rasteriser settled on.
+ *
+ * Both are recorded rather than recomputed, because both are answers the
+ * browser gave: the description shrinks until the card fits, and the title
+ * steps down after it if the card still does not. A check that assumed the
+ * full-size title would report three organs as changed the day they were
+ * published, having changed nothing.
+ */
+export const htmlForScene = (scene, bodyChars, titleScale = 1) =>
   socialCardHtml(scene, {
     system: systemById.get(scene.system) ?? null,
     reviewStatus: clinicalReviewPresentation(scene).status,
     bodyChars,
+    titleScale,
   });
 
 /**
@@ -66,7 +76,7 @@ export function socialCardProblems(dir = join('public', 'social')) {
   const recorded = manifest?.cards ?? {};
 
   const expected = [
-    ...CRAWLABLE_SCENES.map((scene) => ({ slug: scene.slug, html: (n) => htmlForScene(scene, n) })),
+    ...CRAWLABLE_SCENES.map((scene) => ({ slug: scene.slug, html: (n, scale) => htmlForScene(scene, n, scale) })),
     { slug: SITE_CARD, html: () => siteCardHtml({ sceneCount: CRAWLABLE_SCENES.length }) },
   ];
 
@@ -80,7 +90,7 @@ export function socialCardProblems(dir = join('public', 'social')) {
       problems.push(`${slug}: recorded in ${MANIFEST_FILE} but the PNG is missing`);
       continue;
     }
-    const digest = cardDigest(html(entry.bodyChars));
+    const digest = cardDigest(html(entry.bodyChars, entry.titleScale ?? 1));
     if (digest !== entry.html) {
       problems.push(
         `${slug}: the catalogue no longer matches the committed card ` +

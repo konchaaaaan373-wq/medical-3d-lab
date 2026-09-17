@@ -33,6 +33,8 @@ import {
 } from '../src/catalog/publicManifest.js';
 import { assetById } from '../src/catalog/assetManifest.js';
 import { sceneRevisionPin } from '../src/catalog/modelRevisions.js';
+import { hasOrganModel } from '../src/app/organModels.js';
+import { HERO_ROTATION } from '../src/data/landingHero.js';
 import { modelProfileForScene } from '../src/catalog/modelProfiles.js';
 import { createLockedSurface } from '../src/app/LockedSurface.js';
 import { createSceneFailureFallback } from '../src/app/SceneFailureFallback.js';
@@ -50,7 +52,7 @@ const brain = () => ({ ...sceneById('brain-anatomy') });
 
 test('beta release: the beta is anatomy, and it is not a list of organs', () => {
   assert.equal(RELEASE_CHANNEL, 'beta');
-  assert.deepEqual([...BETA_ANATOMY_CANDIDATES], ['brain-anatomy', 'heart-anatomy']);
+  assert.deepEqual([...BETA_ANATOMY_CANDIDATES], ['brain-anatomy', 'heart-anatomy', 'lung-anatomy', 'liver-anatomy']);
   assert.equal(RELEASED_SCENES.length + LOCKED_SCENES.length, SCENES.length);
   assert.equal(
     new Set([...RELEASED_SCENES, ...LOCKED_SCENES].map((scene) => scene.id)).size,
@@ -73,9 +75,11 @@ test('beta release: the beta is anatomy, and it is not a list of organs', () => 
   // a deliberate edit to the gate rather than a side effect of adding a scene.
   // The heart joined on 2026-09-15, which is what the whole gate was built to
   // make hard: an adopted asset, a discharged licence, and a publication
-  // decision pinned to both hashes and to the scene revision.
-  assert.deepEqual(RELEASED_SCENES.map((scene) => scene.id), ['brain-anatomy', 'heart-anatomy']);
-  assert.deepEqual([...PUBLIC_MANIFEST.organs], ['brain', 'heart']);
+  // decision pinned to both hashes and to the scene revision. The lung and the
+  // liver joined on 2026-09-16 — procedural, so no asset and no licence, and
+  // the pin is the scene revision alone.
+  assert.deepEqual(RELEASED_SCENES.map((scene) => scene.id), ['brain-anatomy', 'heart-anatomy', 'lung-anatomy', 'liver-anatomy']);
+  assert.deepEqual([...PUBLIC_MANIFEST.organs], ['brain', 'heart', 'lungs', 'liver']);
 });
 
 test('beta release: the heart that opened is the anatomy scene, and only that one', () => {
@@ -346,7 +350,7 @@ test('release channel: a channel is a name for a policy, and a name alone opens 
   // and that a registered-but-unselected policy publishes nothing by existing.
   assert.equal(RELEASE_CHANNEL, 'beta');
   assert.ok(Object.keys(RELEASE_POLICIES).includes('beta'));
-  assert.deepEqual(RELEASED_SCENES.map((scene) => scene.id), ['brain-anatomy', 'heart-anatomy']);
+  assert.deepEqual(RELEASED_SCENES.map((scene) => scene.id), ['brain-anatomy', 'heart-anatomy', 'lung-anatomy', 'liver-anatomy']);
 
   const brain = sceneById('brain-anatomy');
   const disease = sceneById('heart-failure');
@@ -973,4 +977,52 @@ test('beta gap: a supplied catalogue is the one the gate is asked about', () => 
     !explicit.remaining.some((line) => /Prototype/.test(line)),
     'an explicitly supplied resolveScene was ignored'
   );
+});
+
+test('a published organ is one the hero can show', () => {
+  // Decided on 2026-09-16: an organ the landing hero cannot draw is not
+  // published, and the beta stays at the four organs that have a hero model.
+  //
+  // The rule already held, but only as a consequence of two tests that are
+  // about other things — the chooser drawing one control per published organ,
+  // and every rotation entry naming an organ with a builder. Between them a
+  // published organ without a builder fails, but neither says why, and a
+  // reader looking for the rule finds it in neither. It cost the knee its
+  // publication (F-128: six points, six distinct structures, no hero model),
+  // so it is worth stating once, where the release is decided.
+  //
+  // This is a *product* rule, not a technical limit. The hero is the surface
+  // most visitors meet first; an organ that cannot appear there is published
+  // into a place nobody arrives at.
+  //
+  // **Reaching the hero takes two things, and neither implies the other.** The
+  // first version of this test asked only for geometry, and review caught that
+  // it would pass for an organ that never appears: the kidney has had a builder
+  // throughout and no `HERO_ORGANS` entry, so publishing it would have left it
+  // off the hero with this rule still green — falling back to the indirect
+  // chooser-count failure this test exists to replace.
+  const shown = new Set(HERO_ROTATION.map((entry) => entry.organ));
+  for (const organId of PUBLIC_MANIFEST.organs) {
+    // 1. Geometry: something for the hero to draw.
+    assert.equal(
+      hasOrganModel(organId),
+      true,
+      `"${organId}" is published and the hero has no model for it — either add one to ` +
+        'ORGAN_HERO_BUILDERS or do not publish the organ'
+    );
+    // 2. Declaration: `heroOrgansForModels` keeps only the candidates listed in
+    //    HERO_ORGANS, so an organ missing from it is silently absent from the
+    //    rotation however good its geometry is.
+    assert.equal(
+      shown.has(organId),
+      true,
+      `"${organId}" is published and the hero never shows it — add an entry to ` +
+        'HERO_ORGANS in src/data/landingHero.js, or do not publish the organ'
+    );
+  }
+
+  // And the other direction is deliberately *not* asserted: a hero model for an
+  // organ the beta does not open is fine — the kidney has one and is held back
+  // by F-126 rather than by anything here.
+  assert.ok(hasOrganModel('kidney'), 'the kidney still has its hero model, unpublished');
 });

@@ -31,7 +31,7 @@ test('next-beta: registering the policy changes nothing about what is published'
   // it still selects `beta`; a policy that is registered and not selected
   // publishes nothing by existing.
   assert.equal(RELEASE_CHANNEL, 'beta');
-  assert.deepEqual(RELEASED_SCENES.map((scene) => scene.id), ['brain-anatomy', 'heart-anatomy']);
+  assert.deepEqual(RELEASED_SCENES.map((scene) => scene.id), ['brain-anatomy', 'heart-anatomy', 'lung-anatomy', 'liver-anatomy']);
 });
 
 test('next-beta ⊇ beta: switching the channel can only ever add', () => {

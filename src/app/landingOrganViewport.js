@@ -2,6 +2,49 @@ import * as THREE from 'three';
 import { Viewer } from './Viewer.js';
 import { distanceScaleForAspect, framePose } from './framing.js';
 import { loadScene } from '../catalog/index.js';
+
+/**
+ * Name the structure nearest the middle of the frame.
+ *
+ * `selectAtCanvasPoint` is the only thing asked, so this works on every scene
+ * that has one and nothing in `src/scenes/` had to change to support it — which
+ * matters more than it looks: the three published scenes are pinned to their
+ * source digests, and touching them would have closed the beta until three
+ * publication records were taken again.
+ *
+ * A miss clears the selection, which is exactly what a click on the background
+ * does, so a search that misses on its way to a hit leaves nothing behind. If
+ * every point misses, the last call has cleared the selection and the reader is
+ * told nothing — the honest answer when the model really is not there.
+ *
+ * The search stops well short of the edges: a structure in the far corner is
+ * not "what is in front of you", and naming it would be a different lie from
+ * the one this fixes.
+ *
+ * @param {{selectAtCanvasPoint?: (x: number, y: number) => boolean}} scene
+ * @param {{width: number, height: number}} rect
+ * @returns {boolean} whether anything was named
+ */
+export function nameNearestToCentre(scene, rect) {
+  const aim = scene?.selectAtCanvasPoint;
+  if (typeof aim !== 'function') return false;
+  const cx = rect.width / 2;
+  const cy = rect.height / 2;
+  if (aim.call(scene, cx, cy)) return true;
+
+  const reach = Math.min(rect.width, rect.height) * 0.32;
+  const step = Math.max(8, Math.min(rect.width, rect.height) / 24);
+  for (let radius = step; radius <= reach; radius += step) {
+    for (let i = 0; i < 12; i += 1) {
+      const angle = (i / 12) * Math.PI * 2;
+      const x = cx + Math.cos(angle) * radius;
+      const y = cy + Math.sin(angle) * radius;
+      if (x < 0 || y < 0 || x > rect.width || y > rect.height) continue;
+      if (aim.call(scene, x, y)) return true;
+    }
+  }
+  return false;
+}
 import { ORGAN_HERO_BUILDERS, createOrganLights } from './organModels.js';
 
 /**
@@ -427,6 +470,19 @@ export function mountLandingOrganViewport(container, {
       // is asked of the middle of the frame — the one place a keyboard user can
       // aim at, and the place the focused viewport marks.
       //
+      // The middle, and then outward from it. An organ with a gap down the
+      // middle has nothing drawn at the exact centre: the lungs are two masses
+      // with the mediastinum between them, and Enter there named **nothing**
+      // while the reticle sat over the gap promising it would (F-129). The
+      // kidneys, drawn at x = ±0.72 with a gap between, were the next in line.
+      //
+      // So the centre is tried first and still wins whenever anything is there
+      // — nothing moves for the brain, the heart or the liver — and only when
+      // it is empty does this walk outward in rings for the nearest point that
+      // names something. The reticle keeps marking the centre, because the
+      // centre is still where the reader aims from; the instructions say
+      // "nearest", which is what this does.
+      //
       // Deliberately not a camera move: `userMovedCamera` is left alone, so
       // asking what this is does not quietly give up the opening pose.
       //
@@ -439,7 +495,7 @@ export function mountLandingOrganViewport(container, {
         if (key === 'Escape') detail.scene.clearSelection?.();
         else {
           const rect = canvas.getBoundingClientRect();
-          detail.scene.selectAtCanvasPoint?.(rect.width / 2, rect.height / 2);
+          nameNearestToCentre(detail.scene, rect);
         }
         renderOnce();
         return;

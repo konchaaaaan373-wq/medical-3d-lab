@@ -265,23 +265,35 @@ export function buildSkinBlock({ colors = {} } = {}) {
   // epidermis has no vessels at all. It is fed by diffusion across that join,
   // which is why it can be peeled off and live; a vessel drawn a little too
   // high says the opposite.
-  const vessel = (id, offset, color) =>
+  //
+  // The two are drawn **apart across the block**, not one behind the other.
+  // They were one course and a copy of it displaced 0.12 in both y and z, which
+  // is a fair description of an arteriole and its companion venule and a
+  // useless thing to look at: two tubes 0.12 across, 0.17 apart along very
+  // nearly the direction every viewpoint here looks down. The artery came out
+  // as a red rim behind the vein in all five, so one of two structures a reader
+  // is invited to name could not be seen or clicked — which is the playbook's
+  // rule that accuracy you cannot see is not accuracy. The spacing between them
+  // is a display value like the layer thicknesses above: **no distance between
+  // these two vessels may be read off this model**, only that they run together
+  // and that the venous side lies deeper.
+  const vessel = (id, [dy, dz], color) =>
     cord(
       id,
       [
-        [-1.5, -0.2 + offset, -0.9 + offset],
-        [-0.6, -0.12 + offset, -0.7 + offset],
-        [0.1, 0.1 + offset, -0.55 + offset],
-        [0.5, 0.44 + offset, -0.66 + offset],
-        [1.0, 0.54 + offset, -0.8 + offset],
-        [1.5, 0.48 + offset, -1.0 + offset],
+        [-1.5, -0.2 + dy, -0.9 + dz],
+        [-0.6, -0.12 + dy, -0.7 + dz],
+        [0.1, 0.1 + dy, -0.55 + dz],
+        [0.5, 0.44 + dy, -0.66 + dz],
+        [1.0, 0.54 + dy, -0.8 + dz],
+        [1.5, 0.48 + dy, -1.0 + dz],
       ],
       (u) => 0.06 - 0.02 * Math.sin(u * Math.PI),
       color,
       { radial: 10, steps: 40 }
     );
-  vessel('arteriole', 0, '#c2413c');
-  vessel('venule', 0.12, '#5878a8');
+  vessel('arteriole', [0, 0], '#c2413c');
+  vessel('venule', [-0.1, 0.34], '#5878a8');
 
   // A nerve, ending in the dermis just under the surface. Skin is an organ of
   // sense before it is anything else.

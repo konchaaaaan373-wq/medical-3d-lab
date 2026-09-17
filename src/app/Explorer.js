@@ -425,6 +425,13 @@ export function createExplorer({
 
   // The organs there is actually something to open, named from the manifest.
   // "brain and heart" printed over one brain model is the claim this avoids.
+  //
+  // The sentence below used to repeat that list by hand — "the beta is aiming
+  // at the brain and the heart" — two lines under this comment, and it went
+  // false the moment the liver was published: a reader saw "Open now: the
+  // brain and heart and liver" above a scope claiming two. The enumeration is
+  // gone rather than corrected, because a second copy of the published list is
+  // the thing that goes stale, not the words in it.
   const betaOrganLabels = PUBLIC_MANIFEST.organs.map((organId) => organById(organId));
   const betaOrgansEn = betaOrganLabels
     .map((organ, index) => organ?.label?.toLowerCase() ?? PUBLIC_MANIFEST.organs[index])
@@ -443,8 +450,8 @@ export function createExplorer({
       ]
     : beta
       ? [
-          `Beta: 3D anatomy — free, no account. Open now: the ${betaOrgansEn}. The beta is aiming at the brain and the heart, and it publishes each one when its anatomy is finished, never a disease model in its place. The disease and physiology models are still being built and are not listed here.`,
-          `β版：3D解剖モデルです（無料・登録不要）。いま公開しているのは${betaOrgansJa}。目標は脳と心臓の2つで、解剖が仕上がったものから公開します——代わりに病態モデルを出すことはしません。病態・生理のモデルは開発中で、ここには載せていません。`,
+          `Beta: 3D anatomy — free, no account. Open now: the ${betaOrgansEn}. Each organ is published when its anatomy is finished, never a disease model in its place. The disease and physiology models are still being built and are not listed here.`,
+          `β版：3D解剖モデルです（無料・登録不要）。いま公開しているのは${betaOrgansJa}。解剖が仕上がった臓器から公開します——代わりに病態モデルを出すことはしません。病態・生理のモデルは開発中で、ここには載せていません。`,
         ]
       : [
           'Explore anatomy and pathophysiology with model maturity and clinical-review status shown separately. Work in progress lives in the Lab.',

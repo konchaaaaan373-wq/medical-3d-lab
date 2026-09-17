@@ -3,15 +3,28 @@
   "cards": {
     "brain-anatomy": {
       "bodyChars": 82,
+      "titleScale": 1,
       "html": "dc6473d8a13bada7"
     },
     "heart-anatomy": {
       "bodyChars": 82,
+      "titleScale": 1,
       "html": "ed9c489c1150d979"
+    },
+    "liver-anatomy": {
+      "bodyChars": 82,
+      "titleScale": 1,
+      "html": "09926ecfb3bddbc6"
+    },
+    "lung-anatomy": {
+      "bodyChars": 82,
+      "titleScale": 1,
+      "html": "766a324206c941f0"
     },
     "site": {
       "bodyChars": 82,
-      "html": "aa6f812e3be0ef26"
+      "titleScale": 1,
+      "html": "08d920468e6e7235"
     }
   }
 }
