@@ -247,6 +247,12 @@ export function createSceneSwitcher({ groups, currentId, showLab = true }) {
    * document (`#/brain-anatomy?structure=1` to `?structure=2` is the same
    * route on purpose — see `sameRoute` in `router.js`), so a stale
    * `aria-current` left over from mount would otherwise survive it.
+   *
+   * This marks the *tab* the page belongs under, at a different granularity
+   * from the scene row inside the model list, which marks the page itself
+   * (`sceneLink` above). The two live in different landmarks — the footer is
+   * its own `<nav aria-label="Model lists">` — so a reader asking "what is
+   * current here" gets one answer per region, not two in one.
    */
   function updateFooterCurrent() {
     const onScenePage = resolveRoute(currentHash()).kind === 'scene';
