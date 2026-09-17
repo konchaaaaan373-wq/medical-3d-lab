@@ -185,7 +185,7 @@ const APART = 0.1;
  * Derived rather than restated, so it cannot drift from `FIRST` and `STEP`.
  * It is about a third of the canvas and it sits left of and above centre —
  * which is the whole reason `reached` is reported with it. A count read as
- * "of the canvas" when it is "of this rectangle" is the mistake L-38 is about,
+ * "of the canvas" when it is "of this rectangle" is the mistake L-42 is about,
  * made once more.
  */
 const SWEPT = {
@@ -363,7 +363,7 @@ for (const slug of scenes) {
      * "it is off-frame" — this cannot tell off-frame from outside the sweep.
      * The kidney's bladder hangs below its kidneys, which is exactly the band
      * (2) drops, and reading its absence here as "out of frame" would be the
-     * third wrong way to count the same thing (L-38).
+     * third wrong way to count the same thing (L-42).
      */
     const reached = new Set(hits.map((hit) => hit.name));
     measured[slug] = {
