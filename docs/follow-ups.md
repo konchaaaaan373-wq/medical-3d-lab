@@ -1,6 +1,6 @@
 # Follow-ups — 残課題台帳
 
-Last updated: 2026-09-16
+Last updated: 2026-09-17
 
 マージ済みの変更が**まだ確かめていないこと・決めていないこと・先送りしたこと**を、
 別のセッションや別の人がそのまま拾えるように 1 か所に置く台帳です。
@@ -16,9 +16,8 @@ Last updated: 2026-09-16
   同じ番号が同時に確保され、どちらもマージされたためです（解剖側は §A、
   病態側は §E）。**片側を採番し直す必要がありますが、どちらを動かすかは
   両方の所有者が決めることなので、ここでは記録だけして触っていません。**
-  次に追加する番号は **F-138** です（F-111〜F-129 は main 側で採番済み。F-130〜F-135 も
-  main 側、F-136 / F-137 はこの PR。
-  F-130〜F-133 がこの branch）。
+  次に追加する番号は **F-139** です（F-111〜F-137 は main 側で採番済み。
+  **F-138 がこの branch**）。
   ⚠ **同じ衝突が 7 回目です。** main が F-126〜F-129 を取り、この branch も
   同じ 4 つを使っていました（その前は F-124 / F-125、その前は F-107〜F-110）。
   **この branch 側を F-130〜F-133 に動かしています**
@@ -866,6 +865,74 @@ F-109 で臨床レビュー登録簿（98.5 kB）は外しましたが、まだ 
 
 ## D. テスト・CI
 
+### F-138 private に戻すのは公開前。そのとき CI は今の本数では 2,000 分に収まらない — P2（2026-09-17）
+
+**決定（2026-09-17、所有者）: 公開前に private へ戻す。大筋が終わるまでは
+GitHub Actions のまま進める。** F-100 で public にしたのは Actions の分数制約を
+外すためでした。その制約は private に戻した瞬間に戻ってきます——
+**戻ってくる先が、public 化した当時より大きい**ので、ここに測って置きます。
+
+| | 実測 | 課金（job 単位の切り上げ） |
+| --- | --- | --- |
+| `test-and-build` | 63 秒 | 2 分 |
+| `verify-ui`（Chromium） | 276 秒 | 5 分 |
+| 1 run 合計 | | **7 分** |
+| 頻度 | run 606〜635 の 30 本が 22 時間 | **約 33 run/日** |
+| 月あたり | | **約 7,000 分** |
+
+GitHub Free の private 枠は 2,000 分/月なので、**今のまま private に戻すと
+9 日で尽きます**。F-100 のときは 1 job・2 分/run で、同じ 33 run/日がちょうど
+2,000 分でした。**枠を超えたのは CI の中身ではなく、F-112 で `verify-ui` を
+足したことです**——1 run が 3.5 倍になり、頻度は変わっていません。
+
+**private 化のときにやること**: サービスを替えるのではなく、**run の本数か
+1 run の長さを削る**。`verify-ui` を全 push から PR の ready-for-review か
+label 時だけに移せば 7 分 → 2 分で枠に収まります。**F-112 の判断を覆すので、
+同項の作法どおり `tests/viewports.test.js` の方針テストを書き換えてから**
+動かしてください。
+
+**Netlify で代替する案は採りません**（2026-09-17 に検討）。deploy preview は
+既に PR ごとに走っており（PR #122 の commit status `netlify/medical3dlab/deploy-preview`、
+push から約 35 秒）、build command に検証を足せば required check にもできます。
+それでも 3 つが残ります:
+
+- **shallow clone。** `tests/asset-provenance.test.js` は shallow なら
+  vacuous に通らず**落ちます**（`ci.yml` の `fetch-depth: 0` はこのため）。
+  クローンの深さは build command から制御できません
+- **重い方が移せない。** 7 分のうち 5 分は `verify-ui` で、Netlify の
+  ビルドコンテナでは `playwright install --with-deps` が通りません。仮に通せても
+  **ブラウザ検証が全デプロイの経路上に乗り**、flake が本番を止めます。
+  いまは CI が赤でもデプロイは出せます
+- **この環境から Netlify に触れません。** connector は Canva / Figma / Gmail /
+  GCal / GDrive / Slack / GitHub だけです（`docs/share-conditions.md` と同じ状況）。
+  Actions なら `actions_run_trigger` で起動しログまで読めます——CLAUDE.md の
+  「作業は Claude 側で完結させる」に正面から反します。`workflow_dispatch` の
+  入力付き実行・engine matrix・artifact 保存も Netlify build にはありません
+
+費用も移るだけです。Netlify Starter は 300 分/月で、**検証を足す前から
+33 ビルド/日 × 約 1 分 ≒ 月 1,500 分**——既に 5 倍超えている計算になります。
+**プランと実使用量は未確認**で、この環境からは読めません。
+
+Netlify に素直に移せるのは 2 つだけです: 速くて決定的な deploy gate
+（`verify:site` / `budget` / `cards:check` を build command に置き、壊れた
+ビルドを出さない）と、日次の `verify:live`（`scheduled-billing-reconcile` と
+同じ scheduled function）。どちらも Actions と役割が重複しません。
+
+**private に戻しても、F-100 が守ろうとしたものは戻りません。** 2026-09-14 から
+公開されているのは HEAD ではなく履歴全体で、`patientGuides.js` と
+`educationGuides.js` はその中にあります——F-100 が「期間限定 public」を
+退けた理由そのものです。2026-09-17 時点で fork 0 / star 0 ですが、
+それは「回収できた」という意味ではありません。**private 化の価値は
+「これ以降の複製を止める」ことだけ**で、それを承知の上での決定です。
+
+- **再検討のきっかけ**: 公開が近づく / run 本数がさらに増える /
+  Actions の従量課金を有効にする判断が出る
+- **確かめ方**: run 本数と job 時間は
+  `mcp__github__actions_list`（`list_workflow_runs` → `list_workflow_jobs`）。
+  Netlify の build minutes は dashboard の Usage（この環境からは読めません）
+- **完了の定義**: private に戻す日に、`ci.yml` が 2,000 分/月に収まる形で
+  動いていること。収まっているかを**推測ではなく上の測り方で**確認すること
+
 ### F-114 離脱 veil の BFCache 復帰だけが未検証 — P3（2026-09-15）
 
 `scripts/check-departure.mjs`（`npm run verify:departure`、PR CI で毎回実行）が
@@ -965,7 +1032,8 @@ F-109 で臨床レビュー登録簿（98.5 kB）は外しましたが、まだ 
 stub Supabase 設定でのビルドを必要とするので、通常ビルドでは動きません。
 
 - **再検討のきっかけ**: `verify-ui` job が flake を出し始める /
-  4 本のどれかが実バグを逃した / CI 時間が許容できなくなる
+  4 本のどれかが実バグを逃した / CI 時間が許容できなくなる。
+  **private に戻すときは、この判断が枠を超えさせる側です**——F-138
 - **完了の定義**: この項目は「4 本と 2 エンジンをどうするか」を持ち続けます。
   動かすときは、同じように**方針テストを書き換えてから**動かす
 
@@ -3425,6 +3493,8 @@ landmark ビルダー（`buildKidney({ parts: false })`）の `dispose()` を呼
     workflow 調整を持ち込みます
 
   **無制限 Actions で可能になること**として挙げていた項目は **F-112** です。
+  **public をいつまで続けるか**（公開前に private へ戻す決定と、そのとき CI を
+  どう収めるか、Netlify で代替しない理由）は **F-138** です。
 
   - 再検討のきっかけ: リセット後に再び使い切る / ブラウザ検証を自動化したくなる
   - 確かめ方: <https://github.com/settings/billing> の **Usage** タブで
