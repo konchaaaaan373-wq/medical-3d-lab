@@ -32,12 +32,21 @@
  * (`npm run type-floor`), and this is the one category where being hard to read
  * is a claim about the medicine rather than about the design.
  *
+ * ## Both sides of the gate
+ *
+ * `--locked` measures what a reader *without* the entitlement meets instead:
+ * the lock on the control, and whatever opens when they press it. A reviewer
+ * holding the grants never sees those, which is how they came to be the
+ * unmeasured half the moment this check existed (F-124). `?entitled=0`
+ * withholds the grants and changes nothing else.
+ *
  * Options:
  *   --dist <dir>     built site to serve (default: dist)
  *   --scene <id>     one scene instead of the default pair
  *   --shots <dir>    save a screenshot per surface
  *   --headed         show the browser
  *   --all            every scene with a paid surface, not just the sample
+ *   --locked         the surfaces a reader *without* the entitlement meets
  */
 import { existsSync, mkdirSync } from 'node:fs';
 import { join } from 'node:path';
@@ -59,6 +68,7 @@ const distDir = value('--dist', 'dist');
 const shotsDir = value('--shots', null);
 const onlyScene = value('--scene', null);
 const everyScene = flag('--all');
+const lockedView = flag('--locked');
 const headed = flag('--headed');
 
 const die = (message) => {
@@ -155,7 +165,10 @@ const MEASURE = `(() => {
 })()`;
 
 try {
-  console.log(`\nPaid surfaces — what they look like, and how small (${origin})\n`);
+  console.log(
+    `\nPaid surfaces — ${lockedView ? 'what a reader without the entitlement meets' : 'what they look like, and how small'}`
+      + ` (${origin})\n`
+  );
 
   for (const scene of chosen) {
     const features = authoredFeaturesForScene(scene.id);
@@ -169,10 +182,11 @@ try {
       const page = await context.newPage();
       const stub = await stubPaidSurfaces(page);
 
-      // `?preview=1` is what grants the entitlement. Without it the button is
-      // a lock and this check has nothing to look at — which is the assertion
-      // in `tests/preview-grants.test.js`, not here.
-      await page.goto(`${origin}/?preview=1${sceneRoute(scene)}`, { waitUntil: 'networkidle' });
+      // `?preview=1` opens the scene; the paid grants come with it unless
+      // `?entitled=0` says otherwise. The query string is not stripped, so it
+      // survives the reload a hash navigation causes.
+      const query = `?preview=1${lockedView ? '&entitled=0' : ''}`;
+      await page.goto(`${origin}/${query}${sceneRoute(scene)}`, { waitUntil: 'networkidle' });
       await page.waitForFunction(() => !!document.querySelector('canvas'), null, { timeout: 30_000 }).catch(() => {});
       await page.waitForTimeout(2500);
 
@@ -184,17 +198,49 @@ try {
         continue;
       }
 
+      // The lock is on the control before anything is pressed, so it is read
+      // here rather than after.
+      //
+      // The product's own signal — `is-locked` on the button, set from the
+      // grants — rather than "is there an element whose class contains lock".
+      // The padlock is always in the DOM and merely `hidden` when entitled, so
+      // asking whether it exists reported every entitled control as locked.
+      const locked = await button.evaluate((node) =>
+        node.classList.contains('is-locked')
+          && !!node.querySelector('.feature-lock:not([hidden])'));
+      if (lockedView && !locked) {
+        problems.push(`${scene.id} · ${mode}: no lock on the control, with the entitlement withheld`);
+      }
+      if (!lockedView && locked) {
+        problems.push(`${scene.id} · ${mode}: the control is locked, in an entitled preview`);
+      }
+
       await button.click({ timeout: 10_000 }).catch(() => {});
       await page.waitForTimeout(2500);
 
-      const panel = await page.locator('.patient-guide, .education-guide').first().count();
+      // Entitled, the guide opens. Unentitled, the account surface does — and
+      // that is the thing being measured, so it is not a failure here.
+      const wanted = lockedView ? '.access-dialog' : '.patient-guide, .education-guide';
+      const panel = await page.locator(wanted).first().count();
       if (panel === 0) {
         problems.push(
-          `${scene.id} · ${mode}: the control was there and the panel did not open`
+          `${scene.id} · ${mode}: the control was there and ${lockedView ? 'nothing opened' : 'the panel did not open'}`
             + ` (served ${stub.served.length}, refused ${stub.refused.join(', ') || 'none'})`
         );
         await context.close();
         continue;
+      }
+
+      // In the unentitled view the thing under test is the offer, so a deploy
+      // that cannot make one is measuring its own configuration again. The
+      // stub answers `billing-status` and `plan-catalog`, so a missing price
+      // here means the surface changed shape, not that billing is off.
+      if (lockedView) {
+        const priced = await page.evaluate(() =>
+          /¥|\$|€/.test(document.querySelector('.access-dialog')?.innerText ?? ''));
+        if (!priced) {
+          problems.push(`${scene.id} · ${mode}: the account surface opened with no offer on it`);
+        }
       }
 
       const rows = await page.evaluate(MEASURE);
@@ -203,10 +249,11 @@ try {
       opened.push({ scene: scene.id, mode, smallest: rows[0], caveats, belowFloor });
 
       if (shotsDir) {
-        await page.screenshot({ path: join(shotsDir, `${scene.id}-${mode}.png`), fullPage: true }).catch(() => {});
+        const suffix = lockedView ? `${mode}-locked` : mode;
+        await page.screenshot({ path: join(shotsDir, `${scene.id}-${suffix}.png`), fullPage: true }).catch(() => {});
       }
 
-      console.log(`  ${scene.id} · ${mode}`);
+      console.log(`  ${scene.id} · ${mode}${lockedView ? ' · not entitled' : ''}`);
       console.log(`    smallest text on screen: ${rows[0]?.px}px  .${rows[0]?.where}  "${rows[0]?.text}"`);
       for (const row of caveats) {
         const mark = row.px < FLOOR_PX ? 'BELOW' : '  ok ';
@@ -223,8 +270,13 @@ try {
   }
 
   console.log('Still only a person can do these:');
-  console.log('  - Whether the explanation is one a patient would follow.');
-  console.log('  - The purchase and lock surfaces, which a reviewer never sees.');
+  if (lockedView) {
+    console.log('  - Whether the offer is one anybody would take.');
+    console.log('  - Stripe itself: checkout opens somewhere this run cannot follow.');
+  } else {
+    console.log('  - Whether the explanation is one a patient would follow.');
+    console.log('  - The purchase and lock surfaces — `--locked` measures those.');
+  }
   console.log('  - Safari and Firefox — this run drove Chromium.\n');
 
   // Problems first, always. The first version reported "nothing opened" and

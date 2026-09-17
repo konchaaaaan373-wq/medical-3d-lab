@@ -16,7 +16,7 @@ at pictures. **No anatomist has judged this geometry or these labels.**
 | **Decided by** | Claude Sonnet, acting as implementer |
 | **Role** | `engineering` — software behaviour, not anatomical or clinical judgement |
 | **Asset revision** | `brain-atlas-glb` @ `sha256:76a49ea4526a4880613aec7a02756bd7301b0b9d0680d7cae33e197b672c5453` |
-| **Scene revision** | model card revision **23**, source digest `a29b2a05faa3099f` |
+| **Scene revision** | model card revision **24**, source digest `0efb7663d00c661c` |
 | **Scene sources under that digest** | [`src/data/brainAnatomy.js`](../../src/data/brainAnatomy.js), [`src/scenes/nervous/scenes/brainAnatomy/BrainAnatomyScene.js`](../../src/scenes/nervous/scenes/brainAnatomy/BrainAnatomyScene.js), [`src/scenes/shared/anatomy/tapGesture.js`](../../src/scenes/shared/anatomy/tapGesture.js) |
 
 The decision is pinned to **both** revisions in
@@ -211,7 +211,7 @@ remainder — no geometry, no atlas ids and no colour changed:
   viewpoint itself rather than only from a hidden layer-stage description,
   that the contralateral hemisphere is hidden and this is not a midsagittal
   section; right medial and inferior additionally state that this model has
-  no right medulla oblongata mesh (F-122), so a reader looking at either
+  no right medulla oblongata mesh (F-140), so a reader looking at either
   view cannot mistake the gap for a normal asymmetry. `InspectionPanel.js`
   renders the active view's notice as one line under the viewpoint buttons.
 - The label-export script's per-structure table is renamed "271 選択可能
@@ -228,6 +228,10 @@ anterior boundary and a frontal-lobe sulcus. It is back under 前頭葉 ›
 provenance note calling the mamillary body a single nucleus is corrected.
 Nothing drawn, selectable, coloured or announced in a view changed, but what
 the panel says about two structures did, so this record is taken again.
+
+**Revision 23 → 24.** Merging `main` renumbered the ledger items the scene's
+notes cite (F-120…F-124 → F-138…F-142); nothing a reader sees changed, but the
+source digest did, so the pin follows it.
 
 Each time the gate closed and the production build stopped shipping the scene
 until this record was taken again — the mechanism working. An earlier decision
@@ -255,10 +259,34 @@ carrying an English name, a Japanese name and a place in the hierarchy:
 
 | clicked | English | Japanese | hierarchy |
 | --- | --- | --- | --- |
-| upper left | Opercular part of inferior frontal gyrus | 下前頭回弁蓋部 | Left cerebral hemisphere › Frontal lobe › Inferior frontal gyrus |
-| upper right | Supramarginal gyrus | 縁上回 | Left cerebral hemisphere › Parietal lobe › Cerebral gyri |
-| centre | Middle temporal gyrus | 中側頭回 | Left cerebral hemisphere › Temporal lobe › Cerebral gyri |
-| upper centre | Superior temporal sulcus | 上側頭溝 | Left cerebral hemisphere › Temporal lobe › Cerebral sulci |
+| (0.40, 0.34) | Supramarginal gyrus | 縁上回 | Left cerebral hemisphere › Parietal lobe › Cerebral gyri |
+| (0.30, 0.45) | Circular sulcus of insula | 島輪状溝 | Left cerebral hemisphere › Telencephalon › Insular cortex |
+| (0.50, 0.50) | Middle temporal gyrus | 中側頭回 | Left cerebral hemisphere › Temporal lobe › Cerebral gyri |
+| (0.50, 0.42) | Angular gyrus | 角回 | Left cerebral hemisphere › Parietal lobe › Cerebral gyri |
+
+**This table was wrong for a week, and that is worth stating plainly.** Until
+2026-09-15 it read *Opercular part of inferior frontal gyrus*, *Supramarginal
+gyrus*, *Middle temporal gyrus* and *Superior temporal sulcus* — measured from a
+run on 2026-09-08 and carried forward unchanged when this decision was re-taken.
+Re-measured on the current build, in production and again under preview, one of
+those four was still right; one click had come off the model entirely and named
+**nothing**, so the sentence above it — that four clicks each resolved — was
+false.
+
+Nothing had changed in this scene. The points are fractions of the canvas, and
+the layout moved under them (the control bar's height, two type floors, three
+panel changes), none of which touches this scene's sources — so the
+model-revision digest could not notice and `npm run revisions:check` stayed
+green throughout. The reason it went unseen for a week is narrower still: the
+entry for this scene in `SCENE_POINTS` was bare coordinates, so the drive
+asserted that four clicks named *something*, never which. `heart-anatomy` had
+carried expected names since F-118; the published reference scene had not.
+
+The points above are now **named in `SCENE_POINTS`, and the drive is held to
+them** — a run fails if any point names a different structure, hits nothing, or
+if the four points name fewer than four distinct structures. The dead point is
+replaced by one the drive itself measured to be over the model. So this table is
+re-verified by `npm run verify:anatomy` rather than by anyone re-reading it.
 
 **Part tree** — 271 rows, one per structure, checked to have no two rows with
 the same name under the same branch. Selecting in 3D highlights the matching

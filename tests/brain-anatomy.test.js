@@ -167,7 +167,7 @@ test('only the medial and inferior views carry a display notice, and it is bilin
   }
 
   // Right medial and inferior additionally flag the missing right medulla
-  // mesh (F-122) as a data gap, not a normal left/right asymmetry.
+  // mesh (F-140) as a data gap, not a normal left/right asymmetry.
   for (const id of ['right-medial', 'inferior']) {
     assert.match(byId.get(id).notice, /no right medulla oblongata mesh/);
     assert.match(byId.get(id).noticeJa, /右側延髄の形状を収録していません/);

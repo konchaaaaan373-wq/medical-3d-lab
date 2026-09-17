@@ -1,5 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
+
+import { fontSizePx } from '../scripts/lib/css.mjs';
 import { readFileSync } from 'node:fs';
 
 import { createLockedSurface } from '../src/app/LockedSurface.js';
@@ -7,6 +9,7 @@ import { resolveRoute } from '../src/app/router.js';
 import { BETA_ORGANS, RELEASED_SCENES } from '../src/catalog/release.js';
 import { openModelDestination } from '../src/catalog/publicManifest.js';
 import { organById } from '../src/catalog/taxonomy.js';
+import { sceneById } from '../src/catalog/index.js';
 import { FakeElement, findByClass, installFakeDocument } from './helpers/fake-dom.js';
 
 /**
@@ -61,7 +64,26 @@ test('the locked page names no published model in its own prose', () => {
   assert.ok(actions, 'the page has an actions row');
 
   const inTheLink = new Set(textOf(actions));
-  const prose = nonEmpty(textOf(element).filter((line) => !inTheLink.has(line)), 'the page prose');
+
+  // The locked scene's own catalogue entry is not this page talking about the
+  // release — it is the page saying what the withheld model is. COPD's
+  // description calls it a twelve-unit **lung** model, which was fine while the
+  // lung was withheld and still is: the organ it names is its own subject, not
+  // somewhere the reader is being sent. Publishing `lung-anatomy` on 2026-09-16
+  // made a substring check unable to tell those apart, so the scene's own title
+  // and description are excluded the same way the link's text already is.
+  //
+  // This is narrower than it looks. Everything the page adds around that entry
+  // — the sentences that were wrong once — is still held to naming no published
+  // organ at all.
+  const own = sceneById(resolveRoute('#/copd').sceneId);
+  const ownCopy = new Set(
+    [own?.title, own?.titleJa, own?.description, own?.descriptionJa].filter(Boolean)
+  );
+  const prose = nonEmpty(
+    textOf(element).filter((line) => !inTheLink.has(line) && !ownCopy.has(line)),
+    'the page prose'
+  );
 
   // Every organ the beta could open, named or not — because the sentence that
   // was wrong named one that was not open yet. If a published model is to be
@@ -125,34 +147,20 @@ test('the badge and the copy are written for the reader, not for the release pro
 });
 
 test('the page that answers a shared link is not the page with the smallest type', () => {
-  // Comments out first: a rule preceded by `/* ... *\/` has the comment glued
-  // to the front of its selector chunk, so an exact-name match silently misses
-  // exactly the rules somebody bothered to explain.
-  const sheet = readFileSync(new URL('../src/styles/locked.css', import.meta.url), 'utf8')
-    .replace(/\/\*[\s\S]*?\*\//g, '');
+  const sheet = readFileSync(new URL('../src/styles/locked.css', import.meta.url), 'utf8');
 
-  /**
-   * The `font-size` a class ends up with, in source order.
-   *
-   * Every rule whose selector list mentions the class, not the first one that
-   * looks right: `.locked-copy` is declared twice here, once in a group with
-   * `.locked-summary` and once on its own, and a regex anchored on
-   * `\n.locked-copy {` matches the group's second line and reads the wrong
-   * body. Later wins, which is the cascade at equal specificity.
-   */
+  // `fontSizePx` is the shared reader in `scripts/lib/css.mjs`, which exists
+  // because this function and `rulesOf()` in `scripts/type-floor.mjs` were the
+  // same tokenizer written twice, each carrying its own comment about the same
+  // two bugs: a comment above a rule gluing itself to the selector chunk, and
+  // `\n.locked-copy {` matching the second line of the group
+  // `.locked-summary,\n.locked-copy {`. It answers with the *last* rule naming
+  // the class and the *last* `font-size` in that body, which is the cascade at
+  // equal specificity, one level apart.
   const sizeOf = (className) => {
-    const sizes = [];
-    for (const [, selectors, body] of sheet.matchAll(/([^{}]+)\{([^{}]*)\}/g)) {
-      const names = selectors.split(',').map((one) => one.trim());
-      if (!names.some((name) => name === className || name.startsWith(`${className}.`) || name.startsWith(`${className}:`))) continue;
-      // The last in the rule too, not the first: two `font-size` lines in one
-      // body is the same cascade question one level down, and reading the
-      // first of them reports a size the browser never uses.
-      const inRule = [...body.matchAll(/font-size:\s*([0-9.]+)px/g)].at(-1)?.[1];
-      if (inRule) sizes.push(Number(inRule));
-    }
-    assert.ok(sizes.length > 0, `${className}: no px font-size anywhere in the sheet`);
-    return sizes.at(-1);
+    const size = fontSizePx(sheet, className);
+    assert.ok(size !== null, `${className}: no px font-size anywhere in the sheet`);
+    return size;
   };
 
   // Prose and control labels only. The badge and the system eyebrow are 9.5px

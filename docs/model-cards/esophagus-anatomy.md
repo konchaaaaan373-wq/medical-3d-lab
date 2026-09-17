@@ -63,6 +63,22 @@ No dimension here is a measurement.
 - **The neighbours are context**, excluded from the framing subject.
 - **Colour separates the three parts and the three narrowings**; "Natural
   tissue" puts one mucosal colour back.
+- **The frame follows the viewpoint.** The camera fits the organ into the part
+  of the window nothing is covering — the parts panel is an overlay over the
+  canvas, not a narrower canvas — and a viewpoint that hides a side or cuts the
+  organ open is framed on what it leaves rather than on the whole model.
+- **A cut draws the face it leaves, where there is one to draw.** For a solid
+  part the cross-section is computed from the triangles the plane crosses and
+  drawn in that part's own colour, so a cut segment reads as tissue with a
+  surface rather than as a shell seen from the inside. For a hollow one — a
+  stomach, a duct, a loop of bowel — the cut opens it instead: the wall here is
+  a surface with no thickness, and facing it would draw a lumen as a lump of
+  tissue. Which a part is, is declared by the scene rather than guessed.
+- **Isolating a structure shows it solid.** "Show me only this" used to leave
+  the part at the opacity it has in place, which is right for the opaque ones
+  and useless for the see-through ones — and a structure you cannot see in
+  place is exactly the one a reader isolates. Nothing else is drawn, so there
+  is nothing left for it to be transparent against.
 - **Taking a structure out of the way is the reader's own way in.** The layer
   slider, and where this scene has them the cuts and the viewpoints, are its
   *authored* ways of showing what is inside; hiding is the one the reader

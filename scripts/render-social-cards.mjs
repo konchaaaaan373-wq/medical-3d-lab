@@ -42,6 +42,7 @@ import {
   cardDigest,
   siteCardHtml,
   socialCardHtml,
+  TITLE_SCALES,
 } from './social-card.js';
 import { MANIFEST_FILE } from './check-social-cards.js';
 
@@ -94,11 +95,12 @@ const cards = [
     slug: scene.slug,
     // A function of the description length, because the rasteriser retries
     // with a shorter one until the browser says the card fits.
-    html: (bodyChars) =>
+    html: (bodyChars, titleScale) =>
       socialCardHtml(scene, {
         system: systemById.get(scene.system) ?? null,
         reviewStatus: clinicalReviewPresentation(scene).status,
         bodyChars,
+        titleScale,
       }),
   })),
   { slug: 'site', html: () => siteCardHtml({ sceneCount: CRAWLABLE_SCENES.length }) },
@@ -152,17 +154,34 @@ try {
 
   for (const card of cards) {
     let bodyChars = BODY_BUDGET.start;
-    let fit = await attempt(card.html(bodyChars));
+    let titleScale = TITLE_SCALES[0];
+    let fit = await attempt(card.html(bodyChars, titleScale));
     // `- step >= floor`, not `> floor`: the obvious form overshoots by a step
     // and renders a card below the floor its own error message then quotes.
     while (fit.clipped > 1 && bodyChars - BODY_BUDGET.step >= BODY_BUDGET.floor) {
       bodyChars -= BODY_BUDGET.step;
-      fit = await attempt(card.html(bodyChars));
+      fit = await attempt(card.html(bodyChars, titleScale));
+    }
+    // The description has given all it can and the card is still clipped, so
+    // the title is what does not fit. Its size is keyed on character count,
+    // and character count is a proxy for width: "Interactive stomach anatomy"
+    // and "Interactive biliary anatomy" are the same length and only one of
+    // them wraps. Rather than re-tune that table for whichever organ was
+    // published last, take a step off the title and measure again.
+    for (const scale of TITLE_SCALES.slice(1)) {
+      if (fit.clipped <= 1) break;
+      titleScale = scale;
+      bodyChars = BODY_BUDGET.start;
+      fit = await attempt(card.html(bodyChars, titleScale));
+      while (fit.clipped > 1 && bodyChars - BODY_BUDGET.step >= BODY_BUDGET.floor) {
+        bodyChars -= BODY_BUDGET.step;
+        fit = await attempt(card.html(bodyChars, titleScale));
+      }
     }
     if (fit.clipped > 1) {
       overflowed.push(
         `${card.slug}: ${fit.clipped}px still cut off with the description at ` +
-          `${bodyChars} characters — the title itself does not fit`
+          `${bodyChars} characters and the title at ${Math.round(titleScale * 100)}% — nothing left to give`
       );
     }
     if (!fit.footInside) {
@@ -171,7 +190,7 @@ try {
       );
     }
     const png = await page.screenshot({ type: 'png' });
-    drawn.push({ slug: card.slug, png, bodyChars, html: cardDigest(card.html(bodyChars)) });
+    drawn.push({ slug: card.slug, png, bodyChars, titleScale, html: cardDigest(card.html(bodyChars, titleScale)) });
   }
   await context.close();
 } finally {
@@ -195,7 +214,7 @@ const manifest = {
     drawn
       .slice()
       .sort((a, b) => a.slug.localeCompare(b.slug))
-      .map(({ slug, bodyChars, html }) => [slug, { bodyChars, html }])
+      .map(({ slug, bodyChars, titleScale, html }) => [slug, { bodyChars, titleScale, html }])
   ),
 };
 if (only.length === 0) {

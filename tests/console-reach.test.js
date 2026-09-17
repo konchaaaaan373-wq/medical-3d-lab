@@ -1,5 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
+
+import { rulesOf } from '../scripts/lib/css.mjs';
 import { readFileSync, readdirSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 
@@ -155,12 +157,11 @@ test('nothing above the bar hard-codes how tall the bar is', () => {
   const dir = fileURLToPath(new URL('../src/styles/', import.meta.url));
   const offenders = [];
   for (const name of readdirSync(dir).filter((file) => file.endsWith('.css'))) {
-    const css = readFileSync(`${dir}${name}`, 'utf8').replace(/\/\*[\s\S]*?\*\//g, '');
-    for (const [, selectors, body] of css.matchAll(/([^{}]+)\{([^{}]*)\}/g)) {
+    for (const { selectors, body } of rulesOf(readFileSync(`${dir}${name}`, 'utf8'))) {
       if (!/\.anatomy-shell-gesture-hint(?![\w-])/.test(selectors)) continue;
       for (const [, value] of body.matchAll(/bottom:\s*([^;]+);/g)) {
         if (value.includes('--console-reach')) continue;
-        offenders.push(`${name} — ${selectors.trim().split('\n').pop().trim()} { bottom: ${value.trim()} }`);
+        offenders.push(`${name} — ${selectors} { bottom: ${value.trim()} }`);
       }
     }
   }

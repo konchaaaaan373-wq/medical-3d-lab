@@ -587,7 +587,13 @@ html[data-route='landing'] {
   gap: 7px;
 }
 
-.landing .landing-demo-state {
+/* Not scoped to `.landing`: the same hero is mounted on the Explorer page, and
+   for as long as one organ was published the chooser never rendered, so nobody
+   could see that every box rule here was inherited from an ancestor the
+   Explorer does not have. Publishing the heart drew it for the first time — at
+   132x22, under both the 44px phone floor and the 24px WCAG one. A control's
+   size must not depend on which page it is on. */
+.landing-demo-state {
   position: relative;
   min-width: 0;
   min-height: 64px;
@@ -1061,11 +1067,17 @@ html[data-route='landing'] {
   outline-offset: -4px;
 }
 
-/* What Enter will name.
+/* Where Enter aims from.
    A keyboard has no pointer, so the middle of the frame is where the model is
    asked "what is this?" — and an aim nobody can see is not an aim. Drawn only
    while the viewport holds keyboard focus, so it never appears for a reader who
-   is pointing at the model directly. */
+   is pointing at the model directly.
+
+   It marks the centre, not the structure that will be named. Those are the same
+   thing whenever anything is drawn at the centre, which is every organ
+   published so far; for an organ with a gap down the middle Enter names the
+   nearest structure instead, and the instructions say so. Do not read this
+   circle as a promise about which mesh answers. */
 .landing-demo-viewport:focus-visible::after {
   content: '';
   position: absolute;
@@ -1201,7 +1213,7 @@ html[data-route='landing'] {
 
   .landing-demo-state-grid { gap: 5px; }
 
-  .landing .landing-demo-state {
+  .landing-demo-state {
     min-height: 62px;
     padding-inline: 9px;
   }

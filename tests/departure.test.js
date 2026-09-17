@@ -1,5 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
+
+import { declaration, rulesOf } from '../scripts/lib/css.mjs';
 import { readFileSync, readdirSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 
@@ -299,12 +301,11 @@ test('nothing in any stylesheet is stacked above the departure veil', () => {
   let veilLayer = null;
   const higher = [];
   for (const name of sheets) {
-    const css = readFileSync(`${dir}${name}`, 'utf8').replace(/\/\*[\s\S]*?\*\//g, '');
-    for (const [, selectors, body] of css.matchAll(/([^{}]+)\{([^{}]*)\}/g)) {
-      const layer = [...body.matchAll(/z-index:\s*(-?\d+)/g)].at(-1)?.[1];
-      if (layer === undefined) continue;
+    for (const { selectors, body } of rulesOf(readFileSync(`${dir}${name}`, 'utf8'))) {
+      const layer = declaration(body, 'z-index');
+      if (layer === null || !/^-?\d+$/.test(layer)) continue;
       if (selectors.includes('[data-leaving]')) veilLayer = Number(layer);
-      else higher.push({ where: `${name}: ${selectors.trim().split('\n').join(' ')}`, layer: Number(layer) });
+      else higher.push({ where: `${name}: ${selectors}`, layer: Number(layer) });
     }
   }
 

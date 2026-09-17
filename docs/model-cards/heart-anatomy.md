@@ -3,7 +3,10 @@
 | | |
 | --- | --- |
 | **Scene** | `heart-anatomy` |
-| **Geometry** | `dev-assets/heart/VH_M_Heart.glb` and `dev-assets/heart/VH_M_Blood_Vasculature.glb` — **candidates**, pinned in [`src/catalog/devAssets.js`](../../src/catalog/devAssets.js), fetched by `npm run assets:dev`, **not committed and not shipped** |
+| **Geometry** | [`public/assets/heart/VH_M_Heart.glb`](../../public/assets/heart/VH_M_Heart.glb) and [`public/assets/heart/VH_M_Blood_Vasculature.glb`](../../public/assets/heart/VH_M_Blood_Vasculature.glb) — **derivatives** of the HuBMAP files, adopted 2026-09-15 |
+| **Asset provenance and QA** | [`src/catalog/assetManifest.js`](../../src/catalog/assetManifest.js) |
+| **Asset notice** | [`public/assets/heart/ATTRIBUTION.md`](../../public/assets/heart/ATTRIBUTION.md) |
+| **Adoption decision** | [`docs/decisions/HEART-ASSET-ADOPTION.md`](../decisions/HEART-ASSET-ADOPTION.md) |
 | **Metadata adapter** | [`src/data/heartAnatomy.js`](../../src/data/heartAnatomy.js) |
 | **Selection behaviour** | [`src/scenes/cardiovascular/scenes/heartAnatomy/HeartAnatomyScene.js`](../../src/scenes/cardiovascular/scenes/heartAnatomy/HeartAnatomyScene.js) |
 | **Tests** | [`tests/heart-anatomy.test.js`](../../tests/heart-anatomy.test.js) |
@@ -18,6 +21,41 @@ papillary muscle, a great vessel, a coronary artery, a cardiac vein — relative
 to the rest of the heart, and what is it called in English and Japanese?**
 
 ## 2. What it is
+
+**What ships is a derivative, and that is not a detail.** The publisher's own
+files fail glTF validation — 408 degenerate vertex normals in one mesh of the
+heart, 33 across two meshes of the vasculature, and nothing else — and this
+repository's format gate takes zero errors and zero warnings at every scene
+status. So adopting the publisher's bytes could never have opened the release
+gate, however carefully the failure was recorded. The two honest routes were a
+derived file or no heart in the beta.
+
+The derivative replaces those normals and **nothing else**. A degenerate normal
+has zero length and carries no direction, so there is nothing in it to preserve;
+zero-area triangles were removed first because a vertex whose only neighbours
+are degenerate triangles has no face to average, and **a zero-area triangle
+draws nothing**, so removing one cannot change the rendered surface. 820 of them
+went from the heart (0.50% of its triangles) and 26 from the vasculature
+(0.007%). Vertex positions, vertex counts, node names, hierarchy, ontology ids
+and materials are identical on both sides, and the triangle count falls by
+exactly what was removed — measured, in
+[`docs/asset-qa/measurements/normal-repair.json`](../asset-qa/measurements/normal-repair.json),
+not asserted. `npm run assets:repair:verify` rebuilds these exact hashes from the
+pinned sources and reports the validator clean.
+
+**A structure can be reached without a pointer.** `selectAtCanvasPoint()` names
+whatever is drawn at one point of the canvas, which is how a keyboard asks —
+there being no pointer to put anywhere, the landing hero asks it of the middle
+of the frame on Enter. It answers with the same structure a click at that point
+would give, through the same ray and the same visibility rules, so the two ways
+in cannot come to disagree about what is there. Until 2026-09-15 this scene was
+the only anatomy scene without it, and the hero's call is optional — so on the
+day the hero showed the heart, Enter did nothing and said nothing.
+
+**No geometry was re-shaped and no anatomical judgement was made.** The sources
+stay pinned in [`src/catalog/devAssets.js`](../../src/catalog/devAssets.js):
+adopting a derivative does not delete the record of what was examined.
+
 
 **Forty-six structures from fifty-one meshes, out of two files of one reference
 release.** Fourteen are the heart itself: four chambers, the interventricular
@@ -322,6 +360,14 @@ the Japanese names are deliberate but unreviewed.
   or zooming. The share is measured from pictures and is expected to be
   re-measured when the organ or the vessel subtree changes.
 
+  **The two numbers standing in the code today are not measurements.** The
+  shared fit stopped approximating a perspective camera with an orthographic
+  sum on 2026-09-14, which had been over-filling the band by about an eighth on
+  a subject as deep as this one; the shares were scaled by that much so the
+  composition the pictures were measured at survives the correction. They are
+  the first thing to check against pictures the next time this scene is
+  rendered — which is when its candidate assets pass the asset release gate.
+
   There are two of them, and the second one says why. On a frame taller than it
   is wide there is no panel down the side, so what runs out first is the
   subject's own shape — this heart is wider than it is tall. Measured at
@@ -365,10 +411,13 @@ watertight. It is not a patient's heart and not a surgical reference.
 
 **Catalog status:** `alpha`
 
-**Publication:** closed. The great vessels the beta's list asks for are now in
-the model, and **that is not what opens the gate**: the scene rests on candidate
-assets that have been through no asset pipeline — no manifest record, no licence
-decision, no discharged obligations, none of the five QA gates — and no
-publication decision exists. `betaPublicationProblems('heart-anatomy')` reports
-the candidate by name. No clinical review and no anatomist review exists, and
-none is implied by this card.
+**Publication:** open, as of 2026-09-15. The two candidate files went through
+the asset pipeline — manifest record, licence decision, discharged obligations,
+the QA gates — and a publication decision was taken against the repaired
+derivatives named in
+[`docs/decisions/HEART-ASSET-ADOPTION.md`](../decisions/HEART-ASSET-ADOPTION.md);
+the record is [`docs/beta-publication/heart-anatomy.md`](../beta-publication/heart-anatomy.md)
+and the scope it was taken over is in `src/catalog/publicationScopes.js`.
+**What is open is the anatomy scene and nothing more.** No clinical review and
+no anatomist review exists, and none is implied by this card — the registry
+records both as pending, which is the same footing the brain is published on.

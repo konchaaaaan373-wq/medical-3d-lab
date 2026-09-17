@@ -51,6 +51,13 @@ export class IntestineAnatomyScene extends OrganAnatomyScene {
    * loop was drawn — the colon got taller as well as longer, and the loop was
    * ending up behind the console.
    */
+  /**
+   * Every part of this scene is bowel, and bowel is a tube. A cut across it
+   * opens the lumen; drawing a face over that would say the abdomen is packed
+   * with solid cords.
+   */
+  static hollowByDefault = true;
+
   static framing = { minHorizontalAspect: 0.9 };
 
   static colorModes = INTESTINE_COLOR_MODES;

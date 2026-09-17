@@ -89,10 +89,15 @@ test('public manifest: it publishes what is open and cannot publish anything els
 
   // No "ready: false" row, no placeholder for work in progress. An organ with
   // nothing finished is absent, and `organIsPublished` is the honest test for
-  // "may I offer this organ" — the question the landing hero asks.
-  assert.equal(organIsPublished('heart'), false);
-  assert.deepEqual(publicModelsForOrgan('heart'), []);
+  // "may I offer this organ" — the question the landing hero asks. The heart
+  // was the absent case until 2026-09-15; it is present now because a model
+  // was finished, and the rule that produced both answers is the same one.
   assert.equal(organIsPublished('brain'), true);
+  assert.equal(organIsPublished('heart'), true);
+  assert.deepEqual(publicModelsForOrgan('heart').map((model) => model.sceneId), ['heart-anatomy']);
+  // An organ with nothing published is still absent, and still answers no.
+  assert.equal(organIsPublished('lung'), false);
+  assert.deepEqual(publicModelsForOrgan('lung'), []);
   const source = read('src/catalog/publicManifest.js');
   const code = source.replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$/gm, '');
   assert.doesNotMatch(code, /ready:\s*(true|false)|comingSoon|placeholder:/);

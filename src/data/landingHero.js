@@ -19,17 +19,23 @@ import { PUBLIC_MANIFEST } from '../catalog/publicManifest.js';
  *
  * **This is the declared rotation, not the shown one.** `HERO_ROTATION` below
  * is what the hero actually turns through, and it is this list filtered by what
- * the release opens. The heart entry names `heart-anatomy`, which now exists as
- * a scene and which the release does not open — it is built on candidate assets
- * that have been through no asset pipeline — so today the hero still shows the
- * brain and offers no way to "see the heart".
+ * the release opens.
+ *
+ * The heart is the worked example of why the two lists are separate. It sat
+ * here, declared, through the whole time `heart-anatomy` existed as a scene and
+ * the release refused it — the files it drew were candidates that had been
+ * through no asset pipeline — so the hero showed the brain and offered no way
+ * to "see the heart". It joined the rotation on 2026-09-15 when the scene
+ * passed `betaPublicationProblems()`, **and this file was not edited to make
+ * that happen**. That is the whole point of deriving the shown list rather than
+ * writing it down.
  *
  * It used to point at `heart-failure` with the coronary anatomy loaded behind
  * it, on the reasoning that the heart had no anatomy scene of its own. That is
  * exactly the substitution this release does not make: a disease model is not
- * an anatomy model with a different label. The gap is recorded in
- * `src/catalog/anatomy.js`, and the heart returns to the rotation the day
- * `heart-anatomy` passes `betaPublicationProblems()` — with no edit here.
+ * an anatomy model with a different label. Where each organ stands is recorded
+ * in `src/catalog/anatomy.js`, and every organ still here and not shown is
+ * waiting on the same gate the heart went through.
  */
 export const HERO_ORGANS = Object.freeze([
   Object.freeze({
@@ -49,6 +55,28 @@ export const HERO_ORGANS = Object.freeze([
     kickerJa: '解剖',
     lineEn: 'Rotate and zoom the heart to inspect the spatial relationship between its structures.',
     lineJa: '心臓を回転・拡大し、部位ごとの位置関係を確認できます。',
+  }),
+  // Published 2026-09-16. A published organ that is not declared here can never
+  // reach the hero: `heroOrgansForModels` keeps only the candidates the release
+  // actually opens, so an entry missing from this list is an organ the chooser
+  // silently cannot show. That is the shape of bug F-121 was about.
+  Object.freeze({
+    organ: 'lungs',
+    sceneId: 'lung-anatomy',
+    upgradeSceneId: 'lung-anatomy',
+    kickerEn: 'ANATOMY',
+    kickerJa: '解剖',
+    lineEn: 'Rotate and zoom the lungs to inspect how the lobes and the airways between them are arranged.',
+    lineJa: '肺を回転・拡大し、肺葉と気道の位置関係を確認できます。',
+  }),
+  Object.freeze({
+    organ: 'liver',
+    sceneId: 'liver-anatomy',
+    upgradeSceneId: 'liver-anatomy',
+    kickerEn: 'ANATOMY',
+    kickerJa: '解剖',
+    lineEn: 'Rotate and zoom the liver to inspect how its segments and the gallbladder are arranged.',
+    lineJa: '肝臓を回転・拡大し、区域と胆嚢の位置関係を確認できます。',
   }),
 ]);
 

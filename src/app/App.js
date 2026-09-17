@@ -207,10 +207,11 @@ export async function createApp({ stage, ui, onRetryModel = null }) {
    *
    * Measured from the elements themselves, because they move: the console grows
    * with its copy, the anatomy panel is docked on a wide window and a sheet on a
-   * narrow one, and the header is there throughout. Only the bands that run the
-   * whole way across an edge are counted — the scene card sits in the top-left
-   * corner and taking it as a full-height inset would shove the model right for
-   * something it clears anyway.
+   * narrow one, and the header is there throughout. Most bands are counted only
+   * when they run the whole way across an edge — the scene card sits in the
+   * top-left corner and taking it as a full-height inset would shove the model
+   * right for something it clears anyway. The console is the exception, and the
+   * reason is below it.
    */
   const safeAreaInsets = () => {
     const width = viewer.container.clientWidth;
@@ -239,13 +240,31 @@ export async function createApp({ stage, ui, onRetryModel = null }) {
     // why this asks where the element actually is rather than which one it is.
     const railAcrossTop = (rect) =>
       spansWidth(rect) && rect.top < height / 2 && rect.bottom < height * 0.6;
+    const right = band('.rail', spansHeight, (rect) => (width - rect.left) / width);
+    /**
+     * The console is the exception to "it has to cross the middle".
+     *
+     * It is a control bar anchored to the bottom, full-width while the shell is
+     * still marking itself and a card in the bottom-left corner afterwards —
+     * and the subject is framed into the band the rail leaves, whose left half
+     * is exactly where that corner is. So asking it to cross the middle of the
+     * *frame* stopped reserving it at the moment it started overlapping the
+     * subject: with the framing finally reaching the whole band, the lung's
+     * lower lobes came to rest behind an opaque card.
+     *
+     * What it is asked instead is whether it reaches into the band at all. The
+     * rail is not treated this way and must not be: on a phone it is a summary
+     * in the top corner that the model is never behind, which is the case the
+     * crossing test was written for.
+     */
+    const reachesIntoBand = (rect) => rect.left < width * (1 - right) && rect.right > 0;
     return {
       top: Math.max(
         band('.global-scene-nav', spansWidth, (rect) => rect.bottom / height),
         band('.rail', railAcrossTop, (rect) => rect.bottom / height)
       ),
-      bottom: band('.console', spansWidth, (rect) => (height - rect.top) / height),
-      right: band('.rail', spansHeight, (rect) => (width - rect.left) / width),
+      bottom: band('.console', reachesIntoBand, (rect) => (height - rect.top) / height),
+      right,
       left: 0,
     };
   };
@@ -1037,7 +1056,7 @@ export async function createApp({ stage, ui, onRetryModel = null }) {
     dataset: { control: 'hideUi' },
     on: {
       click: () => {
-        paintUiToggle(ui.classList.toggle('is-hidden'));
+        setUiHidden(ui.classList.toggle('is-hidden'));
       },
     },
   });
@@ -1050,6 +1069,48 @@ export async function createApp({ stage, ui, onRetryModel = null }) {
     uiToggle.title = hidden
       ? inLanguage('Show the interface again (H)', 'UI を再表示する（H）')
       : inLanguage('Hide interface for capture (H)', 'キャプチャ用に UI を隠す（H）');
+  }
+
+  /**
+   * The way back, and why it does not simply stay on screen.
+   *
+   * This button hides everything for a capture, and it is the only thing in
+   * the frame that says how to undo that — the H shortcut is written in the
+   * `title` of a button that is no longer there to read. For one release it
+   * went with the panels around it and left no way back at all
+   * (`docs/verification-lessons.md` L-31). Keeping it is the fix; keeping it
+   * *lit* is not, because then the frame this feature exists to produce has a
+   * button in the corner of it.
+   *
+   * So: it stays while the reader is doing something and steps back when they
+   * stop, and anything at all — a pointer, a key, a touch — brings it back
+   * before they can reach for it. Same answer every video player settled on.
+   * It never stops being clickable, so the fade costs nothing but the ink.
+   */
+  const UI_QUIET_MS = 2200;
+  let quietTimer = 0;
+
+  /** Anything the reader does means they are still here. */
+  const wakeWayBack = () => {
+    if (!ui.classList.contains('is-hidden')) return;
+    ui.classList.remove('is-quiet');
+    clearTimeout(quietTimer);
+    quietTimer = setTimeout(() => ui.classList.add('is-quiet'), UI_QUIET_MS);
+  };
+
+  for (const type of ['pointermove', 'pointerdown', 'touchstart', 'wheel', 'keydown']) {
+    window.addEventListener(type, wakeWayBack, { passive: true });
+  }
+
+  /**
+   * One place decides what "hidden" looks like, for both the button and the
+   * shortcut — the class is already flipped by the time this is called.
+   */
+  function setUiHidden(hidden) {
+    paintUiToggle(hidden);
+    clearTimeout(quietTimer);
+    ui.classList.remove('is-quiet');
+    if (hidden) wakeWayBack();
   }
 
   onLanguageChange(() => paintUiToggle(ui.classList.contains('is-hidden')));
@@ -1578,7 +1639,9 @@ export async function createApp({ stage, ui, onRetryModel = null }) {
     seek,
     resetModel: resetMedicalState,
     ui,
-    paintUiToggle,
+    // The shortcut and the button land in the same place: the quiet timer is
+    // part of what "hidden" means, not part of what the button does.
+    paintUiToggle: setUiHidden,
     toggleComparison: scene.setComparison ? () => setComparison(!comparing) : null,
     zoomBy,
     exitReel: () => {
@@ -1636,10 +1699,34 @@ export async function createApp({ stage, ui, onRetryModel = null }) {
         if (now === applied) return;
         applied = now;
         // Whether the reader has taken the camera since the last framing. If
-        // they have not, the camera is exactly where the framing left it and
-        // should follow the framing to the new band. If they have, it is theirs:
-        // the new framing still applies to the next viewpoint they choose, but
+        // they have not, the camera is where the framing left it and should
+        // follow the framing to the new band. If they have, it is theirs: the
+        // new framing still applies to the next viewpoint they choose, but
         // nothing pulls them out of the view they are in.
+        //
+        // **This asked for a tolerance once, and the tolerance was worse than
+        // the bug.** The equality below is exact, and `update()` runs every
+        // frame with damping on, so it never leaves the camera bit-exactly
+        // where it was put: measured, a drift of 0.00125 against a threshold of
+        // 0.001, which made every re-frame compute and then discard itself.
+        // That is F-133 and it is real.
+        //
+        // The fix tried here was `max(1e-3, distance * 0.005)`, reasoned as
+        // "far below the smallest deliberate zoom step". Measured, it is not.
+        // A wheel notch moves the camera gradually under damping, so early in a
+        // zoom the camera is still within half a percent of the shot it started
+        // from — and if the band changes at that moment the watcher calls it
+        // untouched and snaps the camera to the new framing, taking the
+        // reader's zoom with it. `verify:anatomy` reads 20px of drift on the
+        // brain at 390x844 where the anchor should hold it at 0, and 17px left
+        // over after zooming back out. `origin/main` is clean, so it was ours.
+        //
+        // So the strict comparison is back and F-133 is open again. The next
+        // attempt needs a test of ownership that is not "how close is the
+        // camera to where we last put it" — that quantity is small for damping
+        // and also small at the start of a zoom, and no threshold separates
+        // them. The zoom checks in `check-anatomy-interaction.mjs` are the
+        // guard any replacement has to pass.
         const untouched =
           viewer.camera.position.distanceToSquared(shot.position) < 1e-6 &&
           viewer.controls.target.distanceToSquared(shot.target) < 1e-6;

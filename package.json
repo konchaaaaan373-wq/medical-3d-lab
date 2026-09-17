@@ -22,6 +22,7 @@
     "cards": "node scripts/render-social-cards.mjs",
     "cards:check": "node scripts/check-social-cards.js",
     "verify:anatomy": "node scripts/check-anatomy-interaction.mjs",
+    "points:anatomy": "node scripts/measure-anatomy-points.mjs",
     "verify:hero-input": "node scripts/check-hero-input.mjs",
     "shots:anatomy": "node scripts/capture-anatomy-views.mjs",
     "shots:phone": "node scripts/capture-phone-states.mjs",
@@ -39,7 +40,8 @@
     "verify:departure": "node scripts/check-departure.mjs",
     "verify:gated": "node scripts/check-gated-surfaces.mjs",
     "review:brain-labels": "node scripts/export-anatomy-labels.mjs",
-    "build:preview": "VITE_ALLOW_PREVIEW=1 vite build --outDir dist-preview"
+    "build:preview": "VITE_ALLOW_PREVIEW=1 VITE_SUPABASE_URL=https://stub.invalid VITE_SUPABASE_PUBLISHABLE_KEY=stub-publishable-key vite build --outDir dist-preview",
+    "lessons": "node scripts/lessons.mjs"
   },
   "dependencies": {
     "three": "^0.169.0"

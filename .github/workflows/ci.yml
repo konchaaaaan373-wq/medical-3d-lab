@@ -22,7 +22,17 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
+      # Full history, for `tests/asset-provenance.test.js`. It asks where each
+      # adopted binary entered the default branch, which a shallow clone cannot
+      # answer — and answering it wrongly is not hypothetical: read on a shallow
+      # clone, the boundary commit looks like it added every file in its tree,
+      # which is how the brain atlas came to be reported as having an
+      # unreachable provenance commit when its record was right all along. The
+      # test refuses to run shallow rather than passing vacuously, so without
+      # this line it fails here instead of lying.
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
       - uses: actions/setup-node@v4
         with:
           node-version: 22

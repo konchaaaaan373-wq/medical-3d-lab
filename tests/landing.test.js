@@ -5,6 +5,7 @@ import * as THREE from 'three';
 
 import { createLanding } from '../src/app/Landing.js';
 import { createLandingOrganHero } from '../src/app/landingOrganHero.js';
+import { nameNearestToCentre } from '../src/app/landingOrganViewport.js';
 import { mountLandingOrganViewport, shouldLoadDetail } from '../src/app/landingOrganViewport.js';
 import {
   LANDING_FLOW_BUDGETS,
@@ -76,13 +77,28 @@ test('landing hero: every rotation entry is a real organ that opens a released m
   );
   assert.ok(HERO_ROTATION.length > 0, 'the hero has to have something to show');
   const heart = HERO_ORGANS.find((entry) => entry.organ === 'heart');
-  assert.equal(heart.sceneId, 'heart-anatomy', 'the heart entry names an anatomy scene, built or not');
-  // The scene exists now, and the hero still does not show it: what the filter
-  // asks is whether the release *opens* it, not whether it was written. That
-  // distinction is the whole mechanism, and this is where it is checked.
+  assert.equal(heart.sceneId, 'heart-anatomy', 'the heart entry names an anatomy scene');
+  // What the filter asks is whether the release *opens* the scene, not whether
+  // it was written. The heart spent weeks on the declared list and off the
+  // rotation for exactly that reason, and joined it on 2026-09-15 without the
+  // hero being edited — which is the mechanism working, in the direction it is
+  // harder to test. The distinction still holds for the organs behind it.
   assert.ok(sceneById(heart.sceneId), 'the scene is registered');
-  assert.equal(isSceneReleased(sceneById(heart.sceneId)), false);
-  assert.equal(HERO_ROTATION.includes(heart), false, 'and it is not shown until the release opens it');
+  assert.equal(isSceneReleased(sceneById(heart.sceneId)), true);
+  // By organ, not by identity: `HERO_ROTATION` rebuilds each entry with the
+  // route attached, so `includes(entry)` compares against a different object
+  // and is false whatever the release says. It read as passing while the answer
+  // was meant to be false.
+  const shownOrgans = new Set(HERO_ROTATION.map((entry) => entry.organ));
+  assert.equal(shownOrgans.has('heart'), true, 'the release opened it, so the hero shows it');
+
+  for (const entry of HERO_ORGANS.filter((item) => !isSceneReleased(sceneById(item.sceneId)))) {
+    assert.equal(
+      shownOrgans.has(entry.organ),
+      false,
+      `${entry.organ} is declared and not open, and must not be shown`
+    );
+  }
 
   for (const entry of HERO_ROTATION) {
     // The detailed model that replaces the builder has to be a scene the
@@ -238,7 +254,7 @@ test('landing: the shell stays readable while the hero dynamically mounts a real
   assert.match(css, /\.landing-demo-state-grid\.is-organs/);
 });
 
-test('landing: one public model is the live brain, not a one-card index', () => {
+test('landing: the public models are live organs, not a card index', () => {
   const restoreDocument = installFakeDocument();
   const previousWindow = globalThis.window;
   globalThis.window = {};
@@ -250,12 +266,27 @@ test('landing: one public model is the live brain, not a one-card index', () => 
     const viewports = findByClass(mounted.element, 'landing-demo-viewport');
     const links = findByClass(mounted.element, 'landing-cta');
 
-    assert.equal(PUBLIC_MANIFEST.count, 1);
+    // Four published models since 2026-09-16 (two from 2026-09-15). What this
+    // test is for has not changed: the landing page shows **one organ, live**,
+    // and never turns into a grid of cards as the published set grows — which
+    // is the failure mode each new model makes more tempting. The literal is
+    // kept rather than read from the manifest on both sides, so that widening
+    // the release has to come here and be looked at.
+    assert.equal(PUBLIC_MANIFEST.count, 4);
     assert.equal(findByClass(mounted.element, 'landing-scene-card').length, 0);
-    assert.equal(viewports.length, 1);
-    assert.equal(controls.length, 0);
-    assert.ok(links.some((link) => link.getAttribute('href') === '#/brain-anatomy'));
-    assert.equal(mounted.organHero.organ, 'brain');
+    assert.equal(viewports.length, 1, 'one organ on screen, however many are published');
+    // The chooser the design always said a second model would bring: with one
+    // published organ there was nothing to choose between and no control was
+    // drawn. There is one control per published organ, and they are controls
+    // over the single live viewport rather than cards standing in for it.
+    assert.equal(controls.length, PUBLIC_MANIFEST.count);
+    assert.equal(controls.length, 4);
+    // The link follows whichever organ the rotation put up today, rather than
+    // being pinned to the brain.
+    const shown = mounted.organHero.organ;
+    const entry = HERO_ROTATION.find((item) => item.organ === shown);
+    assert.ok(entry, `${shown} is on screen but not in the rotation`);
+    assert.ok(links.some((link) => link.getAttribute('href') === `#/${entry.sceneId}`));
   } finally {
     restoreDocument();
     if (previousWindow === undefined) delete globalThis.window;
@@ -273,15 +304,28 @@ test('landing hero: the open link and the day badge follow the organ on screen',
     const badge = findByClass(hero.element, 'landing-demo-case')[0];
     const link = findByClass(hero.element, 'landing-demo-link')[0];
 
-    assert.equal(hero.organ, 'brain');
+    // On this date the rotation lands where `heroRotationDay` says it does; the
+    // link and the badge follow the organ on screen rather than a fixed slug.
+    const opening = HERO_ROTATION.find((item) => item.organ === hero.organ);
+    assert.ok(opening, 'the hero shows an organ that is in the rotation');
     assert.equal(badge.hidden, false, "the day's own organ is marked as such");
-    assert.equal(link.getAttribute('href'), '#/brain-anatomy');
+    assert.equal(link.getAttribute('href'), `#/${opening.sceneId}`);
 
-    // An organ that is not in the rotation cannot be selected into view: the
-    // hero has nothing to show for it and must not fall back to a neighbour.
-    void hero.setOrgan('heart');
-    assert.equal(hero.organ, 'brain');
-    assert.equal(link.getAttribute('href'), '#/brain-anatomy');
+    // Selecting an organ that *is* in the rotation moves the hero and the link
+    // together — the case that could not be exercised while one model was
+    // published.
+    const other = HERO_ROTATION.find((item) => item.organ !== hero.organ);
+    if (other) {
+      void hero.setOrgan(other.organ);
+      assert.equal(hero.organ, other.organ);
+      assert.equal(link.getAttribute('href'), `#/${other.sceneId}`);
+    }
+
+    // An organ that is not in the rotation still cannot be selected into view:
+    // the hero has nothing to show for it and must not fall back to a neighbour.
+    const before = hero.organ;
+    void hero.setOrgan('lung');
+    assert.equal(hero.organ, before);
   } finally {
     restoreDocument();
     if (previousWindow === undefined) delete globalThis.window;
@@ -1250,9 +1294,14 @@ test('landing hero: the instructions describe the input the reader actually has'
     assert.match(collectText(card).join(' '), /クリックすると/);
 
     // The screen-reader instructions carry the third input: no pointer at all.
+    // "いちばん近い" is load-bearing, not a flourish: Enter names the structure
+    // *nearest* the centre, because an organ with a gap down the middle has
+    // nothing at the exact centre and used to name nothing at all (F-129).
+    // Promising the centre again would put the instructions back in front of
+    // behaviour that no longer matches them.
     const instructions = findByClass(hero.element, 'landing-sr-only')
       .find((node) => node.getAttribute('id') === 'landing-demo-viewport-instructions');
-    assert.match(collectText(instructions).join(' '), /Enterキーで画面中央の部位/);
+    assert.match(collectText(instructions).join(' '), /Enterキーで画面中央にいちばん近い部位/);
 
     hero.destroy();
     assert.equal(listeners.size, 0, 'the hero stops listening when it ends');
@@ -1414,4 +1463,49 @@ test('landing hero: the picked structure is named on the model, in both language
     if (previousWindow === undefined) delete globalThis.window;
     else globalThis.window = previousWindow;
   }
+});
+
+test('hero aim: the centre wins, and a gap down the middle does not silence Enter', () => {
+  const rect = { width: 480, height: 360 };
+  const asked = [];
+  /** A scene whose structures sit wherever `hit` says. */
+  const sceneWhere = (hit) => ({
+    selectAtCanvasPoint(x, y) {
+      asked.push([x, y]);
+      return hit(x, y);
+    },
+  });
+
+  // 1. Anything at the centre wins, and nothing else is ever asked. This is the
+  //    brain, the heart and the liver — the fix must not move their aim.
+  asked.length = 0;
+  assert.equal(nameNearestToCentre(sceneWhere(() => true), rect), true);
+  assert.deepEqual(asked, [[240, 180]], 'the centre was not asked first, or not asked alone');
+
+  // 2. A gap down the middle: nothing within 40px of the centre, tissue beyond.
+  //    This is the lungs, and it used to name nothing at all.
+  asked.length = 0;
+  const gap = sceneWhere((x, y) => Math.hypot(x - 240, y - 180) > 40);
+  assert.equal(nameNearestToCentre(gap, rect), true, 'Enter found nothing beside the gap');
+  const [firstHitX, firstHitY] = asked.at(-1);
+  assert.ok(
+    Math.hypot(firstHitX - 240, firstHitY - 180) <= 60,
+    `named something ${Math.round(Math.hypot(firstHitX - 240, firstHitY - 180))}px out, which is not "in front of you"`
+  );
+
+  // 3. An empty model names nothing rather than reaching into the corners.
+  asked.length = 0;
+  assert.equal(nameNearestToCentre(sceneWhere(() => false), rect), false);
+  const reach = Math.min(rect.width, rect.height) * 0.32;
+  for (const [x, y] of asked) {
+    assert.ok(
+      Math.hypot(x - 240, y - 180) <= reach + 1,
+      `asked ${Math.round(Math.hypot(x - 240, y - 180))}px from the centre, past the ${Math.round(reach)}px reach`
+    );
+    assert.ok(x >= 0 && y >= 0 && x <= rect.width && y <= rect.height, 'asked outside the canvas');
+  }
+
+  // 4. A scene with no keyboard entry point is left alone rather than crashed.
+  assert.equal(nameNearestToCentre({}, rect), false);
+  assert.equal(nameNearestToCentre(null, rect), false);
 });

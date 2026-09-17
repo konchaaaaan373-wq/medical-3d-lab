@@ -3763,9 +3763,13 @@
     /* Never taller than the band above the console, less the room the title and
        selection cards need. A tall console (circulation ships 359px of one)
        would otherwise push the sheet up into them. */
+    /* Floored for the same reason as the parts sheet, and measured the same
+       way: the subtraction reached 38px on the kidney, where the top bar's
+       "what is shown elsewhere" panel is 298px tall on a phone. 240px holds
+       this sheet's head and its first row of choices. */
     max-height: min(
       50dvh,
-      calc(100dvh - var(--console-height, 0px) - var(--chrome-bottom, 0px) - 22px)
+      max(240px, calc(100dvh - var(--console-height, 0px) - var(--chrome-bottom, 0px) - 22px))
     );
     background: var(--panel-sheet);
     box-shadow: var(--shadow);

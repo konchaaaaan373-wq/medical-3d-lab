@@ -4,7 +4,7 @@
 segmented nuclei but **parcels the upstream generator built by combining
 several numbered labels from a source atlas volume into one output mesh**.
 Until 2026-09-16 the individual source label ids behind those parcels were
-not recorded anywhere in this repository (F-123). This document records what
+not recorded anywhere in this repository (F-141). This document records what
 was recovered, where it came from, and — just as importantly — what is still
 not verified.
 
@@ -117,7 +117,7 @@ against either.
 
 ## 6. Status
 
-F-123 moves from "no source label ids recorded" to: **ids recovered from the
+F-141 moves from "no source label ids recorded" to: **ids recovered from the
 pinned generator script.** What remains: LUT name cross-check against the
 original atlas papers, a per-asset correspondence record (§5 above), and
 propagating this into every affected note (see `STRUCTURE_NOTE` in
