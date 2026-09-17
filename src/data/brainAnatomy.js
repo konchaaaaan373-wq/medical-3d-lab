@@ -396,7 +396,7 @@ const HYPOTHALAMUS_LABELS = new Set([
  * source labels/side) are actually combined parcels — Preoptic, Lateral and
  * Posterior are each a single source label per side. See
  * docs/asset-provenance/brain-merged-parcels.md and the individual
- * `STRUCTURE_NOTE` entries below (F-141, corrected 2026-09-16).
+ * `STRUCTURE_NOTE` entries below (F-142, corrected 2026-09-16).
  */
 
 const CEREBELLAR_VERMIS_LABELS = new Set([
@@ -425,8 +425,8 @@ const STRUCTURE_NOTE = {
     '上流のラベルには中心下回とその溝の名も含まれていますが、表示されているメッシュは弁蓋部の下にある島皮質であり、外側面の中心下回ではありません。'
   ),
   'Medulla oblongata': copy(
-    'The source data includes only a left-side mesh; there is no right-side mesh (F-140).',
-    '元データには左側のメッシュのみ収録されており、右側はありません（F-140）。'
+    'The source data includes only a left-side mesh; there is no right-side mesh (F-141).',
+    '元データには左側のメッシュのみ収録されており、右側はありません（F-141）。'
   ),
   'Optic chiasm': copy(
     'A midline structure recorded here as separate left and right meshes.',
@@ -457,12 +457,12 @@ const STRUCTURE_NOTE = {
     'この区画は側頭葉側と後頭葉側の両方にまたがるため、ここでは側頭葉・後頭葉の両方の下に表示しています。元アトラスの上流ナビゲーション区分では側頭葉のみに分類されています。'
   ),
   'Corticomedial group': copy(
-    'An atlas parcel combining 4 source labels ([5, 7, 8, 9]) of the CIT168 amygdala atlas into one region, per the pinned upstream generator script. See docs/asset-provenance/brain-merged-parcels.md (F-141).',
-    '元アトラス（CIT168 扁桃体アトラス）の 4 元ラベル（[5, 7, 8, 9]）を統合したアトラス区画。固定版の生成スクリプトから確認。docs/asset-provenance/brain-merged-parcels.md を参照（F-141）。'
+    'An atlas parcel combining 4 source labels ([5, 7, 8, 9]) of the CIT168 amygdala atlas into one region, per the pinned upstream generator script. See docs/asset-provenance/brain-merged-parcels.md (F-142).',
+    '元アトラス（CIT168 扁桃体アトラス）の 4 元ラベル（[5, 7, 8, 9]）を統合したアトラス区画。固定版の生成スクリプトから確認。docs/asset-provenance/brain-merged-parcels.md を参照（F-142）。'
   ),
   'Basolateral complex': copy(
-    'An atlas parcel combining 3 source labels ([2, 3, 6]) of the CIT168 amygdala atlas, confirmed by the pinned upstream generator script to exclude the separately labelled lateral nucleus ([1]). See docs/asset-provenance/brain-merged-parcels.md (F-141).',
-    '元アトラス（CIT168 扁桃体アトラス）の 3 元ラベル（[2, 3, 6]）を統合したアトラス区画。固定版の生成スクリプトで、別ラベルの外側核（[1]）を含まないことを確認。docs/asset-provenance/brain-merged-parcels.md を参照（F-141）。'
+    'An atlas parcel combining 3 source labels ([2, 3, 6]) of the CIT168 amygdala atlas, confirmed by the pinned upstream generator script to exclude the separately labelled lateral nucleus ([1]). See docs/asset-provenance/brain-merged-parcels.md (F-142).',
+    '元アトラス（CIT168 扁桃体アトラス）の 3 元ラベル（[2, 3, 6]）を統合したアトラス区画。固定版の生成スクリプトで、別ラベルの外側核（[1]）を含まないことを確認。docs/asset-provenance/brain-merged-parcels.md を参照（F-142）。'
   ),
 };
 
@@ -476,22 +476,22 @@ const NAJDENOVSKA_NOTE = copy(
  * Three of the five Neudorfer (2020) hypothalamic parcels are built from a
  * single source label per side, not from several combined labels — a prior
  * note that treated all five as one kind of "integrated parcel" overstated it
- * for these three (F-141, corrected 2026-09-16). See
+ * for these three (F-142, corrected 2026-09-16). See
  * docs/asset-provenance/brain-merged-parcels.md for the per-parcel source ids.
  */
 const NEUDORFER_SINGLE_LABEL_NOTE = copy(
-  'Built from a single source label per side in the pinned upstream generator script (Neudorfer et al. 2020 input volume). This does not guarantee the source atlas volume contains only one cytoarchitectonic nucleus at that id. See docs/asset-provenance/brain-merged-parcels.md (F-141).',
-  '固定版の生成スクリプトでは片側 1 元ラベルから構築（Neudorfer 2020 の入力ボリューム）。単一の組織学的核であることを保証するものではありません。docs/asset-provenance/brain-merged-parcels.md を参照（F-141）。'
+  'Built from a single source label per side in the pinned upstream generator script (Neudorfer et al. 2020 input volume). This does not guarantee the source atlas volume contains only one cytoarchitectonic nucleus at that id. See docs/asset-provenance/brain-merged-parcels.md (F-142).',
+  '固定版の生成スクリプトでは片側 1 元ラベルから構築（Neudorfer 2020 の入力ボリューム）。単一の組織学的核であることを保証するものではありません。docs/asset-provenance/brain-merged-parcels.md を参照（F-142）。'
 );
 
 const NEUDORFER_ANTERIOR_NOTE = copy(
-  'An atlas parcel combining 6 source labels per side in the pinned upstream generator script (Neudorfer et al. 2020 input volume). See docs/asset-provenance/brain-merged-parcels.md (F-141).',
-  '固定版の生成スクリプトで片側 6 元ラベルを統合したアトラス区画（Neudorfer 2020 の入力ボリューム）。docs/asset-provenance/brain-merged-parcels.md を参照（F-141）。'
+  'An atlas parcel combining 6 source labels per side in the pinned upstream generator script (Neudorfer et al. 2020 input volume). See docs/asset-provenance/brain-merged-parcels.md (F-142).',
+  '固定版の生成スクリプトで片側 6 元ラベルを統合したアトラス区画（Neudorfer 2020 の入力ボリューム）。docs/asset-provenance/brain-merged-parcels.md を参照（F-142）。'
 );
 
 const NEUDORFER_TUBERAL_NOTE = copy(
-  'An atlas parcel combining 4 source labels per side in the pinned upstream generator script (Neudorfer et al. 2020 input volume). See docs/asset-provenance/brain-merged-parcels.md (F-141).',
-  '固定版の生成スクリプトで片側 4 元ラベルを統合したアトラス区画（Neudorfer 2020 の入力ボリューム）。docs/asset-provenance/brain-merged-parcels.md を参照（F-141）。'
+  'An atlas parcel combining 4 source labels per side in the pinned upstream generator script (Neudorfer et al. 2020 input volume). See docs/asset-provenance/brain-merged-parcels.md (F-142).',
+  '固定版の生成スクリプトで片側 4 元ラベルを統合したアトラス区画（Neudorfer 2020 の入力ボリューム）。docs/asset-provenance/brain-merged-parcels.md を参照（F-142）。'
 );
 
 for (const label of THALAMUS_LABELS) {

@@ -400,7 +400,7 @@ export const BETA_PUBLICATION_DECISIONS = Object.freeze([
       'hubmap-vh-m-heart': '46d375e36d8181c161b70e1f0b8f0d778364f0a8414eebce4e4fda1cea73eb3d',
       'hubmap-vh-m-blood-vasculature': 'a95ff0825431953d8fff210cf29d9e65aeed5da55f623717ab613864a9435502',
     }),
-    sceneRevision: Object.freeze({ cardRevision: 24, modelDigest: '60fa8135b9b036d2' }),
+    sceneRevision: Object.freeze({ cardRevision: 25, modelDigest: '1ad4ac66349adee6' }),
     scope: Object.freeze({
       // The authored tour in `SCENE_POINTS`, not whatever a run measured: four
       // named parts at four recorded points, crossing both adopted files.
@@ -459,7 +459,7 @@ export const BETA_PUBLICATION_DECISIONS = Object.freeze([
     assetRevisions: Object.freeze({
       'brain-atlas-glb': '76a49ea4526a4880613aec7a02756bd7301b0b9d0680d7cae33e197b672c5453',
     }),
-    sceneRevision: Object.freeze({ cardRevision: 24, modelDigest: '0efb7663d00c661c' }),
+    sceneRevision: Object.freeze({ cardRevision: 25, modelDigest: '1ad4ac66349adee6' }),
     /** What was actually exercised. Not a plan — a list of what was done. */
     scope: Object.freeze({
       // Re-measured on 2026-09-15 and corrected. The first two of the four

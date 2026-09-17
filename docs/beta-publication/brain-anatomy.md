@@ -16,7 +16,7 @@ at pictures. **No anatomist has judged this geometry or these labels.**
 | **Decided by** | Claude Sonnet, acting as implementer |
 | **Role** | `engineering` — software behaviour, not anatomical or clinical judgement |
 | **Asset revision** | `brain-atlas-glb` @ `sha256:76a49ea4526a4880613aec7a02756bd7301b0b9d0680d7cae33e197b672c5453` |
-| **Scene revision** | model card revision **24**, source digest `0efb7663d00c661c` |
+| **Scene revision** | model card revision **25**, source digest `1ad4ac66349adee6` |
 | **Scene sources under that digest** | [`src/data/brainAnatomy.js`](../../src/data/brainAnatomy.js), [`src/scenes/nervous/scenes/brainAnatomy/BrainAnatomyScene.js`](../../src/scenes/nervous/scenes/brainAnatomy/BrainAnatomyScene.js), [`src/scenes/shared/anatomy/tapGesture.js`](../../src/scenes/shared/anatomy/tapGesture.js) |
 
 The decision is pinned to **both** revisions in
@@ -211,7 +211,7 @@ remainder — no geometry, no atlas ids and no colour changed:
   viewpoint itself rather than only from a hidden layer-stage description,
   that the contralateral hemisphere is hidden and this is not a midsagittal
   section; right medial and inferior additionally state that this model has
-  no right medulla oblongata mesh (F-140), so a reader looking at either
+  no right medulla oblongata mesh (F-141), so a reader looking at either
   view cannot mistake the gap for a normal asymmetry. `InspectionPanel.js`
   renders the active view's notice as one line under the viewpoint buttons.
 - The label-export script's per-structure table is renamed "271 選択可能
@@ -230,8 +230,13 @@ Nothing drawn, selectable, coloured or announced in a view changed, but what
 the panel says about two structures did, so this record is taken again.
 
 **Revision 23 → 24.** Merging `main` renumbered the ledger items the scene's
-notes cite (F-120…F-124 → F-138…F-142); nothing a reader sees changed, but the
+notes cite (F-120…F-124 → F-139…F-143); nothing a reader sees changed, but the
 source digest did, so the pin follows it.
+
+**Revision 24 → 25.** Merging `main` after #127 renumbered this branch's ledger
+items a second time (F-138…F-142 → F-139…F-143); the notes cite them, so the
+digest moved and the pin follows. Nothing drawn, selectable, coloured or
+announced changed.
 
 Each time the gate closed and the production build stopped shipping the scene
 until this record was taken again — the mechanism working. An earlier decision

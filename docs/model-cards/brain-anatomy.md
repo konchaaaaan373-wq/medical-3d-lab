@@ -336,7 +336,7 @@ naming, the view-bound notices and the colour record and found two new items
 (2026-09-17, against `5205c6b`, revision 23) returned **approve**, expressly
 limited to that version, to general/medical education of gross anatomy and to
 what the reviewer could see, with the constraints in the record; it is not a
-clinical attestation and the registry stays `pending` (F-138). Records:
+clinical attestation and the registry stays `pending` (F-139). Records:
 [`…-rereview-880eded.md`](../clinical-reviews/brain-anatomy-ai-terminology-check-2026-09-16-rereview-880eded.md),
 [`…-review3-852b691.md`](../clinical-reviews/brain-anatomy-ai-terminology-check-2026-09-16-review3-852b691.md),
 [`…-approve-5205c6b.md`](../clinical-reviews/brain-anatomy-ai-terminology-check-2026-09-17-approve-5205c6b.md).
@@ -360,7 +360,7 @@ aqueduct of midbrain, septum pellucidum and choroid plexus are filed under
 ventricular-system families without describing the septum or plexus as CSF
 spaces. The seven Najdenovska (2018) thalamic parcels, the `Corticomedial
 group` and five Neudorfer (2020) hypothalamic parcels now carry a note citing
-their source and stating they are not histological nuclear boundaries (F-141).
+their source and stating they are not histological nuclear boundaries (F-142).
 Several Japanese names were corrected for accuracy or to mark them explicitly
 as atlas subdivisions rather than standard nuclei (VA/VLD/VLV thalamic nuclei,
 the basolateral amygdala complex, the paracentral lobule spanning frontal and
@@ -394,7 +394,7 @@ is to copy, notes, a display-only breadcrumb override and per-view UI text.
   above (registration approximation across several population atlases; the
   upstream ~7.2 mm figure is a red-nucleus position check, not a bound for
   every structure).
-- **#12/F-141 — merged-parcel source label ids recovered from the pinned
+- **#12/F-142 — merged-parcel source label ids recovered from the pinned
   upstream generator script**, recorded in
   [`docs/asset-provenance/brain-merged-parcels.md`](../asset-provenance/brain-merged-parcels.md)
   (amygdala Lateral/Basolateral/Central/Corticomedial; hypothalamic
@@ -431,7 +431,7 @@ is to copy, notes, a display-only breadcrumb override and per-view UI text.
   whenever the active view declares one. Left and right medial views state
   that the contralateral hemisphere is hidden and this is not a midsagittal
   section; right medial and inferior additionally state that this model has
-  no right medulla oblongata mesh (F-140) and that this is a data gap, not a
+  no right medulla oblongata mesh (F-141) and that this is a data gap, not a
   normal left/right asymmetry. Lateral, anterior, posterior and superior
   views carry no notice.
 - **R2-28 — export tooling.** `scripts/export-anatomy-labels.mjs` renames
@@ -465,9 +465,14 @@ R2-27 partly, two new). No geometry, ids, colour or view text changed.
 **Revision 23 → 24 (2026-09-17).** Merge of `main` before the pull request.
 No label, hierarchy, copy, note, view text, geometry, id or colour changed;
 the digest moved only because the ledger numbers cited in `brainAnatomy.js`
-comments and notes were renumbered (F-120→F-138, F-121→F-139, F-122→F-140,
-F-123→F-141, F-124→F-142) after `main` had used the same numbers for other
+comments and notes were renumbered (F-120→F-139, F-121→F-140, F-122→F-141,
+F-123→F-142, F-124→F-143) after `main` had used the same numbers for other
 items.
+
+**Revision 24 → 25 (2026-09-17).** Merge of `main` after #127 landed. Nothing a
+reader sees changed; the digest moved because the ledger numbers cited in
+`brainAnatomy.js` notes moved once more (F-138…F-142 → F-139…F-143) after
+`main` took F-138 for the go-private decision.
 
 Sources in scope: `src/data/brainAnatomy.js`,
 `src/scenes/nervous/scenes/brainAnatomy/BrainAnatomyScene.js`,

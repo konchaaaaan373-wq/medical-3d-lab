@@ -70,7 +70,7 @@ const LEFT_OPERCULUM = new Set([
 // cut, but the result looks enough like a section that it reads as one
 // (D-2 of the 2026-09-16 AI re-review). Right medial and inferior also carry
 // a second line: the source data has no right medulla oblongata mesh
-// (F-140), so those two views show a real gap at the midline/base that must
+// (F-141), so those two views show a real gap at the midline/base that must
 // not be read as a normal left/right asymmetry.
 const MEDIAL_NOTICE = {
   notice: 'Medial 3D view: contralateral hemisphere hidden. Not a midsagittal section.',
