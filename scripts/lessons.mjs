@@ -13,21 +13,23 @@
  * restore it, confirm green. Every lesson in section A was found that way and
  * by nothing else.
  */
-import { auditLedgerFile, HUMAN_ONLY } from './lib/lessons.mjs';
+import { auditLedgerFile, COVERAGE } from './lib/lessons.mjs';
 
 const LEDGER = 'docs/verification-lessons.md';
 const { problems, lessons, humanOnly } = auditLedgerFile(LEDGER, 'package.json');
 
 console.log(`\nVerification lessons — ${lessons.length} recorded in ${LEDGER}\n`);
 
+// The mark and the count below are the same judgement. They used to be two:
+// the mark asked "does it say 人だけ" and the count asked "does it name no
+// guard", so fifteen lines read `human` while the summary said eleven.
+const MARK = { [COVERAGE.guarded]: '  test', [COVERAGE.partly]: 'partly', [COVERAGE.human]: ' human' };
 for (const lesson of lessons) {
-  const guard = lesson.fields.get('いま何が捕まえるか') ?? '';
-  const mark = guard.includes(HUMAN_ONLY) ? 'human' : ' test';
-  console.log(`  ${mark}  ${lesson.id}  ${lesson.title}`);
+  console.log(`  ${MARK[lesson.coverage]}  ${lesson.id}  ${lesson.title}`);
 }
 
 console.log(
-  `\n${humanOnly.length} of ${lessons.length} are still caught by a person and nothing else:`
+  `\n${humanOnly.length} of ${lessons.length} still need a person for some part of them:`
 );
 for (const lesson of humanOnly) console.log(`  - ${lesson}`);
 console.log(
