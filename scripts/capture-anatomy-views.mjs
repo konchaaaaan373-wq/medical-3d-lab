@@ -30,8 +30,8 @@
  *   --dist <dir>     built site to serve (default: dist)
  *   --scene <slug>   scene route to drive (default: brain-anatomy)
  *   --out <dir>      where to write the images (default: shots)
- *   --view <id>      only this viewpoint (repeatable)
- *   --mode <id>      only this colour mode (repeatable)
+ *   --view <slug>    only this viewpoint, by its slugified label (repeatable)
+ *   --mode <slug>    only this colour mode, by its slugified label (repeatable)
  *   --recipe <id>    also shoot each of the scene's fixed views (repeatable;
  *                    `--recipe all` for every one it offers)
  *   --width <px>     viewport width (default: 1280)
@@ -46,6 +46,7 @@ import { join } from 'node:path';
 
 import { chromiumExecutable } from './lib/browser.mjs';
 import { differingPixels, settledPixels } from './lib/frames.mjs';
+import { slugifyChoice } from './lib/inspection.mjs';
 import { serveDist } from './lib/serve-dist.mjs';
 import { DEV_ASSET_ROOT } from '../src/catalog/devAssets.js';
 
@@ -115,8 +116,6 @@ const browser = await chromium.launch({
 const page = await browser.newPage({ viewport: { width, height } });
 page.on('pageerror', (error) => console.error(`uncaught error: ${error}`));
 
-const slug = (text) => text.trim().split('\n')[0].toLowerCase().replace(/[^a-z]+/g, '-').replace(/^-|-$/g, '');
-
 try {
   const url = flag('--preview') ? `${base}?preview=1#/${sceneSlug}` : `${base}#/${sceneSlug}`;
   await page.goto(url, { waitUntil: 'networkidle' });
@@ -146,9 +145,32 @@ try {
     await page.waitForTimeout(300);
   }
 
-  const views = (await page.locator('.inspection-choice.inspection-view').allTextContents()).map(slug);
-  const modes = (await page.locator('.inspection-choice.inspection-mode').allTextContents()).map(slug);
+  const views = (await page.locator('.inspection-choice.inspection-view').allTextContents()).map(slugifyChoice);
+  const modes = (await page.locator('.inspection-choice.inspection-mode').allTextContents()).map(slugifyChoice);
   if (!views.length || !modes.length) die('the scene offered no viewpoints or no colour modes');
+
+  /**
+   * A filter that matches nothing is a mistake, not an empty set.
+   *
+   * `--view` and `--mode` name the button's *label*, slugified — not the id in
+   * the scene's `static views`. The two agree often enough to be mistaken for
+   * one thing: the kidney's `coronal-section` is both, and `kidneys` is only
+   * the id, its label slugifying to `both-kidneys`. Asking for three candidate
+   * framings of the kidney by id got one set of pictures and two empty
+   * directories, and the run exited 0 and printed
+   * "6 viewpoint(s) x 2 colour mode(s)" for all three, because that line
+   * reports what the scene *offers* rather than what was shot. `--recipe`
+   * already refused an id it could not find; views and modes did not.
+   */
+  const unmatched = (asked, offered) => asked.filter((id) => !offered.includes(id));
+  const missingViews = unmatched(onlyViews, views);
+  if (missingViews.length) {
+    die(`this scene offers no viewpoint "${missingViews.join('", "')}" (it has: ${views.join(', ')})`);
+  }
+  const missingModes = unmatched(onlyModes, modes);
+  if (missingModes.length) {
+    die(`this scene offers no colour mode "${missingModes.join('", "')}" (it has: ${modes.join(', ')})`);
+  }
 
   const box = await page.locator('canvas').first().boundingBox();
   if (!box) die('the scene rendered no canvas');
@@ -329,6 +351,7 @@ try {
    * button's prose.
    */
   let unsettled = 0;
+  let shot = 0;
   for (const recipe of onlyRecipes.length ? await recipesOnOffer(page, onlyRecipes) : []) {
     for (const mode of modes) {
       if (onlyModes.length && !onlyModes.includes(mode)) continue;
@@ -347,6 +370,7 @@ try {
         console.error(`  ${name}: no painted frame repeated within ${ATTEMPTS} shots / ${PATIENCE} ms`);
         unsettled += 1;
       } else {
+        shot += 1;
         console.log(`  ${name}.png (settled after ${frames} frame(s))`);
       }
       await showUi();
@@ -368,6 +392,7 @@ try {
         console.error(`  ${name}: no painted frame repeated within ${ATTEMPTS} shots / ${PATIENCE} ms`);
         unsettled += 1;
       } else {
+        shot += 1;
         console.log(`  ${name}.png (settled after ${frames} frame(s))`);
       }
       await showUi();
@@ -375,8 +400,10 @@ try {
     }
   }
   const at = layer === null ? 'the layer the scene opens at' : `layer ${layer}`;
+  // What was shot, not what the scene offers: with a filter in play those are
+  // different numbers, and the offered one reads as a set that does not exist.
   console.log(
-    `\n${sceneSlug} at ${width}x${height}, ${at}: ${views.length} viewpoint(s) x ${modes.length} colour mode(s) -> ${outDir}`
+    `\n${sceneSlug} at ${width}x${height}, ${at}: ${shot} image(s) -> ${outDir}`
   );
   if (unsettled) die(`${unsettled} frame(s) never settled; the set is not comparable.`);
 } finally {
