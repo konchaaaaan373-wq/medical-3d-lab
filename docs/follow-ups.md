@@ -16,8 +16,8 @@ Last updated: 2026-09-17
   同じ番号が同時に確保され、どちらもマージされたためです（解剖側は §A、
   病態側は §E）。**片側を採番し直す必要がありますが、どちらを動かすかは
   両方の所有者が決めることなので、ここでは記録だけして触っていません。**
-  次に追加する番号は **F-139** です（F-111〜F-137 は main 側で採番済み。
-  **F-138 がこの branch**）。
+  次に追加する番号は **F-147** です（F-111〜F-145 は main 側で採番済み。
+  **F-146 がこの branch**——マージ直前にもう一度取り直してください、L-16）。
   ⚠ **同じ衝突が 7 回目です。** main が F-126〜F-129 を取り、この branch も
   同じ 4 つを使っていました（その前は F-124 / F-125、その前は F-107〜F-110）。
   **この branch 側を F-130〜F-133 に動かしています**
@@ -958,6 +958,70 @@ F-109 で臨床レビュー登録簿（98.5 kB）は外しましたが、まだ 
   往復（URL→選択→URL）を固定する。
 
 ## D. テスト・CI
+
+### F-146 CI で一度も走っていなかった検証が 3 本あった — P2（2026-09-17）
+
+**`verify:anatomy` / `verify:disease` / `verify:patient` は、どの workflow にも
+入っていませんでした。** 誰かの手元で走るか、走らないかのどちらかで、
+実際にはほとんど走っていません。測った結果:
+
+| script | どの workflow にあるか |
+| --- | --- |
+| `verify:ui` | `ci.yml` / `final-browser-validation` / `webkit-lifecycle-diagnostic` |
+| `verify:auth`・`verify:hero-input` | `final-browser-validation` |
+| `verify:departure`・`verify:gated` | `ci.yml` |
+| `verify:live` | `verify-live.yml` |
+| **`verify:anatomy`** | **なし** |
+| **`verify:disease`** | **なし** |
+| **`verify:patient`** | **なし** |
+
+**これは「回していない」ではなく「回せる場所が無かった」です。** そして
+2026-09-16 に**公開中の全シーンでクリック tour が壊れ、`npm test` は全緑**
+だった件を見つけたのが、まさに `verify:anatomy` です。3 本とも
+「押したら何かが起きたか」を読む検査で、`node --test` が構造的に見られない層です。
+
+`.github/workflows/scene-drive-validation.yml` を足しました。**`workflow_dispatch`
+限定**で、PR ごとの CI は 1 エンジン 1 チェックのまま——F-112 が持っている判断は
+動かしていません。置き場所は `final-browser-validation.yml` と同じ「候補時」の棚です。
+
+**公開シーンの一覧は workflow に書いていません。** `published-scenes` job が
+実行時に `src/catalog/publicManifest.js` から `sceneId` を読み、それを matrix に
+渡します。公開が増えれば次の run から自動で入り、外れれば駆動されなくなります
+（CLAUDE.md の「公開一覧を書き写さない」。この文書自身が 3 か所同時に
+間違えた前科があり、workflow は誰も読み返さないぶん最悪の写し先です）。
+
+`disease` と `patient` は preview 権限つきビルドで、かつ **stub の Supabase 設定**
+が要ります——patient の walk は `localStorage` にセッションを書くので、
+アカウント層の無いビルドではサインアウト状態を駆動して「ガイドは未購入」と
+報告してしまいます。`final-browser-validation` の auth job と同じ値です。
+
+**ガードは壊して赤を確認済みです**（`tests/scene-drive-workflow.test.js`、
+ミューテーション 6 件）:
+
+| 壊した内容 | 結果 |
+| --- | --- |
+| `push:` を足して毎 push 実行にする | 赤 |
+| `verify:patient` の呼び出しを消す | 赤 |
+| 公開シーン 2 件を matrix に直書きする | 赤 |
+| 空の manifest で例外を投げるのをやめる | 赤 |
+| patient を preview 権限なしでビルドする | 赤 |
+| `verify:disease` の第 1 引数をシーン一覧にする | 赤 |
+
+最後の 1 つは**実在の不具合でした**。`check-disease-interaction.mjs` の使い方が
+`-- copd asthma pulmonary-edema` と書いていましたが、`argv[2]` は出力先なので、
+その通り打つと **copd がディレクトリ名になり copd は駆動されず、終了コードは 0**。
+usage を直し、**L-45** に記録しました。
+
+- **まだ確認していないこと**: **この workflow 自身の初回 run の結果**。
+  3 本とも CI で走るのは初めてで、**赤が出ることを想定しています**——
+  それがこの項目の目的です。結果は出たところでここに追記してください
+- **再検討のきっかけ**: private 化（F-138）で run 本数を絞るとき。
+  これは候補時の棚なので毎 push の分数には効きませんが、**1 回が高い**
+  （anatomy は 1 シーンあたり分単位）ことは変わりません
+- **確かめ方**: Actions → Scene drive validation → `commit_sha` と `pr_number` を入れて実行。
+  `mcp__github__actions_run_trigger` から起動でき、ログも読めます
+- **完了の定義**: 3 本とも 1 度は CI で走り、出た findings が
+  「直した」か「番号のついた項目になった」かのどちらかになっていること
 
 ### F-138 private に戻すのは公開前。そのとき CI は今の本数では 2,000 分に収まらない — P2（2026-09-17）
 
@@ -2775,18 +2839,21 @@ B2 で追加した 8 シーンのうち **7 シーンで、ブラウザ確認し
   （まだ足していません。Claude① / Claude② の所有文書のため）。
 
 
-### F-125 教訓の 15 件は、まだ人しか捕まえられない — P2（2026-09-16、2026-09-17 更新）
+### F-125 教訓の 17 件は、まだ人しか捕まえられない — P2（2026-09-16、2026-09-17 更新）
 
-`docs/verification-lessons.md` が 37 件を持ち（2026-09-17 に再読。
-#123 が 5 件足しました）、`npm run lessons`（`npm test`
+`docs/verification-lessons.md` が 44 件を持ち、`npm run lessons`（`npm test`
 からも走る）が台帳の側を守ります——3 つの欄が**あって中身が空でない**こと、
 **名指ししたガードが実在すること**、まだ人しか捕まえられない件数。
 
-**38 件中 15 件です**——`npm run lessons` の出力から書いています。
+**44 件中 17 件です**——`npm run lessons` の出力から書いています
+（2026-09-17、L-45 を足した直後に再読）。
 L-01 / L-05 / L-06 / L-09 / L-13 / L-14 / L-15 / L-16 / L-21 / L-24 / L-26 /
-L-27 / L-28 / L-30 / L-36。
-うち **L-16 / L-21 / L-27 / L-30 の 4 件は `(partly)`**——半分は機械が捕まえ、
-残り半分は人だけ、という項目です。
+L-27 / L-28 / L-30 / L-36 / L-43 / L-45。
+うち **L-16 / L-21 / L-27 / L-30 / L-43 / L-45 の 6 件は `(partly)`**
+——半分は機械が捕まえ、残り半分は人だけ、という項目です。
+
+**この数と一覧は、並行 branch がほぼ毎回動かします。** 書き写す前に
+`npm run lessons` を読み直してください（この節自身が 3 回それを誤りました）。
 
 ⚠ **12 → 15 は後退ではありません。計器が直っただけです。** 以前の
 `auditLessons` は「ガードを 1 つでも名指したら満額被覆」と数えていたので、

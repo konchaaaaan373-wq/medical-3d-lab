@@ -1,0 +1,206 @@
+# The three checks that had never run in CI.
+#
+# `verify:anatomy`, `verify:disease` and `verify:patient` appeared in no
+# workflow at all until this file. They ran on somebody's machine or they did
+# not run, and "did not run" is what usually happened — which is how, on
+# 2026-09-16, the click tour was broken on every published scene at once with
+# `npm test` entirely green and nothing red anywhere.
+#
+# Each of them drives the product the way a reader does and reads back what the
+# product itself says, which is the class of failure `node --test` structurally
+# cannot see: whether clicking a mesh selects the structure the reader is then
+# told about, whether Reset returns the scene rather than only the sliders,
+# whether pressing Next moves anything on screen.
+#
+# `workflow_dispatch` only, and deliberately so. These are minutes-per-scene
+# checks — the anatomy drive is the most expensive thing this repository owns —
+# and F-112 holds the standing decision about what runs per pull request
+# (one engine, one check). Nothing here changes that; this is the candidate-time
+# shelf, next to `final-browser-validation.yml`.
+name: Scene drive validation
+
+"on":
+  workflow_dispatch:
+    inputs:
+      commit_sha:
+        description: Exact 40-character candidate commit or PR merge SHA
+        required: true
+        type: string
+      pr_number:
+        description: PR number used to cancel an older candidate run
+        required: true
+        type: string
+      disease_scenes:
+        description: Space-separated disease scene slugs to drive
+        required: false
+        default: copd asthma pulmonary-edema
+        type: string
+      patient_scene:
+        description: Scene slug whose patient explanation is walked
+        required: false
+        default: copd
+        type: string
+
+concurrency:
+  group: scene-drive-pr-${{ inputs.pr_number }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  # Which scenes the anatomy drive covers is not written here.
+  #
+  # CLAUDE.md forbids copying the published list anywhere: it has been wrong in
+  # three places at once before, and a workflow file is the worst place for a
+  # copy because nothing renders it. So the set is derived from the one source
+  # the UI reads, `src/catalog/publicManifest.js`, at the moment the run starts.
+  # A scene that becomes published is covered by the next run without anyone
+  # editing this file; one that is withheld stops being driven for the same
+  # reason.
+  published-scenes:
+    name: which scenes are published
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    outputs:
+      scenes: ${{ steps.read.outputs.scenes }}
+    steps:
+      - name: Validate candidate identity
+        env:
+          COMMIT_SHA: ${{ inputs.commit_sha }}
+          PR_NUMBER: ${{ inputs.pr_number }}
+        run: |
+          [[ "${COMMIT_SHA}" =~ ^[0-9a-f]{40}$ ]]
+          [[ "${PR_NUMBER}" =~ ^[0-9]+$ ]]
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.commit_sha }}
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - id: read
+        name: Read the published scene ids from the catalogue
+        run: |
+          scenes=$(node --input-type=module -e "
+            import { PUBLIC_MODELS } from './src/catalog/publicManifest.js';
+            const ids = PUBLIC_MODELS.map((model) => model.sceneId);
+            if (ids.length === 0) throw new Error('the public manifest publishes nothing');
+            process.stdout.write(JSON.stringify(ids));
+          ")
+          echo "scenes=${scenes}" >> "$GITHUB_OUTPUT"
+          echo "Driving: ${scenes}"
+
+  # One job per published scene. Serial inside a scene, parallel across them:
+  # the drive uses software GL and saturates the cores it is given, so two
+  # scenes in one runner make both slower rather than the pair faster.
+  #
+  # A production build, and no `--preview`. What a published scene owes is what
+  # a reader actually receives, and the preview build is a different bundle.
+  anatomy:
+    name: anatomy drive (${{ matrix.scene }})
+    needs: published-scenes
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    strategy:
+      # One scene failing is a finding about that scene. The other three still
+      # have to report, or a single break hides everything behind it.
+      fail-fast: false
+      matrix:
+        scene: ${{ fromJSON(needs.published-scenes.outputs.scenes) }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.commit_sha }}
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npm run build
+      - run: npm i --no-save playwright@1.62.1
+      - run: npx playwright install --with-deps chromium
+      - run: npm run verify:anatomy -- --scene ${{ matrix.scene }}
+
+  # Disease and patient need the preview grants, and the patient walk needs an
+  # account configuration as well: it writes a session into `localStorage`, and
+  # a build with no Supabase configured has no account layer to read it, so the
+  # walk would drive a signed-out page and say the guide was withheld. Same
+  # stub values `final-browser-validation.yml` uses, and for the same reason —
+  # the host does not resolve and every request is answered in the browser.
+  #
+  # Built into `dist` rather than `dist-preview`: `check-disease-interaction.mjs`
+  # resolves its own build directory and does not take a flag for it.
+  disease:
+    name: disease drive
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - name: Validate candidate identity
+        env:
+          COMMIT_SHA: ${{ inputs.commit_sha }}
+          PR_NUMBER: ${{ inputs.pr_number }}
+        run: |
+          [[ "${COMMIT_SHA}" =~ ^[0-9a-f]{40}$ ]]
+          [[ "${PR_NUMBER}" =~ ^[0-9]+$ ]]
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.commit_sha }}
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - name: Build with preview grants and a stub account configuration
+        env:
+          VITE_ALLOW_PREVIEW: '1'
+          VITE_SUPABASE_URL: https://stub.invalid
+          VITE_SUPABASE_PUBLISHABLE_KEY: stub-publishable-key
+        run: npm run build
+      - run: npm i --no-save playwright@1.62.1
+      - run: npx playwright install --with-deps chromium
+      # The first argument is the screenshot directory, not a scene. Passing a
+      # slug there silently turns it into a directory name and drops that scene
+      # from the drive, which is what the script's own usage note used to say.
+      - name: Drive baseline to disease and back
+        env:
+          DISEASE_SCENES: ${{ inputs.disease_scenes }}
+        run: npm run verify:disease -- disease-shots ${DISEASE_SCENES}
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: disease-shots-attempt-${{ github.run_attempt }}
+          path: disease-shots/
+          if-no-files-found: ignore
+          retention-days: 3
+
+  patient:
+    name: patient explanation walk (${{ inputs.patient_scene }})
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - name: Validate candidate identity
+        env:
+          COMMIT_SHA: ${{ inputs.commit_sha }}
+          PR_NUMBER: ${{ inputs.pr_number }}
+        run: |
+          [[ "${COMMIT_SHA}" =~ ^[0-9a-f]{40}$ ]]
+          [[ "${PR_NUMBER}" =~ ^[0-9]+$ ]]
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.commit_sha }}
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - name: Build with preview grants and a stub account configuration
+        env:
+          VITE_ALLOW_PREVIEW: '1'
+          VITE_SUPABASE_URL: https://stub.invalid
+          VITE_SUPABASE_PUBLISHABLE_KEY: stub-publishable-key
+        run: npm run build
+      - run: npm i --no-save playwright@1.62.1
+      - run: npx playwright install --with-deps chromium
+      - run: npm run verify:patient -- --preview --scene ${{ inputs.patient_scene }}
