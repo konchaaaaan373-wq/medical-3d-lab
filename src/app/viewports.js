@@ -41,6 +41,13 @@ export const VIEWPORTS = [
   // run of this matrix are about the same width.
   { id: 'phone-390', label: 'iPhone 13', width: 390, height: 844 },
   { id: 'phone-430', label: 'Large phone', width: 430, height: 932 },
+  // The gap between the phone layouts and the tablet one, which this matrix
+  // used to jump straight over — 430 to 768. F-137's fix first kept a
+  // horizontal scroll alive in exactly that band, and a green run could not
+  // have told anyone, because no viewport was standing in it. A split-screen
+  // tablet or a half-width desktop window lives here, and so does every
+  // layout rule whose two branches meet somewhere inside it.
+  { id: 'tablet-500', label: 'Split view', width: 500, height: 800 },
   { id: 'phone-landscape', label: 'Phone, landscape', width: 932, height: 430, short: true },
   { id: 'tablet-768', label: 'Tablet', width: 768, height: 1024 },
   { id: 'desktop-1280', label: 'Desktop', width: 1280, height: 800 },

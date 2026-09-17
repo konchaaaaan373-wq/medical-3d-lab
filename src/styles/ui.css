@@ -699,15 +699,34 @@
   gap: 8px;
 }
 
+/*
+ * The control row, and why nothing here scrolls sideways any more.
+ *
+ * It used to be `nowrap` + `overflow-x: auto` at every width. That is a scroll
+ * container, and a scroll container's contribution to an ancestor's intrinsic
+ * width is where engines disagree — which matters because the calm anatomy
+ * console is `width: fit-content` (`anatomy-shell-presentation.css`), so the
+ * row's own width is supposed to be one of the things deciding the box around
+ * it. Measured at 768x1024 on `#/brain-anatomy` (F-137): the row's content is
+ * 245px on both engines, and the box is 245 on Chromium and 231 on WebKit. The
+ * row hides its scrollbar, so the difference was not a clipped row — it was a
+ * control that was not there.
+ *
+ * The first attempt kept the scroll below 560px, where the console is clamped
+ * to `calc(100% - 64px)`, on the theory that a phone still wants one strip.
+ * Codex pointed out what that left: below 431px `product-shell-b6.css` lays
+ * the row out as a six-column grid, so the scroll only ever applied in
+ * **431–560px** — the one band the viewport matrix skips, and therefore the
+ * one band where the same clip could survive unmeasured on a ~500px Safari
+ * window. A safety valve nobody measures is not a safety valve.
+ *
+ * So there is no horizontal scroll left. Above the grid the row wraps: where
+ * the box is wide enough it is still one line, because a wrapping row's
+ * max-content is its one-line width; where an engine sizes the box short it
+ * takes a second line, and every control stays on screen on every engine.
+ */
 #ui[data-anatomy] .button-row {
-  flex-wrap: nowrap;
   gap: 6px;
-  overflow-x: auto;
-  scrollbar-width: none;
-}
-
-#ui[data-anatomy] .button-row::-webkit-scrollbar {
-  display: none;
 }
 
 #ui[data-anatomy] .btn.utility {
