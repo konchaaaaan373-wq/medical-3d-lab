@@ -432,7 +432,7 @@
   効いている規則を知りたければ、**ブラウザに聞く**のがいちばん速い
   （`styleSheets` × `matches()`）。
 
-### L-47 使い方の 1 行が、1 シーン少なく駆動する引数を教えていた
+### L-48 使い方の 1 行が、1 シーン少なく駆動する引数を教えていた
 
 - **症状**: `scripts/check-disease-interaction.mjs` の冒頭は
   `npm run verify:disease -- copd asthma pulmonary-edema` と書いていました。
