@@ -1078,7 +1078,7 @@ export async function createApp({ stage, ui, onRetryModel = null }) {
    * the frame that says how to undo that — the H shortcut is written in the
    * `title` of a button that is no longer there to read. For one release it
    * went with the panels around it and left no way back at all
-   * (`docs/verification-lessons.md` L-31). Keeping it is the fix; keeping it
+   * (`docs/verification-lessons.md` L-36). Keeping it is the fix; keeping it
    * *lit* is not, because then the frame this feature exists to produce has a
    * button in the corner of it.
    *
