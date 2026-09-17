@@ -114,17 +114,40 @@ test('past a short list it takes itself away rather than duplicating the map', (
   assert.equal(findByClass(preview.element, 'global-nav-models')[0].hidden, true);
 });
 
-test('the flat list is above the system accordion, not below it', () => {
-  // Being present is not being found. F-111 asks for the move between models to
-  // be at the top of the drawer, and a shortcut under a fourteen-system
-  // accordion is the same hunt with an extra step.
+test('the flat list is first inside the region that scrolls', () => {
+  // Two things at once, because they were separable and one of them was wrong.
+  //
+  // Position: F-111 asks for the move between models to be at the top of the
+  // drawer, and a shortcut under a fourteen-system accordion is the same hunt
+  // with an extra step.
+  //
+  // Container: the first version made it a sibling of `.global-nav-list`, which
+  // is the only scrolling child of a `overflow: hidden` column flex panel. At
+  // 390px with the list at its own 16-model limit, the section grew to 955px
+  // against a 720px panel and seven rows were clipped with no way to reach
+  // them. Being first is no use inside a box that cannot scroll.
   const { element } = mount(beta(), 'brain-anatomy');
+  const [list] = findByClass(element, 'global-nav-list');
+  assert.ok(list, 'the scrollable list exists');
+
+  const classes = list.children.map((child) => (child.className || '').toString());
+  assert.ok(
+    classes[0]?.includes('global-nav-models'),
+    `the shortcut is not first inside the scroller: ${JSON.stringify(classes)}`,
+  );
+  assert.ok(
+    classes.slice(1).some((cls) => cls.includes('global-nav-system-section')),
+    'and the system accordion follows it',
+  );
+
+  // And not left outside the scroller as a sibling, which is the shape that
+  // clipped.
   const [panel] = findByClass(element, 'global-nav-panel');
-  const order = panel.children.map((child) => (child.className || '').toString());
-  const models = order.findIndex((cls) => cls.includes('global-nav-models'));
-  const list = order.findIndex((cls) => cls.includes('global-nav-list'));
-  assert.ok(models >= 0 && list >= 0, `expected both sections, got ${JSON.stringify(order)}`);
-  assert.ok(models < list, 'the shortcut comes before the map');
+  assert.deepEqual(
+    panel.children.filter((child) => (child.className || '').toString().includes('global-nav-models')),
+    [],
+    'the shortcut must not be a direct child of the panel',
+  );
 });
 
 test('the section is styled, and its heading clears the type floor', () => {

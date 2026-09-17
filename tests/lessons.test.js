@@ -23,7 +23,7 @@ test('the ledger is well-formed and every guard it names still exists', () => {
 
   // Something was actually read. An empty parse would satisfy every assertion
   // above it, which is L-01 — the lesson this file exists to not repeat.
-  assert.ok(lessons.length >= 21, `only ${lessons.length} lesson(s) parsed`);
+  assert.ok(lessons.length >= 32, `only ${lessons.length} lesson(s) parsed`);
   assert.ok(humanOnly.length > 0, 'a ledger where everything is mechanically caught is not being honest');
 });
 

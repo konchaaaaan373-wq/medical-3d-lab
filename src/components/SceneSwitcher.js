@@ -181,7 +181,14 @@ export function createSceneSwitcher({ groups, currentId, showLab = true }) {
     return details;
   };
 
-  const list = el('div', { class: 'global-nav-list' }, groups.map(systemSection));
+  // Inside the scrollable region, not beside it. `.global-nav-panel` is a
+  // column flex box with `overflow: hidden` and `.global-nav-list` is its only
+  // scrolling child, so a sibling section is simply clipped once it outgrows
+  // the drawer: measured at 390px with the list at its own limit, seven of the
+  // sixteen rows fell past the panel's bottom edge with no way to reach them.
+  // First in the list keeps it at the top of the drawer, which is what F-111
+  // asks for, and it scrolls with everything else.
+  const list = el('div', { class: 'global-nav-list' }, [modelSection, ...groups.map(systemSection)]);
 
   // Shelf navigation is useful, but it must not outrank choosing a model. Keep
   // it as compact footer navigation. The public beta never exposes Lab here.
@@ -228,7 +235,6 @@ export function createSceneSwitcher({ groups, currentId, showLab = true }) {
         closeButton,
       ]),
       favoriteSection,
-      modelSection,
       list,
       footer,
     ]
