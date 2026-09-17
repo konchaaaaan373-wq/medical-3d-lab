@@ -630,7 +630,7 @@
   **測定の分解能が、測定対象の負荷に比例して落ちる**計器です。
   interval polling にし、上限は「速いマシン」ではなく「遅いマシン」で決める。
 
-### L-43 worktree に張った `node_modules` のリンクが、commit に入った
+### L-45 worktree に張った `node_modules` のリンクが、commit に入った
 
 - **症状**: 並行作業用の worktree で `ln -s <本体>/node_modules node_modules` を張り、
   `git add -A` で commit しました。`.gitignore` の `node_modules/` は**ディレクトリ**にしか

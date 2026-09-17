@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import { execFileSync } from 'node:child_process';
 
 /**
- * L-43: a `node_modules` symlink made for a worktree was committed, because
+ * L-45: a `node_modules` symlink made for a worktree was committed, because
  * `.gitignore` said `node_modules/` (a directory) and a symlink is a file.
  * Checking that commit out replaced the real directory with a link to itself.
  * Nothing under the tracked tree may be a dependency directory or a symlink
