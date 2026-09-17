@@ -472,7 +472,13 @@ export const ASSET_MANIFEST = Object.freeze([
       'Deep nuclei, hypothalamic zones and tracts are a registration approximation across several MNI-space population atlases. The upstream ~7.2 mm figure often cited for this is the red nucleus\'s position difference in a check that excluded it from registration; it is not a boundary or maximum error for every registered structure, and this repository has not independently verified it against the shipped asset.',
       'Labels are trusted from the upstream metadata; mesh boundaries are not independently validated.',
     ],
-    knownDefects: [],
+    knownDefects: [
+      'The medulla oblongata exists as a left-side mesh only (bx_id 196, side "left"); no right-side mesh is in the file, ' +
+        'for a reason the upstream record does not give (F-141). It is not mirrored: the scene says so on the views where ' +
+        'the gap reads as asymmetry, and the structure note names it.',
+      'Two node names carry a leading space (" Posterior transverse collateral sulcus.l" / ".r"); the extras.bx_label ' +
+        'the scene reads does not, so lookups by label are unaffected, but a search by node name finds nothing (F-143).',
+    ],
     budget: {
       triangles: 1383522,
       materials: 13,
