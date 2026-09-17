@@ -455,14 +455,14 @@ export const BETA_PUBLICATION_DECISIONS = Object.freeze([
     decidedAt: '2026-09-17',
     /** Who, and in what capacity. A role is a claim, and it is checked. */
     decidedBy: Object.freeze({
-      name: 'Claude Code (AI engineering agent), closing the defects an audit found in the selection-label fix (PR #132)',
+      name: 'Claude Code (AI engineering agent), landing the four-round terminology review (PR #125) after the selection-label fix (PR #132)',
       role: 'engineering',
     }),
     record: 'docs/beta-publication/brain-anatomy.md',
     assetRevisions: Object.freeze({
       'brain-atlas-glb': '76a49ea4526a4880613aec7a02756bd7301b0b9d0680d7cae33e197b672c5453',
     }),
-    sceneRevision: Object.freeze({ cardRevision: 24, modelDigest: 'decebbf91111e0e4' }),
+    sceneRevision: Object.freeze({ cardRevision: 25, modelDigest: '7e4825b9b5c3ce58' }),
     /** What was actually exercised. Not a plan — a list of what was done. */
     scope: Object.freeze({
       // Re-measured on 2026-09-15 and corrected. The first two of the four

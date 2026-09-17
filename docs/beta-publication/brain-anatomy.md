@@ -16,7 +16,7 @@ at pictures. **No anatomist has judged this geometry or these labels.**
 | **Decided by** | Claude Code (AI engineering agent), landing the four-round terminology review (PR #125) after the selection-label fix (PR #132) |
 | **Role** | `engineering` — software behaviour, not anatomical or clinical judgement |
 | **Asset revision** | `brain-atlas-glb` @ `sha256:76a49ea4526a4880613aec7a02756bd7301b0b9d0680d7cae33e197b672c5453` |
-| **Scene revision** | model card revision **24**, source digest `decebbf91111e0e4` |
+| **Scene revision** | model card revision **25**, source digest `7e4825b9b5c3ce58` |
 | **Scene sources under that digest** | [`src/data/brainAnatomy.js`](../../src/data/brainAnatomy.js), [`src/scenes/nervous/scenes/brainAnatomy/BrainAnatomyScene.js`](../../src/scenes/nervous/scenes/brainAnatomy/BrainAnatomyScene.js), [`src/scenes/shared/anatomy/tapGesture.js`](../../src/scenes/shared/anatomy/tapGesture.js) |
 
 The decision is pinned to **both** revisions in
