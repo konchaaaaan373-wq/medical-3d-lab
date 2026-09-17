@@ -4,7 +4,7 @@ import { readFileSync } from 'node:fs';
 
 import { createTrust } from '../src/app/Trust.js';
 import { PUBLIC_SCENES } from '../src/catalog/index.js';
-import { isInPageAnchor } from '../src/app/router.js';
+import { isInPageAnchor, resolveRoute } from '../src/app/router.js';
 import { FakeElement, findByClass, installFakeDocument } from './helpers/fake-dom.js';
 
 const read = (path) => readFileSync(new URL(`../${path}`, import.meta.url), 'utf8');
@@ -157,4 +157,52 @@ test('Trust: no scene id or slug is hard-coded — the TOC and cards come from P
   }
   // The generator, not a list: one call that maps over the catalogue.
   assert.match(source, /PUBLIC_SCENES\.map\(trustEntry\)/);
+});
+
+/**
+ * The wiring on the other end: a scene's own title card links to *its own*
+ * Trust record via `?model=<id>`, not the generic `#/trust` the landing page
+ * and header use. `TitleCard.js` imports `styles/clinical-review.css`
+ * directly, which `node --test` cannot load (no bundler here — see
+ * `src/components/TitleCard.js`'s neighbours for the same constraint), so
+ * this pins the exact template it renders and then drives the real router +
+ * Trust code with what that template produces, rather than only reading text.
+ */
+test('TitleCard links a scene to its own Trust record, gated the same way the review badge is', () => {
+  const source = read('src/components/TitleCard.js');
+  assert.match(
+    source,
+    /href: `#\/trust\?model=\$\{encodeURIComponent\(meta\.id\)\}`/,
+    'TitleCard.js must build the model-scoped Trust link from meta.id, not a literal'
+  );
+  // Trust only ever has a card for a non-prototype scene (`review` is null
+  // for a prototype one, a few lines above) — the link must share that gate,
+  // or it would offer to land on a page with nothing open.
+  assert.match(source, /const modelInfoLink =\s*\n\s*review &&/);
+});
+
+test("a scene's Trust link actually opens that scene's card, for any published scene", () => {
+  withFakeBrowser(() => {
+    for (const scene of [PUBLIC_SCENES[0], PUBLIC_SCENES[PUBLIC_SCENES.length - 1]]) {
+      // What TitleCard.js's pinned template literally produces for this scene.
+      const href = `#/trust?model=${encodeURIComponent(scene.id)}`;
+      const route = resolveRoute(href);
+      assert.equal(route.kind, 'trust');
+      assert.equal(route.focusId, scene.id);
+
+      const element = mountTrust({ focusId: route.focusId });
+      const openIds = findByClass(element, 'trust-card')
+        .filter((card) => card.getAttribute('open') === '')
+        .map((card) => card.getAttribute('id'));
+      assert.deepEqual(openIds, [`trust-${scene.slug}`], `${scene.id}: its own link must open its own card`);
+    }
+  });
+});
+
+test('the landing page and header keep the generic Trust route, not a model-scoped one', () => {
+  const landing = read('src/app/Landing.js');
+  // `shellLink(MODEL_INFO_ROUTE, …)` (nav, footer, explorer shell) never gets
+  // a query string appended — only the scene's own title card does that.
+  assert.ok(!landing.includes('MODEL_INFO_ROUTE}?model='), 'Landing.js must not scope the generic link');
+  assert.ok(!landing.includes('#/trust?model='));
 });

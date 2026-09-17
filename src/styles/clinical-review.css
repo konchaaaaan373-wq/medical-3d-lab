@@ -14,8 +14,25 @@
 }
 
 .title-trust-badges .status-badge,
-.title-card .clinical-review-badge {
+.title-card .clinical-review-badge,
+.title-trust-link {
   margin-top: 0;
+}
+
+/* The one link out of a scene's own screen to its Trust record — carries
+   `?model=<id>` so it lands already open there instead of the flat top of
+   the page. See `docs/architecture-rules.md` and `Trust.js`'s `focusId`. */
+.title-trust-link {
+  color: rgba(221, 229, 240, 0.82);
+  font-size: 0.72rem;
+  font-weight: 600;
+  text-decoration: none;
+  border-bottom: 1px solid rgba(157, 175, 203, 0.4);
+  padding-bottom: 1px;
+}
+
+.title-trust-link:hover {
+  color: #fff;
 }
 
 .title-card .clinical-review-badge {
