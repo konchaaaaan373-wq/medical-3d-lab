@@ -98,6 +98,15 @@ No dimension here is a measurement.
   order rather than as one "or" is what keeps a model on screen at all; OR'd,
   isolating a structure the viewpoint was already hiding hid every structure in
   the scene.
+- **A cut is of something, and may leave the rest whole.** A section plane
+  removes whatever it crosses, which is right for the organ the cut is opening
+  and wrong for anything that merely passes through the same plane: a tube
+  curving away from it loses more of itself the further it goes, and what
+  survives is a crescent of wall that reads as a flat blade rather than as a
+  tube. So a viewpoint may name the parts its cut is **not** about. Those keep
+  their whole geometry, are given no cut face, and stay clickable on both sides
+  of the plane. Where a viewpoint names nothing, its cut is of everything it
+  crosses, as before.
 
 ## 7. What it must never be used for
 

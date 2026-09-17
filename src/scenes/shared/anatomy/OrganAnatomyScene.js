@@ -89,6 +89,8 @@ export class OrganAnatomyScene {
     this.hiddenTags = new Set();
     this.section = null;
     this.sectionPlane = null;
+    /** Structures this cut deliberately leaves whole — see `_setSection`. */
+    this.sectionKeeps = new Set();
     /** The faces drawn where the section plane passes through a solid. */
     this.caps = [];
 
@@ -326,7 +328,15 @@ export class OrganAnatomyScene {
     // not there to be clicked either — the renderer stopped drawing it and the
     // ray has to agree.
     if (this.sectionPlane) {
-      return hits.find((hit) => this.sectionPlane.distanceToPoint(hit.point) >= 0) ?? null;
+      // ...unless the cut was declared not to be about it, in which case the
+      // renderer never removed it and the ray must not either.
+      return (
+        hits.find(
+          (hit) =>
+            this.sectionKeeps.has(hit.object.userData.structureId) ||
+            this.sectionPlane.distanceToPoint(hit.point) >= 0
+        ) ?? null
+      );
     }
     return hits[0];
   }
@@ -744,6 +754,7 @@ export class OrganAnatomyScene {
     if (!section) {
       this.section = null;
       this.sectionPlane = null;
+      this.sectionKeeps = new Set();
       this._disposeSectionCaps();
       for (const mesh of this.selectables) mesh.material.clippingPlanes = null;
       if (renderer && this._clippingWas !== undefined) {
@@ -758,7 +769,31 @@ export class OrganAnatomyScene {
     }
     this.section = section;
     this.sectionPlane = new THREE.Plane(new THREE.Vector3(...section.normal).normalize(), section.constant ?? 0);
-    for (const mesh of this.selectables) mesh.material.clippingPlanes = [this.sectionPlane];
+    /**
+     * What the cut is *of*, and what merely passes through it.
+     *
+     * A section plane is declared to open one organ, and it removes fragments
+     * from everything in the scene. On the kidney's coronal section that took
+     * the ureters with it: they leave the hilum and curve forward as they
+     * descend, so the further down the tube the more of it lies on the
+     * discarded side, and what survives is a crescent of wall that narrows to
+     * nothing — a tube drawn as a flat blade (F-144). Capping does not help,
+     * because the tube is not being opened, it is being deleted.
+     *
+     * So a view may name the tags its cut is not about. They keep their whole
+     * geometry, get no cut face, and stay clickable on both sides of the
+     * plane. It is deliberately **not** `contextTags`: that says what the
+     * frame is fitted to, and the two questions have no reason to agree.
+     */
+    const keepTags = section.keepTags ?? [];
+    this.sectionKeeps = new Set(
+      keepTags.length
+        ? this.structures.filter((structure) => structure.tags.some((tag) => keepTags.includes(tag))).map((s) => s.id)
+        : []
+    );
+    for (const mesh of this.selectables) {
+      mesh.material.clippingPlanes = this.sectionKeeps.has(mesh.userData.structureId) ? null : [this.sectionPlane];
+    }
     this._buildSectionCaps();
   }
 
@@ -807,6 +842,8 @@ export class OrganAnatomyScene {
     for (const structure of this.structures) {
       // A hollow viscus is opened by a cut, not faced by one.
       if (structure.hollow) continue;
+      // Neither is one the cut was declared not to be about: it is not cut.
+      if (this.sectionKeeps.has(structure.id)) continue;
       for (const mesh of structure.meshes) {
         if (!meshCrossesPlane(mesh, plane)) continue;
         mesh.geometry.computeBoundingSphere();
@@ -817,7 +854,7 @@ export class OrganAnatomyScene {
     crossings.forEach((entry, rank) => ranked.set(entry.mesh, rank));
 
     for (const structure of this.structures) {
-      if (structure.hollow) continue;
+      if (structure.hollow || this.sectionKeeps.has(structure.id)) continue;
       const faces = [];
       for (const mesh of structure.meshes) {
         if (!ranked.has(mesh)) continue;

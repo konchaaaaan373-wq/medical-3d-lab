@@ -121,6 +121,23 @@ position of either kidney relative to the ribs or the vertebrae.
   order rather than as one "or" is what keeps a model on screen at all; OR'd,
   isolating a structure the viewpoint was already hiding hid every structure in
   the scene.
+- **A cut is of something, and may leave the rest whole.** A section plane
+  removes whatever it crosses, which is right for the organ the cut is opening
+  and wrong for anything that merely passes through the same plane: a tube
+  curving away from it loses more of itself the further it goes, and what
+  survives is a crescent of wall that reads as a flat blade rather than as a
+  tube. So a viewpoint may name the parts its cut is **not** about. Those keep
+  their whole geometry, are given no cut face, and stay clickable on both sides
+  of the plane. Where a viewpoint names nothing, its cut is of everything it
+  crosses, as before.
+- **This scene's coronal section is of the kidney, not of the tract.** The
+  ureters and the bladder run through the same plane; the cut is not about
+  them, and until 2026-09-17 it took them with it — each ureter leaves the
+  hilum and curves forward as it descends, so the lower it went the more of it
+  lay on the discarded side, and the tube was drawn as a blade narrowing to a
+  point. They are now left whole in that view. **Nothing about the kidney's
+  own cut changed**, and no claim about where a ureter runs is being made
+  either way: it was a drawing fault, not a change of anatomy.
 
 ## 7. What it must never be used for
 

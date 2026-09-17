@@ -113,7 +113,12 @@ export class KidneyAnatomyScene extends OrganAnatomyScene {
       target: [1.55, 1.5, 0],
       // The cut every kidney diagram is drawn from: take the front half away
       // and the pyramids, the columns and the calyces are all on the face.
-      section: { normal: [0, 0, -1], constant: 0.05 },
+      //
+      // The cut is of the kidney. The ureters and the bladder run through the
+      // same plane but are not what it is opening, and cutting them drew the
+      // tubes as flat blades (F-144), so they are named here as the thing this
+      // cut is not about.
+      section: { normal: [0, 0, -1], constant: 0.05, keepTags: ['tract'] },
     },
   ];
 
