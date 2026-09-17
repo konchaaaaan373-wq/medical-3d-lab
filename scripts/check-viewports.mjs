@@ -873,30 +873,39 @@ async function hideUiRoundTrip(page) {
   };
 
   /**
-   * And on something with no pointer at all.
+   * And every other way the product says the way back can be woken.
    *
-   * A reader on a phone has no hover and no mouse: the only thing that brings
-   * the way back is a touch, and the only thing standing between that and
-   * silence is `touchstart` being in `App.js`'s listener list. This dispatches
-   * the event rather than driving a finger — the matrix's contexts are not
-   * touch contexts and making them so would change every other measurement in
-   * the run — so it pins the wiring and not the device. A real finger on real
-   * glass stays F-136's, and stays a person's.
+   * `App.js` listens for five: `pointermove`, `pointerdown`, `touchstart`,
+   * `wheel` and `keydown`. The first is driven above with a real mouse. The
+   * rest are dispatched, because the matrix's contexts are not touch contexts
+   * and making them so would change every other measurement in the run — so
+   * this pins the wiring rather than the device.
+   *
+   * It is the whole list on purpose. The first draft checked a touch and
+   * stopped there, and F-136 then claimed the machine-checkable part was done:
+   * dropping `keydown` from that list would have left `npm test` and all three
+   * engines green while "any pointer, key or touch brings it back" quietly
+   * stopped being true (Codex caught the claim, not the code).
    */
-  const wokenByTouch = () =>
-    page.evaluate(() => {
+  const WAKES = ['pointerdown', 'touchstart', 'wheel', 'keydown'];
+  const wokenByEach = () =>
+    page.evaluate((types) => {
       const ui = document.getElementById('ui');
-      let woke = null;
-      ui.classList.add('is-quiet');
-      const seen = () => {
-        woke = !ui.classList.contains('is-quiet');
-      };
-      window.addEventListener('touchstart', seen, { once: true });
-      window.dispatchEvent(new Event('touchstart', { bubbles: true }));
-      window.removeEventListener('touchstart', seen);
+      const failed = [];
+      for (const type of types) {
+        ui.classList.add('is-quiet');
+        let woke = null;
+        const seen = () => {
+          woke = !ui.classList.contains('is-quiet');
+        };
+        window.addEventListener(type, seen, { once: true });
+        window.dispatchEvent(new Event(type, { bubbles: true }));
+        window.removeEventListener(type, seen);
+        if (woke !== true) failed.push(`${type} (${woke === null ? 'never arrived' : 'left it faded'})`);
+      }
       ui.classList.remove('is-quiet');
-      return woke;
-    });
+      return failed;
+    }, WAKES);
 
   const before = await look();
   if (!before.seen) return { control: true, offered: false, why: before.why };
@@ -910,7 +919,7 @@ async function hideUiRoundTrip(page) {
   await resetFocus(page);
   const states = hid ? await bothStates() : null;
   const woke = states?.awake.seen && !states.quiet.seen ? await wokenByPointer() : null;
-  const touched = woke === true ? await wokenByTouch() : null;
+  const deaf = woke === true ? await wokenByEach() : null;
 
   // Bounded, and a refusal is an answer rather than an exception: a button the
   // reader cannot press is exactly one of the failures this is here to name,
@@ -924,7 +933,7 @@ async function hideUiRoundTrip(page) {
     back = pressed ? await uiHidden(false) : 'refused';
   }
   await restore();
-  return { control: true, offered: true, hid, states, woke, touched, back };
+  return { control: true, offered: true, hid, states, woke, deaf, back };
 }
 
 /**
@@ -1701,12 +1710,10 @@ try {
               `${where}: a pointer move did not bring the way back — ` +
                 (hideUi.woke === null ? 'the page saw no pointer move at all' : 'it stayed faded'),
             );
-          } else if (hideUi.touched !== true) {
+          } else if (hideUi.deaf?.length) {
             problems.push(
-              `${where}: a touch did not bring the way back — ` +
-                (hideUi.touched === null
-                  ? 'the page saw no touchstart at all'
-                  : 'it stayed faded, so a reader with no pointer has no way back'),
+              `${where}: the way back does not answer ${hideUi.deaf.length} of the ways it says ` +
+                `it does — ${hideUi.deaf.join(', ')}`,
             );
           } else if (hideUi.back === 'refused') {
             problems.push(`${where}: the way back could not be pressed while the interface was hidden`);
