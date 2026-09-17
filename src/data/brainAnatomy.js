@@ -114,6 +114,75 @@ const REGION_NAMES = {
   Cerebellum: ['Cerebellum', '小脳'],
 };
 
+/**
+ * Overrides for labels whose upstream `bx_cat` / `bx_region` placement is
+ * wrong or misleading, consulted by `brainStructureInfo()`, `structureFamily()`,
+ * `sideHierarchy()` and `brainColorKey()` before the upstream metadata.
+ *
+ * `category` and `region` replace the upstream fields outright (so the side
+ * hierarchy, the region breadcrumb entry and the colour family all follow the
+ * corrected placement). `family` replaces only the narrowest hierarchy level,
+ * leaving the upstream side/region position alone — for a label whose broad
+ * position is fine but whose fine-grained grouping is not.
+ *
+ * `regionNames` is different from all three: it replaces only the *displayed*
+ * breadcrumb entry — the pair shown to a reader — and never the `region`
+ * field itself. `brainColorKey()` and every colour family are derived from
+ * `region` (via `LABEL_PLACEMENT[...].region ?? metadata.bx_region`), which
+ * `regionNames` does not touch, so a label using it keeps its existing colour
+ * and category. This exists for parcels whose upstream single-region
+ * placement omits a lobe its own description names: the paracentral lobule
+ * spans the frontal and parietal lobes, and the lateral occipitotemporal
+ * gyrus/sulcus span the temporal and occipital lobes, but the upstream
+ * `bx_region` names only one each (#6/#21 of the 2026-09-16 AI terminology
+ * check, unresolved as of the 2026-09-16 re-review). The upstream navigation
+ * region the atlas actually filed each pair under is noted per entry below.
+ */
+const LABEL_PLACEMENT = {
+  // TA98 basis pedunculi is a midbrain structure; the upstream metadata files
+  // it under the cerebellum (see STRUCTURE_NOTE above, and finding #1
+  // of the 2026-09-16 AI terminology check).
+  'Base of peduncle': {
+    category: 'brainstem',
+    region: 'Mesencephalon',
+    family: ['Midbrain surface anatomy', '中脳表面解剖'],
+  },
+  // The aqueduct sits in the midbrain, but it is a CSF channel, not surface
+  // anatomy — its family should read as part of the ventricular system while
+  // its side/region position stays with the brainstem/midbrain it runs through.
+  'Aqueduct of midbrain': { family: ['Ventricular system', '脳室系'] },
+  // Membranous/vascular tissue that is part of the ventricular system's
+  // anatomy without being a CSF space itself (unlike the ventricles proper).
+  'Septum pellucidum': { family: ['Ventricular system — related structures', '脳室系の関連構造'] },
+  'Choroid plexus': { family: ['Ventricular system — related structures', '脳室系の関連構造'] },
+  // Glandular/neural pituitary tissue associated with, but not part of, the
+  // diencephalon proper.
+  Adenohypophysis: {
+    family: ['Pituitary gland (diencephalon-associated endocrine organ)', '下垂体（間脳関連の内分泌器官）'],
+  },
+  Neurohypophysis: {
+    family: ['Pituitary gland (diencephalon-associated endocrine organ)', '下垂体（間脳関連の内分泌器官）'],
+  },
+  // The paracentral lobule straddles the central sulcus and spans a
+  // frontal-lobe part and a parietal-lobe part (see STRUCTURE_COPY above).
+  // The upstream navigation region for both meshes is 前頭葉 (Frontal lobe).
+  // The lone 'Paracentral sulcus' label is *not* overridden: the sulcus is
+  // the anterior boundary of the lobule and belongs to the frontal lobe (2026-09-16
+  // third review, R3-30).
+  'Paracentral gyrus and sulcus': {
+    regionNames: ['Frontal and parietal lobes', '前頭葉・頭頂葉'],
+  },
+  // These two atlas parcels span the temporal and occipital lobes (see
+  // STRUCTURE_COPY above). The upstream navigation region for both meshes is
+  // 側頭葉 (Temporal lobe).
+  'Lateral occipitotemporal gyrus': {
+    regionNames: ['Temporal and occipital lobes', '側頭葉・後頭葉'],
+  },
+  'Occipitotemporal sulcus (Lateral part)': {
+    regionNames: ['Temporal and occipital lobes', '側頭葉・後頭葉'],
+  },
+};
+
 /** Expand three abbreviated source labels without changing their atlas ids. */
 const DISPLAY_LABELS = {
   'Lat Fis-ant-Horizont': 'Anterior horizontal ramus of lateral sulcus',
@@ -132,8 +201,8 @@ const STRUCTURE_JA = {
   'Anterior occipital sulcus': '前後頭溝',
   'Anterior quadrangular lobule': '前四角小葉',
   'Aqueduct of midbrain': '中脳水道',
-  'Base of peduncle': '小脳脚基部',
-  'Basolateral complex': '扁桃体基底外側核群',
+  'Base of peduncle': '大脳脚底',
+  'Basolateral complex': '扁桃体基底外側核群（外側核を除く統合区画）',
   'Biventral lobule': '二腹小葉',
   'Calcarine sulcus': '鳥距溝',
   'Caudate nucleus': '尾状核',
@@ -169,10 +238,10 @@ const STRUCTURE_JA = {
   'Inferior semilunar lobule': '下半月小葉',
   'Inferior temporal gyrus': '下側頭回',
   'Inferior temporal sulcus': '下側頭溝',
-  'Insula (Subcentral gyrus and ant. and post. sulci)': '島皮質（中心下回・前後溝）',
+  'Insula (Subcentral gyrus and ant. and post. sulci)': '島皮質',
   'Interpeduncular fossa': '脚間窩',
   'Intraparietal sulcus': '頭頂間溝',
-  'Intralaminar and lateral posterior nuclei': '視床髄板内核群・外側後核',
+  'Intralaminar and lateral posterior nuclei': '視床 CL–LP–PuM 区画（外側中心核・後外側核・内側視床枕を含む）',
   'Lat Fis-ant-Horizont': '外側溝前水平枝',
   'Lat Fis-ant-Vertical': '外側溝前上行枝',
   'Lat Fis-post': '外側溝後枝',
@@ -187,7 +256,7 @@ const STRUCTURE_JA = {
   'Lunate sulcus': '月状溝',
   'Mamillary body': '乳頭体',
   'Medial geniculate body': '内側膝状体',
-  'Medial occipitotemporal gyrus (Parahippocampal)': '内側後頭側頭回（海馬傍回）',
+  'Medial occipitotemporal gyrus (Parahippocampal)': '海馬傍回（元アトラス区画）',
   'Mediodorsal nucleus': '視床背内側核',
   'Medulla oblongata': '延髄',
   Midbrain: '中脳',
@@ -207,11 +276,11 @@ const STRUCTURE_JA = {
   'Optic chiasm': '視交叉',
   'Optic tract': '視索',
   'Orbital gyri': '眼窩回',
-  'Orbital gyri (Frontomarginal gyrus and sulcus)': '眼窩回（前頭縁回・前頭縁溝）',
+  'Orbital gyri (Frontomarginal gyrus and sulcus)': '前頭縁回・前頭縁溝（元アトラス区画）',
   'Orbital part of inferior frontal gyrus': '下前頭回眼窩部',
   'Orbital sulci (H-shaped orbital sulci)': '眼窩溝（H字状）',
   'Orbital sulci (Lateral Orbital sulcus)': '眼窩溝（外側眼窩溝）',
-  'Paracentral gyrus and sulcus': '中心傍回・中心傍溝',
+  'Paracentral gyrus and sulcus': '中心傍小葉・中心傍溝',
   'Paracentral sulcus': '中心傍溝',
   'Parieto-occipital sulcus': '頭頂後頭溝',
   'Peduncle of flocculus': '片葉脚',
@@ -226,7 +295,7 @@ const STRUCTURE_JA = {
   'Precentral gyrus': '中心前回',
   'Precentral sulcus (Superior part)': '中心前溝（上部）',
   'Precentral sulcus (inferior part)': '中心前溝（下部）',
-  'Preoptic hypothalamus': '視索前部',
+  'Preoptic hypothalamus': '視索前野',
   Precuneus: '楔前部',
   Pulvinar: '視床枕',
   Putamen: '被殻',
@@ -241,7 +310,7 @@ const STRUCTURE_JA = {
   'Subparietal sulcus': '頭頂下溝',
   'Substantia nigra': '黒質',
   'Subthalamic nucleus': '視床下核',
-  'Sulcus interm prim-Jensen': 'ジェンセン中間溝',
+  'Sulcus interm prim-Jensen': '第一中間溝（Jensen 溝）',
   'Superior cerebellar peduncle': '上小脳脚',
   'Superior colliculus': '上丘',
   'Superior frontal gyrus': '上前頭回',
@@ -264,19 +333,12 @@ const STRUCTURE_JA = {
   'Tuber of vermis': '虫部隆起',
   'Tuberal hypothalamus': '視床下部隆起部',
   'Uvula of vermis': '虫部垂',
-  'Ventral anterior nucleus': '視床腹側前核',
-  'Ventral laterodorsal nucleus': '視床腹外側背側核',
-  'Ventral lateroventral nucleus': '視床腹外側腹側核',
+  'Ventral anterior nucleus': '視床前腹側核（VA）',
+  'Ventral laterodorsal nucleus': '腹外側部 背側区画（VLD）',
+  'Ventral lateroventral nucleus': '腹外側部 腹側区画（VLV）',
   'Vestibular nuclei': '前庭神経核群',
   'White matter of telencephalon': '終脳白質',
   'Wing of central lobule': '中心小葉翼',
-};
-
-const STRUCTURE_NOTE = {
-  'Cingulate gyrus and sulcus (Middle anterior part)': copy(
-    'Atlas boundary: this mesh is the anterior midcingulate territory (aMCC), not the anterior cingulate cortex (ACC). The current source model has no separate ACC mesh.',
-    'アトラス上の区別：この形状は前中部帯状皮質（aMCC）で、前部帯状皮質（ACC）ではありません。現行の元モデルにはACCの独立形状がありません。'
-  ),
 };
 
 const AMYGDALA_LABELS = new Set([
@@ -327,6 +389,16 @@ const HYPOTHALAMUS_LABELS = new Set([
   'Tuberal hypothalamus',
 ]);
 
+/**
+ * 5 of the 6 hypothalamic labels above are sourced from Neudorfer et al.
+ * (2020); Mamillary body is a separately named gross-anatomical structure
+ * (it contains medial and lateral mamillary nuclei) and is not one of the 5. Of those 5, only Anterior (6 source labels/side) and Tuberal (4
+ * source labels/side) are actually combined parcels — Preoptic, Lateral and
+ * Posterior are each a single source label per side. See
+ * docs/asset-provenance/brain-merged-parcels.md and the individual
+ * `STRUCTURE_NOTE` entries below (F-142, corrected 2026-09-16).
+ */
+
 const CEREBELLAR_VERMIS_LABELS = new Set([
   'Central lobule',
   'Culmen',
@@ -339,14 +411,115 @@ const CEREBELLAR_VERMIS_LABELS = new Set([
   'Uvula of vermis',
 ]);
 
+const STRUCTURE_NOTE = {
+  'Cingulate gyrus and sulcus (Middle anterior part)': copy(
+    'This model distinguishes anterior midcingulate cortex (aMCC) from anterior cingulate cortex (ACC) according to the atlas parcellation it uses. The current selection has no independent ACC label. This does not mean ACC tissue is absent from the brain. The name correspondence does not guarantee that the displayed shape matches a cytoarchitectonic or functional boundary.',
+    'このモデルでは、採用したアトラス区分に従い、前中部帯状皮質（aMCC）と前部帯状皮質（ACC）を区別します。現在の選択項目にACCの独立ラベルはありません。これは、ACC自体が脳に存在しないという意味ではありません。名称の対応は、表示形状と細胞構築学的・機能的境界の一致を保証しません。'
+  ),
+  'Base of peduncle': copy(
+    'The upstream metadata files this mesh under the cerebellum, but Terminologia Anatomica’s basis pedunculi is a midbrain structure, and the mesh sits on the ventral midbrain, anterior to the pons. The mesh boundary itself has not been validated by an anatomist.',
+    '上流メタデータはこのメッシュを小脳に分類していますが、Terminologia Anatomica の basis pedunculi は中脳の構造で、このメッシュも橋の前方、中脳の腹側に位置しています。メッシュの境界自体は解剖学者による検証を受けていません。'
+  ),
+  'Insula (Subcentral gyrus and ant. and post. sulci)': copy(
+    'The upstream label also names the subcentral gyrus and its sulci, but the mesh shown here is the insular cortex under the opercula, not the subcentral gyrus on the lateral surface.',
+    '上流のラベルには中心下回とその溝の名も含まれていますが、表示されているメッシュは弁蓋部の下にある島皮質であり、外側面の中心下回ではありません。'
+  ),
+  'Medulla oblongata': copy(
+    'The source data includes only a left-side mesh; there is no right-side mesh (F-141).',
+    '元データには左側のメッシュのみ収録されており、右側はありません（F-141）。'
+  ),
+  'Optic chiasm': copy(
+    'A midline structure recorded here as separate left and right meshes.',
+    '正中の構造を左右のメッシュに分けて収録しています。'
+  ),
+  'Interpeduncular fossa': copy(
+    'A midline structure recorded here as separate left and right meshes.',
+    '正中の構造を左右のメッシュに分けて収録しています。'
+  ),
+  Habenula: copy(
+    'The source data records this as one mesh that does not distinguish left and right. Its midline display reflects the source data\'s storage unit, not a guarantee that it is an anatomically midline structure.',
+    '元データでは左右を分けない 1 つのメッシュとして収録。正中の表示はデータ上の格納単位で、解剖学的な正中構造であることを保証しない。'
+  ),
+  'Septal nuclei': copy(
+    'The source data records this as one mesh that does not distinguish left and right. Its midline display reflects the source data\'s storage unit, not a guarantee that it is an anatomically midline structure.',
+    '元データでは左右を分けない 1 つのメッシュとして収録。正中の表示はデータ上の格納単位で、解剖学的な正中構造であることを保証しない。'
+  ),
+  'Paracentral gyrus and sulcus': copy(
+    'Shown here under both the frontal and parietal lobes because the paracentral lobule spans a part of each. The atlas\'s own upstream navigation files this mesh under the frontal lobe alone.',
+    '中心傍小葉は前頭葉側と頭頂葉側の両方にまたがるため、ここでは前頭葉・頭頂葉の両方の下に表示しています。元アトラスの上流ナビゲーション区分では前頭葉のみに分類されています。'
+  ),
+  'Lateral occipitotemporal gyrus': copy(
+    'Shown here under both the temporal and occipital lobes because this atlas parcel spans a part of each. The atlas\'s own upstream navigation files this mesh under the temporal lobe alone.',
+    'この区画は側頭葉側と後頭葉側の両方にまたがるため、ここでは側頭葉・後頭葉の両方の下に表示しています。元アトラスの上流ナビゲーション区分では側頭葉のみに分類されています。'
+  ),
+  'Occipitotemporal sulcus (Lateral part)': copy(
+    'Shown here under both the temporal and occipital lobes because this atlas parcel spans a part of each. The atlas\'s own upstream navigation files this mesh under the temporal lobe alone.',
+    'この区画は側頭葉側と後頭葉側の両方にまたがるため、ここでは側頭葉・後頭葉の両方の下に表示しています。元アトラスの上流ナビゲーション区分では側頭葉のみに分類されています。'
+  ),
+  'Corticomedial group': copy(
+    'An atlas parcel combining 4 source labels ([5, 7, 8, 9]) of the CIT168 amygdala atlas into one region, per the pinned upstream generator script. See docs/asset-provenance/brain-merged-parcels.md (F-142).',
+    '元アトラス（CIT168 扁桃体アトラス）の 4 元ラベル（[5, 7, 8, 9]）を統合したアトラス区画。固定版の生成スクリプトから確認。docs/asset-provenance/brain-merged-parcels.md を参照（F-142）。'
+  ),
+  'Basolateral complex': copy(
+    'An atlas parcel combining 3 source labels ([2, 3, 6]) of the CIT168 amygdala atlas, confirmed by the pinned upstream generator script to exclude the separately labelled lateral nucleus ([1]). See docs/asset-provenance/brain-merged-parcels.md (F-142).',
+    '元アトラス（CIT168 扁桃体アトラス）の 3 元ラベル（[2, 3, 6]）を統合したアトラス区画。固定版の生成スクリプトで、別ラベルの外側核（[1]）を含まないことを確認。docs/asset-provenance/brain-merged-parcels.md を参照（F-142）。'
+  ),
+};
+
+/** The 7 Najdenovska (2018) diffusion-MRI thalamic parcels ship one shared note. */
+const NAJDENOVSKA_NOTE = copy(
+  'One of 7 parcels from Najdenovska et al. (2018), derived from diffusion MRI. Its boundaries are not histological nuclear boundaries. The volume correspondence for each of the 7 parcels is recorded in docs/asset-provenance/brain-merged-parcels.md.',
+  'Najdenovska 2018 の拡散 MRI に基づく 7 区画のひとつ。境界は組織学的な核境界ではない。7 区画それぞれのボリューム対応は docs/asset-provenance/brain-merged-parcels.md に記録。'
+);
+
+/**
+ * Three of the five Neudorfer (2020) hypothalamic parcels are built from a
+ * single source label per side, not from several combined labels — a prior
+ * note that treated all five as one kind of "integrated parcel" overstated it
+ * for these three (F-142, corrected 2026-09-16). See
+ * docs/asset-provenance/brain-merged-parcels.md for the per-parcel source ids.
+ */
+const NEUDORFER_SINGLE_LABEL_NOTE = copy(
+  'Built from a single source label per side in the pinned upstream generator script (Neudorfer et al. 2020 input volume). This does not guarantee the source atlas volume contains only one cytoarchitectonic nucleus at that id. See docs/asset-provenance/brain-merged-parcels.md (F-142).',
+  '固定版の生成スクリプトでは片側 1 元ラベルから構築（Neudorfer 2020 の入力ボリューム）。単一の組織学的核であることを保証するものではありません。docs/asset-provenance/brain-merged-parcels.md を参照（F-142）。'
+);
+
+const NEUDORFER_ANTERIOR_NOTE = copy(
+  'An atlas parcel combining 6 source labels per side in the pinned upstream generator script (Neudorfer et al. 2020 input volume). See docs/asset-provenance/brain-merged-parcels.md (F-142).',
+  '固定版の生成スクリプトで片側 6 元ラベルを統合したアトラス区画（Neudorfer 2020 の入力ボリューム）。docs/asset-provenance/brain-merged-parcels.md を参照（F-142）。'
+);
+
+const NEUDORFER_TUBERAL_NOTE = copy(
+  'An atlas parcel combining 4 source labels per side in the pinned upstream generator script (Neudorfer et al. 2020 input volume). See docs/asset-provenance/brain-merged-parcels.md (F-142).',
+  '固定版の生成スクリプトで片側 4 元ラベルを統合したアトラス区画（Neudorfer 2020 の入力ボリューム）。docs/asset-provenance/brain-merged-parcels.md を参照（F-142）。'
+);
+
+for (const label of THALAMUS_LABELS) {
+  STRUCTURE_NOTE[label] = NAJDENOVSKA_NOTE;
+}
+// CL = central lateral nucleus. This parcel's name spells that out instead of
+// the broader "intralaminar nuclei" group, because the pinned generator
+// script's volume correspondence (see docs/asset-provenance/brain-merged-
+// parcels.md) is for this specific Najdenovska parcel, not for every
+// intralaminar nucleus.
+STRUCTURE_NOTE['Intralaminar and lateral posterior nuclei'] = copy(
+  'One of 7 parcels from Najdenovska et al. (2018), derived from diffusion MRI. Its boundaries are not histological nuclear boundaries. "CL" here names the central lateral nucleus specifically, not the broader intralaminar nuclear group; its volume correspondence in the pinned upstream generator script is recorded in docs/asset-provenance/brain-merged-parcels.md.',
+  'Najdenovska 2018 の拡散 MRI に基づく 7 区画のひとつ。境界は組織学的な核境界ではない。「CL」はより広い髄板内核群ではなく外側中心核（central lateral nucleus）を指す。固定版の生成スクリプトにおけるボリューム対応は docs/asset-provenance/brain-merged-parcels.md に記録。'
+);
+STRUCTURE_NOTE['Preoptic hypothalamus'] = NEUDORFER_SINGLE_LABEL_NOTE;
+STRUCTURE_NOTE['Lateral hypothalamus'] = NEUDORFER_SINGLE_LABEL_NOTE;
+STRUCTURE_NOTE['Posterior hypothalamus'] = NEUDORFER_SINGLE_LABEL_NOTE;
+STRUCTURE_NOTE['Anterior hypothalamus'] = NEUDORFER_ANTERIOR_NOTE;
+STRUCTURE_NOTE['Tuberal hypothalamus'] = NEUDORFER_TUBERAL_NOTE;
+
 const STRUCTURE_COPY = {
   'Cingulate gyrus and sulcus (Middle anterior part)': copy(
-    'The source atlas labels this medial cingulate parcel as the middle anterior part, corresponding in modern cingulate terminology to anterior midcingulate territory (aMCC).',
-    '内側面の帯状皮質で、元アトラスでは「中部前方」と区分されています。現代的な帯状皮質区分では前中部帯状皮質（aMCC）に相当する領域です。'
+    'The source atlas labels this parcel as the middle-anterior part of the cingulate gyrus and sulcus. Under Destrieux-style parcellation this name is treated as corresponding to anterior midcingulate cortex (aMCC). The displayed shape is not a precise reproduction of a cytoarchitectonic or functional boundary.',
+    '元アトラスで「帯状回・帯状溝の中部前方」とされた区画です。Destrieux型の区分では前中部帯状皮質（aMCC）に対応する名称として扱います。表示形状は、細胞構築学的・機能的境界の厳密な再現を示すものではありません。'
   ),
   'Cingulate gyrus and sulcus (Middle posterior part)': copy(
-    'A medial cingulate parcel posterior to aMCC, corresponding to posterior midcingulate territory (pMCC) in modern terminology.',
-    'aMCCより後方にある内側面の帯状皮質で、現代的区分では後中部帯状皮質（pMCC）に相当する領域です。'
+    'The source atlas labels this parcel, posterior to aMCC, as the middle-posterior part of the cingulate gyrus and sulcus. Under Destrieux-style parcellation this name is treated as corresponding to posterior midcingulate cortex (pMCC). The displayed shape is not a precise reproduction of a cytoarchitectonic or functional boundary.',
+    '元アトラスで「帯状回・帯状溝の中部後方」とされた、aMCCより後方の区画です。Destrieux型の区分では後中部帯状皮質（pMCC）に対応する名称として扱います。表示形状は、細胞構築学的・機能的境界の厳密な再現を示すものではありません。'
   ),
   'Cingulate gyrus and sulcus (Posterior dorsal part)': copy(
     'The dorsal portion of posterior cingulate cortex on the medial surface of the cerebral hemisphere.',
@@ -385,8 +558,8 @@ const STRUCTURE_COPY = {
     'エピソード記憶の形成・固定と空間表象を支えます。'
   ),
   'Insula (Subcentral gyrus and ant. and post. sulci)': copy(
-    'Cortex buried in the lateral sulcus that integrates interoception, taste, salience and autonomic state.',
-    '外側溝の深部にあり、内受容感覚、味覚、顕著性、自律神経状態を統合します。'
+    'Insular cortex buried beneath the frontal, parietal and temporal opercula, revealed in this atlas only once those opercula fade. It integrates interoception, taste, salience and autonomic state. This is not the subcentral gyrus, which lies on the lateral surface.',
+    '前頭・頭頂・側頭弁蓋の下に埋もれた島皮質で、このアトラスでは弁蓋部を薄くしたときに現れます。内受容感覚、味覚、顕著性、自律神経状態を統合します。外側面にある中心下回とは異なります。'
   ),
   'Calcarine sulcus': copy(
     'The primary visual cortex lies along the banks of this medial occipital sulcus.',
@@ -428,6 +601,54 @@ const STRUCTURE_COPY = {
     'The caudal brainstem, continuous with the spinal cord and containing vital autonomic pathways and nuclei.',
     '脊髄へ連続する尾側脳幹で、生命維持に関わる自律神経路と核を含みます。'
   ),
+  'Base of peduncle': copy(
+    'Forms the ventral part of the midbrain and contains, among other fibres, descending tracts from the cerebral cortex. It is distinct from the cerebellar peduncles.',
+    '中脳の腹側部を構成し、大脳皮質から下行する線維などを含む構造です。小脳脚とは異なります。'
+  ),
+  'Aqueduct of midbrain': copy(
+    'A narrow cerebrospinal-fluid channel within the midbrain, connecting the third and fourth ventricles.',
+    '第三脳室と第四脳室をつなぐ、中脳内の細い脳脊髄液の通路です。'
+  ),
+  'Paracentral sulcus': copy(
+    'A sulcus on the medial surface of the cerebral hemisphere that marks the anterior boundary of the paracentral lobule.',
+    '大脳半球内側面で、中心傍小葉の前方の境界をなす脳溝です。'
+  ),
+  'Paracentral gyrus and sulcus': copy(
+    'An atlas parcel corresponding to the region straddling the central sulcus on the medial hemisphere surface, together with the paracentral sulcus anterior to it. The paracentral lobule spans a frontal-lobe part and a parietal-lobe part.',
+    '大脳半球内側面で中心溝をまたぐ領域と、その前方の中心傍溝に対応するアトラス区画です。中心傍小葉は前頭葉側と頭頂葉側の部分を含みます。'
+  ),
+  Adenohypophysis: copy(
+    'Glandular endocrine tissue, regulated by the hypothalamus, that secretes multiple hormones.',
+    '視床下部による調節を受け、複数のホルモンを分泌する腺性の内分泌組織です。'
+  ),
+  Neurohypophysis: copy(
+    'Neural tissue continuous with the hypothalamus that stores and releases hormones produced there.',
+    '視床下部と連続する神経組織で、視床下部で作られたホルモンを貯蔵・放出します。'
+  ),
+  'Third ventricle': copy(
+    'A midline cerebrospinal-fluid space between the left and right diencephalon.',
+    '左右の間脳の間の正中部にある脳脊髄液腔です。'
+  ),
+  'Fourth ventricle': copy(
+    'A cerebrospinal-fluid space between the pons and medulla and the cerebellum.',
+    '橋・延髄と小脳の間にある脳脊髄液腔です。'
+  ),
+  'Septum pellucidum': copy(
+    'A thin membranous structure separating the anterior horns and bodies of the left and right lateral ventricles. It is not itself a CSF space.',
+    '左右の側脳室の前角・体部の間を隔てる薄い膜状構造です。髄液腔そのものではありません。'
+  ),
+  'Choroid plexus': copy(
+    'Vascular and epithelial tissue within the ventricles that produces cerebrospinal fluid.',
+    '脳室内にある血管と上皮からなる組織で、脳脊髄液を産生します。'
+  ),
+  'Lateral occipitotemporal gyrus': copy(
+    'An atlas parcel spanning the temporal and occipital lobes, corresponding to the lateral part of the inferior occipitotemporal surface.',
+    '側頭葉と後頭葉にまたがるアトラス区画で、下面外側部の後頭側頭回に対応します。'
+  ),
+  'Occipitotemporal sulcus (Lateral part)': copy(
+    'An atlas parcel spanning the temporal and occipital lobes, corresponding to the lateral occipitotemporal sulcus.',
+    '側頭葉と後頭葉にまたがるアトラス区画で、外側後頭側頭溝に対応します。'
+  ),
 };
 
 const REGION_COPY = {
@@ -459,8 +680,8 @@ const REGION_COPY = {
 
 const CATEGORY_COPY = {
   deep_grey: copy(
-    'An individually segmented deep-grey structure. Its function depends on the circuit and connections in which it participates.',
-    '個別に分割された深部灰白質です。役割は、それが参加する回路と結合により異なります。'
+    'A deep-grey structure that may be an individual nucleus, a group of nuclei, or an atlas parcel combining several source labels. Its composition and how it is divided vary by source. Function depends on the circuits and connections it participates in.',
+    '深部灰白質の核、核群、または複数のラベルを統合したアトラス区画です。構成要素と分け方は出典により異なります。機能は参加する回路と結合によって異なります。'
   ),
   diencephalon: copy(
     'An individually segmented diencephalic structure involved in relay, homeostatic or neuroendocrine systems.',
@@ -471,8 +692,8 @@ const CATEGORY_COPY = {
     '神経領域を結ぶ、個別に分割された白質または交連構造です。'
   ),
   ventricles: copy(
-    'Part of the connected cerebrospinal-fluid spaces within the brain.',
-    '脳内で連続する脳脊髄液腔の一部です。'
+    'An individually segmented part of the ventricular system. Some of these structures are cerebrospinal-fluid spaces; others, such as the septum pellucidum and choroid plexus, are membranous or vascular tissue rather than CSF spaces themselves.',
+    '脳室系を個別に分割した構造です。脳脊髄液腔そのものである構造と、透明中隔・脈絡叢のように膜状組織・血管性組織であって髄液腔そのものではない構造があります。'
   ),
   cerebellum: copy(
     'A named cerebellar structure within circuits for coordination, balance, motor learning and cognition.',
@@ -486,8 +707,11 @@ const CATEGORY_COPY = {
 
 /** The colour key used for a mesh's lobe or anatomical subsystem. */
 export function brainColorKey(metadata = {}) {
-  if (metadata.bx_cat === 'cortex') return REGION_KEY[metadata.bx_region] ?? 'telencephalon';
-  return CATEGORY_KEY[metadata.bx_cat] ?? 'deep';
+  const placement = LABEL_PLACEMENT[metadata.bx_label];
+  const category = placement?.category ?? metadata.bx_cat;
+  const region = placement?.region ?? metadata.bx_region;
+  if (category === 'cortex') return REGION_KEY[region] ?? 'telencephalon';
+  return CATEGORY_KEY[category] ?? 'deep';
 }
 
 export function brainColor(metadata = {}, mode = 'detail') {
@@ -505,7 +729,7 @@ export function brainColor(metadata = {}, mode = 'detail') {
   // Keep the detail palette versioned: its seed is locked by the all-label
   // perceptual-distance audit so nearby atlas structures remain distinguishable.
   const hash = stableHash(
-    natural ? `anatomical:h:${key}:${label}` : `${key}:palette-v2930:${label}`
+    natural ? `anatomical:h:${key}:${label}` : `${key}:palette-v38601:${label}`
   );
   const saturationHash = natural
     ? stableHash(`anatomical:s:${key}:${label}`)
@@ -530,8 +754,9 @@ export function brainColor(metadata = {}, mode = 'detail') {
 export function brainStructureInfo(metadata = {}) {
   const atlasLabel = metadata.bx_label || 'Unnamed structure';
   const label = DISPLAY_LABELS[atlasLabel] ?? atlasLabel;
-  const category = metadata.bx_cat || 'cortex';
-  const region = metadata.bx_region || BRAIN_CATEGORY_NAMES[category]?.[0] || 'Brain';
+  const placement = LABEL_PLACEMENT[atlasLabel];
+  const category = placement?.category ?? (metadata.bx_cat || 'cortex');
+  const region = placement?.region ?? (metadata.bx_region || BRAIN_CATEGORY_NAMES[category]?.[0] || 'Brain');
   const side = metadata.bx_side || 'median';
   const regionNames = REGION_NAMES[region] ?? [region, BRAIN_CATEGORY_NAMES[category]?.[1] ?? '脳'];
   const categoryNames = BRAIN_CATEGORY_NAMES[category] ?? [category, '脳構造'];
@@ -543,8 +768,12 @@ export function brainStructureInfo(metadata = {}) {
   );
   const translated = STRUCTURE_JA[atlasLabel] ?? STRUCTURE_JA[label];
   const sideNames = sideHierarchy(side, category, region);
-  const familyNames = structureFamily(atlasLabel, category);
-  const hierarchy = uniqueHierarchy([sideNames, regionNames, familyNames]);
+  const familyNames = placement?.family ?? structureFamily(atlasLabel, category);
+  // Display-only: shown in the breadcrumb in place of `regionNames`, but never
+  // fed to `region`/`regionJa` below, `brainColorKey()` or any colour family —
+  // see the LABEL_PLACEMENT doc comment above `regionNames`.
+  const displayRegionNames = placement?.regionNames ?? regionNames;
+  const hierarchy = uniqueHierarchy([sideNames, displayRegionNames, familyNames]);
 
   return {
     id: metadata.bx_id,
@@ -573,6 +802,29 @@ export function brainStructureInfo(metadata = {}) {
   };
 }
 
+/**
+ * Which table `brainStructureInfo()` actually resolved a mesh's description
+ * from, in the same fallback order it uses: an exact per-structure entry,
+ * then the region, then the category, then the generic default. Exposed so
+ * the review export (`scripts/export-anatomy-labels.mjs`) can show, per row,
+ * whether a description is specific to that structure or inherited — R2-28 of
+ * the 2026-09-16 AI re-review.
+ *
+ * @param {object} metadata
+ * @returns {'structure'|'region'|'category'|'default'}
+ */
+export function brainCopySource(metadata = {}) {
+  const atlasLabel = metadata.bx_label || 'Unnamed structure';
+  const label = DISPLAY_LABELS[atlasLabel] ?? atlasLabel;
+  const placement = LABEL_PLACEMENT[atlasLabel];
+  const category = placement?.category ?? (metadata.bx_cat || 'cortex');
+  const region = placement?.region ?? (metadata.bx_region || BRAIN_CATEGORY_NAMES[category]?.[0] || 'Brain');
+  if (STRUCTURE_COPY[atlasLabel] ?? STRUCTURE_COPY[label]) return 'structure';
+  if (REGION_COPY[region]) return 'region';
+  if (CATEGORY_COPY[category]) return 'category';
+  return 'default';
+}
+
 function copy(en, ja) {
   return { en, ja };
 }
@@ -593,12 +845,17 @@ function structureFamily(label, category) {
   if (label === 'Optic chiasm' || label === 'Optic tract') return ['Visual pathways', '視覚路'];
   if (category === 'diencephalon') return ['Diencephalic structures', '間脳構造'];
   if (/inferior frontal gyrus/i.test(label)) return ['Inferior frontal gyrus', '下前頭回'];
-  if (/Lat Fis|lateral sulcus/i.test(label)) return ['Lateral sulcus', '外側溝'];
+  // \b so "Collateral sulcus" and "Posterior transverse collateral sulcus" do
+  // not match on the "lateral sulcus" substring inside "Collateral".
+  if (/Lat Fis|\blateral sulcus/i.test(label)) return ['Lateral sulcus', '外側溝'];
+  if (category === 'cortex' && /pole/i.test(label)) return ['Cerebral poles', '大脳の極'];
   if (category === 'cortex' && /gyrus.*sulcus|gyri.*sulci|gyrus and sulcus/i.test(label)) {
     return ['Cerebral gyri and sulci', '大脳回・大脳溝'];
   }
-  if (category === 'cortex' && /sulcus/i.test(label)) return ['Cerebral sulci', '大脳溝'];
-  if (category === 'cortex' && /gyrus|gyri|lobule|pole|Cuneus|Precuneus/i.test(label)) {
+  // /sulc/ (not /sulcus/) so the plural "sulci" (e.g. "Orbital sulci") also
+  // falls to 大脳溝 instead of the generic 大脳皮質 fallback below.
+  if (category === 'cortex' && /sulc/i.test(label)) return ['Cerebral sulci', '大脳溝'];
+  if (category === 'cortex' && /gyrus|gyri|lobule|Cuneus|Precuneus/i.test(label)) {
     return ['Cerebral gyri', '大脳回'];
   }
   if (category === 'ventricles') return ['Ventricular system', '脳室系'];
@@ -720,8 +977,8 @@ export const BRAIN_ANATOMY_META = {
     {
       id: 'hemisphere', name: 'Left hemisphere and insula', nameJa: '左半球・島皮質', at: 0.36,
       focus: ['insula'],
-      summary: 'The right hemisphere is hidden and the left opercula fade, exposing the insula without pulling anatomy apart.',
-      summaryJa: '右半球を非表示にし、左の弁蓋部を薄くして、構造を引き離さず島皮質を露出します。',
+      summary: 'The right hemisphere is hidden and the left opercula fade, exposing the insula without pulling anatomy apart. This is a non-sectioned 3D display with the contralateral hemisphere hidden, not a midsagittal section.',
+      summaryJa: '右半球を非表示にし、左の弁蓋部を薄くして、構造を引き離さず島皮質を露出します。対側半球を非表示にした非切断の 3D 表示で、正中矢状断ではありません。',
     },
     {
       id: 'deep', name: 'Deep anatomy', nameJa: '深部構造', at: 0.72,

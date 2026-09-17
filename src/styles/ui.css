@@ -262,6 +262,26 @@
   grid-template-columns: repeat(2, minmax(0, 1fr));
 }
 
+/* A one-line (sometimes two-line) caveat tied to the active viewpoint — a
+   medial view is not a midsagittal section, or the model has no right
+   medulla mesh. Only shown when the active view declares one. */
+.inspection-view-notice {
+  margin: 6px 1px 0;
+  padding: 6px 8px;
+  border: 1px solid var(--border);
+  border-left: 2px solid var(--caution-ink);
+  border-radius: 4px;
+  background: var(--control-bg);
+  color: var(--caution-ink);
+  font-size: 12px;
+  line-height: 1.4;
+  white-space: pre-line;
+}
+
+.inspection-view-notice[hidden] {
+  display: none;
+}
+
 .inspection-annotations {
   grid-template-columns: minmax(0, 1fr);
 }
