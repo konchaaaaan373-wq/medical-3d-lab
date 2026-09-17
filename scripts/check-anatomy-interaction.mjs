@@ -1399,7 +1399,7 @@ try {
   //     ones, so turning away from the structure takes it with it while the
   //     card goes on naming it.
   //
-  //     **This used to be a note, never a failure** (L-44): the scene *did*
+  //     **This used to be a note, never a failure** (L-46): the scene *did*
   //     answer "no label here", correctly, and the line below turned that
   //     correct answer into a comment instead of a red run — so a selection
   //     could go unlabelled on every angle, forever, without this ever
@@ -1436,20 +1436,20 @@ try {
     problems.push(`${labelled.length} labels are on screen at once; the cap is 6`);
   }
   if (pinnedForLabel && !labelled.includes(pinnedForLabel) && SCENES_WITH_STRUCTURE_LABELS.has(sceneSlug)) {
-    // A selection is exempt from the label cap and, since L-44, is not held
+    // A selection is exempt from the label cap and, since L-46, is not held
     // to the single fixed anchor a landmark is (`_visibleAnchorFor` in
     // `BrainAnatomyScene.js` / `HeartAnatomyScene.js`): it must be labelled
     // whenever its structure is drawn. A miss here is a real regression, not
-    // an angle the anchor cannot help — see F-40, L-44.
+    // an angle the anchor cannot help — see F-40, L-46.
     problems.push(
       `the pinned structure "${pinnedForLabel}" has no label on the model from this angle — ` +
-        'a selection must be labelled whenever its structure is drawn (F-40, L-44).'
+        'a selection must be labelled whenever its structure is drawn (F-40, L-46).'
     );
   } else if (pinnedForLabel && !labelled.includes(pinnedForLabel)) {
     // `${sceneSlug}` shares `OrganAnatomyScene`, which does not implement
     // `getStructureAnnotation` yet — no scene here has ever put a selection's
     // name on the model, on any angle, so this is a known, larger gap rather
-    // than the per-angle occlusion L-44 is about. Noted, not failed.
+    // than the per-angle occlusion L-46 is about. Noted, not failed.
     notes.push(
       `"${pinnedForLabel}" has no on-model selection label — ${sceneSlug} does not implement ` +
         'getStructureAnnotation yet (see brain-anatomy / heart-anatomy for the pattern).'
