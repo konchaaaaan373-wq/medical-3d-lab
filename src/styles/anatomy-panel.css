@@ -444,7 +444,18 @@
   .anatomy-panel[data-layout='sheet'] .anatomy-panel-sheet {
     inset: auto 0 calc(var(--console-height, 0px) + 12px) 0;
     width: auto;
-    max-height: min(56vh, calc(100dvh - var(--console-height, 0px) - var(--chrome-bottom, 0px) - 24px));
+    /* A floor, because the subtraction can leave nothing.
+       `--chrome-bottom` is the bottom of the *whole* top bar, and on the kidney
+       — the organ with the most scenes to point at elsewhere — the open
+       "what is shown elsewhere" panel is 298px of it, so at 375x667 the bar
+       ends at 477, the console takes 128, and this resolved to **38px**: a
+       sheet shorter than its own header. Its children then overflowed it onto
+       the stage, where the rows kept their boxes (so Playwright still called
+       them visible) but were clipped, unpainted and unclickable — F-135.
+       280px is the measured floor: 94 for the summary, 44 for the head, four
+       32px rows and the padding. `max()` only engages when the subtraction
+       falls below that, so every scene with room keeps the framing it has. */
+    max-height: min(56vh, max(280px, calc(100dvh - var(--console-height, 0px) - var(--chrome-bottom, 0px) - 24px)));
     border-left: 0;
     border-top: 1px solid var(--border);
     border-radius: 12px 12px 0 0;
