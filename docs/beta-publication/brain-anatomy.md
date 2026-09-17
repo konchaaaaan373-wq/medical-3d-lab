@@ -161,7 +161,7 @@ live camera can actually see. A selection is also now exempt from the
 on-screen label cap, and an authored landmark is drawn visibly muted and
 steps aside when a selection pins the structure it names, so a landmark no
 longer reads as an answer to "what did I just tap" — see
-[`docs/verification-lessons.md`](../verification-lessons.md) L-39.
+[`docs/verification-lessons.md`](../verification-lessons.md) L-44.
 `npm run verify:anatomy` now asserts, after a selection, that a label for the
 selected structure is on screen and reads what the panel reads; it did not
 before, which is why this shipped unnoticed. A related gap found while fixing

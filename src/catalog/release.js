@@ -532,7 +532,7 @@ export const BETA_PUBLICATION_DECISIONS = Object.freeze([
       'tests/brain-anatomy.test.js',
       'tests/anatomy-colour-ui.test.js',
       // The selection label's cap exemption, its muted-landmark styling and its
-      // landmark-merge rule — see docs/verification-lessons.md L-39. Also
+      // landmark-merge rule — see docs/verification-lessons.md L-44. Also
       // guards the three defects a review found in that fix: an unchanged id
       // discarding a changed anchor, the cap not counting the selection, and
       // a captured anchor not reanchoring once occluded.
