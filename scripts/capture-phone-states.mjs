@@ -103,6 +103,25 @@ await page.goto(flag('--preview') ? `${server.base}?preview=1#/${scene}` : `${se
   waitUntil: 'load',
 });
 await page.waitForTimeout(4000);
+
+// And refuse to photograph the locked page.
+//
+// `?preview=1` unlocks a build made with `VITE_ALLOW_PREVIEW=1` and nothing
+// else: against a production build the gate is compiled in, the flag does
+// nothing, and without this the run waits, writes five pictures of the "to be
+// updated" page and exits 0 — review evidence that looks valid and shows the
+// wrong page. `verify:anatomy` refuses the same surface for the same reason.
+if (await page.locator('.locked-copy').count()) {
+  console.error(
+    `\nThe build does not open ${scene}: it answered with the "to be updated" page.\n\n` +
+      `  VITE_ALLOW_PREVIEW=1 npm run build\n  npm run shots:phone -- --scene ${scene} --preview\n\n` +
+      'A production build cannot be unlocked by a query parameter — the scene is not in it.'
+  );
+  await browser.close();
+  await server.close();
+  process.exit(1);
+}
+
 await page.evaluate((lang) => {
   const ui = document.getElementById('ui');
   if (ui) ui.dataset.lang = lang;
