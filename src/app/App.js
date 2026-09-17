@@ -1056,7 +1056,7 @@ export async function createApp({ stage, ui, onRetryModel = null }) {
     dataset: { control: 'hideUi' },
     on: {
       click: () => {
-        paintUiToggle(ui.classList.toggle('is-hidden'));
+        setUiHidden(ui.classList.toggle('is-hidden'));
       },
     },
   });
@@ -1069,6 +1069,48 @@ export async function createApp({ stage, ui, onRetryModel = null }) {
     uiToggle.title = hidden
       ? inLanguage('Show the interface again (H)', 'UI を再表示する（H）')
       : inLanguage('Hide interface for capture (H)', 'キャプチャ用に UI を隠す（H）');
+  }
+
+  /**
+   * The way back, and why it does not simply stay on screen.
+   *
+   * This button hides everything for a capture, and it is the only thing in
+   * the frame that says how to undo that — the H shortcut is written in the
+   * `title` of a button that is no longer there to read. For one release it
+   * went with the panels around it and left no way back at all
+   * (`docs/verification-lessons.md` L-31). Keeping it is the fix; keeping it
+   * *lit* is not, because then the frame this feature exists to produce has a
+   * button in the corner of it.
+   *
+   * So: it stays while the reader is doing something and steps back when they
+   * stop, and anything at all — a pointer, a key, a touch — brings it back
+   * before they can reach for it. Same answer every video player settled on.
+   * It never stops being clickable, so the fade costs nothing but the ink.
+   */
+  const UI_QUIET_MS = 2200;
+  let quietTimer = 0;
+
+  /** Anything the reader does means they are still here. */
+  const wakeWayBack = () => {
+    if (!ui.classList.contains('is-hidden')) return;
+    ui.classList.remove('is-quiet');
+    clearTimeout(quietTimer);
+    quietTimer = setTimeout(() => ui.classList.add('is-quiet'), UI_QUIET_MS);
+  };
+
+  for (const type of ['pointermove', 'pointerdown', 'touchstart', 'wheel', 'keydown']) {
+    window.addEventListener(type, wakeWayBack, { passive: true });
+  }
+
+  /**
+   * One place decides what "hidden" looks like, for both the button and the
+   * shortcut — the class is already flipped by the time this is called.
+   */
+  function setUiHidden(hidden) {
+    paintUiToggle(hidden);
+    clearTimeout(quietTimer);
+    ui.classList.remove('is-quiet');
+    if (hidden) wakeWayBack();
   }
 
   onLanguageChange(() => paintUiToggle(ui.classList.contains('is-hidden')));
@@ -1597,7 +1639,9 @@ export async function createApp({ stage, ui, onRetryModel = null }) {
     seek,
     resetModel: resetMedicalState,
     ui,
-    paintUiToggle,
+    // The shortcut and the button land in the same place: the quiet timer is
+    // part of what "hidden" means, not part of what the button does.
+    paintUiToggle: setUiHidden,
     toggleComparison: scene.setComparison ? () => setComparison(!comparing) : null,
     zoomBy,
     exitReel: () => {
