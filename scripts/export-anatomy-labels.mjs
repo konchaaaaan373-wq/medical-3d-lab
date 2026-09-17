@@ -76,6 +76,9 @@ for (const node of gltf.nodes) {
     sideJa: info.sideJa,
     categoryNameJa: info.categoryNameJa,
     hierarchyJa: info.breadcrumbJa,
+    // The unique-label table merges left and right into one row, so it must
+    // not carry one side's breadcrumb: this is the hierarchy below the side.
+    hierarchyBelowSideJa: info.hierarchyJa.slice(1).join(' › '),
     descriptionJa: info.descriptionJa,
     noteJa: info.noteJa,
     descriptionKey: brainCopySource(extras),
@@ -108,10 +111,10 @@ labelsMd +=
   '（`public/assets/brain/brain.glb`）と `src/data/brainAnatomy.js` から生成しています。' +
   '**手で書き換えないでください。** 資産や翻訳が変わったら再生成してください。\n\n';
 labelsMd += `## 付録A 選択可能ラベル一覧（${uniqueRows.length} 件、配信中 GLB から抽出）\n\n`;
-labelsMd += '| # | 元アトラス英語ラベル | 日本語表示名 | 側 | 階層（日本語） | 区分 | 由来 |\n';
+labelsMd += '| # | 元アトラス英語ラベル | 日本語表示名 | 側 | 階層（側より下、日本語） | 区分 | 由来 |\n';
 labelsMd += '|---|---|---|---|---|---|---|\n';
 uniqueRows.forEach(({ row, sides }, index) => {
-  labelsMd += `| ${index + 1} | ${row.atlasName} | ${row.nameJa} | ${[...sides].join('/')} | ${row.hierarchyJa} | ${row.categoryNameJa} | ${row.source} |\n`;
+  labelsMd += `| ${index + 1} | ${row.atlasName} | ${row.nameJa} | ${[...sides].join('/')} | ${row.hierarchyBelowSideJa} | ${row.categoryNameJa} | ${row.source} |\n`;
 });
 
 labelsMd += '\n## 付録B 部位説明文（日本語、同文はまとめて表示）\n\n';

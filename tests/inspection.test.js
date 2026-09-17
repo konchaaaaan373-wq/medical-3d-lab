@@ -127,6 +127,14 @@ test('a view-bound notice shows only for the view that declares one, in both lan
     assert.equal(notice.hidden, false);
     panel.setView('lateral');
     assert.equal(notice.hidden, true);
+
+    // Orbiting away from a named view clears the pressed button through
+    // clearView(); the notice must go with it, or an arbitrary rotated view
+    // keeps claiming to be medial.
+    panel.setView('medial');
+    assert.equal(notice.hidden, false);
+    panel.clearView();
+    assert.equal(notice.hidden, true, 'leaving the viewpoint clears its notice');
   } finally {
     restoreDocument();
   }

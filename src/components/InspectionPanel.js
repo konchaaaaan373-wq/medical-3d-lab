@@ -188,6 +188,9 @@ export function createInspectionPanel({
     },
     clearView() {
       clearActive(viewButtons);
+      // The camera has left the named viewpoint, so the caveat that viewpoint
+      // carried no longer describes what is on screen.
+      setViewNotice(null);
     },
     setBackground(id) {
       return setActive(backgroundButtons, backgrounds, id);

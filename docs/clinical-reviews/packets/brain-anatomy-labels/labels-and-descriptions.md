@@ -4,155 +4,155 @@
 
 ## 付録A 選択可能ラベル一覧（147 件、配信中 GLB から抽出）
 
-| # | 元アトラス英語ラベル | 日本語表示名 | 側 | 階層（日本語） | 区分 | 由来 |
+| # | 元アトラス英語ラベル | 日本語表示名 | 側 | 階層（側より下、日本語） | 区分 | 由来 |
 |---|---|---|---|---|---|---|
-| 1 | Accessory nucleus of oculomotor nerve | 動眼神経副核 | 右/左 | 脳幹右側 › 脳幹 › 脳幹神経核 | 脳幹 | Z-Anatomy / BodyParts3D |
-| 2 | Aqueduct of midbrain | 中脳水道 | 正中 | 正中 › 脳幹 › 脳室系 | 脳幹 | Z-Anatomy / BodyParts3D |
-| 3 | Inferior colliculus | 下丘 | 右/左 | 脳幹右側 › 脳幹 › 脳幹表面解剖 | 脳幹 | Z-Anatomy / BodyParts3D |
-| 4 | Interpeduncular fossa | 脚間窩 | 左/右 | 脳幹左側 › 脳幹 › 脳幹表面解剖 | 脳幹 | Z-Anatomy / BodyParts3D |
-| 5 | Medulla oblongata | 延髄 | 左 | 脳幹左側 › 脳幹 › 脳幹表面解剖 | 脳幹 | Z-Anatomy / BodyParts3D |
-| 6 | Midbrain | 中脳 | 右/左 | 脳幹右側 › 脳幹 › 脳幹表面解剖 | 脳幹 | Z-Anatomy / BodyParts3D |
-| 7 | Motor nucleus of facial nerve | 顔面神経運動核 | 左/右 | 脳幹左側 › 脳幹 › 脳幹神経核 | 脳幹 | Z-Anatomy / BodyParts3D |
-| 8 | Nucleus of abducens nerve | 外転神経核 | 左/右 | 脳幹左側 › 脳幹 › 脳幹神経核 | 脳幹 | Z-Anatomy / BodyParts3D |
-| 9 | Nucleus of oculomotor nerve | 動眼神経核 | 左/右 | 脳幹左側 › 脳幹 › 脳幹神経核 | 脳幹 | Z-Anatomy / BodyParts3D |
-| 10 | Olive | オリーブ | 右/左 | 脳幹右側 › 脳幹 › 脳幹表面解剖 | 脳幹 | Z-Anatomy / BodyParts3D |
-| 11 | Pons | 橋 | 右/左 | 脳幹右側 › 脳幹 › 脳幹表面解剖 | 脳幹 | Z-Anatomy / BodyParts3D |
-| 12 | Pyramid of medulla oblongata | 延髄錐体 | 左/右 | 脳幹左側 › 脳幹 › 脳幹表面解剖 | 脳幹 | Z-Anatomy / BodyParts3D |
-| 13 | Red nucleus | 赤核 | 左/右 | 脳幹左側 › 脳幹 › 脳幹神経核 | 脳幹 | Z-Anatomy / BodyParts3D |
-| 14 | Superior colliculus | 上丘 | 右/左 | 脳幹右側 › 脳幹 › 脳幹表面解剖 | 脳幹 | Z-Anatomy / BodyParts3D |
-| 15 | Superior salivatory nucleus | 上唾液核 | 左/右 | 脳幹左側 › 脳幹 › 脳幹神経核 | 脳幹 | Z-Anatomy / BodyParts3D |
-| 16 | Vestibular nuclei | 前庭神経核群 | 左/右 | 脳幹左側 › 脳幹 › 脳幹神経核 | 脳幹 | Z-Anatomy / BodyParts3D |
-| 17 | Anterior quadrangular lobule | 前四角小葉 | 左/右 | 左小脳半球 › 小脳 › 小脳半球 | 小脳 | Z-Anatomy / BodyParts3D |
-| 18 | Base of peduncle | 大脳脚底 | 右/左 | 右中脳 › 中脳 › 中脳表面解剖 | 脳幹 | Z-Anatomy / BodyParts3D |
-| 19 | Biventral lobule | 二腹小葉 | 左/右 | 左小脳半球 › 小脳 › 小脳半球 | 小脳 | Z-Anatomy / BodyParts3D |
-| 20 | Central lobule | 中心小葉 | 正中 | 正中 › 小脳 › 小脳虫部 | 小脳 | Z-Anatomy / BodyParts3D |
-| 21 | Culmen | 山頂 | 正中 | 正中 › 小脳 › 小脳虫部 | 小脳 | Z-Anatomy / BodyParts3D |
-| 22 | Declive | 山腹 | 正中 | 正中 › 小脳 › 小脳虫部 | 小脳 | Z-Anatomy / BodyParts3D |
-| 23 | Flocculus | 片葉 | 左/右 | 左小脳半球 › 小脳 › 小脳半球 | 小脳 | Z-Anatomy / BodyParts3D |
-| 24 | Folium of vermis | 虫部葉 | 正中 | 正中 › 小脳 › 小脳虫部 | 小脳 | Z-Anatomy / BodyParts3D |
-| 25 | Gracile lobule | 薄小葉 | 左/右 | 左小脳半球 › 小脳 › 小脳半球 | 小脳 | Z-Anatomy / BodyParts3D |
-| 26 | Inferior semilunar lobule | 下半月小葉 | 左/右 | 左小脳半球 › 小脳 › 小脳半球 | 小脳 | Z-Anatomy / BodyParts3D |
-| 27 | Lingula of cerebellum | 小脳小舌 | 正中 | 正中 › 小脳 › 小脳虫部 | 小脳 | Z-Anatomy / BodyParts3D |
-| 28 | Nodule of vermis | 虫部小節 | 正中 | 正中 › 小脳 › 小脳虫部 | 小脳 | Z-Anatomy / BodyParts3D |
-| 29 | Peduncle of flocculus | 片葉脚 | 左/右 | 左小脳半球 › 小脳 › 小脳脚 | 小脳 | Z-Anatomy / BodyParts3D |
-| 30 | Posterior quadrangular lobule | 後四角小葉 | 左/右 | 左小脳半球 › 小脳 › 小脳半球 | 小脳 | Z-Anatomy / BodyParts3D |
-| 31 | Pyramis of vermis | 虫部錐体 | 正中 | 正中 › 小脳 › 小脳虫部 | 小脳 | Z-Anatomy / BodyParts3D |
-| 32 | Superior cerebellar peduncle | 上小脳脚 | 左/右 | 左小脳半球 › 小脳 › 小脳脚 | 小脳 | Z-Anatomy / BodyParts3D |
-| 33 | Superior semilunar lobule | 上半月小葉 | 左/右 | 左小脳半球 › 小脳 › 小脳半球 | 小脳 | Z-Anatomy / BodyParts3D |
-| 34 | Tonsil of cerebellum | 小脳扁桃 | 左/右 | 左小脳半球 › 小脳 › 小脳半球 | 小脳 | Z-Anatomy / BodyParts3D |
-| 35 | Tuber of vermis | 虫部隆起 | 正中 | 正中 › 小脳 › 小脳虫部 | 小脳 | Z-Anatomy / BodyParts3D |
-| 36 | Uvula of vermis | 虫部垂 | 正中 | 正中 › 小脳 › 小脳虫部 | 小脳 | Z-Anatomy / BodyParts3D |
-| 37 | Wing of central lobule | 中心小葉翼 | 左/右 | 左小脳半球 › 小脳 › 小脳半球 | 小脳 | Z-Anatomy / BodyParts3D |
-| 38 | Inferior frontal sulcus | 下前頭溝 | 左/右 | 左大脳半球 › 前頭葉 › 大脳溝 | 大脳皮質 | Z-Anatomy / BodyParts3D |
-| 39 | Lat Fis-ant-Horizont | 外側溝前水平枝 | 左/右 | 左大脳半球 › 前頭葉 › 外側溝 | 大脳皮質 | Z-Anatomy / BodyParts3D |
-| 40 | Lat Fis-ant-Vertical | 外側溝前上行枝 | 左/右 | 左大脳半球 › 前頭葉 › 外側溝 | 大脳皮質 | Z-Anatomy / BodyParts3D |
-| 41 | Middle frontal gyrus | 中前頭回 | 左/右 | 左大脳半球 › 前頭葉 › 大脳回 | 大脳皮質 | Z-Anatomy / BodyParts3D |
-| 42 | Olfactory sulcus | 嗅溝 | 左/右 | 左大脳半球 › 前頭葉 › 大脳溝 | 大脳皮質 | Z-Anatomy / BodyParts3D |
-| 43 | Opercular part of inferior frontal gyrus | 下前頭回弁蓋部 | 左/右 | 左大脳半球 › 前頭葉 › 下前頭回 | 大脳皮質 | Z-Anatomy / BodyParts3D |
-| 44 | Orbital gyri | 眼窩回 | 左/右 | 左大脳半球 › 前頭葉 › 大脳回 | 大脳皮質 | Z-Anatomy / BodyParts3D |
-| 45 | Orbital gyri (Frontomarginal gyrus and sulcus) | 前頭縁回・前頭縁溝（元アトラス区画） | 左/右 | 左大脳半球 › 前頭葉 › 大脳回・大脳溝 | 大脳皮質 | Z-Anatomy / BodyParts3D |
-| 46 | Orbital part of inferior frontal gyrus | 下前頭回眼窩部 | 左/右 | 左大脳半球 › 前頭葉 › 下前頭回 | 大脳皮質 | Z-Anatomy / BodyParts3D |
-| 47 | Orbital sulci (H-shaped orbital sulci) | 眼窩溝（H字状） | 左/右 | 左大脳半球 › 前頭葉 › 大脳溝 | 大脳皮質 | Z-Anatomy / BodyParts3D |
-| 48 | Orbital sulci (Lateral Orbital sulcus) | 眼窩溝（外側眼窩溝） | 左/右 | 左大脳半球 › 前頭葉 › 大脳溝 | 大脳皮質 | Z-Anatomy / BodyParts3D |
-| 49 | Paracentral gyrus and sulcus | 中心傍小葉・中心傍溝 | 左/右 | 左大脳半球 › 前頭葉・頭頂葉 › 大脳回・大脳溝 | 大脳皮質 | Z-Anatomy / BodyParts3D |
-| 50 | Paracentral sulcus | 中心傍溝 | 左/右 | 左大脳半球 › 前頭葉 › 大脳溝 | 大脳皮質 | Z-Anatomy / BodyParts3D |
-| 51 | Precentral gyrus | 中心前回 | 左/右 | 左大脳半球 › 前頭葉 › 大脳回 | 大脳皮質 | Z-Anatomy / BodyParts3D |
-| 52 | Precentral sulcus (inferior part) | 中心前溝（下部） | 左/右 | 左大脳半球 › 前頭葉 › 大脳溝 | 大脳皮質 | Z-Anatomy / BodyParts3D |
-| 53 | Precentral sulcus (Superior part) | 中心前溝（上部） | 左/右 | 左大脳半球 › 前頭葉 › 大脳溝 | 大脳皮質 | Z-Anatomy / BodyParts3D |
-| 54 | Straight gyrus (Gyrus rectus) | 直回 | 左/右 | 左大脳半球 › 前頭葉 › 大脳回 | 大脳皮質 | Z-Anatomy / BodyParts3D |
-| 55 | Superior frontal gyrus | 上前頭回 | 左/右 | 左大脳半球 › 前頭葉 › 大脳回 | 大脳皮質 | Z-Anatomy / BodyParts3D |
-| 56 | Superior frontal sulcus | 上前頭溝 | 左/右 | 左大脳半球 › 前頭葉 › 大脳溝 | 大脳皮質 | Z-Anatomy / BodyParts3D |
-| 57 | Transverse frontopolar gyrus and sulcus | 横前頭極回・横前頭極溝 | 左/右 | 左大脳半球 › 前頭葉 › 大脳回・大脳溝 | 大脳皮質 | Z-Anatomy / BodyParts3D |
-| 58 | Triangular part of inferior frontal gyrus | 下前頭回三角部 | 左/右 | 左大脳半球 › 前頭葉 › 下前頭回 | 大脳皮質 | Z-Anatomy / BodyParts3D |
-| 59 | Insula (Subcentral gyrus and ant. and post. sulci) | 島皮質 | 左/右 | 左大脳半球 › 島皮質 › 島皮質 | 大脳皮質 | Z-Anatomy / BodyParts3D |
-| 60 | Cingulate gyrus (Posteroventral part) | 帯状回（後腹側部） | 左/右 | 左大脳半球 › 辺縁葉 › 帯状皮質 | 大脳皮質 | Z-Anatomy / BodyParts3D |
-| 61 | Cingulate gyrus and sulcus (Middle anterior part) | 帯状回・帯状溝（前中部／aMCC） | 左/右 | 左大脳半球 › 辺縁葉 › 帯状皮質 | 大脳皮質 | Z-Anatomy / BodyParts3D |
-| 62 | Cingulate gyrus and sulcus (Middle posterior part) | 帯状回・帯状溝（後中部／pMCC） | 左/右 | 左大脳半球 › 辺縁葉 › 帯状皮質 | 大脳皮質 | Z-Anatomy / BodyParts3D |
-| 63 | Cingulate gyrus and sulcus (Posterior dorsal part) | 帯状回・帯状溝（後背側部） | 左/右 | 左大脳半球 › 辺縁葉 › 帯状皮質 | 大脳皮質 | Z-Anatomy / BodyParts3D |
-| 64 | Cingulate sulcus (Marginal part) | 帯状溝（辺縁枝） | 左/右 | 左大脳半球 › 辺縁葉 › 帯状皮質 | 大脳皮質 | Z-Anatomy / BodyParts3D |
-| 65 | Hippocampus | 海馬 | 右/左 | 右大脳半球 › 辺縁葉 › 海馬体 | 大脳皮質 | Z-Anatomy / BodyParts3D |
-| 66 | Calcarine sulcus | 鳥距溝 | 左/右 | 左大脳半球 › 後頭葉 › 大脳溝 | 大脳皮質 | Z-Anatomy / BodyParts3D |
-| 67 | Cuneus | 楔部 | 左/右 | 左大脳半球 › 後頭葉 › 大脳回 | 大脳皮質 | Z-Anatomy / BodyParts3D |
-| 68 | Inferior occipital gyrus and sulcus | 下後頭回・下後頭溝 | 左/右 | 左大脳半球 › 後頭葉 › 大脳回・大脳溝 | 大脳皮質 | Z-Anatomy / BodyParts3D |
-| 69 | Lateral occipital gyrus (Middle occipital gyrus) | 外側後頭回（中後頭回） | 左/右 | 左大脳半球 › 後頭葉 › 大脳回 | 大脳皮質 | Z-Anatomy / BodyParts3D |
-| 70 | Lingual gyrus | 舌状回 | 左/右 | 左大脳半球 › 後頭葉 › 大脳回 | 大脳皮質 | Z-Anatomy / BodyParts3D |
-| 71 | Lunate sulcus | 月状溝 | 左/右 | 左大脳半球 › 後頭葉 › 大脳溝 | 大脳皮質 | Z-Anatomy / BodyParts3D |
-| 72 | Occipital pole | 後頭極 | 左/右 | 左大脳半球 › 後頭葉 › 大脳の極 | 大脳皮質 | Z-Anatomy / BodyParts3D |
-| 73 | Superior occipital gyri | 上後頭回 | 左/右 | 左大脳半球 › 後頭葉 › 大脳回 | 大脳皮質 | Z-Anatomy / BodyParts3D |
-| 74 | Transverse occipital sulcus | 横後頭溝 | 左/右 | 左大脳半球 › 後頭葉 › 大脳溝 | 大脳皮質 | Z-Anatomy / BodyParts3D |
-| 75 | Angular gyrus | 角回 | 左/右 | 左大脳半球 › 頭頂葉 › 大脳回 | 大脳皮質 | Z-Anatomy / BodyParts3D |
-| 76 | Intraparietal sulcus | 頭頂間溝 | 左/右 | 左大脳半球 › 頭頂葉 › 大脳溝 | 大脳皮質 | Z-Anatomy / BodyParts3D |
-| 77 | Postcentral gyrus | 中心後回 | 左/右 | 左大脳半球 › 頭頂葉 › 大脳回 | 大脳皮質 | Z-Anatomy / BodyParts3D |
-| 78 | Postcentral sulcus | 中心後溝 | 左/右 | 左大脳半球 › 頭頂葉 › 大脳溝 | 大脳皮質 | Z-Anatomy / BodyParts3D |
-| 79 | Precuneus | 楔前部 | 左/右 | 左大脳半球 › 頭頂葉 › 大脳回 | 大脳皮質 | Z-Anatomy / BodyParts3D |
-| 80 | Superior parietal lobule | 上頭頂小葉 | 左/右 | 左大脳半球 › 頭頂葉 › 大脳回 | 大脳皮質 | Z-Anatomy / BodyParts3D |
-| 81 | Supramarginal gyrus | 縁上回 | 左/右 | 左大脳半球 › 頭頂葉 › 大脳回 | 大脳皮質 | Z-Anatomy / BodyParts3D |
-| 82 | Anterior occipital sulcus | 前後頭溝 | 左/右 | 左大脳半球 › 終脳 › 大脳溝 | 大脳皮質 | Z-Anatomy / BodyParts3D |
-| 83 | Central sulcus | 中心溝 | 左/右 | 左大脳半球 › 終脳 › 大脳溝 | 大脳皮質 | Z-Anatomy / BodyParts3D |
-| 84 | Circular sulcus of insula | 島輪状溝 | 左/右 | 左大脳半球 › 終脳 › 島皮質 | 大脳皮質 | Z-Anatomy / BodyParts3D |
-| 85 | Collateral sulcus | 側副溝 | 左/右 | 左大脳半球 › 終脳 › 大脳溝 | 大脳皮質 | Z-Anatomy / BodyParts3D |
-| 86 | Lat Fis-post | 外側溝後枝 | 左/右 | 左大脳半球 › 終脳 › 外側溝 | 大脳皮質 | Z-Anatomy / BodyParts3D |
-| 87 | Parieto-occipital sulcus | 頭頂後頭溝 | 左/右 | 左大脳半球 › 終脳 › 大脳溝 | 大脳皮質 | Z-Anatomy / BodyParts3D |
-| 88 | Posterior transverse collateral sulcus | 後横側副溝 | 左/右 | 左大脳半球 › 終脳 › 大脳溝 | 大脳皮質 | Z-Anatomy / BodyParts3D |
-| 89 | Subparietal sulcus | 頭頂下溝 | 左/右 | 左大脳半球 › 終脳 › 大脳溝 | 大脳皮質 | Z-Anatomy / BodyParts3D |
-| 90 | Sulcus interm prim-Jensen | 第一中間溝（Jensen 溝） | 左/右 | 左大脳半球 › 終脳 › 大脳溝 | 大脳皮質 | Z-Anatomy / BodyParts3D |
-| 91 | Inferior temporal gyrus | 下側頭回 | 左/右 | 左大脳半球 › 側頭葉 › 大脳回 | 大脳皮質 | Z-Anatomy / BodyParts3D |
-| 92 | Inferior temporal sulcus | 下側頭溝 | 左/右 | 左大脳半球 › 側頭葉 › 大脳溝 | 大脳皮質 | Z-Anatomy / BodyParts3D |
-| 93 | Lateral occipitotemporal gyrus | 外側後頭側頭回 | 左/右 | 左大脳半球 › 側頭葉・後頭葉 › 大脳回 | 大脳皮質 | Z-Anatomy / BodyParts3D |
-| 94 | Medial occipitotemporal gyrus (Parahippocampal) | 海馬傍回（元アトラス区画） | 左/右 | 左大脳半球 › 側頭葉 › 大脳回 | 大脳皮質 | Z-Anatomy / BodyParts3D |
-| 95 | Middle temporal gyrus | 中側頭回 | 左/右 | 左大脳半球 › 側頭葉 › 大脳回 | 大脳皮質 | Z-Anatomy / BodyParts3D |
-| 96 | Occipitotemporal sulcus (Lateral part) | 後頭側頭溝（外側部） | 左/右 | 左大脳半球 › 側頭葉・後頭葉 › 大脳溝 | 大脳皮質 | Z-Anatomy / BodyParts3D |
-| 97 | Superior temporal gyrus (Lateral part) | 上側頭回（外側部） | 左/右 | 左大脳半球 › 側頭葉 › 大脳回 | 大脳皮質 | Z-Anatomy / BodyParts3D |
-| 98 | Superior temporal sulcus | 上側頭溝 | 左/右 | 左大脳半球 › 側頭葉 › 大脳溝 | 大脳皮質 | Z-Anatomy / BodyParts3D |
-| 99 | Temporal plane | 側頭平面 | 左/右 | 左大脳半球 › 側頭葉 › 大脳皮質 | 大脳皮質 | Z-Anatomy / BodyParts3D |
-| 100 | Temporal pole | 側頭極 | 左/右 | 左大脳半球 › 側頭葉 › 大脳の極 | 大脳皮質 | Z-Anatomy / BodyParts3D |
-| 101 | Transverse temporal gyri | 横側頭回 | 左/右 | 左大脳半球 › 側頭葉 › 大脳回 | 大脳皮質 | Z-Anatomy / BodyParts3D |
-| 102 | Subthalamic nucleus | 視床下核 | 左/右 | 左間脳 › 間脳 › 大脳基底核 | 深部灰白質 | CIT168 (Pauli 2018) |
-| 103 | Substantia nigra | 黒質 | 左/右 | 左中脳 › 中脳 › 大脳基底核 | 深部灰白質 | CIT168 (Pauli 2018) |
-| 104 | Basolateral complex | 扁桃体基底外側核群（外側核を除く統合区画） | 左/右 | 左大脳半球 › 終脳 › 扁桃体 | 深部灰白質 | CIT168 amygdala (Tyszka 2016) |
-| 105 | Caudate nucleus | 尾状核 | 右/左 | 右大脳半球 › 終脳 › 大脳基底核 | 深部灰白質 | Z-Anatomy / BodyParts3D |
-| 106 | Central nucleus | 扁桃体中心核 | 左/右 | 左大脳半球 › 終脳 › 扁桃体 | 深部灰白質 | CIT168 amygdala (Tyszka 2016) |
-| 107 | Corticomedial group | 扁桃体皮質内側核群 | 左/右 | 左大脳半球 › 終脳 › 扁桃体 | 深部灰白質 | CIT168 amygdala (Tyszka 2016) |
-| 108 | Globus pallidus external | 淡蒼球外節 | 左/右 | 左大脳半球 › 終脳 › 大脳基底核 | 深部灰白質 | CIT168 (Pauli 2018) |
-| 109 | Globus pallidus internal | 淡蒼球内節 | 左/右 | 左大脳半球 › 終脳 › 大脳基底核 | 深部灰白質 | CIT168 (Pauli 2018) |
-| 110 | Lateral nucleus | 扁桃体外側核 | 左/右 | 左大脳半球 › 終脳 › 扁桃体 | 深部灰白質 | CIT168 amygdala (Tyszka 2016) |
-| 111 | Nucleus accumbens | 側坐核 | 左/右 | 左大脳半球 › 終脳 › 大脳基底核 | 深部灰白質 | CIT168 (Pauli 2018) |
-| 112 | Putamen | 被殻 | 右/左 | 右大脳半球 › 終脳 › 大脳基底核 | 深部灰白質 | Z-Anatomy / BodyParts3D |
-| 113 | Septal nuclei | 中隔核群 | 正中 | 正中 › 終脳 › 深部灰白質 | 深部灰白質 | Z-Anatomy / BodyParts3D |
-| 114 | Adenohypophysis | 下垂体前葉 | 正中 | 正中 › 間脳 › 下垂体（間脳関連の内分泌器官） | 間脳 | Z-Anatomy / BodyParts3D |
-| 115 | Anterior hypothalamus | 視床下部前部 | 左/右 | 左間脳 › 間脳 › 視床下部 | 間脳 | Neudorfer 2020 |
-| 116 | Anterior nuclei of thalamus | 視床前核群 | 左/右 | 左間脳 › 間脳 › 視床 | 間脳 | Najdenovska 2018 |
-| 117 | Habenula | 手綱 | 正中 | 正中 › 間脳 › 視床上部 | 間脳 | Z-Anatomy / BodyParts3D |
-| 118 | Intralaminar and lateral posterior nuclei | 視床 CL–LP–PuM 区画（外側中心核・後外側核・内側視床枕を含む） | 左/右 | 左間脳 › 間脳 › 視床 | 間脳 | Najdenovska 2018 |
-| 119 | Lateral geniculate body | 外側膝状体 | 右/左 | 右間脳 › 間脳 › 膝状体 | 間脳 | Z-Anatomy / BodyParts3D |
-| 120 | Lateral hypothalamus | 視床下部外側部 | 左/右 | 左間脳 › 間脳 › 視床下部 | 間脳 | Neudorfer 2020 |
-| 121 | Mamillary body | 乳頭体 | 左/右 | 左間脳 › 間脳 › 視床下部 | 間脳 | Z-Anatomy / BodyParts3D |
-| 122 | Medial geniculate body | 内側膝状体 | 右/左 | 右間脳 › 間脳 › 膝状体 | 間脳 | Z-Anatomy / BodyParts3D |
-| 123 | Mediodorsal nucleus | 視床背内側核 | 左/右 | 左間脳 › 間脳 › 視床 | 間脳 | Najdenovska 2018 |
-| 124 | Neurohypophysis | 下垂体後葉 | 正中 | 正中 › 間脳 › 下垂体（間脳関連の内分泌器官） | 間脳 | Z-Anatomy / BodyParts3D |
-| 125 | Optic chiasm | 視交叉 | 右/左 | 右間脳 › 間脳 › 視覚路 | 間脳 | Z-Anatomy / BodyParts3D |
-| 126 | Optic tract | 視索 | 右/左 | 右間脳 › 間脳 › 視覚路 | 間脳 | Z-Anatomy / BodyParts3D |
-| 127 | Pineal gland | 松果体 | 正中 | 正中 › 間脳 › 視床上部 | 間脳 | Z-Anatomy / BodyParts3D |
-| 128 | Posterior commissure | 後交連 | 正中 | 正中 › 間脳 › 視床上部 | 間脳 | Z-Anatomy / BodyParts3D |
-| 129 | Posterior hypothalamus | 視床下部後部 | 左/右 | 左間脳 › 間脳 › 視床下部 | 間脳 | Neudorfer 2020 |
-| 130 | Preoptic hypothalamus | 視索前野 | 左/右 | 左間脳 › 間脳 › 視床下部 | 間脳 | Neudorfer 2020 |
-| 131 | Pulvinar | 視床枕 | 左/右 | 左間脳 › 間脳 › 視床 | 間脳 | Najdenovska 2018 |
-| 132 | Stria medullaris thalami | 視床髄条 | 右/左 | 右間脳 › 間脳 › 視床上部 | 間脳 | Z-Anatomy / BodyParts3D |
-| 133 | Tuberal hypothalamus | 視床下部隆起部 | 左/右 | 左間脳 › 間脳 › 視床下部 | 間脳 | Neudorfer 2020 |
-| 134 | Ventral anterior nucleus | 視床前腹側核（VA） | 左/右 | 左間脳 › 間脳 › 視床 | 間脳 | Najdenovska 2018 |
-| 135 | Ventral laterodorsal nucleus | 腹外側部 背側区画（VLD） | 左/右 | 左間脳 › 間脳 › 視床 | 間脳 | Najdenovska 2018 |
-| 136 | Ventral lateroventral nucleus | 腹外側部 腹側区画（VLV） | 左/右 | 左間脳 › 間脳 › 視床 | 間脳 | Najdenovska 2018 |
-| 137 | Fourth ventricle | 第四脳室 | 正中 | 正中 › 脳幹 › 脳室系 | 脳室系 | Z-Anatomy / BodyParts3D |
-| 138 | Third ventricle | 第三脳室 | 正中 | 正中 › 間脳 › 脳室系 | 脳室系 | Z-Anatomy / BodyParts3D |
-| 139 | Lateral ventricle | 側脳室 | 右/左 | 右大脳半球 › 終脳 › 脳室系 | 脳室系 | Z-Anatomy / BodyParts3D |
-| 140 | Septum pellucidum | 透明中隔 | 正中 | 正中 › 終脳 › 脳室系の関連構造 | 脳室系 | Z-Anatomy / BodyParts3D |
-| 141 | Choroid plexus | 脈絡叢 | 右/左 | 右側 › 脳室系 › 脳室系の関連構造 | 脳室系 | Z-Anatomy / BodyParts3D |
-| 142 | Anterior commissure | 前交連 | 正中 | 正中 › 終脳 › 大脳白質 | 白質 | Z-Anatomy / BodyParts3D |
-| 143 | Corpus callosum | 脳梁 | 正中 | 正中 › 終脳 › 大脳白質 | 白質 | Z-Anatomy / BodyParts3D |
-| 144 | Fornix | 脳弓 | 右/左 | 右大脳半球 › 終脳 › 大脳白質 | 白質 | Z-Anatomy / BodyParts3D |
-| 145 | Hippocampal commissure | 海馬交連 | 正中 | 正中 › 終脳 › 大脳白質 | 白質 | Z-Anatomy / BodyParts3D |
-| 146 | Stria terminalis | 分界条 | 右/左 | 右大脳半球 › 終脳 › 大脳白質 | 白質 | Z-Anatomy / BodyParts3D |
-| 147 | White matter of telencephalon | 終脳白質 | 左/右 | 左大脳半球 › 終脳 › 大脳白質 | 白質 | Z-Anatomy / BodyParts3D |
+| 1 | Accessory nucleus of oculomotor nerve | 動眼神経副核 | 右/左 | 脳幹 › 脳幹神経核 | 脳幹 | Z-Anatomy / BodyParts3D |
+| 2 | Aqueduct of midbrain | 中脳水道 | 正中 | 脳幹 › 脳室系 | 脳幹 | Z-Anatomy / BodyParts3D |
+| 3 | Inferior colliculus | 下丘 | 右/左 | 脳幹 › 脳幹表面解剖 | 脳幹 | Z-Anatomy / BodyParts3D |
+| 4 | Interpeduncular fossa | 脚間窩 | 左/右 | 脳幹 › 脳幹表面解剖 | 脳幹 | Z-Anatomy / BodyParts3D |
+| 5 | Medulla oblongata | 延髄 | 左 | 脳幹 › 脳幹表面解剖 | 脳幹 | Z-Anatomy / BodyParts3D |
+| 6 | Midbrain | 中脳 | 右/左 | 脳幹 › 脳幹表面解剖 | 脳幹 | Z-Anatomy / BodyParts3D |
+| 7 | Motor nucleus of facial nerve | 顔面神経運動核 | 左/右 | 脳幹 › 脳幹神経核 | 脳幹 | Z-Anatomy / BodyParts3D |
+| 8 | Nucleus of abducens nerve | 外転神経核 | 左/右 | 脳幹 › 脳幹神経核 | 脳幹 | Z-Anatomy / BodyParts3D |
+| 9 | Nucleus of oculomotor nerve | 動眼神経核 | 左/右 | 脳幹 › 脳幹神経核 | 脳幹 | Z-Anatomy / BodyParts3D |
+| 10 | Olive | オリーブ | 右/左 | 脳幹 › 脳幹表面解剖 | 脳幹 | Z-Anatomy / BodyParts3D |
+| 11 | Pons | 橋 | 右/左 | 脳幹 › 脳幹表面解剖 | 脳幹 | Z-Anatomy / BodyParts3D |
+| 12 | Pyramid of medulla oblongata | 延髄錐体 | 左/右 | 脳幹 › 脳幹表面解剖 | 脳幹 | Z-Anatomy / BodyParts3D |
+| 13 | Red nucleus | 赤核 | 左/右 | 脳幹 › 脳幹神経核 | 脳幹 | Z-Anatomy / BodyParts3D |
+| 14 | Superior colliculus | 上丘 | 右/左 | 脳幹 › 脳幹表面解剖 | 脳幹 | Z-Anatomy / BodyParts3D |
+| 15 | Superior salivatory nucleus | 上唾液核 | 左/右 | 脳幹 › 脳幹神経核 | 脳幹 | Z-Anatomy / BodyParts3D |
+| 16 | Vestibular nuclei | 前庭神経核群 | 左/右 | 脳幹 › 脳幹神経核 | 脳幹 | Z-Anatomy / BodyParts3D |
+| 17 | Anterior quadrangular lobule | 前四角小葉 | 左/右 | 小脳 › 小脳半球 | 小脳 | Z-Anatomy / BodyParts3D |
+| 18 | Base of peduncle | 大脳脚底 | 右/左 | 中脳 › 中脳表面解剖 | 脳幹 | Z-Anatomy / BodyParts3D |
+| 19 | Biventral lobule | 二腹小葉 | 左/右 | 小脳 › 小脳半球 | 小脳 | Z-Anatomy / BodyParts3D |
+| 20 | Central lobule | 中心小葉 | 正中 | 小脳 › 小脳虫部 | 小脳 | Z-Anatomy / BodyParts3D |
+| 21 | Culmen | 山頂 | 正中 | 小脳 › 小脳虫部 | 小脳 | Z-Anatomy / BodyParts3D |
+| 22 | Declive | 山腹 | 正中 | 小脳 › 小脳虫部 | 小脳 | Z-Anatomy / BodyParts3D |
+| 23 | Flocculus | 片葉 | 左/右 | 小脳 › 小脳半球 | 小脳 | Z-Anatomy / BodyParts3D |
+| 24 | Folium of vermis | 虫部葉 | 正中 | 小脳 › 小脳虫部 | 小脳 | Z-Anatomy / BodyParts3D |
+| 25 | Gracile lobule | 薄小葉 | 左/右 | 小脳 › 小脳半球 | 小脳 | Z-Anatomy / BodyParts3D |
+| 26 | Inferior semilunar lobule | 下半月小葉 | 左/右 | 小脳 › 小脳半球 | 小脳 | Z-Anatomy / BodyParts3D |
+| 27 | Lingula of cerebellum | 小脳小舌 | 正中 | 小脳 › 小脳虫部 | 小脳 | Z-Anatomy / BodyParts3D |
+| 28 | Nodule of vermis | 虫部小節 | 正中 | 小脳 › 小脳虫部 | 小脳 | Z-Anatomy / BodyParts3D |
+| 29 | Peduncle of flocculus | 片葉脚 | 左/右 | 小脳 › 小脳脚 | 小脳 | Z-Anatomy / BodyParts3D |
+| 30 | Posterior quadrangular lobule | 後四角小葉 | 左/右 | 小脳 › 小脳半球 | 小脳 | Z-Anatomy / BodyParts3D |
+| 31 | Pyramis of vermis | 虫部錐体 | 正中 | 小脳 › 小脳虫部 | 小脳 | Z-Anatomy / BodyParts3D |
+| 32 | Superior cerebellar peduncle | 上小脳脚 | 左/右 | 小脳 › 小脳脚 | 小脳 | Z-Anatomy / BodyParts3D |
+| 33 | Superior semilunar lobule | 上半月小葉 | 左/右 | 小脳 › 小脳半球 | 小脳 | Z-Anatomy / BodyParts3D |
+| 34 | Tonsil of cerebellum | 小脳扁桃 | 左/右 | 小脳 › 小脳半球 | 小脳 | Z-Anatomy / BodyParts3D |
+| 35 | Tuber of vermis | 虫部隆起 | 正中 | 小脳 › 小脳虫部 | 小脳 | Z-Anatomy / BodyParts3D |
+| 36 | Uvula of vermis | 虫部垂 | 正中 | 小脳 › 小脳虫部 | 小脳 | Z-Anatomy / BodyParts3D |
+| 37 | Wing of central lobule | 中心小葉翼 | 左/右 | 小脳 › 小脳半球 | 小脳 | Z-Anatomy / BodyParts3D |
+| 38 | Inferior frontal sulcus | 下前頭溝 | 左/右 | 前頭葉 › 大脳溝 | 大脳皮質 | Z-Anatomy / BodyParts3D |
+| 39 | Lat Fis-ant-Horizont | 外側溝前水平枝 | 左/右 | 前頭葉 › 外側溝 | 大脳皮質 | Z-Anatomy / BodyParts3D |
+| 40 | Lat Fis-ant-Vertical | 外側溝前上行枝 | 左/右 | 前頭葉 › 外側溝 | 大脳皮質 | Z-Anatomy / BodyParts3D |
+| 41 | Middle frontal gyrus | 中前頭回 | 左/右 | 前頭葉 › 大脳回 | 大脳皮質 | Z-Anatomy / BodyParts3D |
+| 42 | Olfactory sulcus | 嗅溝 | 左/右 | 前頭葉 › 大脳溝 | 大脳皮質 | Z-Anatomy / BodyParts3D |
+| 43 | Opercular part of inferior frontal gyrus | 下前頭回弁蓋部 | 左/右 | 前頭葉 › 下前頭回 | 大脳皮質 | Z-Anatomy / BodyParts3D |
+| 44 | Orbital gyri | 眼窩回 | 左/右 | 前頭葉 › 大脳回 | 大脳皮質 | Z-Anatomy / BodyParts3D |
+| 45 | Orbital gyri (Frontomarginal gyrus and sulcus) | 前頭縁回・前頭縁溝（元アトラス区画） | 左/右 | 前頭葉 › 大脳回・大脳溝 | 大脳皮質 | Z-Anatomy / BodyParts3D |
+| 46 | Orbital part of inferior frontal gyrus | 下前頭回眼窩部 | 左/右 | 前頭葉 › 下前頭回 | 大脳皮質 | Z-Anatomy / BodyParts3D |
+| 47 | Orbital sulci (H-shaped orbital sulci) | 眼窩溝（H字状） | 左/右 | 前頭葉 › 大脳溝 | 大脳皮質 | Z-Anatomy / BodyParts3D |
+| 48 | Orbital sulci (Lateral Orbital sulcus) | 眼窩溝（外側眼窩溝） | 左/右 | 前頭葉 › 大脳溝 | 大脳皮質 | Z-Anatomy / BodyParts3D |
+| 49 | Paracentral gyrus and sulcus | 中心傍小葉・中心傍溝 | 左/右 | 前頭葉・頭頂葉 › 大脳回・大脳溝 | 大脳皮質 | Z-Anatomy / BodyParts3D |
+| 50 | Paracentral sulcus | 中心傍溝 | 左/右 | 前頭葉 › 大脳溝 | 大脳皮質 | Z-Anatomy / BodyParts3D |
+| 51 | Precentral gyrus | 中心前回 | 左/右 | 前頭葉 › 大脳回 | 大脳皮質 | Z-Anatomy / BodyParts3D |
+| 52 | Precentral sulcus (inferior part) | 中心前溝（下部） | 左/右 | 前頭葉 › 大脳溝 | 大脳皮質 | Z-Anatomy / BodyParts3D |
+| 53 | Precentral sulcus (Superior part) | 中心前溝（上部） | 左/右 | 前頭葉 › 大脳溝 | 大脳皮質 | Z-Anatomy / BodyParts3D |
+| 54 | Straight gyrus (Gyrus rectus) | 直回 | 左/右 | 前頭葉 › 大脳回 | 大脳皮質 | Z-Anatomy / BodyParts3D |
+| 55 | Superior frontal gyrus | 上前頭回 | 左/右 | 前頭葉 › 大脳回 | 大脳皮質 | Z-Anatomy / BodyParts3D |
+| 56 | Superior frontal sulcus | 上前頭溝 | 左/右 | 前頭葉 › 大脳溝 | 大脳皮質 | Z-Anatomy / BodyParts3D |
+| 57 | Transverse frontopolar gyrus and sulcus | 横前頭極回・横前頭極溝 | 左/右 | 前頭葉 › 大脳回・大脳溝 | 大脳皮質 | Z-Anatomy / BodyParts3D |
+| 58 | Triangular part of inferior frontal gyrus | 下前頭回三角部 | 左/右 | 前頭葉 › 下前頭回 | 大脳皮質 | Z-Anatomy / BodyParts3D |
+| 59 | Insula (Subcentral gyrus and ant. and post. sulci) | 島皮質 | 左/右 | 島皮質 › 島皮質 | 大脳皮質 | Z-Anatomy / BodyParts3D |
+| 60 | Cingulate gyrus (Posteroventral part) | 帯状回（後腹側部） | 左/右 | 辺縁葉 › 帯状皮質 | 大脳皮質 | Z-Anatomy / BodyParts3D |
+| 61 | Cingulate gyrus and sulcus (Middle anterior part) | 帯状回・帯状溝（前中部／aMCC） | 左/右 | 辺縁葉 › 帯状皮質 | 大脳皮質 | Z-Anatomy / BodyParts3D |
+| 62 | Cingulate gyrus and sulcus (Middle posterior part) | 帯状回・帯状溝（後中部／pMCC） | 左/右 | 辺縁葉 › 帯状皮質 | 大脳皮質 | Z-Anatomy / BodyParts3D |
+| 63 | Cingulate gyrus and sulcus (Posterior dorsal part) | 帯状回・帯状溝（後背側部） | 左/右 | 辺縁葉 › 帯状皮質 | 大脳皮質 | Z-Anatomy / BodyParts3D |
+| 64 | Cingulate sulcus (Marginal part) | 帯状溝（辺縁枝） | 左/右 | 辺縁葉 › 帯状皮質 | 大脳皮質 | Z-Anatomy / BodyParts3D |
+| 65 | Hippocampus | 海馬 | 右/左 | 辺縁葉 › 海馬体 | 大脳皮質 | Z-Anatomy / BodyParts3D |
+| 66 | Calcarine sulcus | 鳥距溝 | 左/右 | 後頭葉 › 大脳溝 | 大脳皮質 | Z-Anatomy / BodyParts3D |
+| 67 | Cuneus | 楔部 | 左/右 | 後頭葉 › 大脳回 | 大脳皮質 | Z-Anatomy / BodyParts3D |
+| 68 | Inferior occipital gyrus and sulcus | 下後頭回・下後頭溝 | 左/右 | 後頭葉 › 大脳回・大脳溝 | 大脳皮質 | Z-Anatomy / BodyParts3D |
+| 69 | Lateral occipital gyrus (Middle occipital gyrus) | 外側後頭回（中後頭回） | 左/右 | 後頭葉 › 大脳回 | 大脳皮質 | Z-Anatomy / BodyParts3D |
+| 70 | Lingual gyrus | 舌状回 | 左/右 | 後頭葉 › 大脳回 | 大脳皮質 | Z-Anatomy / BodyParts3D |
+| 71 | Lunate sulcus | 月状溝 | 左/右 | 後頭葉 › 大脳溝 | 大脳皮質 | Z-Anatomy / BodyParts3D |
+| 72 | Occipital pole | 後頭極 | 左/右 | 後頭葉 › 大脳の極 | 大脳皮質 | Z-Anatomy / BodyParts3D |
+| 73 | Superior occipital gyri | 上後頭回 | 左/右 | 後頭葉 › 大脳回 | 大脳皮質 | Z-Anatomy / BodyParts3D |
+| 74 | Transverse occipital sulcus | 横後頭溝 | 左/右 | 後頭葉 › 大脳溝 | 大脳皮質 | Z-Anatomy / BodyParts3D |
+| 75 | Angular gyrus | 角回 | 左/右 | 頭頂葉 › 大脳回 | 大脳皮質 | Z-Anatomy / BodyParts3D |
+| 76 | Intraparietal sulcus | 頭頂間溝 | 左/右 | 頭頂葉 › 大脳溝 | 大脳皮質 | Z-Anatomy / BodyParts3D |
+| 77 | Postcentral gyrus | 中心後回 | 左/右 | 頭頂葉 › 大脳回 | 大脳皮質 | Z-Anatomy / BodyParts3D |
+| 78 | Postcentral sulcus | 中心後溝 | 左/右 | 頭頂葉 › 大脳溝 | 大脳皮質 | Z-Anatomy / BodyParts3D |
+| 79 | Precuneus | 楔前部 | 左/右 | 頭頂葉 › 大脳回 | 大脳皮質 | Z-Anatomy / BodyParts3D |
+| 80 | Superior parietal lobule | 上頭頂小葉 | 左/右 | 頭頂葉 › 大脳回 | 大脳皮質 | Z-Anatomy / BodyParts3D |
+| 81 | Supramarginal gyrus | 縁上回 | 左/右 | 頭頂葉 › 大脳回 | 大脳皮質 | Z-Anatomy / BodyParts3D |
+| 82 | Anterior occipital sulcus | 前後頭溝 | 左/右 | 終脳 › 大脳溝 | 大脳皮質 | Z-Anatomy / BodyParts3D |
+| 83 | Central sulcus | 中心溝 | 左/右 | 終脳 › 大脳溝 | 大脳皮質 | Z-Anatomy / BodyParts3D |
+| 84 | Circular sulcus of insula | 島輪状溝 | 左/右 | 終脳 › 島皮質 | 大脳皮質 | Z-Anatomy / BodyParts3D |
+| 85 | Collateral sulcus | 側副溝 | 左/右 | 終脳 › 大脳溝 | 大脳皮質 | Z-Anatomy / BodyParts3D |
+| 86 | Lat Fis-post | 外側溝後枝 | 左/右 | 終脳 › 外側溝 | 大脳皮質 | Z-Anatomy / BodyParts3D |
+| 87 | Parieto-occipital sulcus | 頭頂後頭溝 | 左/右 | 終脳 › 大脳溝 | 大脳皮質 | Z-Anatomy / BodyParts3D |
+| 88 | Posterior transverse collateral sulcus | 後横側副溝 | 左/右 | 終脳 › 大脳溝 | 大脳皮質 | Z-Anatomy / BodyParts3D |
+| 89 | Subparietal sulcus | 頭頂下溝 | 左/右 | 終脳 › 大脳溝 | 大脳皮質 | Z-Anatomy / BodyParts3D |
+| 90 | Sulcus interm prim-Jensen | 第一中間溝（Jensen 溝） | 左/右 | 終脳 › 大脳溝 | 大脳皮質 | Z-Anatomy / BodyParts3D |
+| 91 | Inferior temporal gyrus | 下側頭回 | 左/右 | 側頭葉 › 大脳回 | 大脳皮質 | Z-Anatomy / BodyParts3D |
+| 92 | Inferior temporal sulcus | 下側頭溝 | 左/右 | 側頭葉 › 大脳溝 | 大脳皮質 | Z-Anatomy / BodyParts3D |
+| 93 | Lateral occipitotemporal gyrus | 外側後頭側頭回 | 左/右 | 側頭葉・後頭葉 › 大脳回 | 大脳皮質 | Z-Anatomy / BodyParts3D |
+| 94 | Medial occipitotemporal gyrus (Parahippocampal) | 海馬傍回（元アトラス区画） | 左/右 | 側頭葉 › 大脳回 | 大脳皮質 | Z-Anatomy / BodyParts3D |
+| 95 | Middle temporal gyrus | 中側頭回 | 左/右 | 側頭葉 › 大脳回 | 大脳皮質 | Z-Anatomy / BodyParts3D |
+| 96 | Occipitotemporal sulcus (Lateral part) | 後頭側頭溝（外側部） | 左/右 | 側頭葉・後頭葉 › 大脳溝 | 大脳皮質 | Z-Anatomy / BodyParts3D |
+| 97 | Superior temporal gyrus (Lateral part) | 上側頭回（外側部） | 左/右 | 側頭葉 › 大脳回 | 大脳皮質 | Z-Anatomy / BodyParts3D |
+| 98 | Superior temporal sulcus | 上側頭溝 | 左/右 | 側頭葉 › 大脳溝 | 大脳皮質 | Z-Anatomy / BodyParts3D |
+| 99 | Temporal plane | 側頭平面 | 左/右 | 側頭葉 › 大脳皮質 | 大脳皮質 | Z-Anatomy / BodyParts3D |
+| 100 | Temporal pole | 側頭極 | 左/右 | 側頭葉 › 大脳の極 | 大脳皮質 | Z-Anatomy / BodyParts3D |
+| 101 | Transverse temporal gyri | 横側頭回 | 左/右 | 側頭葉 › 大脳回 | 大脳皮質 | Z-Anatomy / BodyParts3D |
+| 102 | Subthalamic nucleus | 視床下核 | 左/右 | 間脳 › 大脳基底核 | 深部灰白質 | CIT168 (Pauli 2018) |
+| 103 | Substantia nigra | 黒質 | 左/右 | 中脳 › 大脳基底核 | 深部灰白質 | CIT168 (Pauli 2018) |
+| 104 | Basolateral complex | 扁桃体基底外側核群（外側核を除く統合区画） | 左/右 | 終脳 › 扁桃体 | 深部灰白質 | CIT168 amygdala (Tyszka 2016) |
+| 105 | Caudate nucleus | 尾状核 | 右/左 | 終脳 › 大脳基底核 | 深部灰白質 | Z-Anatomy / BodyParts3D |
+| 106 | Central nucleus | 扁桃体中心核 | 左/右 | 終脳 › 扁桃体 | 深部灰白質 | CIT168 amygdala (Tyszka 2016) |
+| 107 | Corticomedial group | 扁桃体皮質内側核群 | 左/右 | 終脳 › 扁桃体 | 深部灰白質 | CIT168 amygdala (Tyszka 2016) |
+| 108 | Globus pallidus external | 淡蒼球外節 | 左/右 | 終脳 › 大脳基底核 | 深部灰白質 | CIT168 (Pauli 2018) |
+| 109 | Globus pallidus internal | 淡蒼球内節 | 左/右 | 終脳 › 大脳基底核 | 深部灰白質 | CIT168 (Pauli 2018) |
+| 110 | Lateral nucleus | 扁桃体外側核 | 左/右 | 終脳 › 扁桃体 | 深部灰白質 | CIT168 amygdala (Tyszka 2016) |
+| 111 | Nucleus accumbens | 側坐核 | 左/右 | 終脳 › 大脳基底核 | 深部灰白質 | CIT168 (Pauli 2018) |
+| 112 | Putamen | 被殻 | 右/左 | 終脳 › 大脳基底核 | 深部灰白質 | Z-Anatomy / BodyParts3D |
+| 113 | Septal nuclei | 中隔核群 | 正中 | 終脳 › 深部灰白質 | 深部灰白質 | Z-Anatomy / BodyParts3D |
+| 114 | Adenohypophysis | 下垂体前葉 | 正中 | 間脳 › 下垂体（間脳関連の内分泌器官） | 間脳 | Z-Anatomy / BodyParts3D |
+| 115 | Anterior hypothalamus | 視床下部前部 | 左/右 | 間脳 › 視床下部 | 間脳 | Neudorfer 2020 |
+| 116 | Anterior nuclei of thalamus | 視床前核群 | 左/右 | 間脳 › 視床 | 間脳 | Najdenovska 2018 |
+| 117 | Habenula | 手綱 | 正中 | 間脳 › 視床上部 | 間脳 | Z-Anatomy / BodyParts3D |
+| 118 | Intralaminar and lateral posterior nuclei | 視床 CL–LP–PuM 区画（外側中心核・後外側核・内側視床枕を含む） | 左/右 | 間脳 › 視床 | 間脳 | Najdenovska 2018 |
+| 119 | Lateral geniculate body | 外側膝状体 | 右/左 | 間脳 › 膝状体 | 間脳 | Z-Anatomy / BodyParts3D |
+| 120 | Lateral hypothalamus | 視床下部外側部 | 左/右 | 間脳 › 視床下部 | 間脳 | Neudorfer 2020 |
+| 121 | Mamillary body | 乳頭体 | 左/右 | 間脳 › 視床下部 | 間脳 | Z-Anatomy / BodyParts3D |
+| 122 | Medial geniculate body | 内側膝状体 | 右/左 | 間脳 › 膝状体 | 間脳 | Z-Anatomy / BodyParts3D |
+| 123 | Mediodorsal nucleus | 視床背内側核 | 左/右 | 間脳 › 視床 | 間脳 | Najdenovska 2018 |
+| 124 | Neurohypophysis | 下垂体後葉 | 正中 | 間脳 › 下垂体（間脳関連の内分泌器官） | 間脳 | Z-Anatomy / BodyParts3D |
+| 125 | Optic chiasm | 視交叉 | 右/左 | 間脳 › 視覚路 | 間脳 | Z-Anatomy / BodyParts3D |
+| 126 | Optic tract | 視索 | 右/左 | 間脳 › 視覚路 | 間脳 | Z-Anatomy / BodyParts3D |
+| 127 | Pineal gland | 松果体 | 正中 | 間脳 › 視床上部 | 間脳 | Z-Anatomy / BodyParts3D |
+| 128 | Posterior commissure | 後交連 | 正中 | 間脳 › 視床上部 | 間脳 | Z-Anatomy / BodyParts3D |
+| 129 | Posterior hypothalamus | 視床下部後部 | 左/右 | 間脳 › 視床下部 | 間脳 | Neudorfer 2020 |
+| 130 | Preoptic hypothalamus | 視索前野 | 左/右 | 間脳 › 視床下部 | 間脳 | Neudorfer 2020 |
+| 131 | Pulvinar | 視床枕 | 左/右 | 間脳 › 視床 | 間脳 | Najdenovska 2018 |
+| 132 | Stria medullaris thalami | 視床髄条 | 右/左 | 間脳 › 視床上部 | 間脳 | Z-Anatomy / BodyParts3D |
+| 133 | Tuberal hypothalamus | 視床下部隆起部 | 左/右 | 間脳 › 視床下部 | 間脳 | Neudorfer 2020 |
+| 134 | Ventral anterior nucleus | 視床前腹側核（VA） | 左/右 | 間脳 › 視床 | 間脳 | Najdenovska 2018 |
+| 135 | Ventral laterodorsal nucleus | 腹外側部 背側区画（VLD） | 左/右 | 間脳 › 視床 | 間脳 | Najdenovska 2018 |
+| 136 | Ventral lateroventral nucleus | 腹外側部 腹側区画（VLV） | 左/右 | 間脳 › 視床 | 間脳 | Najdenovska 2018 |
+| 137 | Fourth ventricle | 第四脳室 | 正中 | 脳幹 › 脳室系 | 脳室系 | Z-Anatomy / BodyParts3D |
+| 138 | Third ventricle | 第三脳室 | 正中 | 間脳 › 脳室系 | 脳室系 | Z-Anatomy / BodyParts3D |
+| 139 | Lateral ventricle | 側脳室 | 右/左 | 終脳 › 脳室系 | 脳室系 | Z-Anatomy / BodyParts3D |
+| 140 | Septum pellucidum | 透明中隔 | 正中 | 終脳 › 脳室系の関連構造 | 脳室系 | Z-Anatomy / BodyParts3D |
+| 141 | Choroid plexus | 脈絡叢 | 右/左 | 脳室系 › 脳室系の関連構造 | 脳室系 | Z-Anatomy / BodyParts3D |
+| 142 | Anterior commissure | 前交連 | 正中 | 終脳 › 大脳白質 | 白質 | Z-Anatomy / BodyParts3D |
+| 143 | Corpus callosum | 脳梁 | 正中 | 終脳 › 大脳白質 | 白質 | Z-Anatomy / BodyParts3D |
+| 144 | Fornix | 脳弓 | 右/左 | 終脳 › 大脳白質 | 白質 | Z-Anatomy / BodyParts3D |
+| 145 | Hippocampal commissure | 海馬交連 | 正中 | 終脳 › 大脳白質 | 白質 | Z-Anatomy / BodyParts3D |
+| 146 | Stria terminalis | 分界条 | 右/左 | 終脳 › 大脳白質 | 白質 | Z-Anatomy / BodyParts3D |
+| 147 | White matter of telencephalon | 終脳白質 | 左/右 | 終脳 › 大脳白質 | 白質 | Z-Anatomy / BodyParts3D |
 
 ## 付録B 部位説明文（日本語、同文はまとめて表示）
 
