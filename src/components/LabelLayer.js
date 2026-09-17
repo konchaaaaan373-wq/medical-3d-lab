@@ -241,13 +241,14 @@ export function createLabelLayer({ viewer, annotations }) {
       // Highest priority first, so the cap takes from the bottom.
       const order = [...dynamic.values(), ...items].sort((a, b) => b.priority - a.priority);
       // What the reader tapped names a structure; a landmark naming the same
-      // one is the same fact stated twice on the model, not two facts. Rather
-      // than stack a muted duplicate beside the answer, the landmark steps
-      // aside and the selection carries the name alone.
+      // one — or the hover a pointer resting on it produces — is the same
+      // fact stated twice on the model, not two facts. Rather than stack a
+      // duplicate beside the answer, the other label steps aside and the
+      // selection carries the name alone.
       const selectedStructureId = dynamic.get('selection')?.annotation.structureId ?? null;
       for (const item of order) {
         const mergedIntoSelection =
-          item.kind === 'landmark' &&
+          item.kind !== 'selection' &&
           selectedStructureId != null &&
           item.annotation.structureId === selectedStructureId;
         if (item.opacity < 0.01 || mergedIntoSelection) {

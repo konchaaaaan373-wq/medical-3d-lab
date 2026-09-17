@@ -225,3 +225,24 @@ test('label layer: an occluded anchor is offered to the scene once, and replaced
     layer.render();
     assert.equal(reanchorCalls, 1, 'reanchor is not retried once the anchor is visible');
   }));
+
+test('label layer: a hover on the selected structure merges into the selection', () =>
+  withFakeDom(() => {
+    // Selecting a structure and then resting the pointer on it fires both
+    // `onAnatomySelection` and `onAnatomyHover` with the same structure, and
+    // the scene answers both with the same anchor. Two chips on one point,
+    // reading the same name, is the landmark duplicate again under another
+    // kind — the audit of the first version found only the landmark merged.
+    const layer = createLabelLayer({ viewer: testViewer(), annotations: [] });
+    layer.setStructureLabel('selection', landmark('sel-42', 42));
+    layer.setStructureLabel('hover', landmark('hov-42', 42));
+    layer.update(0.5);
+    layer.render();
+    assert.equal(visibleLabels(layer).length, 1, 'one structure, one label');
+
+    // A hover on a different structure is a second fact, and stays.
+    layer.setStructureLabel('hover', landmark('hov-7', 7));
+    layer.update(0.5);
+    layer.render();
+    assert.equal(visibleLabels(layer).length, 2);
+  }));

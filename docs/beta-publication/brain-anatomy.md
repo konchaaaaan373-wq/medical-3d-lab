@@ -12,11 +12,11 @@ at pictures. **No anatomist has judged this geometry or these labels.**
 
 | | |
 | --- | --- |
-| **Decided at** | 2026-09-17 (re-taken four times: a branch of the tree gained a way to be hidden whole, what a hide announces was corrected, a selected structure's label was made to survive its own anchor being occluded, then a review of that fix found three ways it still failed its own stated behaviour and they were closed) |
-| **Decided by** | Claude Sonnet 5, closing three defects a review found in the selection-label fix (PR #132) |
+| **Decided at** | 2026-09-17 (re-taken four times: a branch of the tree gained a way to be hidden whole, what a hide announces was corrected, a selected structure's label was made to survive its own anchor being occluded, then a review of that fix found three ways it still failed its own stated behaviour and they were closed, then an audit of the result found three more and a per-frame cost, also closed) |
+| **Decided by** | Claude Code (AI engineering agent), closing the defects an audit found in the selection-label fix (PR #132) |
 | **Role** | `engineering` — software behaviour, not anatomical or clinical judgement |
 | **Asset revision** | `brain-atlas-glb` @ `sha256:76a49ea4526a4880613aec7a02756bd7301b0b9d0680d7cae33e197b672c5453` |
-| **Scene revision** | model card revision **23**, source digest `e0dd9e3fd8babb39` |
+| **Scene revision** | model card revision **24**, source digest `decebbf91111e0e4` |
 | **Scene sources under that digest** | [`src/data/brainAnatomy.js`](../../src/data/brainAnatomy.js), [`src/scenes/nervous/scenes/brainAnatomy/BrainAnatomyScene.js`](../../src/scenes/nervous/scenes/brainAnatomy/BrainAnatomyScene.js), [`src/scenes/shared/anatomy/tapGesture.js`](../../src/scenes/shared/anatomy/tapGesture.js) |
 
 The decision is pinned to **both** revisions in
@@ -195,6 +195,32 @@ by this: `_visibleAnchorFor` already prefers it unconditionally, so
 (`tests/label-layer.test.js`, `tests/brain-anatomy-selection-label.test.js`):
 each guard was reverted, confirmed to fail, then restored and confirmed to
 pass. Nothing about which structure a tap selects, what the panel names, or
+the atlas itself changed.
+
+**Revision 23 → 24.** An independent audit of revision 23, with the code and
+not the description in hand, found three more ways the fix fell short and one
+cost. First, `_visibleAnchorFor` returned the cached candidate object itself,
+and `reanchor()` moved the label by writing into it — so one reanchor
+overwrote the structure's best-ranked candidate in the cache with the second,
+for every later selection of that structure in the session (a Rule 3 failure:
+the structure's geometry and one label's anchor had become the same object).
+The label now owns a clone. Second, a tap's own point was preferred
+unconditionally, which made `reanchor()` a permanent no-op for tapped
+selections — the revision 23 text above records that as deliberate, and it was
+the wrong trade: a tap is visible by construction only at the moment it lands,
+and it is the way most readers select. The tap point is now used verbatim
+while the camera can see it, the ranked candidates stand in once it cannot,
+and the tap point is taken back as soon as it is visible again. Third, a
+pointer resting on the structure already selected fires the hover with the
+same annotation, and only a *landmark* naming the selected structure merged
+into the selection — a hover did not, so a desktop reader who clicked a
+structure and then read its label got two chips on one point. A hover now
+merges too. Fourth, a structure with nothing visible on it (the far hemisphere
+on a medial view) was searched again every frame it stayed selected; the
+search now runs once per camera pose. Each of the four was guarded before
+being fixed (`tests/brain-anatomy-selection-label.test.js`,
+`tests/label-layer.test.js`), confirmed to fail on revision 23, then confirmed
+to pass. Nothing about which structure a tap selects, what the panel names, or
 the atlas itself changed.
 
 Each time the gate closed and the production build stopped shipping the scene

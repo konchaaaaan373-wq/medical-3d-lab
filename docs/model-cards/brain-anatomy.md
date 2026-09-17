@@ -339,3 +339,19 @@ through `reanchor()`, tried only once the current one has already failed the
 occlusion test, never on a point that still holds. No claim in this card
 changed: what a selection is anchored to, and when it is shown, are unchanged
 in kind — only made to hold in the cases these three did not.
+
+**Revision 23 → 24 — an audit of revision 23 found three more, and one
+cost.** The candidate points a structure offers a label are computed once and
+kept for the life of the scene; `reanchor()` moved a label by writing into the
+very object it had been handed, so one swap overwrote the structure's
+best-ranked candidate for every later selection of it — the label now owns a
+copy. A tap's own point was exempt from re-anchoring altogether, so the one
+selection method most readers use was the one that could not recover once the
+model turned the point behind a neighbour — it is now preferred only while the
+camera can see it, tried again the moment it can be, and the ranked candidates
+stand in between. A pointer resting on the structure already selected produced
+a second label on the same point reading the same name (the hover), which now
+merges into the selection as a landmark already did. And a structure with
+nothing visible on it at all paid for a full candidate search every frame it
+stayed selected; the search now runs once per camera pose. No claim in this
+card changed.

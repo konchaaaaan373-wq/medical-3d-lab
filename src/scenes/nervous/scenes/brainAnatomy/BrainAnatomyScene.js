@@ -1203,6 +1203,18 @@ export class BrainAnatomyScene {
   }
 
   /**
+   * Everything that can change whether a point is visible, as one string:
+   * the camera pose and the display state that decides what is drawn.
+   *
+   * @param {import('three').Camera} camera
+   */
+  _sightPoseKey(camera) {
+    camera.updateMatrixWorld();
+    return `${camera.matrixWorld.elements.map((n) => n.toFixed(4)).join(',')}|` +
+      `${this.isolatedId}|${this.medialSide}|${this.displayProgress.toFixed(3)}|${this.hiddenVersion}`;
+  }
+
+  /**
    * Is this point on this structure the first thing along the ray to it?
    *
    * @param {string} cacheKey anything stable that identifies the point
@@ -1215,9 +1227,7 @@ export class BrainAnatomyScene {
 
     // Recomputing a raycast per label per frame is wasted while nothing moves,
     // and everything that can change the answer is in this key.
-    camera.updateMatrixWorld();
-    const key = `${camera.matrixWorld.elements.map((n) => n.toFixed(4)).join(',')}|` +
-      `${this.isolatedId}|${this.medialSide}|${this.displayProgress.toFixed(3)}|${this.hiddenVersion}`;
+    const key = this._sightPoseKey(camera);
     const cached = this._annotationSight.get(cacheKey);
     if (cached?.key === key) return cached.visible;
 
@@ -1266,9 +1276,16 @@ export class BrainAnatomyScene {
       if (!candidates.length) return null;
       this.structureAnchors.set(key, candidates);
     }
-    const point = this._visibleAnchorFor(structureId, candidates, meshes);
+    // A clone: the candidates stay the structure's for the life of the scene
+    // and `_lastPick` stays the reader's, while `reanchor` below moves *this*
+    // label's point in place. The first version handed out the cache entry
+    // itself, and one reanchor overwrote the best-ranked candidate for every
+    // later selection of the structure.
+    const point = this._visibleAnchorFor(structureId, candidates, meshes).clone();
     const sightKey = `${key}:${point.x.toFixed(3)},${point.y.toFixed(3)},${point.z.toFixed(3)}`;
     const info = brainStructureInfo(meshes[0].userData.atlasMetadata);
+    /** The last camera pose `reanchor` searched from, so it searches once per pose. */
+    let triedPose = null;
     return {
       id: key,
       structureId,
@@ -1291,12 +1308,17 @@ export class BrainAnatomyScene {
        * layer only once this anchor has already failed `isVisible` — never
        * a per-frame search while the point still holds.
        *
-       * `_visibleAnchorFor` already prefers `_lastPick` when it matches this
-       * structure, so a tap's own point comes back unchanged here and is
-       * left exactly where the reader touched it (it carries no candidate
-       * list to fall back on, by design). For a selection made any other way
-       * — the parts tree, the keyboard, a tour — this can find a candidate
-       * the earlier call could not have known would still be visible.
+       * A tap's own point is preferred for as long as the camera can see it
+       * (`_visibleAnchorFor`), so a reader's own touch is left where it
+       * landed until the model turns it out of view; then, like a selection
+       * made from the parts tree, the keyboard or a tour, the structure's
+       * ranked candidates are tried, and the tap point is taken back the
+       * moment it can be seen again.
+       *
+       * Asked once per camera pose: a structure with nothing visible on it
+       * at all — the far hemisphere on a medial view — stays occluded for
+       * as many frames as the reader leaves it, and each of those frames
+       * would otherwise pay for the whole candidate search again.
        *
        * Mutates `point` in place, which is the same object `position` above
        * was set to, so the label layer's own reference picks up the move
@@ -1307,6 +1329,9 @@ export class BrainAnatomyScene {
        */
       reanchor: (camera) => {
         if (!camera) return false;
+        const pose = this._sightPoseKey(camera);
+        if (pose === triedPose) return false;
+        triedPose = pose;
         const next = this._visibleAnchorFor(structureId, candidates, meshes);
         if (next.equals(point)) return false;
         point.copy(next);
@@ -1322,28 +1347,36 @@ export class BrainAnatomyScene {
    *
    * A tap already answers "is this point on the surface I can see?": the ray
    * that selected the structure stopped at this exact point, so it is used
-   * verbatim. Anything else that can select a structure — the keyboard, a
-   * guided tour, a test calling `selectStructure` directly — has no such
-   * point, so the structure's own ranked candidates are tried in the order
-   * the geometry favours them, and the first one the current camera can
+   * verbatim for as long as the camera can still see it. Once the model has
+   * turned it behind a neighbour — or for a selection that never had a tap
+   * (the keyboard, a guided tour, a test calling `selectStructure` directly)
+   * — the structure's own ranked candidates are tried in the order the
+   * geometry favours them, and the first one the current camera can
    * actually see is used. A structure that is genuinely turned away (the far
-   * side of a medial view, mid-fold on every candidate) has none, and the
-   * best-ranked candidate is returned anyway — `isVisible` will then
-   * correctly say "no", which is the case a label should disappear for.
+   * side of a medial view, mid-fold on every candidate) has none; then the
+   * tap point if there is one, else the best-ranked candidate, is returned
+   * anyway — `isVisible` will correctly say "no", which is the case a label
+   * should disappear for.
+   *
+   * With no camera to ask (a route opened on a structure before the viewer
+   * exists) the same fallback applies unconditionally.
+   *
+   * Returns one of the objects it was given — callers that keep the point
+   * clone it (`getStructureAnnotation`).
    *
    * @param {number} structureId
    * @param {import('three').Vector3[]} candidates ranked, furthest reach first
    * @param {import('three').Mesh[]} meshes
    */
   _visibleAnchorFor(structureId, candidates, meshes) {
-    if (this._lastPick?.structureId === structureId) return this._lastPick.point;
+    const tap = this._lastPick?.structureId === structureId ? this._lastPick.point : null;
     const camera = this.viewer?.camera;
-    if (camera) {
-      for (const candidate of candidates) {
-        if (this._rayVisible(candidate, meshes, camera)) return candidate;
-      }
+    if (!camera) return tap ?? candidates[0];
+    if (tap && this._rayVisible(tap, meshes, camera)) return tap;
+    for (const candidate of candidates) {
+      if (this._rayVisible(candidate, meshes, camera)) return candidate;
     }
-    return candidates[0];
+    return tap ?? candidates[0];
   }
 
   /** Is this exact point, right now, the first thing a ray from the camera hits? */
