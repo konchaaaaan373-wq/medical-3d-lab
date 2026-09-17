@@ -327,7 +327,6 @@ html[data-route='trust'] {
 }
 
 .trust-card {
-  padding: 28px;
   border-radius: 2px;
   box-shadow: none;
 }
@@ -591,10 +590,6 @@ html[data-route='explorer'] .public-models .landing-demo :focus-visible {
 
   .trust-principles > span:first-child {
     border-top: 0;
-  }
-
-  .trust-card {
-    padding: 20px;
   }
 
   .legal-tabs {

@@ -112,6 +112,26 @@ test('Trust: a route naming a model opens only that model\'s section', () => {
   });
 });
 
+test('Trust: a route naming a model also moves focus to that model\'s summary', () => {
+  // The TOC click handler already moves focus to the summary it opens
+  // (`trustTocItem`'s click handler, above); landing on `#/trust?model=<slug>`
+  // directly must do the same, or a keyboard/screen-reader visitor who follows
+  // a shared link lands on an opened card with focus left on `<body>`.
+  withFakeBrowser(() => {
+    const focused = PUBLIC_SCENES[PUBLIC_SCENES.length - 1];
+    const element = mountTrust({ focusId: focused.id });
+    const focusedId = `trust-${focused.slug}`;
+    const focusedCard = findByClass(element, 'trust-card').find((card) => card.getAttribute('id') === focusedId);
+
+    // `assert.equal`/`assert.deepEqual` would try to diff two whole
+    // `FakeElement` subtrees on failure (and time out doing it — see the
+    // cycles `parentElement`/`classList` create), so compare identity as a
+    // plain expression instead, the same way `target.open === true` above
+    // stays a primitive comparison.
+    assert.ok(document.activeElement === focusedCard.querySelector('summary'), 'focus must land on the opened card\'s summary');
+  });
+});
+
 test('Trust: a focus id also matches by slug, and an unknown focus id opens nothing', () => {
   withFakeBrowser(() => {
     const focused = PUBLIC_SCENES[0];
@@ -246,4 +266,58 @@ test('the landing page and header keep the generic Trust route, not a model-scop
   // a query string appended — only the scene's own title card does that.
   assert.ok(!landing.includes('MODEL_INFO_ROUTE}?model='), 'Landing.js must not scope the generic link');
   assert.ok(!landing.includes('#/trust?model='));
+});
+
+/**
+ * `.trust-card` is a `<details>`; its own padding belongs to whichever of
+ * `.trust-card-summary` / `.trust-card-body` is actually visible (closed vs.
+ * open — see L-31 above trustCard's docblock). `surface-polish.css` loads
+ * after `trust.css` (see `src/main.js`), so a `.trust-card { padding: … }`
+ * rule there does not override trust.css's card padding — it stacks a second
+ * padding on top of the summary/body padding trust.css already applies,
+ * inflating every card (that was the actual bug: `surface-polish.css` had
+ * *two* such rules, a base one and a phone-width one, on top of trust.css's
+ * summary/body padding). At most one rule, in either file, may declare
+ * padding for the outer `.trust-card` element.
+ */
+test('CSS: no rule declares padding on .trust-card itself', () => {
+  const surfacePolish = read('src/styles/surface-polish.css');
+  const trust = read('src/styles/trust.css');
+
+  // Match the exact selector `.trust-card` (not `.trust-card-summary` /
+  // `.trust-card-body` / `.trust-card-title`, etc. — the lookahead requires
+  // the selector to end right there), as it appears in a selector list,
+  // followed by its declaration block, and count the blocks that declare
+  // `padding` (or a `padding-*` longhand). This also catches the padding
+  // being declared twice *within one file* (once at the base breakpoint,
+  // once inside a phone-width media query) — the actual shape the original
+  // bug took: both `.trust-card` rules lived in surface-polish.css alone, so
+  // a same-file duplicate must trip this guard exactly as a two-file one
+  // would.
+  const cardPaddingRuleCount = (css) => {
+    const blockRe = /(^|[,{}])\s*\.trust-card\s*(?=[,{])[^{}]*\{([^}]*)\}/gms;
+    let match;
+    let count = 0;
+    while ((match = blockRe.exec(css))) {
+      const body = match[2];
+      if (/(^|;|\s)padding(-top|-right|-bottom|-left)?\s*:/.test(body)) count += 1;
+    }
+    return count;
+  };
+
+  const total = cardPaddingRuleCount(surfacePolish) + cardPaddingRuleCount(trust);
+
+  // Zero: `.trust-card` (the `<details>`) is unpadded, and
+  // `.trust-card-summary` / `.trust-card-body` (the parts that are actually
+  // visible, open or closed) own the inset. Any padding on the outer element
+  // stacks on top of theirs, so there is no "one owner" version of this rule
+  // that keeps the summary/body padding — a future design that pads the
+  // outer element instead has to move the inset off the children and change
+  // this guard in the same change.
+  assert.ok(
+    total === 0,
+    `.trust-card padding is declared ${total} times across surface-polish.css and trust.css combined — ` +
+      'it stacks on top of .trust-card-summary/.trust-card-body\'s own padding instead of overriding it, ' +
+      'because .trust-card is their parent, not a competing rule for the same element'
+  );
 });

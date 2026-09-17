@@ -385,7 +385,10 @@ export function createTrust({ ui, accountButton = null, focusId = null }) {
   // reads the card `createTrust` already built rather than looking it up by
   // id, so it works the moment the element exists and does not depend on the
   // document having actually mounted `element` yet.
-  if (focusIndex >= 0) cards[focusIndex].scrollIntoView?.({ block: 'start' });
+  if (focusIndex >= 0) {
+    cards[focusIndex].scrollIntoView?.({ block: 'start' });
+    cards[focusIndex].querySelector?.('summary')?.focus?.();
+  }
 
   return { element };
 }
