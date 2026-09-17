@@ -679,15 +679,48 @@
   gap: 8px;
 }
 
+/*
+ * The control row, and why it only scrolls on a phone.
+ *
+ * It used to be `nowrap` + `overflow-x: auto` at every width. That is a scroll
+ * container, and a scroll container's contribution to an ancestor's intrinsic
+ * width is where engines disagree — which matters here because the calm
+ * anatomy console is `width: fit-content`
+ * (`anatomy-shell-presentation.css`), so the row's own width is supposed to be
+ * one of the things deciding the box around it.
+ *
+ * Measured at 768×1024 on `#/brain-anatomy` (F-137). The row's content is
+ * 245px on both engines. The box is not:
+ *
+ *   Chromium   row box 245, console 265 — the row's 245 decided it
+ *   WebKit     row box 231, console 251 — the row was not counted, and the
+ *              siblings (slider row, disclaimer) settled at 231
+ *
+ * So on WebKit a control sat outside a row that hides its scrollbar: not
+ * clipped-with-a-hint, just absent. And on Chromium 245 of content fitted a
+ * 245 box with nothing to spare, so any engine, font or translation costing a
+ * pixel does the same thing.
+ *
+ * The row only ever *needs* to scroll where the console is capped by the
+ * viewport, and the sheet below says where that is: 560px, the same width
+ * `anatomy-shell-presentation.css` starts clamping the console at. Above it
+ * the row lays out normally — an ordinary intrinsic contribution both engines
+ * must honour — and wraps rather than overflowing if it somehow cannot fit.
+ */
 #ui[data-anatomy] .button-row {
-  flex-wrap: nowrap;
   gap: 6px;
-  overflow-x: auto;
-  scrollbar-width: none;
 }
 
-#ui[data-anatomy] .button-row::-webkit-scrollbar {
-  display: none;
+@media (max-width: 560px) {
+  #ui[data-anatomy] .button-row {
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    scrollbar-width: none;
+  }
+
+  #ui[data-anatomy] .button-row::-webkit-scrollbar {
+    display: none;
+  }
 }
 
 #ui[data-anatomy] .btn.utility {

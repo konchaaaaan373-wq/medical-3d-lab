@@ -323,71 +323,22 @@ conda-forge には存在しません。したがって CDM のフィールド名
 hover と `:focus-visible` が光らせます。ここまでは実ブラウザで確認済みですが、
 **確かめたのは headless Chromium 1 本だけ**です。
 
-- **確認済み: 他エンジン。** `final-browser-validation.yml` を候補 commit に対して
-  実行しました。**Chromium 緑・Firefox 緑・WebKit 赤**ですが、
-  WebKit の 1 件は main でも同一に出ます（下の **F-137**）。この PR の追加した
-  往復検査は 3 エンジンとも問題を出していません。
-- **未確認 2: タッチ端末。** hover の無い端末では「下がった状態から戻す」のが
-  `touchstart` / `pointerdown` だけになります。**指で画面に触れれば戻る**はずですが、
-  実機では試していません。orbit しようとして触れた時点で戻る、が期待する挙動です。
+- **確認済み: 他エンジン。** `final-browser-validation.yml` を 3 エンジンで実行済み。
+  この往復検査は Chromium / Firefox / WebKit のどれでも問題を出していません
+  （当時 WebKit だけ赤だった 1 件は別件で、**F-137** として解決しました。Resolved 参照）。
+- **半分は機械が見るようになりました: タッチ。** hover の無い端末では
+  「下がった状態から戻す」のが `touchstart` / `pointerdown` だけです。
+  `hideUiRoundTrip()` が `touchstart` を投げて**そのハンドラの中で**クラスを読むので、
+  `App.js` のリスナー一覧から `touchstart` が消えれば赤くなります
+  （消して赤・戻して緑を確認済み）。**これは配線を見ているだけで、端末ではありません**
+  ——マトリクスの context は touch context ではなく、そうすると他の全計測が変わるので、
+  合成イベントで止めています。**実機の指はまだ人だけ**:
+  orbit しようとして触れた時点で戻る、が期待する挙動です。
 - **未決定: 2.2 秒という値。** 動画プレイヤーの慣習（2〜3 秒）から取っただけで、
   実際にキャプチャを撮る人に短い／長いを聞いていません。定数は `App.js` の
   `UI_QUIET_MS` 1 か所です。
 - 完了の定義: 実機のタッチ端末で「下がる → 触れて戻る → 押して UI が戻る」を
   1 回通し、待ち時間の値を決める（変えるなら 1 か所）。
-  WebKit 全体の緑は F-137 側の条件です。
-
-### F-137 WebKit だけ、tablet-768 のシーンでコントロール列が横にはみ出す — P2（2026-09-17）
-
-`final-browser-validation.yml` の `viewport matrix (webkit)` が 1 件で赤になります。
-
-```
-tablet-768 · Scene: the control bar scrolls sideways (245px of content in 231px)
-```
-
-`.button-row`（`ControlPanel.js` のボタン列）の `scrollWidth` が 245、
-容れ物が 231。**14px 足りません。** Chromium と Firefox では出ません。
-
-- **この PR のものではありません。** 同じワークフローを候補 commit
-  (`61514c3`) と **main (`eb20eee`)** の両方に対して実行し、
-  どちらも WebKit だけが落ち、**問題は 1 件・文面も数値も同一**、
-  レポート artifact のサイズも同じ 9674 バイトでした
-  （runs [35180833403](https://github.com/konchaaaaan373-wq/medical-3d-lab/actions/runs/35180833403) /
-  [35181371823](https://github.com/konchaaaaan373-wq/medical-3d-lab/actions/runs/35181371823)）。
-  **どちらが原因かを推測せずに A/B を撮ってから書いています**（L-15）。
-- **いつからかは未確認。** main の履歴のどこで入ったかは測っていません。
-  `final-browser-validation.yml` は候補時だけ走る手動ワークフローなので、
-  気づかれずに main に載っていた可能性があります。
-- **最初に書いた見当は外れでした。** 「14px は 1 文字ぶんで、日本語ラベルの
-  字送りの差だろう」と書きましたが、**中身の幅は両エンジンで同じ 245 です**。
-  違うのは**箱のほう**で、Chromium は 245、WebKit は 231。ボタンは無関係です。
-- 測ったこと（Chromium、768×1024、`#/brain-anatomy`）:
-  - `#ui[data-anatomy-shell='calm'] .console` は **`width: fit-content`**
-    （`anatomy-shell-presentation.css`）。つまり箱の幅は中身が決めます。
-  - その中身は `.controls` 1 つだけ（`.stage-readout` は calm で `display:none`）で、
-    `.controls` の子は slider-row / **button-row** / disclaimer の 3 つ。
-  - **`.button-row` は `overflow-x: auto`**（`ui.css`）。
-    スクロールコンテナは祖先の intrinsic 幅への寄与が特殊で、
-    **ここでエンジンが割れているのが最有力**です——Chromium は 245 を、
-    WebKit は 231（= 行以外の子が決めた幅）を採っている、という形。
-  - **スクロールバー説は否定済み。** Playwright の Chromium は既定で
-    `--hide-scrollbars` が付き WebKit には付かないので 14px の候補でしたが、
-    `ignoreDefaultArgs: ['--hide-scrollbars']` で出しても数値は 1px も動きません。
-- **まだ確かめていないこと**: WebKit 側で 231 を出しているのがどの要素か。
-  `check-viewports.mjs` は失敗時に、行から `#ui` までの箱の鎖**と各段の兄弟**を
-  印字するようになったので、**WebKit で 1 回走らせれば分かります**
-  （この環境は playwright の WebKit をダウンロードできないため、CI からしか測れません）。
-- 読者に起きること: 行は `scrollbar-width: none` と
-  `::-webkit-scrollbar { display: none }` を持つので、**あふれても何も見えません**。
-  コントロールが 1 つ、ただ無いように見えます。
-  そして Chromium でも中身 245 が箱 245 に**余白ゼロ**で収まっており、
-  1px でも違えば同じことが起きる作りです——エンジン差はきっかけであって、
-  原因は「隠れてはいけない行が、自分を囲む箱の幅を決めていない」ことです。
-- 完了の定義: WebKit の `viewport matrix` が緑。直したら、Chromium / Firefox が
-  緑のままであることも同じワークフローで確認する。
-
----
-
 
 ### F-134 膝と肩の枠取り — **指摘そのものが測り方の産物でした**（2026-09-16）
 
@@ -3124,6 +3075,42 @@ landmark ビルダー（`buildKidney({ parts: false })`）の `dispose()` を呼
 ---
 
 ## Resolved
+
+- **F-137 WebKit だけ、tablet-768 でコントロール列が横にはみ出す** — 解決（2026-09-17）。
+  **最初に書いた見当は 2 つとも外れでした。**「14px は 1 文字ぶんで日本語ラベルの
+  字送りの差」も、「Playwright が Chromium にだけ `--hide-scrollbars` を付けるから」も
+  違います（後者は `ignoreDefaultArgs` で出して測り直して否定）。
+
+  WebKit で測った箱の鎖が答えでした——**中身の幅は両エンジンとも 245 で同じ、
+  違うのは箱**です:
+
+  ```
+  Chromium   row box 245 / content 245   console 265
+  WebKit     row box 231 / content 245   console 251
+             兄弟（slider-row・disclaimer）はどちらも箱いっぱい
+  ```
+
+  calm のコンソールは `width: fit-content` なので、**行の幅は箱を決める側の
+  1 つであるはず**でした。ところが行は `overflow-x: auto`——**スクロールコンテナが
+  祖先の intrinsic 幅にどう寄与するかでエンジンが割れます**。Chromium は 245 を
+  数え、WebKit は数えず、行以外の子が決めた 231 になっていました。
+  行は `scrollbar-width: none` なので、あふれても**何も見えません**——
+  コントロールが 1 つ、ただ無いように見えます。
+
+  直し方は「行がスクロールするのは、コンソールが viewport に頭を打つ幅だけ」。
+  その幅はこの repo が既に持っています——`560px` で
+  `anatomy-shell-presentation.css` がコンソールを `calc(100% - 64px)` に clamp します。
+  それより広いところでは行は普通の flex 行なので、**両エンジンが数えざるを得ない
+  ふつうの intrinsic 寄与**になります。`≤430px` では
+  `product-shell-b6.css` が 6 列グリッドにするので、スクロールが実際に効くのは
+  431〜560px の帯だけです（この帯では行 245 / コンソール 265 で収まっており、
+  安全弁として残しています）。
+
+  確認: WebKit の全 viewport マトリクスが緑（この 1 件が唯一の赤でした）、
+  Chromium は 7 viewport × scene 全部緑、320/560/768/1280 で行の箱と中身が一致。
+  **残っている懸念**: 431〜560px でコントロールがもっと多いシーンが来た場合、
+  あふれは同じように黙ります。帯が狭く、いま該当するシーンは無いので
+  cue は足していません——`docs/follow-ups.md` の次の版で必要になったら書きます。
 
 - **F-135 腎: 電話サイズでシートの行が押せない** — 解決（2026-09-17）。
   **初出は「『表示』タブが押せない」でした。全部違いました**——タブは 1275ms で
