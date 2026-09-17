@@ -452,14 +452,17 @@ export const BETA_PUBLICATION_DECISIONS = Object.freeze([
   }),
   Object.freeze({
     sceneId: 'brain-anatomy',
-    decidedAt: '2026-09-15',
+    decidedAt: '2026-09-17',
     /** Who, and in what capacity. A role is a claim, and it is checked. */
-    decidedBy: Object.freeze({ name: 'Claude Opus 5, acting as B4 implementer', role: 'engineering' }),
+    decidedBy: Object.freeze({
+      name: 'Claude Code (AI engineering agent), closing the defects an audit found in the selection-label fix (PR #132)',
+      role: 'engineering',
+    }),
     record: 'docs/beta-publication/brain-anatomy.md',
     assetRevisions: Object.freeze({
       'brain-atlas-glb': '76a49ea4526a4880613aec7a02756bd7301b0b9d0680d7cae33e197b672c5453',
     }),
-    sceneRevision: Object.freeze({ cardRevision: 20, modelDigest: '2ab8c472db1731bc' }),
+    sceneRevision: Object.freeze({ cardRevision: 24, modelDigest: 'decebbf91111e0e4' }),
     /** What was actually exercised. Not a plan — a list of what was done. */
     scope: Object.freeze({
       // Re-measured on 2026-09-15 and corrected. The first two of the four
@@ -509,7 +512,7 @@ export const BETA_PUBLICATION_DECISIONS = Object.freeze([
         'a structure can be found by either of its names and selected from the result, by the same id the tree and the model use',
         'the search returns every match and says how many matched; the results answer the keyboard and mark the pinned structure',
         'the search index is rebuilt when the atlas arrives or is replaced, and on a phone the first Escape clears the search rather than closing the sheet',
-        'the pinned structure is named on the model as well as in the panel, under the same occlusion rule and a per-frame limit',
+        'the pinned structure is named on the model as well as in the panel — anchored on the exact point a tap hit, or, for a selection made without one, the first of the structure\'s ranked candidate points the live camera can see; exempt from the per-frame label limit; and a landmark that names the same structure steps aside instead of duplicating it',
         'going to a structure, bringing it into view and hiding it are three separate actions; each reports what it changed and offers the way back',
         'a hidden structure stays hidden through a colour change, a viewpoint and a layer move, leaves the picker and stops occluding a label, and stays selected',
         'a hidden structure\'s own label goes with it rather than being held over what is behind it',
@@ -528,6 +531,15 @@ export const BETA_PUBLICATION_DECISIONS = Object.freeze([
       'tests/anatomy-contract.test.js',
       'tests/brain-anatomy.test.js',
       'tests/anatomy-colour-ui.test.js',
+      // The selection label's cap exemption, its muted-landmark styling and its
+      // landmark-merge rule — see docs/verification-lessons.md L-46. Also
+      // guards the three defects a review found in that fix: an unchanged id
+      // discarding a changed anchor, the cap not counting the selection, and
+      // a captured anchor not reanchoring once occluded.
+      'tests/label-layer.test.js',
+      // The scene-side half of the same three guards: a re-tap's new point,
+      // and `reanchor()` swapping in a visible candidate for an occluded one.
+      'tests/brain-anatomy-selection-label.test.js',
       'docs/asset-qa/brain-atlas-glb.md',
       'public/assets/brain/ATTRIBUTION.md',
       'docs/screenshots/b3-1/README.md',
