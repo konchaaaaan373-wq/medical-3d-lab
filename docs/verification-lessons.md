@@ -662,6 +662,21 @@
   **測定の分解能が、測定対象の負荷に比例して落ちる**計器です。
   interval polling にし、上限は「速いマシン」ではなく「遅いマシン」で決める。
 
+### L-45 worktree に張った `node_modules` のリンクが、commit に入った
+
+- **症状**: 並行作業用の worktree で `ln -s <本体>/node_modules node_modules` を張り、
+  `git add -A` で commit しました。`.gitignore` の `node_modules/` は**ディレクトリ**にしか
+  効かず、symlink はファイルなので拾われます。その commit を本体で cherry-pick すると、
+  git は ignore 対象の実ディレクトリを**消して**、自分自身を指すリンクに置き換えました。
+  `node --test` は依存を使わないテストだけ走らせていたので緑のままでした。
+- **どう見つかったか**: cherry-pick の出力に `create mode 120000 node_modules` が
+  あった。読んでいなければ、次の `npm run build` まで気づきません。
+- **いま何が捕まえるか**: `tests/tree-hygiene.test.js` — 追跡ファイルに
+  `node_modules` と symlink（mode 120000）が無いこと。`.gitignore` は
+  `node_modules`（スラッシュ無し）も持ちます。
+- **一般形**: **ignore は「そのパスの種類」にしか効かない。** 道具のために
+  木の中へ置いたものは、`git add -A` の前に `git status --short` で見る。
+
 ### L-15 確かめる前に「バグだ」と言った
 
 - **症状**: `#/terms` → `#/privacy` が壊れていると報告した。ブラウザで main と

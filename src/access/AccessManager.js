@@ -747,10 +747,15 @@ export function createAccessManager({ ui }) {
     ]);
 
     if (!authConfigured()) {
+      // Visitor-facing, not implementation status: this used to read "the
+      // paywall UI is installed, but account access has not been configured
+      // on this deployment yet" — true, and none of a reader's business. What
+      // they need is only what changes for them: no sign-up yet, and the
+      // published models are not behind it.
       return [
         head,
-        el('p', { class: 'access-copy lang-en', text: 'The paywall UI is installed, but account access has not been configured on this deployment yet. Free models remain available.' }),
-        el('p', { class: 'access-copy lang-ja', text: '課金UIは実装済みですが、このデプロイにはアカウント認証がまだ設定されていません。無料モデルはそのまま利用できます。' }),
+        el('p', { class: 'access-copy lang-en', text: 'Accounts are not available on this site yet, so neither sign-in nor sign-up works here. Published models remain available without signing in.' }),
+        el('p', { class: 'access-copy lang-ja', text: 'このサイトではまだアカウント機能（ログイン・登録）を提供していません。公開中のモデルはログインなしでご覧いただけます。' }),
       ];
     }
 
