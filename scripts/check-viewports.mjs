@@ -587,7 +587,25 @@ function measurePhoneLayoutInPage({ phoneWidth, target, interactiveSelector, exe
     }
     const rowBox = row.getBoundingClientRect();
     if (row.scrollWidth > row.clientWidth + 1) {
-      problems.push(`the control bar scrolls sideways (${row.scrollWidth}px of content in ${Math.round(rowBox.width)}px)`);
+      // Name where the width went, not only that it ran out. The row is
+      // `overflow-x: auto` with its scrollbar hidden on an anatomy scene, so
+      // what a reader meets is a control that is simply not there — and the
+      // engine that reported this first had the *same* content width as the
+      // one that passed, and a narrower box (F-137). A message carrying only
+      // the two totals sends the next reader to the buttons, which are fine.
+      const chain = [];
+      for (let node = row; node && node !== document.body; node = node.parentElement) {
+        const style = getComputedStyle(node);
+        chain.push(
+          `${describe(node)} ${Math.round(node.getBoundingClientRect().width)}px` +
+            ` (width ${style.width}, padding ${style.paddingLeft}+${style.paddingRight},` +
+            ` min-width ${style.minWidth}, flex ${style.flex}, box-sizing ${style.boxSizing})`,
+        );
+      }
+      problems.push(
+        `the control bar scrolls sideways (${row.scrollWidth}px of content in ` +
+          `${Math.round(rowBox.width)}px)\n    ${chain.join('\n    ')}`,
+      );
     }
   }
 
