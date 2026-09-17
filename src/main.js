@@ -152,7 +152,7 @@ async function boot() {
   if (route.kind === 'trust') {
     document.documentElement.dataset.route = 'trust';
     const { createTrust } = await import('./app/Trust.js');
-    await createTrust({ ui, accountButton: access.accountButton });
+    await createTrust({ ui, accountButton: access.accountButton, focusId: route.focusId });
     void observe({ ui, surface: 'trust' }).then((installed) => installed?.telemetry.record('trust.open', {}));
     void accessReady;
     leaveOnRouteChange();
