@@ -227,6 +227,18 @@
   border-radius: 4px;
 }
 
+/* The tab this scene lives under. Minimal on purpose: a weight change and an
+ * underline read at 11.5px without needing a second color. This file loads
+ * after `navigation.css` and is where `.global-nav-footer-link`'s own rules
+ * already live, so an `[aria-current]` rule placed anywhere else would be the
+ * one left behind by the cascade, not the one that wins it. */
+.global-nav-footer-link[aria-current='page'] {
+  color: var(--ink);
+  font-weight: 600;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
 /* --------------------------------------------------------------------------
  * Model information + usage recording
  *

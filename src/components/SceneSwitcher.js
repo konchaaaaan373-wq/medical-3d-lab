@@ -3,12 +3,25 @@ import { inLanguage } from '../utils/language.js';
 import { EXPLORER_ROUTE, LAB_ROUTE, LANDING_ROUTE, organById } from '../catalog/index.js';
 import { activeUsesForSceneEntry } from '../access/sceneUses.js';
 import { readSceneLibrary, toggleSceneFavorite } from '../app/sceneLibrary.js';
+import { resolveRoute } from '../app/router.js';
 import {
   compactSceneLabel,
   navigationKindGroups,
   navigationUseLabel,
   scenesByOrganForNavigation,
 } from '../app/sceneNavigationModel.js';
+
+/**
+ * The hash this document is actually showing.
+ *
+ * Guarded the way `FeedbackPanel` guards the same read: `node --test` has no
+ * `window`, and a component that throws in that environment cannot be unit
+ * tested at all. In a browser this is always `window.location.hash`; the
+ * fallback only exists for the test runner, and `resolveRoute('')` reads as
+ * the landing page — never `'scene'` — so it fails the current-scene checks
+ * below safely rather than by accident.
+ */
+const currentHash = () => (typeof window === 'undefined' ? '' : (window.location?.hash ?? ''));
 
 /**
  * Fixed product-shell navigation for a 3D scene.
@@ -192,11 +205,21 @@ export function createSceneSwitcher({ groups, currentId, showLab = true }) {
 
   // Shelf navigation is useful, but it must not outrank choosing a model. Keep
   // it as compact footer navigation. The public beta never exposes Lab here.
-  const footerLinks = [
-    el('a', { class: 'global-nav-footer-link', href: isLab ? LAB_ROUTE : EXPLORER_ROUTE }, [
-      bilingual(isLab ? 'Lab index' : 'Model index', isLab ? '実験モデル一覧' : 'モデル一覧'),
-    ]),
-  ];
+  //
+  // The first link is not just "go to the index" — it names the tab this
+  // scene already lives under. `isLab` (a scene's own status, not a guess at
+  // the URL) is the same split the labels above use to say "Lab index" or
+  // "Model index" in the first place, so a scene route already declares
+  // itself part of one of the two: `aria-current="page"` on this link is
+  // that declaration read back to assistive tech, not a new claim about it.
+  // The secondary link goes to the *other* tab, so it is never current.
+  const primaryFooterHref = isLab ? LAB_ROUTE : EXPLORER_ROUTE;
+  const primaryFooterLink = el(
+    'a',
+    { class: 'global-nav-footer-link', href: primaryFooterHref },
+    [bilingual(isLab ? 'Lab index' : 'Model index', isLab ? '実験モデル一覧' : 'モデル一覧')]
+  );
+  const footerLinks = [primaryFooterLink];
   if (showLab) {
     footerLinks.push(
       el('a', {
@@ -211,6 +234,33 @@ export function createSceneSwitcher({ groups, currentId, showLab = true }) {
     class: 'global-nav-footer',
     'aria-label': 'Model lists / モデル一覧',
   }, footerLinks);
+
+  /**
+   * Keep the footer's tab claim honest.
+   *
+   * `resolveRoute` — not a string check on the hash — is what confirms this
+   * document is still a scene page before the footer link claims to be the
+   * current tab; `#/organs` and its `#/explore` alias resolve to the same
+   * `'explorer'` kind, so a check written against `kind` never has to know
+   * about the alias by name. Re-run on `hashchange` rather than once at
+   * mount: this component outlives a hash change that does not reload the
+   * document (`#/brain-anatomy?structure=1` to `?structure=2` is the same
+   * route on purpose — see `sameRoute` in `router.js`), so a stale
+   * `aria-current` left over from mount would otherwise survive it.
+   */
+  function updateFooterCurrent() {
+    const onScenePage = resolveRoute(currentHash()).kind === 'scene';
+    if (onScenePage) primaryFooterLink.setAttribute('aria-current', 'page');
+    else primaryFooterLink.removeAttribute('aria-current');
+  }
+  updateFooterCurrent();
+  // Guarded on the method, not only on `window` existing: `beta-release.test.js`
+  // walks every surface's rendered links against a `window` stubbed down to
+  // just `matchMedia`, and a component that assumes the rest of the browser
+  // API comes with it is a component that cannot be checked that way.
+  if (typeof window !== 'undefined' && typeof window.addEventListener === 'function') {
+    window.addEventListener('hashchange', updateFooterCurrent);
+  }
 
   const panel = el(
     'div',
