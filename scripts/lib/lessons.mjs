@@ -22,6 +22,35 @@ export const REQUIRED_FIELDS = Object.freeze(['症状', 'どう見つかった�
 /** How a lesson says "nothing mechanical catches this yet". */
 export const HUMAN_ONLY = '人だけ';
 
+/**
+ * How covered a lesson is, in the only three states that matter.
+ *
+ * The middle one is the one this got wrong. A lesson that names a guard *and*
+ * says **人だけ** is saying both things on purpose — half of it is caught and
+ * half is not — and counting it as covered takes it out of the tally without
+ * anything having been built. L-16 is the live example: `npm run lessons`
+ * catches a duplicate lesson number, and nothing at all catches a duplicate
+ * F number, and the entry says so in one breath. Read as `guarded`, the
+ * number this ledger exists to drive down fell by one for free.
+ *
+ * `partly` is therefore counted with `human`: the tally answers "how many of
+ * these still need a person", and half of one still does.
+ */
+export const COVERAGE = Object.freeze({ guarded: 'guarded', partly: 'partly', human: 'human' });
+
+/**
+ * What a lesson's **いま何が捕まえるか** field claims.
+ *
+ * @param {string} guard the field's text
+ * @param {string[]} named guard tokens this can resolve
+ * @returns {'guarded' | 'partly' | 'human'}
+ */
+export function coverageOf(guard, named) {
+  const human = guard.includes(HUMAN_ONLY);
+  if (!human) return COVERAGE.guarded;
+  return named.length > 0 ? COVERAGE.partly : COVERAGE.human;
+}
+
 const HEADING = /^### (L-\d+)\s+(.+)$/;
 const FIELD = /^- \*\*(.+?)\*\*:\s*([\s\S]*)$/;
 
@@ -142,15 +171,19 @@ export function auditLessons({ markdown, exists = existsSync, scripts = [] }) {
     const guard = lesson.fields.get(REQUIRED_FIELDS[2]) ?? '';
     const tokens = ticks(guard);
     const named = tokens.filter((token) => guardKind(token) !== null);
-    const human = guard.includes(HUMAN_ONLY);
+    const coverage = coverageOf(guard, named);
+    lesson.coverage = coverage;
 
-    if (!human && named.length === 0) {
+    if (coverage === COVERAGE.guarded && named.length === 0) {
       problems.push(
         `${where}: names no guard. Either point at a file or an \`npm run\` script, or say **${HUMAN_ONLY}** —`
           + ' a lesson that claims coverage without naming it is the thing this ledger is about'
       );
     }
-    if (human && named.length === 0) humanOnly.push(`${lesson.id} ${lesson.title}`);
+    // `partly` counts here too: it is the half nobody has built yet.
+    if (coverage !== COVERAGE.guarded) {
+      humanOnly.push(`${lesson.id} ${lesson.title}${coverage === COVERAGE.partly ? ' (partly)' : ''}`);
+    }
 
     for (const token of named) {
       const kind = guardKind(token);
