@@ -80,7 +80,12 @@ export function createReelOverlay() {
     if (previous.get(`${nodeKey(node)}:o`) === rounded) return;
     previous.set(`${nodeKey(node)}:o`, rounded);
     node.style.opacity = rounded;
-    node.style.visibility = value < 0.005 ? 'hidden' : 'visible';
+    // `''`, not `'visible'`: the inline declaration is only ever needed to take
+    // a faded slot out of the tab order. Writing `visible` instead *asserts*
+    // it, and an assertion beats an ancestor's `hidden` — which is how the
+    // interface's own hide works (`#ui.is-hidden` in `base.css`), so a reel
+    // caption would go on floating over a model the reader had cleared.
+    node.style.visibility = value < 0.005 ? 'hidden' : '';
   };
 
   return {

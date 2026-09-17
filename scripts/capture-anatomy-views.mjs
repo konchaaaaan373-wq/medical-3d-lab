@@ -198,16 +198,38 @@ try {
     // The layer eases like everything else; the settle below still decides.
     await page.waitForTimeout(600);
   }
-  // By its stable name, not by its title: the title is prose and prose follows
-  // the reader's language, so this used to stop finding the button whenever the
-  // interface was in Japanese — which is the default.
-  const hideUi = () => page.locator('[data-control="hideUi"]').click({ noWaitAfter: true });
+
+  /**
+   * Hide and show the interface, for a frame with nothing in it.
+   *
+   * This used to press the button, addressed by its stable name rather than by
+   * its title — the title is prose and prose follows the reader's language, so
+   * addressing it that way stopped finding it whenever the interface was in
+   * Japanese, which is the default. It no longer presses anything, for a reason
+   * worth writing down: the button now *survives* the hide. A person who
+   * presses it has no other way back, and for a whole release it disappeared
+   * along with the panels around it (`docs/verification-lessons.md` L-31) —
+   * this script only kept working because Playwright will click an element at
+   * `opacity: 0`, which is exactly the thing a person cannot do.
+   *
+   * A script does not need a way back; it sets the state. `is-capture` is what
+   * says so, and it is the only thing that takes the last control off the
+   * frame, so the shots are the same empty frames they have always been.
+   */
+  const setUi = (hidden) =>
+    page.evaluate((hide) => {
+      const ui = document.getElementById('ui');
+      ui?.classList.toggle('is-hidden', hide);
+      ui?.classList.toggle('is-capture', hide);
+      // The app fades its own way back in and out while hidden; `is-capture`
+      // outranks that either way, and clearing it keeps the class meaning what
+      // it says rather than leaving a stale one on a shown interface.
+      ui?.classList.remove('is-quiet');
+    }, hidden);
+  const hideUi = () => setUi(true);
 
   /** The interface has to be back before a recipe button can be pressed. */
-  const showUi = async (target) => {
-    const hidden = await target.evaluate(() => document.getElementById('ui')?.classList.contains('is-hidden'));
-    if (hidden) await hideUi();
-  };
+  const showUi = () => setUi(false);
 
   /** The recipes this scene offers, narrowed to what was asked for. */
   const recipesOnOffer = async (target, asked) => {
@@ -334,7 +356,7 @@ try {
   for (const recipe of onlyRecipes.length ? await recipesOnOffer(page, onlyRecipes) : []) {
     for (const mode of modes) {
       if (onlyModes.length && !onlyModes.includes(mode)) continue;
-      await showUi(page);
+      await showUi();
       await page.locator('.inspection-choice.inspection-mode').nth(modes.indexOf(mode)).click({ noWaitAfter: true });
       await page.waitForTimeout(300);
       // Every recipe here declares `resets: true`, so each starts from the
@@ -352,7 +374,7 @@ try {
         shot += 1;
         console.log(`  ${name}.png (settled after ${frames} frame(s))`);
       }
-      await hideUi();
+      await showUi();
     }
   }
 
@@ -374,7 +396,7 @@ try {
         shot += 1;
         console.log(`  ${name}.png (settled after ${frames} frame(s))`);
       }
-      await hideUi();
+      await showUi();
       await page.waitForTimeout(300);
     }
   }

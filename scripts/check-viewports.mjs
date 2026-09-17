@@ -651,6 +651,224 @@ const resetFocus = (page) =>
   });
 
 /**
+ * Does the interface come back?
+ *
+ * "Hide UI" empties the frame for a screen capture, and the button that did it
+ * is the only thing on screen that says how to undo it — the H shortcut is
+ * written in a code comment, not anywhere a reader can see. So that one button
+ * has to survive the state it creates.
+ *
+ * It did not, and the way it failed is one nothing else here would catch. The
+ * rule that clears the frame exempted `.ui-toggle`, but as a *child* of `#ui`,
+ * and the button lives three levels down in `.top-bar > .rail > .rail-buttons`
+ * — so the exemption matched nothing and the button faded out with the panels
+ * around it. `opacity: 0` keeps an element laid out and hit-testable, which is
+ * why Playwright's own `isVisible()` answers yes on a button no one can see:
+ * the question has to be asked of the boxes above it, not only of the button.
+ *
+ * The frame it leaves has to be clean, too — that is the whole feature, and
+ * keeping the button lit would trade one defect for the other. So the round
+ * trip is four questions, not one: the way back is there the moment the
+ * interface goes; it steps back on its own once nothing is happening; **any**
+ * pointer move brings it straight back; and pressing it returns the frame.
+ * The wait for the quiet state is a wait for the class, never for a duration
+ * (L-14) — the delay lives in `App.js` and this does not restate it.
+ *
+ * Measured only where the control is offered to begin with, so a viewport that
+ * does not show it is not failed for not showing it.
+ */
+async function hideUiRoundTrip(page) {
+  const toggle = page.locator('#ui [data-control="hideUi"]');
+  if ((await toggle.count()) !== 1) return { control: false };
+
+  /**
+   * Wait for a class on `#ui`, on a timer rather than on frames.
+   *
+   * `waitForFunction` polls on `requestAnimationFrame` by default, and this
+   * runner draws the brain atlas on software GL: on `desktop-1280` — the
+   * largest canvas, and the only viewport this failed on — frames come far
+   * enough apart that a five-second bound is three or four polls. The check
+   * then reported "the interface did not come back" about a page that had
+   * already come back. An interval poll and a bound as generous as the rest of
+   * this file's asks the page, not the renderer.
+   */
+  const hasClass = (name, want, timeout = 15_000) =>
+    page
+      .waitForFunction(
+        ([className, expected]) =>
+          document.getElementById('ui')?.classList.contains(className) === expected,
+        [name, want],
+        { timeout, polling: 250 },
+      )
+      .then(() => true, () => false);
+  const uiHidden = (want) => hasClass('is-hidden', want);
+
+  // What a person would see, in the browser's own terms.
+  const look = () =>
+    toggle.evaluate((node) => {
+      const name = (element) => {
+        if (!element) return 'nothing';
+        const classes = String(element.className ?? '').trim().split(/\s+/).filter(Boolean);
+        return `${element.tagName.toLowerCase()}${classes.length ? `.${classes.join('.')}` : ''}`;
+      };
+      const box = node.getBoundingClientRect();
+      if (box.width < 1 || box.height < 1) return { seen: false, why: 'it has no box' };
+      // Its own `visibility`, not its ancestors': the whole point of the
+      // property is that a descendant may turn it back on, and the computed
+      // value here already accounts for whatever the boxes above it said.
+      const own = getComputedStyle(node);
+      if (own.visibility !== 'visible') return { seen: false, why: `its visibility is ${own.visibility}` };
+      // `opacity` is the opposite case. It composites down the tree and no
+      // descendant can undo it, so every box above this one has to be asked.
+      let opacity = 1;
+      for (let element = node; element; element = element.parentElement) {
+        opacity *= Number(getComputedStyle(element).opacity);
+      }
+      if (opacity < 0.1) {
+        return { seen: false, why: `the boxes above it multiply out to opacity ${opacity.toFixed(2)}` };
+      }
+      const at = document.elementFromPoint(box.left + box.width / 2, box.top + box.height / 2);
+      if (!(at === node || node.contains(at))) {
+        return { seen: false, why: `a click at its centre would land on ${name(at)}` };
+      }
+      return { seen: true };
+    });
+
+  /**
+   * Leave the page the way this found it, whatever happened in between.
+   *
+   * Everything after this measures the same page — the Tab walk, the target
+   * sizes, the overflow — so an interface left hidden turns one finding into
+   * a screenful of them. The shortcut first, because it is the product's own
+   * path; but focus is on the button that was just clicked, and a keydown from
+   * a control inside `#ui` is stopped before it reaches the window shortcut
+   * (`installUiShortcutGuard` in `src/app/sceneShellBridge.js`), so focus has
+   * to leave first. The class comes off by hand only if both fail: a check
+   * that cannot restore the page must not also hide the rest of the run.
+   */
+  const restore = async () => {
+    if (await uiHidden(false)) return;
+    await resetFocus(page);
+    await page.keyboard.press('h');
+    if (await uiHidden(false)) return;
+    await page.evaluate(() => document.getElementById('ui')?.classList.remove('is-hidden'));
+  };
+
+  /**
+   * Both halves of the contract, read inside one task.
+   *
+   * The product puts the way back out of the frame a couple of seconds after
+   * the reader stops doing anything, and this runner draws a brain atlas on
+   * software GL — measured here, the main thread stalls for longer than that,
+   * so any answer assembled across two CDP calls is a coin toss. (It landed
+   * wrong on the first run: the class arrived between the nudge and the look,
+   * and the check reported the frame's own timer as the stylesheet's defect.)
+   * So the class is driven from inside the page, both states are read before
+   * the task ends, and whatever was there is put back.
+   *
+   * The context runs with `reducedMotion: 'reduce'`, which turns the fade off
+   * (`base.css`), so these are the settled values rather than a transition
+   * caught mid-way.
+   */
+  const bothStates = () =>
+    toggle.evaluate((node) => {
+      const ui = document.getElementById('ui');
+      const name = (element) => {
+        if (!element) return 'nothing';
+        const classes = String(element.className ?? '').trim().split(/\s+/).filter(Boolean);
+        return `${element.tagName.toLowerCase()}${classes.length ? `.${classes.join('.')}` : ''}`;
+      };
+      const centre = () => {
+        const box = node.getBoundingClientRect();
+        return [box, document.elementFromPoint(box.left + box.width / 2, box.top + box.height / 2)];
+      };
+      const look = () => {
+        const [box, at] = centre();
+        if (box.width < 1 || box.height < 1) return { seen: false, why: 'it has no box' };
+        const own = getComputedStyle(node);
+        if (own.visibility !== 'visible') return { seen: false, why: `its visibility is ${own.visibility}` };
+        let opacity = 1;
+        for (let element = node; element; element = element.parentElement) {
+          opacity *= Number(getComputedStyle(element).opacity);
+        }
+        if (opacity < 0.1) {
+          return { seen: false, why: `the boxes above it multiply out to opacity ${opacity.toFixed(2)}` };
+        }
+        if (!(at === node || node.contains(at))) {
+          return { seen: false, why: `a click at its centre would land on ${name(at)}` };
+        }
+        return { seen: true };
+      };
+
+      const was = ui.classList.contains('is-quiet');
+      ui.classList.remove('is-quiet');
+      const awake = look();
+      ui.classList.add('is-quiet');
+      const quiet = look();
+      // Out of the frame is not out of reach: faded, it still has to be the
+      // thing a click at its centre lands on, or a reader who knows where it
+      // is cannot use it until it lights up.
+      const [, at] = centre();
+      const reachable = at === node || node.contains(at);
+      ui.classList.toggle('is-quiet', was);
+      return { awake, quiet, reachable, reachedInstead: name(at) };
+    });
+
+  /**
+   * Does a real pointer move bring it back?
+   *
+   * Asked with a real input event, and answered **in the handler**: the page
+   * records what the class was the moment the move arrived, so the same stall
+   * that broke the first draft cannot answer this one either. `App.js`
+   * registers its listener at start-up, so it runs before this one.
+   */
+  const wokenByPointer = async () => {
+    await page.evaluate(() => {
+      const ui = document.getElementById('ui');
+      window.__hideUiWoke = null;
+      ui.classList.add('is-quiet');
+      window.addEventListener(
+        'pointermove',
+        () => {
+          window.__hideUiWoke = !ui.classList.contains('is-quiet');
+        },
+        { once: true },
+      );
+    });
+    await page.mouse.move(4, 4);
+    await page.mouse.move(6, 6);
+    return page.evaluate(() => window.__hideUiWoke);
+  };
+
+  const before = await look();
+  if (!before.seen) return { control: true, offered: false, why: before.why };
+
+  await toggle.click({ noWaitAfter: true });
+  const hid = await uiHidden(true);
+  // Hands off first. Clicking leaves the pointer on the button and the focus
+  // in it, and both are *meant* to keep it lit — so measuring without moving
+  // away measures the mouse, not the stylesheet. (It did, on the first run.)
+  await page.mouse.move(4, 4);
+  await resetFocus(page);
+  const states = hid ? await bothStates() : null;
+  const woke = states?.awake.seen && !states.quiet.seen ? await wokenByPointer() : null;
+
+  // Bounded, and a refusal is an answer rather than an exception: a button the
+  // reader cannot press is exactly one of the failures this is here to name,
+  // and letting Playwright's 30-second default surface it as `locator.click:
+  // Timeout` buries which of them it was.
+  let back = null;
+  if (woke === true) {
+    const pressed = await toggle
+      .click({ noWaitAfter: true, timeout: 15_000 })
+      .then(() => true, () => false);
+    back = pressed ? await uiHidden(false) : 'refused';
+  }
+  await restore();
+  return { control: true, offered: true, hid, states, woke, back };
+}
+
+/**
  * Walk the whole focus ring with the Tab key, marking every stop.
  *
  * The first thing this was written to check — "does Tab eventually reach the
@@ -1389,6 +1607,47 @@ try {
         });
 
         const kind = surface.needsRenderer ? 'scene' : 'reading';
+
+        // Before anything else opens a panel: the frame has to be the one a
+        // reader arrives at, and this check leaves it exactly as it found it.
+        if (surface.needsRenderer) {
+          const hideUi = await hideUiRoundTrip(page);
+          if (!hideUi.control) {
+            // An engine with no WebGL2 gets the renderer fallback, which has no
+            // scene chrome to hide. That is the runner talking, and the rest of
+            // this file is careful to record it as a note rather than a defect.
+            const missing = `${where}: a scene surface with no "hide interface" control`;
+            if (rendererDown()) notes.push(`${missing} — the renderer did not start on this engine`);
+            else problems.push(missing);
+          } else if (!hideUi.offered) {
+            notes.push(`${where}: the "hide interface" control is not offered here — ${hideUi.why}`);
+          } else if (!hideUi.hid) {
+            problems.push(`${where}: pressing "hide interface" did not hide the interface`);
+          } else if (!hideUi.states?.awake.seen) {
+            problems.push(
+              `${where}: hiding the interface hid the only control that brings it back — ` +
+                `${hideUi.states?.awake.why}`,
+            );
+          } else if (hideUi.states.quiet.seen) {
+            problems.push(
+              `${where}: the way back never leaves the frame, so a capture keeps a button in the corner`,
+            );
+          } else if (!hideUi.states.reachable) {
+            problems.push(
+              `${where}: faded, the way back is not what a click at its centre reaches — ` +
+                `that is ${hideUi.states.reachedInstead}`,
+            );
+          } else if (hideUi.woke !== true) {
+            problems.push(
+              `${where}: a pointer move did not bring the way back — ` +
+                (hideUi.woke === null ? 'the page saw no pointer move at all' : 'it stayed faded'),
+            );
+          } else if (hideUi.back === 'refused') {
+            problems.push(`${where}: the way back could not be pressed while the interface was hidden`);
+          } else if (hideUi.back === false) {
+            problems.push(`${where}: the interface did not come back when the control was pressed again`);
+          }
+        }
 
         // The inspection surface ships closed, so nothing inside it was ever
         // measured: its controls were untappable on a phone for a whole

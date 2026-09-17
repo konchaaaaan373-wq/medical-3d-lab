@@ -115,10 +115,60 @@ body {
   --shadow: 0 15px 36px rgba(31, 43, 49, 0.18);
 }
 
-/* "Hide UI" for clean screen captures. */
-#ui.is-hidden > *:not(.ui-toggle):not(.label-layer) {
-  opacity: 0;
+/*
+ * "Hide UI" for clean screen captures — and the way back out of it.
+ *
+ * This rule used to read `> *:not(.ui-toggle):not(.label-layer)`, so the
+ * exception for the button that reverses it was always the intent. It just
+ * never matched anything: the toggle is not a child of `#ui`, it sits three
+ * levels down in `.top-bar > .rail > .rail-buttons`, and a child combinator
+ * only ever saw `.top-bar`. Hiding the interface therefore hid the control
+ * that brings it back, leaving the H key — which nothing on screen names —
+ * as the only way out.
+ *
+ * `visibility`, not `opacity`, is what fixes that rather than a longer
+ * selector: an `opacity: 0` ancestor cannot be undone by a descendant at any
+ * depth, while `visibility: hidden` is exactly the property a descendant is
+ * allowed to turn back on. Same reasoning as `#ui.is-story` in `ui.css`,
+ * which reaches for it for the neighbouring reason — a control nobody can
+ * see should not be in the tab order either.
+ */
+#ui.is-hidden > *:not(.label-layer) {
+  visibility: hidden;
   pointer-events: none;
+}
+
+/* The one control, addressed by the stable name `App.js` gives it rather than
+   by `.ui-toggle` — the language switch wears that class too, and a capture
+   that keeps a second button is not the clean frame this is for. */
+#ui.is-hidden [data-control='hideUi'] {
+  visibility: visible;
+  pointer-events: auto;
+  transition: opacity 420ms ease;
+}
+
+/*
+ * And then it steps back as well, so the frame is the empty one this feature
+ * is named for. `is-quiet` is set by `App.js` after a couple of seconds with
+ * nothing happening, and taken off again by the first pointer, key or touch —
+ * the button never stops being clickable, and hover and keyboard focus light
+ * it on their own. A capture is taken from a still frame, so by then this is
+ * the only thing that was still lit and it is gone too.
+ */
+#ui.is-hidden.is-quiet [data-control='hideUi'] {
+  opacity: 0;
+}
+
+#ui.is-hidden.is-quiet [data-control='hideUi']:hover,
+#ui.is-hidden.is-quiet [data-control='hideUi']:focus-visible {
+  opacity: 1;
+}
+
+/* Except for a scripted capture, which sets `is-capture` itself and needs no
+   way back — it is a program. Nothing in the app adds this class;
+   `scripts/capture-anatomy-views.mjs` does, so its frames stay empty. */
+#ui.is-hidden.is-capture [data-control='hideUi'] {
+  visibility: hidden;
 }
 
 #ui.is-hidden .label-layer {
@@ -211,5 +261,8 @@ body {
 
 @media (prefers-reduced-motion: reduce) {
   .loading-bar::after { animation: none; }
-  #ui, .panel { transition: none; }
+  /* The way back's fade included: a reader who asked for less motion gets the
+     state, not the tween — and a check measuring that state reads a settled
+     value rather than one caught mid-transition. */
+  #ui, .panel, #ui.is-hidden [data-control='hideUi'] { transition: none; }
 }
