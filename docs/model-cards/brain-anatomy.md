@@ -329,6 +329,17 @@ close #2 (the insula/subcentral-gyrus boundary) or #12's LUT-name
 cross-check, which need either a landmark-annotated image or independent
 access to the original atlas lookup tables that this repository does not
 have.
+A third round (2026-09-16, against `852b691`, revision 22) accepted the insula
+naming, the view-bound notices and the colour record and found two new items
+(R3-30 the paracentral sulcus, R3-31 the mamillary body wording), verdict
+**revise**; the `Revision 22 → 23` entry below closes them. The fourth round
+(2026-09-17, against `5205c6b`, revision 23) returned **approve**, expressly
+limited to that version, to general/medical education of gross anatomy and to
+what the reviewer could see, with the constraints in the record; it is not a
+clinical attestation and the registry stays `pending` (F-120). Records:
+[`…-rereview-880eded.md`](../clinical-reviews/brain-anatomy-ai-terminology-check-2026-09-16-rereview-880eded.md),
+[`…-review3-852b691.md`](../clinical-reviews/brain-anatomy-ai-terminology-check-2026-09-16-review3-852b691.md),
+[`…-approve-5205c6b.md`](../clinical-reviews/brain-anatomy-ai-terminology-check-2026-09-17-approve-5205c6b.md).
 
 **Revision 20 → 21 (2026-09-16).** Label, hierarchy and copy corrections driven
 by that check, all in `src/data/brainAnatomy.js`; no geometry, no ids and no
