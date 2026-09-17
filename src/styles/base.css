@@ -144,6 +144,24 @@ body {
 #ui.is-hidden [data-control='hideUi'] {
   visibility: visible;
   pointer-events: auto;
+  transition: opacity 420ms ease;
+}
+
+/*
+ * And then it steps back as well, so the frame is the empty one this feature
+ * is named for. `is-quiet` is set by `App.js` after a couple of seconds with
+ * nothing happening, and taken off again by the first pointer, key or touch —
+ * the button never stops being clickable, and hover and keyboard focus light
+ * it on their own. A capture is taken from a still frame, so by then this is
+ * the only thing that was still lit and it is gone too.
+ */
+#ui.is-hidden.is-quiet [data-control='hideUi'] {
+  opacity: 0;
+}
+
+#ui.is-hidden.is-quiet [data-control='hideUi']:hover,
+#ui.is-hidden.is-quiet [data-control='hideUi']:focus-visible {
+  opacity: 1;
 }
 
 /* Except for a scripted capture, which sets `is-capture` itself and needs no
@@ -243,5 +261,8 @@ body {
 
 @media (prefers-reduced-motion: reduce) {
   .loading-bar::after { animation: none; }
-  #ui, .panel { transition: none; }
+  /* The way back's fade included: a reader who asked for less motion gets the
+     state, not the tween — and a check measuring that state reads a settled
+     value rather than one caught mid-transition. */
+  #ui, .panel, #ui.is-hidden [data-control='hideUi'] { transition: none; }
 }
