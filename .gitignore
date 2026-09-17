@@ -24,3 +24,4 @@ viewport-report.json
 # a third-party binary does not belong in this repository.
 dev-assets/
 dist-preview
+node_modules
