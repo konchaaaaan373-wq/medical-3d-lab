@@ -587,7 +587,39 @@ function measurePhoneLayoutInPage({ phoneWidth, target, interactiveSelector, exe
     }
     const rowBox = row.getBoundingClientRect();
     if (row.scrollWidth > row.clientWidth + 1) {
-      problems.push(`the control bar scrolls sideways (${row.scrollWidth}px of content in ${Math.round(rowBox.width)}px)`);
+      // Name where the width went, not only that it ran out. The row is
+      // `overflow-x: auto` with its scrollbar hidden on an anatomy scene, so
+      // what a reader meets is a control that is simply not there — and the
+      // engine that reported this first had the *same* content width as the
+      // one that passed, and a narrower box (F-137). A message carrying only
+      // the two totals sends the next reader to the buttons, which are fine.
+      //
+      // The siblings matter as much as the ancestors, and this is the part a
+      // first draft left out: the box around the row is `width: fit-content`,
+      // so what sets it is whatever else is in it. Walking parents alone
+      // prints the same narrow number four times and names nothing.
+      const of = (node) => {
+        const style = getComputedStyle(node);
+        return (
+          `${describe(node)} ${Math.round(node.getBoundingClientRect().width)}px` +
+          ` (content ${node.scrollWidth}, max-width ${style.maxWidth}, min-width ${style.minWidth},` +
+          ` overflow-x ${style.overflowX}, flex ${style.flex}, padding ${style.paddingLeft}+${style.paddingRight})`
+        );
+      };
+      // Bounded at `#ui`: everything that decides this layout is inside it,
+      // and walking on to `body` only adds the canvas and the loading veil.
+      const chain = [];
+      for (let node = row; node; node = node.parentElement) {
+        chain.push(of(node));
+        if (node.id === 'ui') break;
+        for (const sibling of node.parentElement?.children ?? []) {
+          if (sibling !== node) chain.push(`  beside it: ${of(sibling)}`);
+        }
+      }
+      problems.push(
+        `the control bar scrolls sideways (${row.scrollWidth}px of content in ` +
+          `${Math.round(rowBox.width)}px)\n    ${chain.join('\n    ')}`,
+      );
     }
   }
 
