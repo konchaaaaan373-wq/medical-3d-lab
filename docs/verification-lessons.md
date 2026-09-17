@@ -309,6 +309,38 @@
   可視性は「いまの位置で見えるか」ではなく、**「スクロールして届くか」**で測ります
   （この修正の前後で `false` → `true`。測り方を直すまで、両方とも `false` に見えました）。
 
+### L-46 「まだ人しか捕まえられない」を note に格下げしたまま、赤にする条件を書かなかった
+
+- **症状**: 脳解剖シーンで、タップした構造の名前がパネルには出るのにモデル上には
+  出ないことがありました。選択のラベルのアンカーは landmark と同じ、カメラに依らない
+  固定の 1 頂点（`outwardSurfacePoint`）で、溝（sulcus）ではその頂点が隣の回に
+  隠れることが F-40 として**既に記録済み**でした。それでも `verify:anatomy` は
+  この状態を検出できていました——`labelled.includes(pinnedForLabel)` が偽のとき、
+  `problems.push` ではなく `notes.push` していたからです。**チェックは正しく
+  「ラベルが無い」と測っていながら、それを失敗として報告しない一行があったので、
+  緑のまま出荷されました。** 何も嘘をついていた計器はなく、「測ったものを赤にする」
+  配線が欠けていただけです。
+- **どう見つかったか**: 実機（phone 390×844・desktop）でのスクリーンショット比較。
+  選択前は landmark の「中側頭回」がモデル上に浮き、選択後もパネルは「島輪状溝」を
+  名乗るのにモデル上の文字は変わりませんでした——画像を並べて初めて気づく種類の
+  食い違いで、`verify:anatomy` のログはその回では何も報告していませんでした。
+- **いま何が捕まえるか**: `scripts/check-anatomy-interaction.mjs` の 3c
+  （`the pinned structure "..." has no label on the model from this angle` の
+  行）を `notes.push` から `problems.push` に変え、選択直後のラベル欠落を
+  hard failure にしました。加えて `tests/label-layer.test.js`
+  （選択はラベル上限の対象外になること、landmark が muted で選択と重複しないこと）と
+  `tests/brain-anatomy-selection-label.test.js`（`_visibleAnchorFor` が
+  遮蔽された候補より見える候補を選ぶこと、タップした点をそのまま使うこと）が
+  `node --test` だけで壊れた組み合わせを再現し、実装側の修正
+  （`BrainAnatomyScene._visibleAnchorFor` / `LabelLayer.js` の cap 除外と
+  landmark マージ）を戻すとどちらも赤くなることを確認済みです。
+- **一般形**: **「まだ捕まえられていない」ことを note として残すのは、
+  そのこと自体は正しい判断です。** けれど note に落とした条件がいつまでも
+  `problems` に昇格されないままだと、「知られている既知の欠陥」が
+  「チェック済みで問題なし」と区別できなくなります。F-40 のような
+  ラベル分の note は、**直すたびに「これで assert に格上げできるか」を
+  問い直してください。**
+
 ## B. ガードが、存在しないか、届いていなかった
 
 ### L-09 編集スクリプトが途中で assert し、何も書かずに終了した
@@ -650,6 +682,21 @@
   rAF は描画に律速され、重いシーンほど遅くなります——
   **測定の分解能が、測定対象の負荷に比例して落ちる**計器です。
   interval polling にし、上限は「速いマシン」ではなく「遅いマシン」で決める。
+
+### L-45 worktree に張った `node_modules` のリンクが、commit に入った
+
+- **症状**: 並行作業用の worktree で `ln -s <本体>/node_modules node_modules` を張り、
+  `git add -A` で commit しました。`.gitignore` の `node_modules/` は**ディレクトリ**にしか
+  効かず、symlink はファイルなので拾われます。その commit を本体で cherry-pick すると、
+  git は ignore 対象の実ディレクトリを**消して**、自分自身を指すリンクに置き換えました。
+  `node --test` は依存を使わないテストだけ走らせていたので緑のままでした。
+- **どう見つかったか**: cherry-pick の出力に `create mode 120000 node_modules` が
+  あった。読んでいなければ、次の `npm run build` まで気づきません。
+- **いま何が捕まえるか**: `tests/tree-hygiene.test.js` — 追跡ファイルに
+  `node_modules` と symlink（mode 120000）が無いこと。`.gitignore` は
+  `node_modules`（スラッシュ無し）も持ちます。
+- **一般形**: **ignore は「そのパスの種類」にしか効かない。** 道具のために
+  木の中へ置いたものは、`git add -A` の前に `git status --short` で見る。
 
 ### L-15 確かめる前に「バグだ」と言った
 

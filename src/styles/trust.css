@@ -28,6 +28,30 @@
 .trust-principles { margin-top: 30px; display: grid; gap: 8px; color: #2e3b3f; font-size: 0.9rem; }
 .trust-principles > span::before { content: '— '; color: #8d6d4b; }
 
+/* Table of contents — one entry per model Trust renders, plus the short
+   shared sections. Exists so a reader does not have to scroll past every
+   other model's full record to reach the one they came for. */
+.trust-toc { max-width: 1040px; margin: 0 auto 28px; padding: 0 28px; }
+.trust-toc-label { margin: 0 0 12px; font-size: 0.78rem; font-weight: 700; letter-spacing: 0.04em; text-transform: uppercase; color: #616c70; }
+.trust-toc-list { list-style: none; margin: 0; padding: 0; display: flex; flex-wrap: wrap; gap: 8px; }
+.trust-toc-item { margin: 0; }
+.trust-toc-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 44px;
+  padding: 6px 12px;
+  border: 1px solid rgba(28, 37, 40, 0.18);
+  border-radius: 6px;
+  background: #fff;
+  color: #1c2528;
+  text-decoration: none;
+  font-size: 0.86rem;
+}
+.trust-toc-link:hover { border-color: #8e999b; }
+.trust-toc-shared { list-style: none; margin: 12px 0 0; padding: 0; display: flex; flex-wrap: wrap; gap: 16px; }
+.trust-toc-shared-link { display: inline-flex; align-items: center; justify-content: center; min-height: 44px; min-width: 44px; color: #425b60; font-size: 0.86rem; text-decoration: underline; }
+
 .trust-grid { max-width: 1040px; margin: 0 auto; padding: 0 28px; display: grid; gap: 16px; }
 
 /* Two halves of one bug, and neither alone is enough.
@@ -47,15 +71,39 @@
 .trust-list,
 .trust-drift-body,
 .trust-review-note { overflow-wrap: anywhere; }
-.trust-card { background: #fff; border: 1px solid rgba(28, 37, 40, 0.14); padding: 26px; border-radius: 8px; box-shadow: 0 1px 0 rgba(28, 37, 40, 0.04); }
-.trust-card-head { display: flex; justify-content: space-between; gap: 20px; align-items: flex-start; }
-.trust-card-title { margin: 0 0 12px; font-size: 1.45rem; letter-spacing: -0.025em; }
+.trust-card { background: #fff; border: 1px solid rgba(28, 37, 40, 0.14); border-radius: 8px; box-shadow: 0 1px 0 rgba(28, 37, 40, 0.04); }
+/* The summary is the whole card's disclosure control — closed, it is the
+   only part of the card a reader (or `verify:ui`) can actually reach. See
+   L-31 in docs/verification-lessons.md: a closed `<details>` body is
+   "visible" by computed style even though nothing paints it, so no
+   interactive control other than this summary may sit outside `.trust-card-body`. */
+.trust-card-summary {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px 20px;
+  min-height: 44px;
+  padding: 22px 26px;
+  cursor: pointer;
+  list-style: none;
+}
+.trust-card-summary::-webkit-details-marker { display: none; }
+.trust-card-summary::marker { content: ''; }
+.trust-card-summary::before {
+  content: '▸';
+  margin-right: 4px;
+  color: #8e999b;
+}
+.trust-card[open] > .trust-card-summary::before { content: '▾'; }
+.trust-card-title { margin: 0; font-size: 1.45rem; letter-spacing: -0.025em; }
 .trust-card-badges { display: flex; flex-wrap: wrap; gap: 8px; }
+.trust-card-body { padding: 0 26px 26px; }
 .trust-maturity, .trust-review-badge { display: inline-flex; align-items: center; min-height: 28px; padding: 4px 9px; border: 1px solid #cbd0ce; border-radius: 4px; font-size: 0.75rem; background: #f8f8f6; }
 .trust-review-badge.is-reviewed { border-color: #839b8d; background: #edf3ef; }
 .trust-review-badge.is-pending { border-color: #b7a27e; background: #f7f1e6; }
 .trust-review-badge.is-legacy-unversioned { border-color: #9c9890; background: #f0efec; }
-.trust-open-model { flex: 0 0 auto; color: #27373b; text-decoration: none; border-bottom: 1px solid #8e999b; padding-bottom: 2px; font-size: 0.86rem; }
+.trust-open-model { display: inline-block; margin-top: 4px; color: #27373b; text-decoration: none; border-bottom: 1px solid #8e999b; padding-bottom: 2px; font-size: 0.86rem; }
 .trust-review-note { margin: 20px 0 0; max-width: 780px; color: #4d5b5f; line-height: 1.6; }
 .trust-review-meta { margin-top: 10px; font: 0.76rem ui-monospace, SFMono-Regular, Menlo, monospace; color: #697579; }
 .trust-block { margin-top: 22px; padding-top: 18px; border-top: 1px solid #e4e1da; }
@@ -72,10 +120,12 @@
   .trust-nav { grid-template-columns: 1fr auto; padding: 0 16px; }
   .trust-nav-links { display: none; }
   .trust-hero { padding: 46px 18px 34px; }
+  .trust-toc { padding: 0 14px; }
   .trust-grid { padding: 0 14px; }
-  .trust-card { padding: 20px; }
-  .trust-card-head { display: block; }
-  .trust-open-model { display: inline-block; margin-top: 16px; }
+  .trust-card-summary { display: block; padding: 18px 20px; }
+  .trust-card-badges { margin-top: 10px; }
+  .trust-card-body { padding: 0 20px 20px; }
+  .trust-open-model { margin-top: 16px; }
   .trust-sources { display: grid; }
 }
 
