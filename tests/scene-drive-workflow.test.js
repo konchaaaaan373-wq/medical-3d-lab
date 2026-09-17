@@ -85,6 +85,27 @@ test('the drives that need the paid and account surfaces are built with them', (
   }
 });
 
+test('every job that drives a browser installs one first', () => {
+  // Found by running the patient drive locally with no Playwright: it prints
+  // "Playwright is not installed, so nothing was driven" and **exits 0**. That
+  // is a kindness at a developer's prompt and a trap in CI — a job that lost
+  // its install step would go green having driven nothing at all, which is the
+  // exact shape of failure this whole workflow exists to stop.
+  //
+  // The drives are deliberately not depending on Playwright (`npm test` stays a
+  // plain `node --test` run), so the check has to live here: every job that
+  // calls a drive must also install the browser it needs.
+  const jobs = workflow.split(/\n  (?=[a-z-]+:\n)/);
+  const drivers = jobs.filter((job) => /npm run verify:(anatomy|disease|patient)/.test(job));
+  assert.equal(drivers.length, 3, 'three jobs drive a browser');
+
+  for (const job of drivers) {
+    const name = job.slice(0, job.indexOf(':'));
+    assert.match(job, /npm i --no-save playwright@/, `${name} installs the playwright package`);
+    assert.match(job, /npx playwright install --with-deps chromium/, `${name} installs the browser`);
+  }
+});
+
 test('the disease drive is given its output directory before the scenes', () => {
   // `check-disease-interaction.mjs` reads argv[2] as the screenshot directory
   // and argv.slice(3) as the slugs. `-- copd asthma pulmonary-edema` therefore
