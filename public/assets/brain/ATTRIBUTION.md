@@ -30,9 +30,15 @@ revision above:
 | Neudorfer et al. 2020, high-resolution in vivo MRI atlas of the human hypothalamic region, *Scientific Data* — https://doi.org/10.5281/zenodo.3942115 | Registered hypothalamic zones | CC BY 4.0 |
 | HCP1065 population-averaged tractography atlas (Yeh 2022), built on Human Connectome Project WU-Minn data — https://brain.labsolver.org/hcp_trk_atlas.html | Centerlines for the white-matter tract tubes | CC BY-SA 4.0, with the HCP data-use terms below |
 
-The atlas-registered deep structures and tracts are approximate (about 7 mm,
-registered from open MNI-space atlases) and are intended for gross-anatomy
-education rather than diagnosis, measurement, operative planning or navigation.
+The atlas-registered deep structures and tracts are a registration
+approximation across several population atlases, not a patient-specific
+reconstruction. The upstream project's frequently cited "about 7 mm" figure is
+the position difference of the red nucleus in a check that excluded the red
+nucleus from registration itself — it is not a boundary or maximum error
+figure for every registered structure, and this repository has not
+independently verified it against the distributed asset. These structures and
+tracts are intended for gross-anatomy education rather than diagnosis,
+measurement, operative planning or navigation.
 
 ## Human Connectome Project acknowledgment
 

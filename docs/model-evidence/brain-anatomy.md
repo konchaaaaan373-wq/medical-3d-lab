@@ -47,8 +47,8 @@ to the source meshes.
 | **Claim** | Every unique label currently exposed by this asset has a deliberate Japanese display name and a side → region → anatomical-family hierarchy. |
 | **Source** | The 147 unique source labels in the GLB; standard Japanese gross-anatomy terminology; the cingulate sources above for aMCC/pMCC distinctions. |
 | **Implementation** | `STRUCTURE_JA`, `structureFamily()` and `sideHierarchy()` in `brainAnatomy.js`. The original English atlas label is retained separately as `atlasName`. |
-| **Assumption** | Translation improves learning but does not prove the upstream mesh boundary. Independent review of the complete Japanese term set is still outstanding. |
-| **Validation** | `every selectable atlas label has a deliberate Japanese name and hierarchy` parses the shipped GLB and tests all 147 unique selectable labels. |
+| **Assumption** | Translation improves learning but does not prove the upstream mesh boundary. Independent review of the complete Japanese term set is still outstanding. A small `LABEL_PLACEMENT` override table now corrects hierarchy placement for labels whose upstream `bx_cat`/`bx_region` is wrong or misleading (e.g. `Base of peduncle`, upstream-filed under the cerebellum though Terminologia Anatomica's *basis pedunculi* is a midbrain structure); everything it does not name still passes upstream metadata straight through. |
+| **Validation** | `every selectable atlas label has a deliberate Japanese name and hierarchy` parses the shipped GLB and tests all 147 unique selectable labels. The 2026-09-16 AI-assisted terminology/hierarchy/copy check (not a clinical attestation; [record](../clinical-reviews/brain-anatomy-ai-terminology-check-2026-09-16.md)) drove this round of label, hierarchy and copy corrections, and its findings are what `LABEL_PLACEMENT` and the added tests fix. |
 
 ### 3. Both colour modes are viewing aids, not anatomical evidence
 
@@ -87,7 +87,7 @@ to the source meshes.
 | **Claim** | A medial view at the default anatomy layer shows a readable medial surface rather than a hollow shell. |
 | **Source** | Gross-anatomy viewing convention: a medial view of a hemisphere shows the medial cortical surface, the corpus callosum, the diencephalon, the brainstem and the cerebellar vermis. |
 | **Implementation** | `targetOpacity()` treats the midline block as present when a medial side is set, instead of holding it behind the layer slider. |
-| **Assumption** | Presence, not accuracy: this decides which of the atlas's meshes are drawn for a view, and makes no claim about their boundaries. The registration caveats for the deep nuclei (recorded in the asset manifest: MNI-space atlases at roughly 7 mm, approximate) apply to what is now visible. |
+| **Assumption** | Presence, not accuracy: this decides which of the atlas's meshes are drawn for a view, and makes no claim about their boundaries. The registration caveats for the deep nuclei (recorded in the asset manifest: a multi-population-atlas registration approximation; the upstream's frequently cited ~7.2 mm figure is the red nucleus's position difference in a check that excluded it from registration, not a boundary or maximum error for every structure, and not independently verified against the distributed asset) apply to what is now visible. |
 | **Validation** | `a medial view closes the midline instead of showing through a hollow shell`; the before/after pair at one camera in [`docs/screenshots/b3-1/`](../screenshots/b3-1/); the audit in [`docs/anatomy-review.md`](../anatomy-review.md) §3.1. |
 
 ### 7. A label is shown only where its structure can be seen

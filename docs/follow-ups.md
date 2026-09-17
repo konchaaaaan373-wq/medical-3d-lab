@@ -18,6 +18,18 @@ Last updated: 2026-09-17
   両方の所有者が決めることなので、ここでは記録だけして触っていません。**
   次に追加する番号は **F-148** です（F-111〜F-146 は main 側で採番済み。
   **F-147 がこの branch**——マージ直前にもう一度取り直してください、L-16）。
+  ⚠ **9 回目（2026-09-17、PR #125）**: 脳の医学レビュー対応 branch が F-120〜F-124 →
+  F-138〜F-142 と 2 度採番し直したあと、main が F-138 を別件（private 化）で先に取った
+  ため、さらに **F-139〜F-143** に動かしました（人間の署名 F-139、画像送付 F-140〔解決〕、
+  延髄の片側メッシュ F-141、統合区画の元ラベル id F-142、ノード名の先頭スペース F-143）。
+  `docs/clinical-reviews/` の AI レビュー記録本文はレビュアーの原文なので番号を変えず、
+  各記録の冒頭の対応表を更新しています。
+  ⚠ **10 回目（2026-09-17、PR #135）**: `verify:anatomy` ほか 3 本を CI に載せる
+  branch が L-45 と F-146 を取り、作業中に main が両方を取りました。**この branch を
+  L-47 / F-147 に動かしています。** 踏んだ理由は記録に値します——同じ PR の説明で
+  「並行セッションがいるので衝突面に注意する」と書いたうえで、**着手時に 1 回読んだ
+  番号をそのまま使いました**。L-16 が言う「main を見てから採番」は、
+  **最初に 1 回見ること**ではありません。
   ⚠ **同じ衝突が 7 回目です。** main が F-126〜F-129 を取り、この branch も
   同じ 4 つを使っていました（その前は F-124 / F-125、その前は F-107〜F-110）。
   **この branch 側を F-130〜F-133 に動かしています**
@@ -329,6 +341,116 @@ conda-forge には存在しません。したがって CDM のフィールド名
   slug を書き換える必要もありません。
 - 確認すること: マージ時に 3 ファイルが重複しないこと（同一内容なので衝突は
   しないはずですが、`tubeParts.js` は両方が新規追加する形になります）。
+
+---
+
+## C. 製品・UI の判断
+
+### F-139 脳解剖：人間の臨床医・解剖学者による監修署名がまだ要る — P1（2026-09-16）
+
+`brain-anatomy` は公開βの唯一のシーンですが、医学レビューは `pending` のままです。
+2026-09-16 に ChatGPT による AI 用語・階層・説明文チェックを受けましたが
+（[記録](clinical-reviews/brain-anatomy-ai-terminology-check-2026-09-16.md)、
+判定 hold・24 件）、**これは人間の医学監修署名ではありません**。レビュー本文
+自身が §3.1 で「このAI照合だけでレビューpendingを解除しない」と明記しています。
+
+**追記（2026-09-17）**: AI 照合は第 4 回（対象 `5205c6b`、revision 23）で
+**approve** に達しました（[記録](clinical-reviews/brain-anatomy-ai-terminology-check-2026-09-17-approve-5205c6b.md)）。
+これは「対象版・一般教育／医学教育の肉眼解剖・確認範囲」に限定した AI 照合であり、
+本項の**人間の署名は引き続き必要**です。署名者に渡す一式は、4 回分の記録・
+`npm run review:brain-labels` の出力・`docs/asset-provenance/brain-merged-parcels.md`・
+公開判断記録で揃っています。
+
+- どう確かめるか: レビュー本文 §3.2 の 3 条件（文面是正・元アトラスとの対応解消・
+  画像／実機／形状の受入確認）を満たしたうえで、人間の臨床医・解剖学者に
+  レビューを依頼する。
+- 完了の定義: `docs/clinical-reviews/registry.json` の `brain-anatomy` が
+  `reviewed` になり、`reviewerRole` が実在の臨床レビューア役割を示し、
+  `tests/clinical-reviews.test.js` が通る。
+
+### F-141 上流由来の片側だけのメッシュ（延髄） — 原因不明、鏡像複製はしない — P2（2026-09-16）
+
+AI照合の指摘13（付録A #5）で、**延髄が左側のみ**の独立ラベルを持つことが
+分かりました。原因（側タグの誤り／反対側の欠落／別名への統合／抽出漏れ）は
+レビュー本文からは判定できません。
+
+- どう確かめるか: 上流 `itayinbarr/brainproject` の生成コード・元データを、
+  対象コミット `7294b63` の生成版と突き合わせて原因を特定する。
+  **原因確認前に単純な左右反転複製で埋めることは禁止**（レビュー本文が明記）。
+- 完了の定義: 原因が判明し、(a) 正常な片側性である／(b) 抽出漏れで反対側を
+  補う必要がある、のどちらかを記録した上で、必要な修正（あれば）を行う。
+
+**訂正（2026-09-16）**：本項は当初「後横側副溝が右側のみ」も含んでいましたが、
+これはレビュー側の抽出スクリプトの不具合でした。実際の GLB には
+`Posterior transverse collateral sulcus` の左（`bx_id: 0`）・右（`bx_id: 1`）
+両方のメッシュが `bx_side` 込みで正しく収録されています（`bx_id: 0` は
+真理値として falsy なので、`extras.bx_id != null` ではなく truthy チェックで
+抽出すると左側メッシュが丸ごと落ちる——実際に落ちていたのはレビュー側の
+抽出であって、本リポジトリの `tests/brain-anatomy.test.js` や
+`scripts/export-anatomy-labels.mjs` は元から `!= null` 判定を使っており
+影響を受けていません）。この訂正を踏まえ、本項の対象を延髄のみに絞りました。
+後横側副溝の別の不具合（右メッシュのノード名の先頭スペース）は F-143 を参照。
+
+**記録先（2026-09-17）**：監査で、この欠落が `src/catalog/assetManifest.js` の
+`knownDefects`（asset の欠陥を持つ唯一の欄）には書かれておらず、シーンの注意・
+構造ノート・本台帳の 3 か所にだけあると分かりました。同欄に F-141 と F-143 を
+記録し、`tests/asset-manifest.test.js` が固定します。
+
+### F-143 「Posterior transverse collateral sulcus」ノード名の先頭スペースと検索 0 件 — P3（2026-09-16）
+
+GLB 内の該当メッシュのノード名（three.js の `Object3D.name` の元になる
+gltf `node.name`）には、左右どちらも先頭にスペースが付いています
+（`" Posterior transverse collateral sulcus.l"` / `" Posterior transverse
+collateral sulcus.r"`）。`extras.bx_label`（`brainStructureInfo()` が参照する
+値）自体にはスペースが無く `"Posterior transverse collateral sulcus"` なので、
+`src/app/anatomySearch.js` の検索は本来この値を経由するはずですが、
+「Posterior transverse collateral」で検索すると 0 件になるという報告があります。
+原因（検索が `node.name` 側の値を経由する経路があるのか、別の不一致か）は
+未確認です。
+
+- どう確かめるか: 実ブラウザ（`npm run verify:anatomy` 系）または
+  `tests/anatomy-contract.test.js` 相当のヘッドレス検証で、この構造名を
+  検索して実際にヒット件数を確認する。ヒットしない場合、検索経路のどこが
+  `node.name`（先頭スペース入り）を参照しているかを特定する。
+- 完了の定義: 検索がこの構造をヒットすることを確認し（またはトリム／正規化の
+  修正を入れて）、原因と結果を本項の更新として記録する。
+
+### F-142 Najdenovska／CIT168 由来の統合区画に、元ラベル id の対応記録がない — P2（2026-09-16、一部解消）
+
+AI照合の指摘8・10・11・12は、視床の拡散MRI由来7区画（Najdenovska）、扁桃体の
+Basolateral complex 等、視床下部5領域が、**元アトラスの複数ラベルを統合した
+区画**であることを表示側が説明していない、または統合元が分からない、という
+指摘です。`src/data/brainAnatomy.js` の `bx_parent` はメッシュの階層先を
+持ちますが、**統合元となった個々のラベル id は記録されていません**。
+
+- どう確かめるか: 上流 `build_nuclei.py` の `AMY_GROUPS` / `HYP_GROUPS` など
+  統合ロジックを、対象コミット `7294b63` の生成版と突き合わせ、統合区画ごとに
+  元ラベル id の対応を記録する。対象版で同じ定義かどうかは未確認（レビュー
+  本文の要照合事項）。
+- 完了の定義: 統合区画（Basolateral complex、Corticomedial group、視床
+  7区画、視床下部 5 領域など）について、元ラベル id の対応が記録され、
+  情報カードまたは根拠台帳から参照できる。
+
+**状態の更新（2026-09-16、再レビュー §2.2 の推奨状態）**：「GLB内にIDなし」から
+「固定版の生成コードから数値IDを回収済み」に前進。ATTRIBUTION が固定する上流
+`itayinbarr/brainproject` @ `2929e94f521a8ddceab26bc100a98dc06b0da060` の
+`scripts/build_nuclei.py`（blob `87d08baed296d1d14ed012e43b1ba521264b3e0b`）を読み、
+扁桃体（Lateral [1] / Basolateral [2,3,6] / Central [4] / Corticomedial
+[5,7,8,9]）、視床下部（視索前・外側・後部は片側 1 元ラベル、前部 6、隆起部 4）、
+視床（Najdenovska 7区画の左 0–6・右 7–13 のボリューム対応、CL–LP–PuM は左 4・
+右 11）を
+[`docs/asset-provenance/brain-merged-parcels.md`](asset-provenance/brain-merged-parcels.md)
+に記録した。`src/data/brainAnatomy.js` の `STRUCTURE_NOTE` もこの対応表を反映し、
+視床下部 5 領域を一律「統合区画」とする表現をやめて片側 1 ラベル由来（視索前・
+外側・後部）と複数ラベル統合（前部 6・隆起部 4）を区別した。
+
+**まだ残ること**：(1) 元 LUT（原アトラス論文）の全構成名との突き合わせ
+（数値 id が原著の何という核・区画に対応するかの再確認）、(2) この対応表が
+実際に配信中の `brain.glb` を生成したスクリプトと一致することの個別資産対応
+記録、(3) 入力ボリュームファイル（`amyg_iAmyNuc_1mm_MNI.nii.gz` 等）自体の
+ハッシュ再確認。いずれも
+[`docs/asset-provenance/brain-merged-parcels.md`](asset-provenance/brain-merged-parcels.md)
+§5 に明記。
 
 ---
 
@@ -2870,11 +2992,11 @@ B2 で追加した 8 シーンのうち **7 シーンで、ブラウザ確認し
 
 ### F-125 教訓の 17 件は、まだ人しか捕まえられない — P2（2026-09-16、2026-09-17 更新）
 
-`docs/verification-lessons.md` が 46 件を持ち、`npm run lessons`（`npm test`
+`docs/verification-lessons.md` が 47 件を持ち、`npm run lessons`（`npm test`
 からも走る）が台帳の側を守ります——3 つの欄が**あって中身が空でない**こと、
 **名指ししたガードが実在すること**、まだ人しか捕まえられない件数。
 
-**46 件中 17 件です**——`npm run lessons` の出力から書いています
+**47 件中 17 件です**——`npm run lessons` の出力から書いています
 （2026-09-17、main を取り込んで L-47 を採番し直した直後に再読）。
 L-01 / L-05 / L-06 / L-09 / L-13 / L-14 / L-15 / L-16 / L-21 / L-24 / L-26 /
 L-27 / L-28 / L-30 / L-36 / L-43 / L-47。
@@ -3294,6 +3416,13 @@ landmark ビルダー（`buildKidney({ parts: false })`）の `dispose()` を呼
 
 ## Resolved
 
+- **F-140 16 枚のレンダリング画像と単独選択画面をレビューアへ送る** — 解決（2026-09-17）。
+  第 2 回で 8 視点×2 配色 16 枚＋検証 8 枚、第 3 回で UI 付き 20 枚（manifest 付き）、
+  第 4 回で 3 枚を送付し、いずれも受領と所見が記録に残っています
+  （`docs/clinical-reviews/brain-anatomy-ai-terminology-check-2026-09-1{6,7}-*.md`）。
+  大脳脚底の旧名画像は第 3 回で現行名の画像に差し替え済み。撮影状態の記録
+  （commit・asset hash・bx_id・視点・layer・hiddenIds・isolatedId）は第 4 回分から
+  実行時読み取りで揃っています。第 3 回分の未取得項目は null と理由で訂正済み。
 - **F-137 WebKit だけ、tablet-768 でコントロール列が横にはみ出す** — 解決（2026-09-17）。
   **最初に書いた見当は 2 つとも外れでした。**「14px は 1 文字ぶんで日本語ラベルの
   字送りの差」も、「Playwright が Chromium にだけ `--hide-scrollbars` を付けるから」も
