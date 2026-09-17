@@ -46,6 +46,7 @@ import {
   treeLeaves,
   treeNodes,
 } from '../src/app/anatomyContract.js';
+import { fitPoseToSafeArea, orbitLimitsForSubject } from '../src/app/framing.js';
 
 /**
  * The three organ anatomy scenes, held to the same rule the brain is held to.
@@ -180,7 +181,11 @@ test('isolating a structure removes the rest from the model and from the ray', (
     );
     assert.equal(scene.isolateStructure(first.id), true, entry.id);
     assert.equal(scene.getAnatomyIsolation(), first.id, entry.id);
-    assert.equal(first.currentOpacity, first.baseOpacity, `${entry.id}: the isolated structure is solid`);
+    // Solid, not "as solid as it is in situ": the transparent parts — a
+    // cornea, a chamber, a vitreous body — are the ones a reader isolates
+    // because they cannot see them in place, and answering that with the same
+    // eight per cent is an empty frame.
+    assert.equal(first.currentOpacity, 1, `${entry.id}: the isolated structure is solid`);
     assert.equal(second.currentOpacity, 0, `${entry.id}: everything else is gone`);
     for (const mesh of second.meshes) {
       assert.equal(mesh.visible, false, `${entry.id}: a hidden mesh is still drawn`);
@@ -371,7 +376,7 @@ test('the kidney names parts only on the side it actually partitioned', () => {
 test('a scene can say what it is about, which is not everything it draws', () => {
   for (const entry of SCENES) {
     const scene = sceneFor(entry);
-    const subject = scene.getSubjectBounds();
+    const subject = scene.getSubjectBox();
     assert.ok(!subject.isEmpty(), `${entry.id}: has a subject`);
     const size = subject.getSize(new THREE.Vector3());
     assert.ok(size.x > 0 && size.y > 0 && size.z > 0, `${entry.id}: with an extent`);
@@ -379,16 +384,225 @@ test('a scene can say what it is about, which is not everything it draws', () =>
     // Measured in world space, not in whatever local frame the meshes were
     // built in: an organ placed away from the origin has to come back where it
     // was put, and `Box3.expandByObject` does not refresh its parents.
-    const everything = scene.getSubjectBounds({ excludeTags: [] });
+    const everything = scene.getSubjectBox({ excludeTags: [] });
     assert.ok(everything.containsBox(subject), `${entry.id}: the subject is part of the scene`);
   }
 
   // The kidney is the one that has to narrow: it draws the whole tract, and a
   // frame that fits the bladder makes the organ it is named after too small.
   const kidney = sceneFor(SCENES.find((entry) => entry.id === 'kidney-anatomy'));
-  const subject = kidney.getSubjectBounds().getSize(new THREE.Vector3());
-  const everything = kidney.getSubjectBounds({ excludeTags: [] }).getSize(new THREE.Vector3());
+  const subject = kidney.getSubjectBox().getSize(new THREE.Vector3());
+  const everything = kidney.getSubjectBox({ excludeTags: [] }).getSize(new THREE.Vector3());
   assert.ok(subject.y < everything.y * 0.6, 'the kidney subject is much shorter than the tract it drains into');
+});
+
+test('the subject is handed over in the shape the framing actually reads', () => {
+  // The failure this exists for was silent. `fitPoseToSafeArea` and
+  // `orbitLimitsForSubject` both read `centre` and `corners` and return their
+  // input untouched for anything else — and every procedural organ scene used
+  // to hand them a `Box3`. Nothing threw, nothing logged: the scenes simply
+  // never got the fit the brain and the heart get, and the model sat wherever
+  // the authored pose left it while the docked panel covered a third of it.
+  const scene = new KidneyAnatomyScene({});
+  scene.build();
+
+  const bounds = scene.getSubjectBounds();
+  assert.ok(bounds?.centre, 'the subject has a centre');
+  assert.equal(bounds.corners.length, 8, 'and the eight corners the framing projects');
+
+  const pose = {
+    position: new THREE.Vector3(0, 0, 6),
+    target: new THREE.Vector3(0, 0, 0),
+  };
+  const fitted = fitPoseToSafeArea(pose, {
+    bounds,
+    aspect: 1.6,
+    fovDegrees: 42,
+    insets: { right: 0.27, top: 0.08, bottom: 0.12 },
+  });
+  assert.ok(
+    fitted.target.distanceTo(pose.target) > 1e-6,
+    'the fit moves the camera onto the subject rather than leaving the pose alone'
+  );
+
+  const limits = orbitLimitsForSubject(bounds, { minDistance: 1, maxDistance: 2 });
+  assert.ok(limits.maxDistance > 2, 'and the orbit limits are opened to the subject it is given');
+
+  scene.dispose();
+});
+
+test('a cut viewpoint is framed against what the cut leaves, not the whole organ', () => {
+  const scene = new KidneyAnatomyScene({});
+  scene.build();
+  const whole = scene.getSubjectBox().clone();
+
+  assert.ok(scene.setAnatomyView('coronal-section'), 'the kidney offers its coronal cut');
+  const cut = scene.getSubjectBox();
+  assert.ok(scene.sectionPlane, 'that viewpoint cuts');
+  // The plane keeps the half its normal points into — the same side a click is
+  // accepted from — so nothing beyond it is left to frame.
+  assert.ok(
+    scene.sectionPlane.distanceToPoint(cut.min) >= -1e-6 || scene.sectionPlane.distanceToPoint(cut.max) >= -1e-6,
+    'what is left is on the kept side'
+  );
+  assert.ok(whole.getSize(new THREE.Vector3()).z > cut.getSize(new THREE.Vector3()).z + 1e-6,
+    'and the cut is shallower than the uncut organ');
+  assert.ok(
+    cut.getCenter(new THREE.Vector3()).z < whole.getCenter(new THREE.Vector3()).z - 1e-6,
+    'so the frame centres on the face of the cut rather than between the two halves'
+  );
+
+  scene.setAnatomyView(scene.constructor.views[0].id);
+  assert.ok(scene.getSubjectBox().getSize(new THREE.Vector3()).z > cut.getSize(new THREE.Vector3()).z,
+    'and leaving the cut view gives the whole organ back');
+  scene.dispose();
+});
+
+test('a cut draws the face it leaves, in the colour of what was cut', () => {
+  const scene = new LiverAnatomyScene({});
+  scene.build();
+  assert.equal(scene.caps.length, 0, 'nothing is capped until something is cut');
+
+  assert.ok(scene.setAnatomyView('transverse-section'), 'the liver offers its transverse cut');
+  assert.ok(scene.caps.length >= 4, `the segments the plane crosses have faces (${scene.caps.length})`);
+
+  const plane = scene.sectionPlane;
+  scene.root.updateMatrixWorld(true);
+  const point = new THREE.Vector3();
+  for (const cap of scene.caps) {
+    const structure = scene.byId.get(cap.structureId);
+    assert.ok(structure, 'every face belongs to a structure');
+
+    for (const face of cap.faces) {
+      assert.ok(structure.meshes.includes(face.parent), 'the face rides the mesh it closes');
+      assert.ok(!scene.selectables.includes(face), 'and is not something a ray can select');
+
+      // On the plane — a face a millimetre off is a face that z-fights with
+      // the cut it is closing. The bias that keeps it off the clip test is
+      // measured in ten-thousandths of the model.
+      const position = face.geometry.attributes.position;
+      let area = 0;
+      const a = new THREE.Vector3();
+      const b = new THREE.Vector3();
+      const c = new THREE.Vector3();
+      for (let i = 0; i < position.count; i += 3) {
+        a.fromBufferAttribute(position, i).applyMatrix4(face.matrixWorld);
+        b.fromBufferAttribute(position, i + 1).applyMatrix4(face.matrixWorld);
+        c.fromBufferAttribute(position, i + 2).applyMatrix4(face.matrixWorld);
+        area += b.clone().sub(a).cross(c.clone().sub(a)).length() / 2;
+      }
+      assert.ok(area > 0, `${cap.structureId}: the face has an area`);
+
+      for (let i = 0; i < position.count; i += 1) {
+        point.fromBufferAttribute(position, i).applyMatrix4(face.matrixWorld);
+        assert.ok(
+          Math.abs(plane.distanceToPoint(point)) < 0.01,
+          `${cap.structureId}: the face is on the plane, not near it`
+        );
+      }
+
+      assert.equal(
+        face.material.color.getHex(),
+        structure.meshes[0].userData.baseColor.getHex(),
+        `${cap.structureId}: the face is the colour of the part`
+      );
+    }
+
+    // Only the structures the plane crosses are capped.
+    const box = new THREE.Box3();
+    for (const mesh of structure.meshes) box.expandByObject(mesh);
+    assert.ok(
+      plane.distanceToPoint(box.min) * plane.distanceToPoint(box.max) <= 0,
+      `${cap.structureId}: is a structure the plane actually crosses`
+    );
+  }
+
+  const otherMode = scene.constructor.colorModes[1]?.id;
+  if (otherMode) {
+    scene.setAnatomyColorMode(otherMode);
+    const cap = scene.caps[0];
+    assert.equal(
+      cap.faces[0].material.color.getHex(),
+      scene.byId.get(cap.structureId).meshes[0].userData.baseColor.getHex(),
+      'switching colour mode repaints the cut face too'
+    );
+  }
+
+  // A fade is the reader asking to see through the tissue. The face is that
+  // tissue, so it fades with it rather than staying as the one solid thing.
+  const ghosted = scene.caps.find((cap) => scene.byId.get(cap.structureId).ghostAt != null);
+  if (ghosted) {
+    scene.setProgress(1);
+    for (let i = 0; i < 200; i += 1) scene.update(1 / 60);
+    const structure = scene.byId.get(ghosted.structureId);
+    assert.ok(
+      Math.abs(ghosted.faces[0].material.opacity - structure.currentOpacity) < 1e-6,
+      'the face is as solid as the structure it closes, and no more'
+    );
+  }
+
+  const capped = scene.caps.flatMap((cap) => cap.faces);
+  scene.setAnatomyView(scene.constructor.views[0].id);
+  assert.equal(scene.caps.length, 0, 'leaving the cut takes the faces with it');
+  assert.ok(capped.every((face) => !face.parent), 'and nothing is left in the scene graph');
+  let strays = 0;
+  scene.root.traverse((object) => { if (object.userData?.sectionCap) strays += 1; });
+  assert.equal(strays, 0, 'nothing of the cut is left riding the meshes');
+
+  scene.dispose();
+});
+
+test('a cut opens a hollow organ and faces a solid one', () => {
+  // The distinction the face has to make. `sectionFace` computes the outline
+  // of the solid a closed mesh bounds, which is the liver's cut and the
+  // kidney's — and run over a stomach it fills the silhouette with gastric
+  // pink and says the stomach is a lump of tissue. A bag is opened by a cut.
+  const stomach = new StomachAnatomyScene({});
+  stomach.build();
+  const wall = stomach.structures.find((structure) => structure.id === 'body');
+  assert.ok(wall?.hollow, 'the stomach wall says it is a wall');
+  const sphincter = stomach.structures.find((structure) => structure.id === 'pyloric-sphincter');
+  assert.equal(sphincter?.hollow, false, 'and the ring of muscle in it does not');
+
+  const section = (stomach.constructor.views ?? []).find((view) => view.section);
+  assert.ok(section, 'the stomach offers a cut');
+  stomach.setAnatomyView(section.id);
+  const capped = new Set(stomach.caps.map((cap) => cap.structureId));
+  assert.ok(!capped.has('body'), 'the cut opens the stomach rather than facing it');
+  assert.ok(stomach.sectionPlane, 'and it really is cut');
+  stomach.dispose();
+
+  // The same scene class, the other answer: the liver is a solid and its cut
+  // is faced. Both are read off the structure, not guessed from the organ.
+  const liver = new LiverAnatomyScene({});
+  liver.build();
+  assert.ok(liver.structures.every((structure) => structure.hollow === false), 'nothing in the liver is a bag');
+  liver.setAnatomyView('transverse-section');
+  assert.ok(liver.caps.length >= 4, 'so the cut leaves faces');
+  liver.dispose();
+});
+
+test('a viewpoint that takes a side away does not frame the side it took', () => {
+  const scene = new IntestineAnatomyScene({});
+  scene.build();
+  const view = (scene.constructor.views ?? []).find((candidate) => candidate.hideTags?.length);
+  assert.ok(view, 'the intestine has a viewpoint that hides part of what it draws');
+
+  const whole = scene.getSubjectBox().clone();
+  scene.setAnatomyView(view.id);
+  const shown = scene.getSubjectBox();
+  assert.ok(whole.containsBox(shown), 'what is framed is part of what the scene draws');
+  const hidden = scene.structures.filter((structure) =>
+    structure.tags.some((tag) => view.hideTags.includes(tag))
+  );
+  assert.ok(hidden.length, 'the viewpoint really does hide structures');
+  const box = new THREE.Box3();
+  for (const structure of hidden) for (const mesh of structure.meshes) box.expandByObject(mesh);
+  assert.ok(
+    !shown.containsBox(box),
+    'and the frame is not still reserving room for the structures it hid'
+  );
+  scene.dispose();
 });
 
 /**
@@ -525,7 +739,7 @@ test('the width a scene reserves is the width its subject actually needs', () =>
     const scene = sceneFor(entry);
     const reserve = entry.Scene.framing?.minHorizontalAspect;
     assert.ok(reserve, `${entry.id}: declares the frame shape it needs`);
-    const box = scene.getSubjectBounds();
+    const box = scene.getSubjectBox();
 
     // Close-ups crop on purpose; the reserve is measured against the views that
     // are meant to show the whole organ, which are the ones the scene opens on.
@@ -542,6 +756,21 @@ test('the width a scene reserves is the width its subject actually needs', () =>
       reserve <= widest * 1.35,
       `${entry.id}: and not far more than it needs (${reserve} vs ${widest.toFixed(2)})`
     );
+  }
+});
+
+test('every scene can be left', () => {
+  // One scene was checked here and thirty-nine were not, and the kidney threw
+  // on the way out: its landmark builder has no `dispose`, the organ's own
+  // teardown called one anyway, and the exception landed before a single
+  // geometry had been released. Nothing in a unit test saw it because nothing
+  // disposed that scene, and nothing on screen showed it either — the reader
+  // had already navigated away.
+  for (const entry of SCENES) {
+    const scene = new entry.Scene({});
+    scene.build();
+    assert.doesNotThrow(() => scene.dispose(), `${entry.id}: disposes`);
+    assert.equal(scene.listeners.size, 0, `${entry.id}: and lets go of its listeners`);
   }
 });
 

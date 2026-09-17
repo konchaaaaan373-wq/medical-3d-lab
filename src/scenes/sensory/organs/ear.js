@@ -242,18 +242,36 @@ export function buildEar({ colors = {}, opacity = 1 } = {}) {
   // half turns, which is a fact about cochleas and not a drawing choice —
   // though how big it is drawn certainly is.
   const TURNS = 2.5;
+  /** How thick the spiral canal is drawn, base to apex. */
+  const canalRadius = (u) => 0.095 - 0.035 * u;
+  /**
+   * How far the spiral climbs in total.
+   *
+   * **The turns of a cochlea touch.** They are one canal wound about the
+   * modiolus with nothing between them, which is why the thing looks like a
+   * snail shell rather than like a spring. This climbed 0.62 over two and a
+   * half turns — a quarter of a unit per turn against a canal about 0.15
+   * across — so there was daylight between every whorl and the render was a
+   * coil spring with a rod through it (F-132).
+   *
+   * So the climb is the canal's own average thickness, two and a half times
+   * over: each turn lands on top of the one below it. It is a consequence of
+   * the calibre, not a number chosen to look right, which is why it is written
+   * as one.
+   */
+  const CLIMB = TURNS * (canalRadius(0) + canalRadius(1));
   const spiral = [];
   for (let i = 0; i <= 120; i += 1) {
     const t = i / 120;
     const angle = t * TURNS * Math.PI * 2;
     const radius = 0.5 * (1 - 0.55 * t);
     spiral.push([
-      SITES.cochlea[0] + MEDIAL * (0.62 * t),
+      SITES.cochlea[0] + MEDIAL * (CLIMB * t),
       SITES.cochlea[1] + Math.sin(angle) * radius,
       SITES.cochlea[2] + Math.cos(angle) * radius,
     ]);
   }
-  cord('cochlea', spiral, (u) => 0.095 - 0.035 * u, '#e0c07a', {
+  cord('cochlea', spiral, canalRadius, '#e0c07a', {
     material: mucosaMaterial,
     radial: 12,
     steps: 130,
@@ -271,6 +289,18 @@ export function buildEar({ colors = {}, opacity = 1 } = {}) {
   // Three canals, one structure: they are one organ doing one job, and which of
   // the three is which is a question about plane, not about identity.
   const canalMeshes = [];
+  //
+  // **These are circles about the vestibule, and they have to stay that way.**
+  // Drawn, the three of them read as a cage with the chamber suspended inside
+  // it, and a canal in life leaves the vestibule and returns to it — so the
+  // obvious fix is to swing each loop out and draw an arc. It was tried, and
+  // `tests/calibration.test.js` caught it: **this loop is shared with the BPPV
+  // model**, which treats a canal as a circle about the vestibule of a stated
+  // radius and puts a particle at an angle on it. The atlas draws the model's
+  // canal, not a picture of one.
+  //
+  // So the cage stays until the model and the atlas move together, which is a
+  // change to a medical model and not to a drawing (F-132).
   const canal = (name, normal) => {
     const centre = new THREE.Vector3(...SITES.vestibule).addScaledVector(new THREE.Vector3(...normal), 0);
     const axis = new THREE.Vector3(...normal).normalize();
@@ -312,7 +342,9 @@ export function buildEar({ colors = {}, opacity = 1 } = {}) {
       [MEDIAL * 1.85, 0.0, -0.32],
       [MEDIAL * 2.5, 0.06, -0.46],
     ],
-    (u) => 0.16 + 0.04 * u,
+    // Thinner than it was. At 0.16 it was as thick as the cochlea it runs in
+    // the middle of and it carried the picture: a rod with a spring on it.
+    (u) => 0.095 + 0.03 * u,
     '#e8e0c8',
     { material: tissueMaterial, radial: 14, steps: 26 }
   );

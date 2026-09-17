@@ -40,7 +40,10 @@ below the epidermis. **10 structures are selectable.**
   the named sensory receptors, the lymphatics, the fibrous septa between fat
   lobules.
 - **One arteriole and one venule** stand for two plexuses that are not drawn
-  separately.
+  separately, and **the gap between them is a display value**: they are drawn
+  apart across the block, the venous side deeper, so that each can be seen and
+  selected. In life a companion artery and vein run against one another. **No
+  distance between these two vessels may be read off this model.**
 - **No disease**, and not anyone's skin.
 
 ## 4. Sources and licence
@@ -70,6 +73,27 @@ fat lobule is inside the subcutaneous compartment.
   itself, so a reader can point at either.
 - **The follicle and its hair are one structure**, because a hair is what a
   follicle produces and not a separate organ.
+- **A viewpoint hides what it is not about.** "Follicle and glands" takes the
+  layers *and* the vessels away; "what goes through it" takes only the layers.
+  Both had to: the appendages are inside three opaque slabs, so a viewpoint
+  named for them and hiding nothing was a picture of the block, and one hiding
+  only the layers was the other viewpoint from a slightly different angle.
+- **The frame follows the viewpoint.** The camera fits the organ into the part
+  of the window nothing is covering — the parts panel is an overlay over the
+  canvas, not a narrower canvas — and a viewpoint that hides a side or cuts the
+  organ open is framed on what it leaves rather than on the whole model.
+- **A cut draws the face it leaves, where there is one to draw.** For a solid
+  part the cross-section is computed from the triangles the plane crosses and
+  drawn in that part's own colour, so a cut segment reads as tissue with a
+  surface rather than as a shell seen from the inside. For a hollow one — a
+  stomach, a duct, a loop of bowel — the cut opens it instead: the wall here is
+  a surface with no thickness, and facing it would draw a lumen as a lump of
+  tissue. Which a part is, is declared by the scene rather than guessed.
+- **Isolating a structure shows it solid.** "Show me only this" used to leave
+  the part at the opacity it has in place, which is right for the opaque ones
+  and useless for the see-through ones — and a structure you cannot see in
+  place is exactly the one a reader isolates. Nothing else is drawn, so there
+  is nothing left for it to be transparent against.
 - **Taking a structure out of the way is the reader's own way in.** The layer
   slider, and where this scene has them the cuts and the viewpoints, are its
   *authored* ways of showing what is inside; hiding is the one the reader
@@ -97,5 +121,9 @@ planning any procedure. It carries no depth in millimetres and no threshold.
 
 **Catalog status:** `alpha`
 
-No clinical sign-off is recorded; the registry entry is `pending`, and the
-scene is not part of the public beta.
+No clinical sign-off is recorded and the registry entry is `pending`. The scene
+is in the **public beta** as of 2026-09-14 (batch B3) on an engineering
+acceptance only — see
+[`docs/beta-publication/skin-anatomy.md`](../beta-publication/skin-anatomy.md)
+for what that acceptance checked and what it did not. **No anatomist has looked
+at this geometry or these labels.**

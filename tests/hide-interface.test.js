@@ -17,10 +17,10 @@ const read = (path) => readFileSync(new URL(`../${path}`, import.meta.url), 'utf
  *    around it for a whole release, because the rule exempted `.ui-toggle` as
  *    a *child* of `#ui` and the button is three levels down — an exemption
  *    that read as intent and matched nothing (`docs/verification-lessons.md`
- *    L-21).
+ *    L-31).
  * 2. **The frame it leaves is empty.** That is what the feature is named for.
  *    Keeping the button lit to satisfy (1) would put chrome in every capture,
- *    which is the same defect wearing the other coat (L-23).
+ *    which is the same defect wearing the other coat (L-33).
  *
  * Both promises live in a selector and a class name, and both are invisible to
  * `npm test` unless something reads them. `verify:ui` measures them in a real
@@ -37,7 +37,7 @@ const ruleFor = (css, selectors) =>
   [...rulesOf(css)].filter((rule) => rule.selectors === selectors).at(-1);
 
 test('the interface is hidden by `visibility`, which a descendant can undo', () => {
-  // The heart of L-21. `opacity: 0` on the box around the button cannot be
+  // The heart of L-31. `opacity: 0` on the box around the button cannot be
   // undone from inside it at any depth, so an exemption written against a
   // descendant is dead the moment the hide is written with opacity.
   const rule = ruleFor(BASE, "#ui.is-hidden > *:not(.label-layer)");
@@ -63,14 +63,14 @@ test('the way back survives the hide', () => {
 });
 
 test('and then steps back, so the frame a capture takes is empty', () => {
-  // L-23: the fix for L-21 satisfied the bug report and broke the reason the
+  // L-33: the fix for L-31 satisfied the bug report and broke the reason the
   // feature exists. `is-quiet` is what holds both promises at once.
   const rule = ruleFor(BASE, "#ui.is-hidden.is-quiet [data-control='hideUi']");
   assert.ok(rule, 'the way back never leaves the frame');
   assert.equal(declaration(rule.body, 'opacity'), '0');
 
   // Faded, not removed: `visibility` or `display` here would take it out of
-  // the hit test and put the reader back where L-21 left them.
+  // the hit test and put the reader back where L-31 left them.
   assert.equal(declaration(rule.body, 'visibility'), null);
   assert.equal(declaration(rule.body, 'display'), null);
 

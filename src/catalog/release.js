@@ -146,10 +146,18 @@ export const BETA_ANATOMY_CANDIDATES = Object.freeze([
   // their opening view, and the shoulder's run reported a real defect. Being
   // gate-clear was never the bar; see docs/follow-ups.md F-126 and F-127.
   //
-  // The knee was calibrated and passes its drive, and is still not here: the
-  // landing hero must be able to show every published organ, and only brain,
-  // heart, lungs, liver and kidney have a hero builder. Publishing it would
-  // leave a published organ the chooser cannot draw. F-128.
+  // **An organ the landing hero cannot draw is not published.** Decided
+  // 2026-09-16, after the knee ran into it: six points naming six distinct
+  // structures, the best-measured scene of the six examined, and no hero model.
+  //
+  // It is a product rule, not a technical limit. The hero is the surface most
+  // visitors meet first, and an organ that cannot appear there would be
+  // published into a place nobody arrives at. `ORGAN_HERO_BUILDERS` therefore
+  // bounds the release: brain, heart, lungs, liver and kidney are the organs
+  // that have a model, four of them are open, and the kidney is held by F-126.
+  //
+  // `tests/beta-release.test.js` states it once and fails with the remedy in
+  // the message — add a hero model, or do not publish the organ.
   //
   // The lung is not here either, and it was in this list until the hero drive
   // was run against it: at its opening pose the centre of the frame falls in
@@ -275,13 +283,21 @@ export const BETA_PUBLICATION_DECISIONS = Object.freeze([
     record: 'docs/beta-publication/lung-anatomy.md',
     /** Procedural geometry: no external asset, so nothing to pin but the scene. */
     assetRevisions: Object.freeze({}),
-    sceneRevision: Object.freeze({ cardRevision: 12, modelDigest: 'a3dd5027ef0dcf44' }),
+    sceneRevision: Object.freeze({ cardRevision: 13, modelDigest: '292c5a43d8b0f2b0' }),
     scope: Object.freeze({
+      // Re-measured 2026-09-16. These four were measured against a safe-area
+      // fit that approximated a perspective camera with an orthographic sum,
+      // and under the exact solve all four were wrong with three hitting
+      // nothing — the run reported `only 1 of 4 click(s) resolved`. The
+      // fourth is still an airway rather than a fourth lobe, for the reason
+      // the original four were chosen: a tour that crosses the tree between
+      // the lungs says more than one that does not. At this framing the
+      // sweep reaches the trachea rather than the left main bronchus.
       structures: Object.freeze([
+        'Trachea',
         'Right upper lobe',
-        'Right middle lobe',
         'Left upper lobe',
-        'Left main bronchus',
+        'Right middle lobe',
       ]),
       views: Object.freeze([
         'six authored viewpoints offered and one applied by the drive: anterior, posterior, right and left lateral, the right lung from its mediastinal surface, and a coronal section',
@@ -322,13 +338,19 @@ export const BETA_PUBLICATION_DECISIONS = Object.freeze([
     }),
     record: 'docs/beta-publication/liver-anatomy.md',
     assetRevisions: Object.freeze({}),
-    sceneRevision: Object.freeze({ cardRevision: 12, modelDigest: 'bd72a3cc7f8d1479' }),
+    sceneRevision: Object.freeze({ cardRevision: 13, modelDigest: '34d9a1727ffda583' }),
     scope: Object.freeze({
+      // Re-measured 2026-09-16, and the tour changed shape rather than just
+      // moving: the safe-area fit stopped approximating a perspective camera,
+      // which moved the model, and of the four this record was taken over two
+      // then hit nothing and a third named its neighbour. The sweep at the
+      // corrected framing finds four Couinaud segments and no gallbladder, so
+      // this scope no longer claims the biliary system.
       structures: Object.freeze([
         'Segment VIII \u2014 Right anterior superior',
-        'Segment III \u2014 Left lateral inferior',
-        'Segment V \u2014 Right anterior inferior',
-        'Gallbladder',
+        'Segment VII \u2014 Right posterior superior',
+        'Segment II \u2014 Left lateral superior',
+        'Segment IVa \u2014 Left medial superior',
       ]),
       views: Object.freeze([
         'the authored viewpoints offered, one applied by the drive',
@@ -378,7 +400,7 @@ export const BETA_PUBLICATION_DECISIONS = Object.freeze([
       'hubmap-vh-m-heart': '46d375e36d8181c161b70e1f0b8f0d778364f0a8414eebce4e4fda1cea73eb3d',
       'hubmap-vh-m-blood-vasculature': 'a95ff0825431953d8fff210cf29d9e65aeed5da55f623717ab613864a9435502',
     }),
-    sceneRevision: Object.freeze({ cardRevision: 23, modelDigest: '93a0f4f6cc4d2606' }),
+    sceneRevision: Object.freeze({ cardRevision: 24, modelDigest: '60fa8135b9b036d2' }),
     scope: Object.freeze({
       // The authored tour in `SCENE_POINTS`, not whatever a run measured: four
       // named parts at four recorded points, crossing both adopted files.
@@ -447,11 +469,18 @@ export const BETA_PUBLICATION_DECISIONS = Object.freeze([
       // four and `verify:anatomy` fails if a point names anything else — see
       // docs/beta-publication/brain-anatomy.md, which states what was wrong
       // rather than quietly showing the new values.
+      // Re-measured 2026-09-16, the second time this scene's tour has gone
+      // stale. The first was layout drift found a week late; this one is the
+      // safe-area fit being corrected from an orthographic sum to an exact
+      // perspective solve, which moved every model and was caught on the
+      // first run. Three of the four points were wrong and two of those had
+      // come to name the same structure, so the scope below would have
+      // claimed four distinct parts that a run could only show three of.
       structures: Object.freeze([
+        'Precentral gyrus',
         'Supramarginal gyrus',
-        'Circular sulcus of insula',
-        'Middle temporal gyrus',
         'Angular gyrus',
+        'Orbital part of inferior frontal gyrus',
       ]),
       views: Object.freeze([
         'left-lateral (applied by the interaction drive)',

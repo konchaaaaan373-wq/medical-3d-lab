@@ -224,10 +224,21 @@ export function buildEyeball({ colors = {}, opacity = 1 } = {}) {
   //
   // The two landmarks a fundus is read by. Nasal disc, temporal macula, and the
   // relation between them is what tells a reader which eye they are looking at.
+  //
+  // **Both lie in the retina, not on it.** They were spheres flattened in z and
+  // placed at their sites, which left a bead standing proud of the back wall:
+  // in the fundus view the disc and the macula read as two balls dropped into
+  // the eye rather than as the two patches a fundus is read by. They are
+  // pushed back into the wall by part of their own half-thickness, so what
+  // shows is the cap — a patch on the retina, which is what they are. The
+  // first value tried was 0.035 and buried them: two pinheads instead of two
+  // beads, which is a different wrong picture.
+  const INTO_THE_WALL = 0.018;
+  const sunk = (site) => [site[0], site[1], site[2] - INTO_THE_WALL];
   solid(
     'optic-disc',
     shapedSphere({ detail: 4, scale: [0.12, 0.12, 0.05] }),
-    SITES.opticDisc,
+    sunk(SITES.opticDisc),
     '#f0d8a8',
     mucosaMaterial
   );
@@ -238,10 +249,18 @@ export function buildEyeball({ colors = {}, opacity = 1 } = {}) {
       scale: [0.15, 0.15, 0.04],
       warp: (v) => {
         // The fovea: the pit in the middle of it.
-        v.z += 0.5 * Math.exp(-Math.pow(Math.hypot(v.x, v.y) / 0.35, 2));
+        //
+        // **Subtracted.** This added, and the eye is drawn with `+z` anterior —
+        // so the face a reader sees the macula on, looking in from the front,
+        // is its `+z` one, and raising it made the fovea a dome. It read as a
+        // bead sitting on the retina, and the note above it said pit.
+        // Shallow. At 0.5 the dish went deeper than the patch is thick and the
+        // macula came out as a crescent of rim with its middle inside the
+        // retina — the same mistake as the bead, pointing the other way.
+        v.z -= 0.15 * Math.exp(-Math.pow(Math.hypot(v.x, v.y) / 0.35, 2));
       },
     }),
-    SITES.fovea,
+    sunk(SITES.fovea),
     '#8a4a2e',
     mucosaMaterial
   );
