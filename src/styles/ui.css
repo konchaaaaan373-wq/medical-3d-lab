@@ -2462,6 +2462,26 @@
   color: var(--label-ink-faint, var(--ink-faint));
 }
 
+/* An authored landmark, not a pick: with nothing selected it is the only thing
+   the model says on its own, and it must not read as an answer to "what did
+   I just tap". Dimmer chip, no glow on the dot, same shape as any other
+   label — a reader who is colour-blind to accent still has muted-vs-bright to
+   go on. */
+.label3d-landmark {
+  background: rgba(6, 11, 20, 0.4);
+  border-color: rgba(255, 255, 255, 0.12);
+}
+
+.label3d-landmark .label-dot {
+  background: var(--label-ink-faint, var(--ink-faint));
+  box-shadow: none;
+}
+
+.label3d-landmark .label-en {
+  font-weight: 500;
+  opacity: 0.78;
+}
+
 /* A name the source itself is not consistent about. Smaller than the name and
    in the same faint ink: enough that "this is not settled" is on the label, not
    so much that the label becomes the warning. */

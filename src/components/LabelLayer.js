@@ -5,6 +5,18 @@ import { clamp, smoothstep } from '../utils/math.js';
 const FADE = 0.06;
 
 /**
+ * Same point, not just the same reference — a re-tap builds a fresh
+ * `THREE.Vector3` every time, so `===` would never match even when the
+ * reader hit the exact same spot twice.
+ */
+function positionsEqual(a, b) {
+  if (a === b) return true;
+  if (!a || !b) return false;
+  if (typeof a.equals === 'function') return a.equals(b);
+  return a.x === b.x && a.y === b.y && a.z === b.z;
+}
+
+/**
  * Minimum spacing between two labels, in px. Roughly a label's own height plus
  * a little air; anything closer and the two boxes overlap and neither reads.
  */
@@ -94,7 +106,7 @@ export function createLabelLayer({ viewer, annotations }) {
    */
   const OCCLUSION_GRACE_MS = 140;
 
-  const makeItem = (annotation, priority) => {
+  const makeItem = (annotation, priority, kind) => {
     // `lead` pushes the text box away from the anchor (screen px) so the
     // label never sits on top of the structure it names; a leader line runs
     // from the anchor dot to the box. Labels without a lead keep the old
@@ -118,16 +130,23 @@ export function createLabelLayer({ viewer, annotations }) {
           ])]
         : []),
     ]);
-    const node = el('div', { class: lead ? 'label3d label3d-led' : 'label3d' }, [
+    // An authored landmark is drawn muted — it is scenery, not an answer to
+    // "what did I just tap". Without this it used the same chip as a
+    // selection, which is the bug this class exists to close: a landmark
+    // sitting on the model with nothing picked reads as a pick.
+    const classes = ['label3d', lead && 'label3d-led', kind === 'landmark' && 'label3d-landmark']
+      .filter(Boolean)
+      .join(' ');
+    const node = el('div', { class: classes }, [
       el('span', { class: 'label-dot' }),
       ...(leader ? [leader] : []),
       body,
     ]);
     element.append(node);
-    return { annotation, node, body, leader, lead, opacity: 0, priority, seenAt: 0 };
+    return { annotation, node, body, leader, lead, opacity: 0, priority, kind, seenAt: 0 };
   };
 
-  const items = shown.map((annotation) => makeItem(annotation, PRIORITY.landmark));
+  const items = shown.map((annotation) => makeItem(annotation, PRIORITY.landmark, 'landmark'));
   /** The pinned selection and the hover, when the scene offers labels for them. */
   const dynamic = new Map();
 
@@ -161,7 +180,14 @@ export function createLabelLayer({ viewer, annotations }) {
      */
     setStructureLabel(kind, annotation) {
       const existing = dynamic.get(kind);
-      if (existing?.annotation.id === annotation?.id) return;
+      const sameId = existing?.annotation.id === annotation?.id;
+      // Same id is not the same label: a re-tap on the structure that is
+      // already selected keeps `structure:<id>` (the id names the structure,
+      // not the point), but can carry a new anchor — the tap this time landed
+      // somewhere else on the same surface (`_lastPick` in
+      // `BrainAnatomyScene.js`). Comparing only the id discarded that new
+      // point and left the label sitting on the old one.
+      if (sameId && positionsEqual(existing.annotation.position, annotation.position)) return;
       if (existing) {
         existing.node.remove();
         dynamic.delete(kind);
@@ -169,7 +195,7 @@ export function createLabelLayer({ viewer, annotations }) {
       if (!annotation) return;
       // A led label would need a lead direction nobody authored for an
       // arbitrary structure; anchored placement puts it on the structure.
-      const item = makeItem(annotation, PRIORITY[kind] ?? PRIORITY.landmark);
+      const item = makeItem(annotation, PRIORITY[kind] ?? PRIORITY.landmark, kind);
       // Shown from the moment it exists. The landmarks get their opacity from
       // the progression window on the next `update`, and a label the reader
       // just asked for cannot wait for a stage change that may never come —
@@ -214,11 +240,37 @@ export function createLabelLayer({ viewer, annotations }) {
       let drawn = 0;
       // Highest priority first, so the cap takes from the bottom.
       const order = [...dynamic.values(), ...items].sort((a, b) => b.priority - a.priority);
+      // What the reader tapped names a structure; a landmark naming the same
+      // one — or the hover a pointer resting on it produces — is the same
+      // fact stated twice on the model, not two facts. Rather than stack a
+      // duplicate beside the answer, the other label steps aside and the
+      // selection carries the name alone.
+      const selectedStructureId = dynamic.get('selection')?.annotation.structureId ?? null;
       for (const item of order) {
-        if (item.opacity < 0.01) {
+        const mergedIntoSelection =
+          item.kind !== 'selection' &&
+          selectedStructureId != null &&
+          item.annotation.structureId === selectedStructureId;
+        if (item.opacity < 0.01 || mergedIntoSelection) {
           item.node.style.opacity = '0';
           item.node.style.visibility = 'hidden';
           continue;
+        }
+        // The anchor a selection was given once (parts tree, keyboard, a
+        // tour — anything but a tap) can rotate out of view without the
+        // structure itself doing so; another candidate on the same surface
+        // may still be visible (F-40). Only tried once the current point has
+        // already failed the occlusion test, so a label that is still
+        // visible costs nothing beyond the one `isVisible` check every label
+        // already pays each frame — this never runs a fresh candidate search
+        // while the anchor holds. The scene stays the one deciding where the
+        // label goes (`_visibleAnchorFor`); this only asks it to try again.
+        if (
+          item.annotation.reanchor &&
+          item.annotation.isDrawn?.() !== false &&
+          item.annotation.isVisible?.(viewer.camera) === false
+        ) {
+          item.annotation.reanchor(viewer.camera);
         }
         projected.copy(item.annotation.position).project(viewer.camera);
         // z > 1 means the anchor is behind the camera.
@@ -245,7 +297,13 @@ export function createLabelLayer({ viewer, annotations }) {
         else if (item.annotation.isVisible?.(viewer.camera) !== false) item.seenAt = now;
         const unseen = item.seenAt > 0 && now - item.seenAt > OCCLUSION_GRACE_MS;
         const never = item.seenAt === 0 && item.annotation.isVisible?.(viewer.camera) === false;
-        const over = drawn >= LABEL_LIMIT;
+        // What the reader just picked is exempt from *eviction*: it is the
+        // one label they asked for, and a landmark stepping back for it is
+        // the point of having a cap at all — see PRIORITY above. It still
+        // *counts* against the cap once drawn, though: leaving it out of
+        // `drawn` let every landmark keep its slot too, so a pick could put
+        // one more label on screen than the cap says exists.
+        const over = item.kind !== 'selection' && drawn >= LABEL_LIMIT;
         const hide = offscreen || undrawn || unseen || never || over;
         item.node.style.visibility = hide ? 'hidden' : 'visible';
         if (hide) continue;

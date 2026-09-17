@@ -233,6 +233,18 @@ export class BrainAnatomyScene {
     this._annotationSight = new Map();
     /** Anchor points for structures that are not authored landmarks. */
     this.structureAnchors = new Map();
+    /**
+     * The point a tap actually hit, for the structure it selected.
+     *
+     * That point is on the visible surface by construction — the ray that
+     * produced it stopped there — which a structure's precomputed outward
+     * vertex is not always: a sulcus's outermost point can sit behind the
+     * gyri folded over it (F-40). Selecting the same structure any other way
+     * (keyboard, a tour, a test calling `selectStructure` directly) leaves
+     * this unset, and `_visibleAnchorFor` falls back to searching the
+     * structure's own candidates for one the current camera can see.
+     */
+    this._lastPick = null;
   }
 
   build() {
@@ -423,8 +435,14 @@ export class BrainAnatomyScene {
     this._pointerUp = (event) => {
       if (!tap.end(event.clientX, event.clientY)) return;
       const hit = this._pick(event);
-      if (hit) this.selectStructure(hit.object.userData.atlasId);
-      else this.clearSelection();
+      if (hit) {
+        // Recorded before `selectStructure` so the label it asks for is
+        // already answerable from the point the reader actually touched.
+        this._lastPick = { structureId: hit.object.userData.atlasId, point: hit.point.clone() };
+        this.selectStructure(hit.object.userData.atlasId);
+      } else {
+        this.clearSelection();
+      }
     };
     // The press ends here too. A drag that wanders off the canvas is released
     // where the canvas never hears it, so without this the press stays open and
@@ -478,6 +496,7 @@ export class BrainAnatomyScene {
       this.clearSelection();
       return false;
     }
+    this._lastPick = { structureId: hit.object.userData.atlasId, point: hit.point.clone() };
     return this.selectStructure(hit.object.userData.atlasId);
   }
 
@@ -600,6 +619,7 @@ export class BrainAnatomyScene {
   }
 
   clearSelection() {
+    this._lastPick = null;
     if (!this.selectedMeshes.length && !this.selection) return;
     for (const mesh of this.selectedMeshes) {
       mesh.userData.selected = false;
@@ -627,6 +647,7 @@ export class BrainAnatomyScene {
     this.hoveredMeshes = [];
     this.selection = null;
     this.isolatedId = null;
+    this._lastPick = null;
     const hadHidden = this.manualHidden.size > 0;
     this.manualHidden.clear();
     this.hiddenVersion += 1;
@@ -1207,6 +1228,18 @@ export class BrainAnatomyScene {
   }
 
   /**
+   * Everything that can change whether a point is visible, as one string:
+   * the camera pose and the display state that decides what is drawn.
+   *
+   * @param {import('three').Camera} camera
+   */
+  _sightPoseKey(camera) {
+    camera.updateMatrixWorld();
+    return `${camera.matrixWorld.elements.map((n) => n.toFixed(4)).join(',')}|` +
+      `${this.isolatedId}|${this.medialSide}|${this.displayProgress.toFixed(3)}|${this.hiddenVersion}`;
+  }
+
+  /**
    * Is this point on this structure the first thing along the ray to it?
    *
    * @param {string} cacheKey anything stable that identifies the point
@@ -1219,9 +1252,7 @@ export class BrainAnatomyScene {
 
     // Recomputing a raycast per label per frame is wasted while nothing moves,
     // and everything that can change the answer is in this key.
-    camera.updateMatrixWorld();
-    const key = `${camera.matrixWorld.elements.map((n) => n.toFixed(4)).join(',')}|` +
-      `${this.isolatedId}|${this.medialSide}|${this.displayProgress.toFixed(3)}|${this.hiddenVersion}`;
+    const key = this._sightPoseKey(camera);
     const cached = this._annotationSight.get(cacheKey);
     if (cached?.key === key) return cached.visible;
 
@@ -1252,8 +1283,10 @@ export class BrainAnatomyScene {
    * its own outside, and the same occlusion test, so it disappears when the
    * structure does rather than floating over whatever is in front.
    *
-   * The anchor is computed once per structure and kept, because it is a
-   * property of the geometry rather than of the moment.
+   * The candidate list (every outward vertex, ranked and spread apart) is
+   * computed once per structure and kept, because it is a property of the
+   * geometry. Which candidate to anchor *this* label to is not: see
+   * `_visibleAnchorFor`.
    *
    * @param {number|string} id
    */
@@ -1262,20 +1295,29 @@ export class BrainAnatomyScene {
     if (!meshes.length) return null;
     const structureId = meshes[0].userData.atlasId;
     const key = `structure:${structureId}`;
-    let point = this.structureAnchors.get(key);
-    if (!point) {
-      point = outwardSurfacePoint(meshes, this.atlasRoot);
-      if (!point) return null;
-      this.structureAnchors.set(key, point);
+    let candidates = this.structureAnchors.get(key);
+    if (!candidates) {
+      candidates = rankedSurfacePoints(meshes, this.atlasRoot);
+      if (!candidates.length) return null;
+      this.structureAnchors.set(key, candidates);
     }
+    // A clone: the candidates stay the structure's for the life of the scene
+    // and `_lastPick` stays the reader's, while `reanchor` below moves *this*
+    // label's point in place. The first version handed out the cache entry
+    // itself, and one reanchor overwrote the best-ranked candidate for every
+    // later selection of the structure.
+    const point = this._visibleAnchorFor(structureId, candidates, meshes).clone();
+    const sightKey = `${key}:${point.x.toFixed(3)},${point.y.toFixed(3)},${point.z.toFixed(3)}`;
     const info = brainStructureInfo(meshes[0].userData.atlasMetadata);
+    /** The last camera pose `reanchor` searched from, so it searches once per pose. */
+    let triedPose = null;
     return {
       id: key,
       structureId,
       text: info.name,
       sub: info.nameJa,
       position: point,
-      isVisible: (camera) => this._pointVisible(key, point, meshes, camera),
+      isVisible: (camera) => this._pointVisible(sightKey, point, meshes, camera),
       /**
        * Whether the settings draw this structure at all.
        *
@@ -1286,7 +1328,91 @@ export class BrainAnatomyScene {
        * reader has just taken off the screen.
        */
       isDrawn: () => this.isStructureVisible(structureId),
+      /**
+       * Try a fresh candidate against the live camera, called by the label
+       * layer only once this anchor has already failed `isVisible` — never
+       * a per-frame search while the point still holds.
+       *
+       * A tap's own point is preferred for as long as the camera can see it
+       * (`_visibleAnchorFor`), so a reader's own touch is left where it
+       * landed until the model turns it out of view; then, like a selection
+       * made from the parts tree, the keyboard or a tour, the structure's
+       * ranked candidates are tried, and the tap point is taken back the
+       * moment it can be seen again.
+       *
+       * Asked once per camera pose: a structure with nothing visible on it
+       * at all — the far hemisphere on a medial view — stays occluded for
+       * as many frames as the reader leaves it, and each of those frames
+       * would otherwise pay for the whole candidate search again.
+       *
+       * Mutates `point` in place, which is the same object `position` above
+       * was set to, so the label layer's own reference picks up the move
+       * without anything here replacing the annotation. That keeps the scene
+       * the one place that decides where the label is.
+       *
+       * @param {import('three').Camera} camera
+       */
+      reanchor: (camera) => {
+        if (!camera) return false;
+        const pose = this._sightPoseKey(camera);
+        if (pose === triedPose) return false;
+        triedPose = pose;
+        const next = this._visibleAnchorFor(structureId, candidates, meshes);
+        if (next.equals(point)) return false;
+        point.copy(next);
+        this._annotationSight.delete(sightKey);
+        return true;
+      },
     };
+  }
+
+  /**
+   * The anchor a selection or hover label should sit on — a point that is
+   * actually visible from here, when one exists (F-40).
+   *
+   * A tap already answers "is this point on the surface I can see?": the ray
+   * that selected the structure stopped at this exact point, so it is used
+   * verbatim for as long as the camera can still see it. Once the model has
+   * turned it behind a neighbour — or for a selection that never had a tap
+   * (the keyboard, a guided tour, a test calling `selectStructure` directly)
+   * — the structure's own ranked candidates are tried in the order the
+   * geometry favours them, and the first one the current camera can
+   * actually see is used. A structure that is genuinely turned away (the far
+   * side of a medial view, mid-fold on every candidate) has none; then the
+   * tap point if there is one, else the best-ranked candidate, is returned
+   * anyway — `isVisible` will correctly say "no", which is the case a label
+   * should disappear for.
+   *
+   * With no camera to ask (a route opened on a structure before the viewer
+   * exists) the same fallback applies unconditionally.
+   *
+   * Returns one of the objects it was given — callers that keep the point
+   * clone it (`getStructureAnnotation`).
+   *
+   * @param {number} structureId
+   * @param {import('three').Vector3[]} candidates ranked, furthest reach first
+   * @param {import('three').Mesh[]} meshes
+   */
+  _visibleAnchorFor(structureId, candidates, meshes) {
+    const tap = this._lastPick?.structureId === structureId ? this._lastPick.point : null;
+    const camera = this.viewer?.camera;
+    if (!camera) return tap ?? candidates[0];
+    if (tap && this._rayVisible(tap, meshes, camera)) return tap;
+    for (const candidate of candidates) {
+      if (this._rayVisible(candidate, meshes, camera)) return candidate;
+    }
+    return tap ?? candidates[0];
+  }
+
+  /** Is this exact point, right now, the first thing a ray from the camera hits? */
+  _rayVisible(point, meshes, camera) {
+    camera.updateMatrixWorld();
+    this._annotationDirection.copy(point).sub(camera.position);
+    const distance = this._annotationDirection.length();
+    if (!(distance > 0)) return false;
+    this._annotationRay.set(camera.position, this._annotationDirection.divideScalar(distance));
+    const first = this._annotationRay.intersectObjects(this._drawnMeshes(), false)[0];
+    return Boolean(first) && meshes.includes(first.object);
   }
 
   /**
@@ -1439,7 +1565,7 @@ function targetOpacity(metadata, oneHemisphere, deepReveal, medialSide = null) {
 }
 
 /**
- * A point on the outside of a structure, in world space.
+ * Points on the outside of a structure, in world space, ranked best first.
  *
  * The bounding-box centre is the obvious anchor and is wrong for anything
  * folded. A sulcus is a thin sheet running down into the brain, and the centre
@@ -1448,46 +1574,65 @@ function targetOpacity(metadata, oneHemisphere, deepReveal, medialSide = null) {
  * and before the occlusion test existed it was simply drawn on top of the gyrus
  * in front, which is a label naming the wrong structure.
  *
- * So the anchor is the structure's own outermost vertex: of every vertex in
- * every mesh the structure is drawn from, the one furthest along the direction
- * from the model's centre out to the structure. That is a point *on* the
- * structure, chosen from its geometry and fixed at load — not a position moved
- * to suit the screen, and not a landmark the source provides. It carries no
- * anatomical claim beyond "this is on the outside of this mesh".
+ * So the top candidate is the structure's own outermost vertex: of every
+ * vertex in every mesh the structure is drawn from, the one furthest along the
+ * direction from the model's centre out to the structure. That is a point *on*
+ * the structure, chosen from its geometry — not a position moved to suit the
+ * screen, and not a landmark the source provides. It carries no anatomical
+ * claim beyond "this is on the outside of this mesh".
+ *
+ * One such point is not always enough (F-40): for a sulcus, even the
+ * outermost vertex can sit behind the gyri folded over it from a given
+ * camera. So this returns several, ranked by the same reach and spread apart
+ * by a fraction of the structure's own size — not the top few vertices
+ * bunched at one corner of the mesh, which a single fold could hide all of at
+ * once. `_visibleAnchorFor` tries them in order against the live camera.
  *
  * @param {import('three').Mesh[]} meshes every mesh the structure is drawn from
  * @param {import('three').Object3D} root the model, for its centre
+ * @param {number} [max] how many candidates to keep
  */
-function outwardSurfacePoint(meshes, root) {
-  if (!meshes?.length) return null;
+function rankedSurfacePoints(meshes, root, max = 12) {
+  if (!meshes?.length) return [];
   const box = new THREE.Box3();
   for (const mesh of meshes) box.expandByObject(mesh);
-  if (box.isEmpty()) return null;
+  if (box.isEmpty()) return [];
   const centre = box.getCenter(new THREE.Vector3());
   const modelCentre = new THREE.Box3().setFromObject(root).getCenter(new THREE.Vector3());
   const outward = centre.clone().sub(modelCentre);
   // A structure sitting on the midline has no outward direction of its own;
-  // its own box centre is as good an anchor as exists.
-  if (outward.lengthSq() < 1e-8) return centre;
+  // its own box centre is as good an anchor as exists, and the only one.
+  if (outward.lengthSq() < 1e-8) return [centre];
   outward.normalize();
 
   const vertex = new THREE.Vector3();
-  let best = null;
-  let bestReach = -Infinity;
+  const ranked = [];
   for (const mesh of meshes) {
     const position = mesh.geometry?.getAttribute?.('position');
     if (!position) continue;
     mesh.updateWorldMatrix(true, false);
     for (let i = 0; i < position.count; i += 1) {
       vertex.fromBufferAttribute(position, i).applyMatrix4(mesh.matrixWorld);
-      const reach = vertex.dot(outward);
-      if (reach > bestReach) {
-        bestReach = reach;
-        best = vertex.clone();
-      }
+      ranked.push({ point: vertex.clone(), reach: vertex.dot(outward) });
     }
   }
-  return best ?? centre;
+  if (!ranked.length) return [centre];
+  ranked.sort((a, b) => b.reach - a.reach);
+
+  const diagonal = box.min.distanceTo(box.max) || 1;
+  const minSeparation = (diagonal * 0.06) ** 2;
+  const points = [];
+  for (const { point } of ranked) {
+    if (points.some((kept) => kept.distanceToSquared(point) < minSeparation)) continue;
+    points.push(point);
+    if (points.length >= max) break;
+  }
+  return points;
+}
+
+/** The single best candidate — for callers that do not track a live camera. */
+function outwardSurfacePoint(meshes, root) {
+  return rankedSurfacePoints(meshes, root, 1)[0] ?? null;
 }
 
 function atlasMetadata(mesh, stopAt) {

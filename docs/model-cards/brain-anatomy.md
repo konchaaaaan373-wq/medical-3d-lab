@@ -213,7 +213,11 @@ beyond "this is on the outside of this mesh", and never moved to suit the
 screen. It is not enough for a sulcus: the surface of a fold lies under the
 gyri on either side of it, so the central sulcus's label is absent from the
 lateral view rather than misplaced on it. That is recorded as F-40 with what
-was tried, not papered over.
+was tried, not papered over — and it still applies to the four **authored**
+landmarks, whose anchor is fixed at load, before any camera exists to ask.
+**The reader's own selection is held to a stricter rule than that**, because a
+label with nothing under it is worse exactly when the reader just asked for
+one: see below.
 
 **A structure can be found by name.** The scene publishes its inventory — one
 record per structure, both names, its side and the hierarchy above it — and the
@@ -272,21 +276,34 @@ by colour, and answers `V` on a focused branch. **A group is not a structure**:
 pressing it changes what is drawn and never what is named, and the selection,
 the search index and the labels go on referring to structures only.
 
-**The structure a reader picks is named on the model, not only in the panel.**
-The selection and the hover get a label on the same terms as the four authored
-landmarks: the structure's own names, an anchor on its own outside, and the same
-occlusion test, so a label disappears when its structure does rather than
-floating over whatever is in front. When more labels apply than a frame can
-carry — six on a wide screen, three on a narrow one — the ones that give way are
-the ones the reader did not ask for: selection outranks hover, hover outranks
-the landmarks, and nothing is stacked into a spare corner to make it fit.
-Appearing is immediate; disappearing waits a moment, so a label does not blink
-along an occlusion edge as the model turns. **That wait is for occlusion and for
-nothing else**: a structure the settings are not drawing — hidden by the reader,
-isolated away — is not an edge flickering, it is a thing that is not there, and
-its label goes on the same frame. A name left over it for even a moment is a
-name over whatever is behind it. Hiding a label never changes what the panel
-says is pinned.
+**The structure a reader picks is named on the model, not only in the panel —
+and it is named whenever the structure is drawn, not only when the camera
+happens to be looking at the one point a fixed anchor would use.** A tapped
+structure's label sits on the exact point the tap hit, which is on the visible
+surface by construction: the ray that selected the structure stopped there. A
+selection made any other way — the keyboard, a guided tour, a test calling
+`selectStructure` — has no such point, so several of the structure's own
+outward vertices are ranked and tried against the live camera, and the first
+one that camera can actually see is used. Only a structure with **no** visible
+point at all — the far side of a medial view, say — goes unlabelled, which is
+the case a label should disappear for. This is stricter than the rule the four
+authored landmarks still use (F-40): their anchor is one point, fixed at load,
+before any camera exists to ask, and a fold can still hide it. A selection is
+the one label the reader asked for, so it is also **exempt from the on-screen
+cap** — six labels on a wide screen, three on a narrow one — where the
+landmarks are what step back to make room. And because a landmark reads as a
+pick when nothing is picked, its chip is visibly muted; when a selection pins
+the very structure a landmark names, the landmark steps aside rather than
+showing the same name twice. Hover keeps the landmarks' terms: an anchor on
+the structure's own outside and the same occlusion test, so its label
+disappears when its structure does rather than floating over whatever is in
+front. Appearing is immediate; disappearing waits a moment, so a label does not
+blink along an occlusion edge as the model turns. **That wait is for occlusion
+and for nothing else**: a structure the settings are not drawing — hidden by
+the reader, isolated away — is not an edge flickering, it is a thing that is
+not there, and its label goes on the same frame. A name left over it for even
+a moment is a name over whatever is behind it. Hiding a label never changes
+what the panel says is pinned.
 
 **Searching answers with every match.** The count is the number that matched,
 not the number drawn, and there is no quiet cap that would leave the rest
@@ -341,7 +358,54 @@ clinical attestation and the registry stays `pending` (F-139). Records:
 [`…-review3-852b691.md`](../clinical-reviews/brain-anatomy-ai-terminology-check-2026-09-16-review3-852b691.md),
 [`…-approve-5205c6b.md`](../clinical-reviews/brain-anatomy-ai-terminology-check-2026-09-17-approve-5205c6b.md).
 
-**Revision 20 → 21 (2026-09-16).** Label, hierarchy and copy corrections driven
+## 9. Revision history
+
+**Revision 22 → 23 — the selection-label fix closed three defects a review
+found in it.** Revision 22 gave a selection its own anchor instead of the
+landmarks' fixed one; review of that change found three ways it still failed
+its own stated behaviour, all now closed. A re-tap on the structure already
+selected kept the annotation id `structure:<id>` and was discarded as a
+no-op even though the tap landed on a new point — `LabelLayer.setStructureLabel`
+now compares the anchor as well as the id. The selection was exempt from the
+label cap *and* excluded from the count it takes, so a pinned structure could
+put a fourth label on a three-label phone screen where the card promises
+three — it is exempt from eviction, not from the count, so a landmark still
+steps aside for it. And a selection made without a tap (the parts tree, the
+keyboard) kept the one candidate anchor the camera could see at that moment;
+rotating away from it could hide the label even with another candidate on the
+same structure still on screen — the annotation now offers a fresh candidate
+through `reanchor()`, tried only once the current one has already failed the
+occlusion test, never on a point that still holds. No claim in this card
+changed: what a selection is anchored to, and when it is shown, are unchanged
+in kind — only made to hold in the cases these three did not.
+
+**Revision 23 → 24 — an audit of revision 23 found three more, and one
+cost.** The candidate points a structure offers a label are computed once and
+kept for the life of the scene; `reanchor()` moved a label by writing into the
+very object it had been handed, so one swap overwrote the structure's
+best-ranked candidate for every later selection of it — the label now owns a
+copy. A tap's own point was exempt from re-anchoring altogether, so the one
+selection method most readers use was the one that could not recover once the
+model turned the point behind a neighbour — it is now preferred only while the
+camera can see it, tried again the moment it can be, and the ranked candidates
+stand in between. A pointer resting on the structure already selected produced
+a second label on the same point reading the same name (the hover), which now
+merges into the selection as a landmark already did. And a structure with
+nothing visible on it at all paid for a full candidate search every frame it
+stayed selected; the search now runs once per camera pose. No claim in this
+card changed.
+
+**Revision 24 → 25 (2026-09-17) — the four-round terminology review lands
+(PR #125).** This branch and the selection-label branch (PR #132, revisions
+20 → 24 above) diverged from revision 20 and each counted its own revisions;
+the review records cite the branch's numbers (revision 21 = `880eded`, 22 =
+`852b691`, 23 = `5205c6b`). Merged after #132, everything the branch recorded
+as 20 → 23 lands here as one step; its two later branch revisions (24 and 25)
+were ledger renumbering only (F-120…F-124 → F-139…F-143 in the notes) and
+carry nothing a reader sees. No geometry, id or mesh selection changed in any
+of the three parts below.
+
+**(a) Branch revision 20 → 21 (2026-09-16) — label, hierarchy and copy corrections.** Label, hierarchy and copy corrections driven
 by that check, all in `src/data/brainAnatomy.js`; no geometry, no ids and no
 mesh selection changed. `Base of peduncle` moves from the cerebellum to the
 brainstem/midbrain (Terminologia Anatomica's *basis pedunculi* is a midbrain
@@ -376,7 +440,7 @@ unchanged in natural-anatomy mode. Colour aids identification and grouping; it
 does not show real tissue colour, functional localisation, vascular territory,
 exact boundaries or positional accuracy (§6).
 
-**Revision 21 → 22 (2026-09-16).** Driven by the 2026-09-16 re-review of
+**(b) Branch revision 21 → 22 (2026-09-16) — the re-review's remaining findings.** Driven by the 2026-09-16 re-review of
 revision 21 (`880eded`, verdict revise, 8 unresolved/partial findings). No
 geometry, no atlas ids and no colour changed in this revision — every change
 is to copy, notes, a display-only breadcrumb override and per-view UI text.
@@ -441,7 +505,7 @@ is to copy, notes, a display-only breadcrumb override and per-view UI text.
   new `brainCopySource()` helper in `src/data/brainAnatomy.js`) and
   `has_note` columns.
 
-**Revision 22 → 23 (2026-09-17).** Driven by the third AI review (of
+**(c) Branch revision 22 → 23 (2026-09-17) — the third review's two findings.** Driven by the third AI review (of
 revision 22, `852b691`, verdict revise: 12 of 13 carried findings resolved,
 R2-27 partly, two new). No geometry, ids, colour or view text changed.
 
@@ -461,18 +525,6 @@ R2-27 partly, two new). No geometry, ids, colour or view text changed.
   submission claimed hidden-structure ids were recorded; they were not read
   from the runtime, so those fields are now `null` with the reason stated
   rather than filled in afterwards.
-
-**Revision 23 → 24 (2026-09-17).** Merge of `main` before the pull request.
-No label, hierarchy, copy, note, view text, geometry, id or colour changed;
-the digest moved only because the ledger numbers cited in `brainAnatomy.js`
-comments and notes were renumbered (F-120→F-139, F-121→F-140, F-122→F-141,
-F-123→F-142, F-124→F-143) after `main` had used the same numbers for other
-items.
-
-**Revision 24 → 25 (2026-09-17).** Merge of `main` after #127 landed. Nothing a
-reader sees changed; the digest moved because the ledger numbers cited in
-`brainAnatomy.js` notes moved once more (F-138…F-142 → F-139…F-143) after
-`main` took F-138 for the go-private decision.
 
 Sources in scope: `src/data/brainAnatomy.js`,
 `src/scenes/nervous/scenes/brainAnatomy/BrainAnatomyScene.js`,

@@ -185,6 +185,25 @@ Netlify の Production には Stripe の 4 変数（`STRIPE_SECRET_KEY`、価格
 - 完了の定義: 開く場合は `npm run billing:check` が 3 行とも ok。開かない場合は
   その決定を roadmap の Gate に書く。
 
+### F-146 `liver-anatomy` の `verify:anatomy` が「開始時と reset 後のフレーミングが異なる」で 1 件赤 — P2（2026-09-17）
+
+#132（脳の選択ラベル）の検証で 4 シーンを直列に走らせたところ、brain / heart /
+lung は 0 で、**liver だけが 1 problem** でした: 開いた直後のフレーミングと、
+`resetView()` 後のフレーミングが一致しない。#132 は liver 関連ファイルを
+触っておらず、main（`4b6cac8`）でも同じ結果なので、**この branch が入れた
+回帰ではありません**。原因は未調査で、公開中のシーンなので P2。
+
+- どう確かめるか: `npm run verify:anatomy -- --scene liver-anatomy` を
+  main で走らせ、problem の本文（2 つのカメラ姿勢）を記録する。次に
+  `getSubjectBounds()` が開始時と reset 後で同じ箱を返しているか、
+  同意カードを閉じた直後のフレーミング tween が止まる前に測っていないか
+  （CLAUDE.md「待つときは、時間ではなく状態を待つ」の実例）を切り分ける
+- 完了の定義: 原因が分かり、(a) 検証側が tween の途中を測っていたなら
+  `check-anatomy-interaction.mjs` を pose が止まるまで待たせる、(b) シーン側の
+  reset が開始時と別の箱を見ているなら liver の `getSubjectBounds()` を直す。
+  どちらでも `verify:anatomy -- --scene liver-anatomy` が 0 で、
+  他 3 シーンが 0 のまま
+
 ---
 
 ## B. 医学レビュー・モデルの判断
