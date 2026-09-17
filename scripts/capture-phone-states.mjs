@@ -29,6 +29,8 @@
  *   --width <px>    viewport width (default: 390 — iPhone 13)
  *   --height <px>   viewport height (default: 844)
  *   --lang <en|ja>  interface language (default: ja)
+ *   --preview       unlock scenes the release has not opened (needs a build
+ *                   made with VITE_ALLOW_PREVIEW=1)
  *   --headed        show the browser
  */
 import { mkdirSync } from 'node:fs';
@@ -92,7 +94,14 @@ const settle = async (ms = 1200) => {
 };
 
 console.log(`${width}x${height} — ${scene}`);
-await page.goto(`${server.base}#/${scene}`, { waitUntil: 'load' });
+// A scene the release has not opened is not in a production build, so the route
+// answers with the "to be updated" page and every shot below is of that page.
+// `--preview` unlocks a build made with `VITE_ALLOW_PREVIEW=1`, the same way
+// `verify:anatomy` does — which is what makes this usable for the scenes a
+// device pass most needs pictures of: the ones not published yet.
+await page.goto(flag('--preview') ? `${server.base}?preview=1#/${scene}` : `${server.base}#/${scene}`, {
+  waitUntil: 'load',
+});
 await page.waitForTimeout(4000);
 await page.evaluate((lang) => {
   const ui = document.getElementById('ui');
