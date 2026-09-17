@@ -99,9 +99,8 @@ for (const row of meshRows) {
   }
   byLabel.get(row.rawLabel).sides.add(row.sideJa);
 }
-const uniqueRows = [...byLabel.values()].sort((a, b) =>
-  (a.row.cat + a.row.region + a.row.atlasName).localeCompare(b.row.cat + b.row.region + b.row.atlasName)
-);
+const sortKey = ({ row }) => [row.cat, row.region, row.atlasName].join('\u0000');
+const uniqueRows = [...byLabel.values()].sort((a, b) => sortKey(a).localeCompare(sortKey(b)));
 
 let labelsMd = '# brain-anatomy — 選択可能ラベル一覧（生成物・手編集禁止）\n\n';
 labelsMd +=
