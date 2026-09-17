@@ -2,7 +2,15 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 
-import { auditLessons, auditLedgerFile, guardKind, parseLessons, HUMAN_ONLY } from '../scripts/lib/lessons.mjs';
+import {
+  auditLessons,
+  auditLedgerFile,
+  COVERAGE,
+  coverageOf,
+  guardKind,
+  parseLessons,
+  HUMAN_ONLY,
+} from '../scripts/lib/lessons.mjs';
 
 const read = (path) => readFileSync(new URL(`../${path}`, import.meta.url), 'utf8');
 
@@ -25,6 +33,30 @@ test('the ledger is well-formed and every guard it names still exists', () => {
   // above it, which is L-01 — the lesson this file exists to not repeat.
   assert.ok(lessons.length >= 32, `only ${lessons.length} lesson(s) parsed`);
   assert.ok(humanOnly.length > 0, 'a ledger where everything is mechanically caught is not being honest');
+});
+
+test('a lesson that is half-covered still needs a person, and says so', () => {
+  // The way this ledger's own number went down for free. A lesson that names a
+  // guard *and* says 人だけ is claiming both — L-16 does exactly that: a
+  // duplicate lesson number is caught by `npm run lessons`, and a duplicate F
+  // number is caught by nobody. Read as covered, it left the tally without
+  // anything having been built, and four lessons had already slipped out that
+  // way. `partly` is counted with `human`, because half of it still is.
+  assert.equal(coverageOf('**人だけ**。', []), COVERAGE.human);
+  assert.equal(coverageOf('`scripts/lessons.mjs` — 重複を落とします。', []), COVERAGE.guarded);
+  assert.equal(coverageOf('`scripts/lessons.mjs` が半分。残りは **人だけ**。', ['scripts/lessons.mjs']), COVERAGE.partly);
+
+  const half = [
+    '### L-90 half of it is caught',
+    '',
+    '- **症状**: one half goes red, the other never does.',
+    '- **どう見つかったか**: review.',
+    '- **いま何が捕まえるか**: `scripts/lessons.mjs` for one half; the other is **人だけ**.',
+    '',
+  ].join('\n');
+  const { problems, humanOnly } = auditLessons({ markdown: half, exists: () => true });
+  assert.deepEqual(problems, [], 'naming a guard and a gap is a legal thing to say');
+  assert.deepEqual(humanOnly, ['L-90 half of it is caught (partly)'], 'it has to stay in the count');
 });
 
 test('a guard that left the repository fails the ledger', () => {
