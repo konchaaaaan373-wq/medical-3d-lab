@@ -332,6 +332,9 @@ hover と `:focus-visible` が光らせます。
 - **済: 他エンジン。** `final-browser-validation.yml` を 3 エンジンで実行済みで、
   この往復検査は Chromium / Firefox / WebKit のどれでも問題を出していません
   （当時 WebKit だけ赤だった 1 件は別件で、**F-137** として解決しました。Resolved 参照）。
+  **下の 4 経路まで広げたガードでも 3 エンジンを回し直しています**——前回の 3 エンジン緑は
+  `touchstart` 1 本だけのガードに対する緑で、広げた版に対する緑ではありませんでした
+  （この取り違えが L-44 の一般形そのものです）。
 - **半分は機械が見るようになりました: 戻り道の配線。** `hideUiRoundTrip()` は
   `pointermove` を実際のマウスで動かし、残る 4 つ
   （`pointerdown` / `touchstart` / `wheel` / `keydown`）を 1 つずつ投げて
