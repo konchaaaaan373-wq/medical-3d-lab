@@ -153,6 +153,27 @@
   }
 }
 
+/*
+ * And the buttons keep the height this product asks for, rather than the one
+ * an engine happens to give them.
+ *
+ * With `nowrap` every button was stretched to the tallest in the single line,
+ * so they all came out at 36 and nobody had to say so. Allowing the row to
+ * wrap made that implicit: Chromium still renders 36, WebKit sizes several of
+ * them shorter, and the viewport report noticed — `button.btn.utility` joined
+ * the list of controls under the 32px the product states for scene chrome
+ * (`MEASURED_TARGET.intent.scene` in `src/app/viewports.js`), nine of them
+ * where there had been four. None were under the 24px floor, so nothing
+ * failed; it was simply a number this change moved.
+ *
+ * 32px is the figure already written down, so it is the one written here. The
+ * phone keeps its own 44 from `product-shell-b6.css`, which is stricter and
+ * wins below 430px.
+ */
+#ui[data-anatomy-shell='calm'] .console .button-row .btn {
+  min-height: 32px;
+}
+
 #ui[data-anatomy-shell='calm'] .console .disclaimer {
   max-width: 52ch;
   color: var(--ink-dim);
