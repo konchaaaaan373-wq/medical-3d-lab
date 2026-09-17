@@ -3,7 +3,12 @@
  * Drives disease scenes through baseline → disease → reset, in a real browser.
  *
  *   VITE_ALLOW_PREVIEW=1 npm run build
- *   npm run verify:disease -- copd asthma pulmonary-edema
+ *   npm run verify:disease -- disease-shots copd asthma pulmonary-edema
+ *
+ * The first argument is the screenshot directory, and it is not optional in
+ * practice: the line above used to start at `copd`, which made `copd` the
+ * output directory and drove the other two. A run that silently covers one
+ * scene fewer than it was asked for reads exactly like a run that passed.
  *
  * ## What it checks, and why it is a script
  *
