@@ -71,8 +71,9 @@ of the five (see `STRUCTURE_NOTE` fix below).
 itself contains only one cytoarchitectonic nucleus at that id — only that the
 generator script pulled one numbered id for that side, not several.
 
-Mamillary body is a classically named individual nucleus and is **not** one
-of these five Neudorfer-sourced parcels.
+Mamillary body is a separately named gross-anatomical structure (it contains
+the medial and lateral mamillary nuclei, so it is not itself a single nucleus)
+and is **not** one of these five Neudorfer-sourced parcels.
 
 ## 4. Thalamus — Najdenovska 7-parcel volumes
 

@@ -12,11 +12,11 @@ at pictures. **No anatomist has judged this geometry or these labels.**
 
 | | |
 | --- | --- |
-| **Decided at** | 2026-09-16 (re-taken: findings from the 2026-09-16 re-review of revision 21) |
+| **Decided at** | 2026-09-17 (re-taken: R3-30/R3-31 from the third review of revision 22) |
 | **Decided by** | Claude Sonnet, acting as implementer |
 | **Role** | `engineering` — software behaviour, not anatomical or clinical judgement |
 | **Asset revision** | `brain-atlas-glb` @ `sha256:76a49ea4526a4880613aec7a02756bd7301b0b9d0680d7cae33e197b672c5453` |
-| **Scene revision** | model card revision **22**, source digest `ca071d10b89c3b31` |
+| **Scene revision** | model card revision **23**, source digest `a29b2a05faa3099f` |
 | **Scene sources under that digest** | [`src/data/brainAnatomy.js`](../../src/data/brainAnatomy.js), [`src/scenes/nervous/scenes/brainAnatomy/BrainAnatomyScene.js`](../../src/scenes/nervous/scenes/brainAnatomy/BrainAnatomyScene.js), [`src/scenes/shared/anatomy/tapGesture.js`](../../src/scenes/shared/anatomy/tapGesture.js) |
 
 The decision is pinned to **both** revisions in
@@ -217,6 +217,17 @@ remainder — no geometry, no atlas ids and no colour changed:
 - The label-export script's per-structure table is renamed "271 選択可能
   構造一覧" (`structures.md`, replacing the stale `meshes.md`) and gains
   `description_key`/`has_note` columns.
+
+**Revision 22 → 23.** The third AI review (of `852b691`, verdict revise)
+accepted the insula naming, the view notices and the colour record, and
+found one regression this record's previous revision introduced: the
+two-lobe breadcrumb meant for the paracentral *lobule* had also been applied
+to the lone paracentral *sulcus* (bx_id 307/308), which is the lobule's
+anterior boundary and a frontal-lobe sulcus. It is back under 前頭葉 ›
+大脳溝 with its own description; the lobule (261/262) keeps 前頭葉・頭頂葉. The
+provenance note calling the mamillary body a single nucleus is corrected.
+Nothing drawn, selectable, coloured or announced in a view changed, but what
+the panel says about two structures did, so this record is taken again.
 
 Each time the gate closed and the production build stopped shipping the scene
 until this record was taken again — the mechanism working. An earlier decision

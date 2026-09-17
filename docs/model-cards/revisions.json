@@ -7,9 +7,9 @@
       "src/scenes/nervous/scenes/brainAnatomy/BrainAnatomyScene.js",
       "src/scenes/shared/anatomy/tapGesture.js"
     ],
-    "cardRevision": 22,
-    "modelDigest": "ca071d10b89c3b31",
-    "cardUpdatedAt": "2026-09-16"
+    "cardRevision": 23,
+    "modelDigest": "a29b2a05faa3099f",
+    "cardUpdatedAt": "2026-09-17"
   },
   {
     "sceneId": "heart-anatomy",

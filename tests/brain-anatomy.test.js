@@ -511,6 +511,17 @@ test('a display-only region override changes the breadcrumb but never the colour
   assert.equal(paracentral.regionJa, '前頭葉');
   assert.match(paracentral.noteJa, /前頭葉のみに分類/);
 
+  // The lone paracentral *sulcus* is a different structure: the anterior
+  // boundary of the lobule, a frontal-lobe sulcus. The lobule's two-lobe
+  // reading must not leak onto it (third review, R3-30).
+  const paracentralSulcus = brainStructureInfo({
+    bx_id: 307, bx_cat: 'cortex', bx_label: 'Paracentral sulcus',
+    bx_side: 'left', bx_region: 'Frontal lobe',
+  });
+  assert.deepEqual(paracentralSulcus.hierarchyJa, ['左大脳半球', '前頭葉', '大脳溝']);
+  assert.equal(paracentralSulcus.noteJa, null);
+  assert.match(paracentralSulcus.descriptionJa, /中心傍小葉の前方の境界/);
+
   const lateralOT = brainStructureInfo({
     bx_id: 169, bx_cat: 'cortex', bx_label: 'Lateral occipitotemporal gyrus',
     bx_side: 'left', bx_region: 'Temporal lobe',

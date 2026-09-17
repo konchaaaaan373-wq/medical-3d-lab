@@ -430,6 +430,27 @@ is to copy, notes, a display-only breadcrumb override and per-view UI text.
   new `brainCopySource()` helper in `src/data/brainAnatomy.js`) and
   `has_note` columns.
 
+**Revision 22 → 23 (2026-09-17).** Driven by the third AI review (of
+revision 22, `852b691`, verdict revise: 12 of 13 carried findings resolved,
+R2-27 partly, two new). No geometry, ids, colour or view text changed.
+
+- **R3-30 — the paracentral *sulcus* is no longer swept up by the lobule's
+  override.** Revision 22 applied the "frontal and parietal lobes" breadcrumb
+  and the lobule's note to the lone `Paracentral sulcus` label (bx_id
+  307/308) as well as to `Paracentral gyrus and sulcus` (261/262). The sulcus
+  is the anterior boundary of the lobule and a frontal-lobe sulcus, so it
+  returns to 前頭葉 › 大脳溝 with its own one-sentence description; the
+  lobule keeps the two-lobe breadcrumb. A regression test pins both.
+- **R3-31 — mamillary body wording.** The provenance record and a code
+  comment called the mamillary body "a classically named individual
+  nucleus"; it contains medial and lateral mamillary nuclei, so both now say
+  it is a separately named gross-anatomical structure that is not one of
+  the five Neudorfer-sourced parcels. Display name, id and mesh unchanged.
+- **R2-27 — capture records.** The evidence manifest sent with the third
+  submission claimed hidden-structure ids were recorded; they were not read
+  from the runtime, so those fields are now `null` with the reason stated
+  rather than filled in afterwards.
+
 Sources in scope: `src/data/brainAnatomy.js`,
 `src/scenes/nervous/scenes/brainAnatomy/BrainAnatomyScene.js`,
 `src/components/InspectionPanel.js`. `src/components/InspectionPanel.js` is

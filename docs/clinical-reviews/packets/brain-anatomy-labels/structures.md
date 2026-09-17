@@ -167,8 +167,8 @@
 | 258 | Orbital sulci (Lateral Orbital sulcus) | Orbital sulci (Lateral Orbital sulcus*).r | cortex | Frontal lobe | right | Z-Anatomy / BodyParts3D |  | 眼窩溝（外側眼窩溝） | 右大脳半球 › 前頭葉 › 大脳溝 | region | no |
 | 261 | Paracentral gyrus and sulcus | Paracentral gyrus and sulcus*.l | cortex | Frontal lobe | left | Z-Anatomy / BodyParts3D |  | 中心傍小葉・中心傍溝 | 左大脳半球 › 前頭葉・頭頂葉 › 大脳回・大脳溝 | structure | yes |
 | 262 | Paracentral gyrus and sulcus | Paracentral gyrus and sulcus*.r | cortex | Frontal lobe | right | Z-Anatomy / BodyParts3D |  | 中心傍小葉・中心傍溝 | 右大脳半球 › 前頭葉・頭頂葉 › 大脳回・大脳溝 | structure | yes |
-| 307 | Paracentral sulcus | Paracentral sulcus.l | cortex | Frontal lobe | left | Z-Anatomy / BodyParts3D |  | 中心傍溝 | 左大脳半球 › 前頭葉・頭頂葉 › 大脳溝 | region | yes |
-| 308 | Paracentral sulcus | Paracentral sulcus.r | cortex | Frontal lobe | right | Z-Anatomy / BodyParts3D |  | 中心傍溝 | 右大脳半球 › 前頭葉・頭頂葉 › 大脳溝 | region | yes |
+| 307 | Paracentral sulcus | Paracentral sulcus.l | cortex | Frontal lobe | left | Z-Anatomy / BodyParts3D |  | 中心傍溝 | 左大脳半球 › 前頭葉 › 大脳溝 | structure | no |
+| 308 | Paracentral sulcus | Paracentral sulcus.r | cortex | Frontal lobe | right | Z-Anatomy / BodyParts3D |  | 中心傍溝 | 右大脳半球 › 前頭葉 › 大脳溝 | structure | no |
 | 309 | Parieto-occipital sulcus | Parieto-occipital sulcus.l | cortex | Telencephalon | left | Z-Anatomy / BodyParts3D |  | 頭頂後頭溝 | 左大脳半球 › 終脳 › 大脳溝 | default | no |
 | 310 | Parieto-occipital sulcus | Parieto-occipital sulcus.r | cortex | Telencephalon | right | Z-Anatomy / BodyParts3D |  | 頭頂後頭溝 | 右大脳半球 › 終脳 › 大脳溝 | default | no |
 | 265 | Peduncle of flocculus | Peduncle of flocculus.l | cerebellum | Cerebellum | left | Z-Anatomy / BodyParts3D |  | 片葉脚 | 左小脳半球 › 小脳 › 小脳脚 | category | no |

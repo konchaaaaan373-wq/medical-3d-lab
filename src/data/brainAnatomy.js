@@ -166,10 +166,10 @@ const LABEL_PLACEMENT = {
   // The paracentral lobule straddles the central sulcus and spans a
   // frontal-lobe part and a parietal-lobe part (see STRUCTURE_COPY above).
   // The upstream navigation region for both meshes is 前頭葉 (Frontal lobe).
+  // The lone 'Paracentral sulcus' label is *not* overridden: the sulcus is
+  // the anterior boundary of the lobule and belongs to the frontal lobe (2026-09-16
+  // third review, R3-30).
   'Paracentral gyrus and sulcus': {
-    regionNames: ['Frontal and parietal lobes', '前頭葉・頭頂葉'],
-  },
-  'Paracentral sulcus': {
     regionNames: ['Frontal and parietal lobes', '前頭葉・頭頂葉'],
   },
   // These two atlas parcels span the temporal and occipital lobes (see
@@ -391,8 +391,8 @@ const HYPOTHALAMUS_LABELS = new Set([
 
 /**
  * 5 of the 6 hypothalamic labels above are sourced from Neudorfer et al.
- * (2020); Mamillary body is a classically named individual nucleus, not one
- * of the 5. Of those 5, only Anterior (6 source labels/side) and Tuberal (4
+ * (2020); Mamillary body is a separately named gross-anatomical structure
+ * (it contains medial and lateral mamillary nuclei) and is not one of the 5. Of those 5, only Anterior (6 source labels/side) and Tuberal (4
  * source labels/side) are actually combined parcels — Preoptic, Lateral and
  * Posterior are each a single source label per side. See
  * docs/asset-provenance/brain-merged-parcels.md and the individual
@@ -445,10 +445,6 @@ const STRUCTURE_NOTE = {
     '元データでは左右を分けない 1 つのメッシュとして収録。正中の表示はデータ上の格納単位で、解剖学的な正中構造であることを保証しない。'
   ),
   'Paracentral gyrus and sulcus': copy(
-    'Shown here under both the frontal and parietal lobes because the paracentral lobule spans a part of each. The atlas\'s own upstream navigation files this mesh under the frontal lobe alone.',
-    '中心傍小葉は前頭葉側と頭頂葉側の両方にまたがるため、ここでは前頭葉・頭頂葉の両方の下に表示しています。元アトラスの上流ナビゲーション区分では前頭葉のみに分類されています。'
-  ),
-  'Paracentral sulcus': copy(
     'Shown here under both the frontal and parietal lobes because the paracentral lobule spans a part of each. The atlas\'s own upstream navigation files this mesh under the frontal lobe alone.',
     '中心傍小葉は前頭葉側と頭頂葉側の両方にまたがるため、ここでは前頭葉・頭頂葉の両方の下に表示しています。元アトラスの上流ナビゲーション区分では前頭葉のみに分類されています。'
   ),
@@ -612,6 +608,10 @@ const STRUCTURE_COPY = {
   'Aqueduct of midbrain': copy(
     'A narrow cerebrospinal-fluid channel within the midbrain, connecting the third and fourth ventricles.',
     '第三脳室と第四脳室をつなぐ、中脳内の細い脳脊髄液の通路です。'
+  ),
+  'Paracentral sulcus': copy(
+    'A sulcus on the medial surface of the cerebral hemisphere that marks the anterior boundary of the paracentral lobule.',
+    '大脳半球内側面で、中心傍小葉の前方の境界をなす脳溝です。'
   ),
   'Paracentral gyrus and sulcus': copy(
     'An atlas parcel corresponding to the region straddling the central sulcus on the medial hemisphere surface, together with the paracentral sulcus anterior to it. The paracentral lobule spans a frontal-lobe part and a parietal-lobe part.',

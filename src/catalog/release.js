@@ -241,14 +241,14 @@ export const DECISION_ROLES = Object.freeze(['engineering', 'anatomy-expert', 'c
 export const BETA_PUBLICATION_DECISIONS = Object.freeze([
   Object.freeze({
     sceneId: 'brain-anatomy',
-    decidedAt: '2026-09-16',
+    decidedAt: '2026-09-17',
     /** Who, and in what capacity. A role is a claim, and it is checked. */
     decidedBy: Object.freeze({ name: 'Claude Sonnet, acting as implementer', role: 'engineering' }),
     record: 'docs/beta-publication/brain-anatomy.md',
     assetRevisions: Object.freeze({
       'brain-atlas-glb': '76a49ea4526a4880613aec7a02756bd7301b0b9d0680d7cae33e197b672c5453',
     }),
-    sceneRevision: Object.freeze({ cardRevision: 22, modelDigest: 'ca071d10b89c3b31' }),
+    sceneRevision: Object.freeze({ cardRevision: 23, modelDigest: 'a29b2a05faa3099f' }),
     /** What was actually exercised. Not a plan — a list of what was done. */
     scope: Object.freeze({
       structures: Object.freeze([
