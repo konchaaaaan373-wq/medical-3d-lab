@@ -55,6 +55,7 @@ import { createServer } from 'node:http';
 import { extname, join, normalize, resolve, sep } from 'node:path';
 
 import { chromiumExecutable } from './lib/browser.mjs';
+import { slugifyChoice } from './lib/inspection.mjs';
 
 const argv = process.argv.slice(2);
 const flag = (name) => argv.includes(name);
@@ -67,20 +68,34 @@ const values = (name) =>
 
 const distDir = value('--dist', 'dist');
 const jsonOut = value('--json');
-const layer = value('--layer') === null ? null : Number(value('--layer'));
-const onlyView = value('--view');
-const posed = layer !== null || onlyView !== null;
 
 const die = (message) => {
   console.error(message);
   process.exit(1);
 };
 
+/**
+ * A flag with no value is a mistake, not an absence.
+ *
+ * `value()` answers `null` both for "not given" and for "given as the last
+ * token on the line", and the two mean opposite things here: the second would
+ * leave `posed` false, measure the state the scene opens in, and print a
+ * pasteable table — while the operator believes they posed it. That is L-39
+ * one layer up: a filter that matched nothing, accepted as an empty set.
+ */
+const valueOf = (name) => {
+  if (!argv.includes(name)) return null;
+  const given = value(name);
+  if (given === null) die(`${name} needs a value — nothing follows it`);
+  return given;
+};
+
+const layer = valueOf('--layer') === null ? null : Number(valueOf('--layer'));
+const onlyView = valueOf('--view');
+const posed = layer !== null || onlyView !== null;
+
 if (!existsSync(join(distDir, 'index.html'))) die(`No build at "${distDir}" — run \`npm run build\` first.`);
 if (layer !== null && !(layer >= 0 && layer <= 1)) die('--layer takes a number between 0 and 1');
-
-/** The same slug the viewpoint buttons are named by in `capture-anatomy-views.mjs`. */
-const slugify = (text) => text.trim().split('\n')[0].toLowerCase().replace(/[^a-z]+/g, '-').replace(/^-|-$/g, '');
 
 /** The scenes the check knows about, read from the check rather than repeated. */
 function knownScenes() {
@@ -164,10 +179,27 @@ const STEP = DENSE ? { x: 0.0375, y: 0.0475 } : { x: 0.075, y: 0.095 };
 const MARGIN = 0.006;
 /** How far apart two kept points have to be to be two tests. */
 const APART = 0.1;
+/**
+ * The rectangle the grid actually covers, in fractions of the canvas.
+ *
+ * Derived rather than restated, so it cannot drift from `FIRST` and `STEP`.
+ * It is about a third of the canvas and it sits left of and above centre —
+ * which is the whole reason `reached` is reported with it. A count read as
+ * "of the canvas" when it is "of this rectangle" is the mistake L-38 is about,
+ * made once more.
+ */
+const SWEPT = {
+  x0: Number(FIRST.x.toFixed(3)),
+  x1: Number((FIRST.x + (COLUMNS - 1) * STEP.x).toFixed(3)),
+  y0: Number(FIRST.y.toFixed(3)),
+  y1: Number((FIRST.y + (ROWS - 1) * STEP.y).toFixed(3)),
+};
 const EMPTY = 'Select a structure on the model or in the list.';
 
 const browser = await chromium.launch({ executablePath: chromiumExecutable(chromium), headless: !flag('--headed') });
 const measured = {};
+/** Whether `--layer` / `--view` ever landed. A run where it never did is an input error. */
+let posedSomewhere = false;
 
 for (const slug of scenes) {
   const page = await browser.newPage({ viewport: { width: 1280, height: 800 } });
@@ -198,21 +230,29 @@ for (const slug of scenes) {
      * rule `--recipe` has always had in `capture-anatomy-views.mjs`, and the
      * one `--view` there lacked until a kidney comparison came back as two
      * empty directories and an exit code of 0.
+     *
+     * "Nothing" is measured over the *run*, not over each scene, which is why
+     * these throw rather than exit. The default scope is every scene in
+     * `SCENE_POINTS`, and a viewpoint named after one organ is not offered by
+     * the other thirty-eight: exiting on the first of them would discard every
+     * measurement taken so far and never reach the `--json` write at the end.
+     * A scene that cannot be posed is recorded as this scene's failure; a run
+     * where *no* scene could be posed dies after the results are written.
      */
     if (posed) {
       await page.locator('#anatomy-tab-display').click({ noWaitAfter: true });
       await page.waitForTimeout(400);
       if (onlyView !== null) {
         const labels = await page.locator('.inspection-choice.inspection-view').allTextContents();
-        const offered = labels.map(slugify);
+        const offered = labels.map(slugifyChoice);
         const at = offered.indexOf(onlyView);
-        if (at < 0) die(`${slug}: no viewpoint "${onlyView}" (it has: ${offered.join(', ') || 'none'})`);
+        if (at < 0) throw new Error(`no viewpoint "${onlyView}" (it has: ${offered.join(', ') || 'none'})`);
         await page.locator('.inspection-choice.inspection-view').nth(at).click({ noWaitAfter: true });
         await page.waitForTimeout(600);
       }
       if (layer !== null) {
         const slider = page.locator('.console .slider, .slider').first();
-        if (!(await slider.count())) die(`${slug}: offers no anatomical-layer slider to set`);
+        if (!(await slider.count())) throw new Error('offers no anatomical-layer slider to set');
         await slider.evaluate((element, fraction) => {
           const max = Number(element.max || 1);
           element.value = String(Math.round(fraction * max));
@@ -222,6 +262,7 @@ for (const slug of scenes) {
       }
       // Off the controls, so nothing is hovered when the sweep starts.
       await page.mouse.move(4, 4);
+      posedSomewhere = true;
     }
 
     const box = await page.locator('canvas').first().boundingBox();
@@ -307,15 +348,36 @@ for (const slug of scenes) {
      * never be the answer to a click. A pointer sweep cannot make either
      * mistake, because it asks the product what is under a real pixel.
      *
-     * It is a floor, not a total: the grid is the middle of the canvas and a
-     * structure narrower than the step can sit between two samples. Say "at
-     * least", never "all".
+     * **It is a floor, and a floor over part of the frame.** Two things put
+     * structures outside it, and neither of them means "not reachable":
+     *
+     *  1. a structure narrower than the step (about 48 x 38 px dense, on a
+     *     1280x800 canvas) can sit between two samples;
+     *  2. the grid is **not** the canvas and is **not** centred on it. It runs
+     *     x 0.14 -> 0.74 and y 0.18 -> 0.75 (`SWEPT`, derived above), so the right
+     *     quarter and the bottom quarter of the canvas are never touched. A
+     *     structure drawn there is on screen and clickable and will still
+     *     never appear in `hits`.
+     *
+     * So: say "at least N, over the swept rectangle", never "all", and never
+     * "it is off-frame" — this cannot tell off-frame from outside the sweep.
+     * The kidney's bladder hangs below its kidneys, which is exactly the band
+     * (2) drops, and reading its absence here as "out of frame" would be the
+     * third wrong way to count the same thing (L-38).
      */
     const reached = new Set(hits.map((hit) => hit.name));
-    measured[slug] = { hits, chosen, reached: [...reached].sort(), state: { layer, view: onlyView } };
+    measured[slug] = {
+      hits,
+      chosen,
+      reached: [...reached].sort(),
+      state: { layer, view: onlyView },
+      // Carried with the measurement, because `reached` means nothing without it.
+      swept: SWEPT,
+    };
     const short = chosen.length === 4 ? '' : `  ← only ${chosen.length} of 4`;
     console.error(
-      `${slug}: ${hits.length}/${COLUMNS * ROWS} hit, ${reached.size} structure(s) reached, ${chosen.length} kept${short}`
+      `${slug}: ${hits.length}/${COLUMNS * ROWS} hit, ${reached.size} structure(s) reached` +
+        ` in x ${SWEPT.x0}–${SWEPT.x1} / y ${SWEPT.y0}–${SWEPT.y1} of the canvas, ${chosen.length} kept${short}`
     );
   } catch (error) {
     measured[slug] = { error: String(error).split('\n')[0] };
@@ -343,21 +405,35 @@ if (posed) {
     `\nNo table: --layer / --view measured a posed state, and \`SCENE_POINTS\` is clicked in the\n` +
       'state the scene opens in. Re-run without them to produce rows to paste.'
   );
-}
-for (const slug of posed ? [] : scenes) {
-  const entry = measured[slug];
-  if (!entry?.chosen?.length) continue;
-  const points = entry.chosen.map((point) => `[${point.fx}, ${point.fy}, ${quoted(point.name)}]`);
-  console.log(`  '${slug}': [\n    ${points.join(',\n    ')},\n  ],`);
+} else {
+  for (const slug of scenes) {
+    const entry = measured[slug];
+    if (!entry?.chosen?.length) continue;
+    const points = entry.chosen.map((point) => `[${point.fx}, ${point.fy}, ${quoted(point.name)}]`);
+    console.log(`  '${slug}': [\n    ${points.join(',\n    ')},\n  ],`);
+  }
 }
 
 if (jsonOut) writeFileSync(jsonOut, `${JSON.stringify(measured, null, 1)}\n`);
 
-const short = scenes.filter((slug) => (measured[slug]?.chosen?.length ?? 0) < 4);
+// Only for a run that is building the table. A posed run has just said it is
+// withholding it, and telling the operator in the next breath to "place the
+// rest by hand" is advice about a table that will not be printed.
+const short = posed ? [] : scenes.filter((slug) => (measured[slug]?.chosen?.length ?? 0) < 4);
 if (short.length) {
   console.error(
     `\n${short.length} scene(s) gave fewer than four points: ${short.join(', ')}.\n` +
       'A scene drawn as a thin network can be genuinely hard to hit — read the hits in --json and ' +
       'place the rest by hand rather than loosening what counts as inside.'
+  );
+}
+
+// A filter that matched nothing anywhere is an input error, not an empty set
+// (L-39) — said here, after the results are written, rather than on the first
+// scene that did not offer it.
+if (posed && !posedSomewhere) {
+  die(
+    `\nNothing was posed: no scene in this run offered ${onlyView !== null ? `the viewpoint "${onlyView}"` : 'a layer slider'}.\n` +
+      'Name the scene it belongs to with --scene.'
   );
 }

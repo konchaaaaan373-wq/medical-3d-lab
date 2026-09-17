@@ -46,6 +46,7 @@ import { join } from 'node:path';
 
 import { chromiumExecutable } from './lib/browser.mjs';
 import { differingPixels, settledPixels } from './lib/frames.mjs';
+import { slugifyChoice } from './lib/inspection.mjs';
 import { serveDist } from './lib/serve-dist.mjs';
 import { DEV_ASSET_ROOT } from '../src/catalog/devAssets.js';
 
@@ -115,8 +116,6 @@ const browser = await chromium.launch({
 const page = await browser.newPage({ viewport: { width, height } });
 page.on('pageerror', (error) => console.error(`uncaught error: ${error}`));
 
-const slug = (text) => text.trim().split('\n')[0].toLowerCase().replace(/[^a-z]+/g, '-').replace(/^-|-$/g, '');
-
 try {
   const url = flag('--preview') ? `${base}?preview=1#/${sceneSlug}` : `${base}#/${sceneSlug}`;
   await page.goto(url, { waitUntil: 'networkidle' });
@@ -146,8 +145,8 @@ try {
     await page.waitForTimeout(300);
   }
 
-  const views = (await page.locator('.inspection-choice.inspection-view').allTextContents()).map(slug);
-  const modes = (await page.locator('.inspection-choice.inspection-mode').allTextContents()).map(slug);
+  const views = (await page.locator('.inspection-choice.inspection-view').allTextContents()).map(slugifyChoice);
+  const modes = (await page.locator('.inspection-choice.inspection-mode').allTextContents()).map(slugifyChoice);
   if (!views.length || !modes.length) die('the scene offered no viewpoints or no colour modes');
 
   /**
