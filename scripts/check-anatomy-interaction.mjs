@@ -1398,6 +1398,17 @@ try {
   //     panel — and that label obeys the same occlusion rule as the authored
   //     ones, so turning away from the structure takes it with it while the
   //     card goes on naming it.
+  //
+  //     **This used to be a note, never a failure** (L-39): the scene *did*
+  //     answer "no label here", correctly, and the line below turned that
+  //     correct answer into a comment instead of a red run — so a selection
+  //     could go unlabelled on every angle, forever, without this ever
+  //     saying so. It is asserted now for the scenes whose scene class
+  //     actually implements `getStructureAnnotation` (a selection gets an
+  //     anchor of its own, on the same terms `docs/model-cards/brain-anatomy.md`
+  //     describes); the rest share `OrganAnatomyScene`, which does not yet,
+  //     and that is a real, separate gap — reported, not silently passed.
+  const SCENES_WITH_STRUCTURE_LABELS = new Set(['brain-anatomy', 'heart-anatomy']);
   const labelTexts = () =>
     page.evaluate(() =>
       [...document.querySelectorAll('.label3d')]
@@ -1424,13 +1435,24 @@ try {
   if (labelled.length > 6) {
     problems.push(`${labelled.length} labels are on screen at once; the cap is 6`);
   }
-  if (pinnedForLabel && !labelled.includes(pinnedForLabel)) {
-    // Not every anchor can be seen from every angle — a fold's outward point can
-    // sit behind the gyrus beside it, which is F-40 — so this is reported with
-    // the structure named rather than asserted blindly.
+  if (pinnedForLabel && !labelled.includes(pinnedForLabel) && SCENES_WITH_STRUCTURE_LABELS.has(sceneSlug)) {
+    // A selection is exempt from the label cap and, since L-39, is not held
+    // to the single fixed anchor a landmark is (`_visibleAnchorFor` in
+    // `BrainAnatomyScene.js` / `HeartAnatomyScene.js`): it must be labelled
+    // whenever its structure is drawn. A miss here is a real regression, not
+    // an angle the anchor cannot help — see F-40, L-39.
+    problems.push(
+      `the pinned structure "${pinnedForLabel}" has no label on the model from this angle — ` +
+        'a selection must be labelled whenever its structure is drawn (F-40, L-39).'
+    );
+  } else if (pinnedForLabel && !labelled.includes(pinnedForLabel)) {
+    // `${sceneSlug}` shares `OrganAnatomyScene`, which does not implement
+    // `getStructureAnnotation` yet — no scene here has ever put a selection's
+    // name on the model, on any angle, so this is a known, larger gap rather
+    // than the per-angle occlusion L-39 is about. Noted, not failed.
     notes.push(
-      `the pinned structure "${pinnedForLabel}" has no label on the model from this angle ` +
-        '(F-40: one anchor point decides for the whole structure).'
+      `"${pinnedForLabel}" has no on-model selection label — ${sceneSlug} does not implement ` +
+        'getStructureAnnotation yet (see brain-anatomy / heart-anatomy for the pattern).'
     );
   } else if (pinnedForLabel) {
     // It is there. Now turn to the other side: it must go, and the card must not.

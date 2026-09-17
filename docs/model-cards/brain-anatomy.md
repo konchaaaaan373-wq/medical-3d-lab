@@ -199,7 +199,11 @@ beyond "this is on the outside of this mesh", and never moved to suit the
 screen. It is not enough for a sulcus: the surface of a fold lies under the
 gyri on either side of it, so the central sulcus's label is absent from the
 lateral view rather than misplaced on it. That is recorded as F-40 with what
-was tried, not papered over.
+was tried, not papered over — and it still applies to the four **authored**
+landmarks, whose anchor is fixed at load, before any camera exists to ask.
+**The reader's own selection is held to a stricter rule than that**, because a
+label with nothing under it is worse exactly when the reader just asked for
+one: see below.
 
 **A structure can be found by name.** The scene publishes its inventory — one
 record per structure, both names, its side and the hierarchy above it — and the
@@ -258,21 +262,34 @@ by colour, and answers `V` on a focused branch. **A group is not a structure**:
 pressing it changes what is drawn and never what is named, and the selection,
 the search index and the labels go on referring to structures only.
 
-**The structure a reader picks is named on the model, not only in the panel.**
-The selection and the hover get a label on the same terms as the four authored
-landmarks: the structure's own names, an anchor on its own outside, and the same
-occlusion test, so a label disappears when its structure does rather than
-floating over whatever is in front. When more labels apply than a frame can
-carry — six on a wide screen, three on a narrow one — the ones that give way are
-the ones the reader did not ask for: selection outranks hover, hover outranks
-the landmarks, and nothing is stacked into a spare corner to make it fit.
-Appearing is immediate; disappearing waits a moment, so a label does not blink
-along an occlusion edge as the model turns. **That wait is for occlusion and for
-nothing else**: a structure the settings are not drawing — hidden by the reader,
-isolated away — is not an edge flickering, it is a thing that is not there, and
-its label goes on the same frame. A name left over it for even a moment is a
-name over whatever is behind it. Hiding a label never changes what the panel
-says is pinned.
+**The structure a reader picks is named on the model, not only in the panel —
+and it is named whenever the structure is drawn, not only when the camera
+happens to be looking at the one point a fixed anchor would use.** A tapped
+structure's label sits on the exact point the tap hit, which is on the visible
+surface by construction: the ray that selected the structure stopped there. A
+selection made any other way — the keyboard, a guided tour, a test calling
+`selectStructure` — has no such point, so several of the structure's own
+outward vertices are ranked and tried against the live camera, and the first
+one that camera can actually see is used. Only a structure with **no** visible
+point at all — the far side of a medial view, say — goes unlabelled, which is
+the case a label should disappear for. This is stricter than the rule the four
+authored landmarks still use (F-40): their anchor is one point, fixed at load,
+before any camera exists to ask, and a fold can still hide it. A selection is
+the one label the reader asked for, so it is also **exempt from the on-screen
+cap** — six labels on a wide screen, three on a narrow one — where the
+landmarks are what step back to make room. And because a landmark reads as a
+pick when nothing is picked, its chip is visibly muted; when a selection pins
+the very structure a landmark names, the landmark steps aside rather than
+showing the same name twice. Hover keeps the landmarks' terms: an anchor on
+the structure's own outside and the same occlusion test, so its label
+disappears when its structure does rather than floating over whatever is in
+front. Appearing is immediate; disappearing waits a moment, so a label does not
+blink along an occlusion edge as the model turns. **That wait is for occlusion
+and for nothing else**: a structure the settings are not drawing — hidden by
+the reader, isolated away — is not an edge flickering, it is a thing that is
+not there, and its label goes on the same frame. A name left over it for even
+a moment is a name over whatever is behind it. Hiding a label never changes
+what the panel says is pinned.
 
 **Searching answers with every match.** The count is the number that matched,
 not the number drawn, and there is no quiet cap that would leave the rest

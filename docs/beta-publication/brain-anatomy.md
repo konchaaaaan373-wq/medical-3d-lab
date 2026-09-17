@@ -12,11 +12,11 @@ at pictures. **No anatomist has judged this geometry or these labels.**
 
 | | |
 | --- | --- |
-| **Decided at** | 2026-09-15 (re-taken twice: a branch of the tree gained a way to be hidden whole, and then what a hide announces was corrected) |
-| **Decided by** | Claude Opus 5, acting as B3-1 implementer |
+| **Decided at** | 2026-09-17 (re-taken three times: a branch of the tree gained a way to be hidden whole, what a hide announces was corrected, then a selected structure's label was made to survive its own anchor being occluded) |
+| **Decided by** | Claude Sonnet 5, fixing the selection-label bug reported against 4b6cac8 |
 | **Role** | `engineering` — software behaviour, not anatomical or clinical judgement |
 | **Asset revision** | `brain-atlas-glb` @ `sha256:76a49ea4526a4880613aec7a02756bd7301b0b9d0680d7cae33e197b672c5453` |
-| **Scene revision** | model card revision **20**, source digest `2ab8c472db1731bc` |
+| **Scene revision** | model card revision **22**, source digest `19744380a86b23fe` |
 | **Scene sources under that digest** | [`src/data/brainAnatomy.js`](../../src/data/brainAnatomy.js), [`src/scenes/nervous/scenes/brainAnatomy/BrainAnatomyScene.js`](../../src/scenes/nervous/scenes/brainAnatomy/BrainAnatomyScene.js), [`src/scenes/shared/anatomy/tapGesture.js`](../../src/scenes/shared/anatomy/tapGesture.js) |
 
 The decision is pinned to **both** revisions in
@@ -145,6 +145,30 @@ a control that says it undoes the reveal. Both are now one place:
 `_visibilityChanged()` applies the pass, announces the hidden set, announces an
 isolation it ended, and throws the stale snapshot away.
 `tests/brain-anatomy.test.js` fails on the old behaviour for both.
+
+**Revision 20 → 22.** A reader who tapped a cortical structure on a phone
+could see the panel name it while the model itself went on showing only the
+authored landmark that happened to be in view (中側頭回) — the selected
+structure's label had gone missing. Root cause: the selection label used the
+same fixed anchor a landmark uses — one outward vertex, chosen once at load,
+independent of the camera — and for a sulcus that vertex can sit behind the
+gyri folded over it (F-40); it was already known to fail for the central
+sulcus and had simply not been observed for a selection before. Fixed by
+giving a selection its own anchor: the exact point a tap hit (visible by
+construction, since the same ray selected the structure), or, for a selection
+made without a pick point, the first of several ranked candidate points the
+live camera can actually see. A selection is also now exempt from the
+on-screen label cap, and an authored landmark is drawn visibly muted and
+steps aside when a selection pins the structure it names, so a landmark no
+longer reads as an answer to "what did I just tap" — see
+[`docs/verification-lessons.md`](../verification-lessons.md) L-39.
+`npm run verify:anatomy` now asserts, after a selection, that a label for the
+selected structure is on screen and reads what the panel reads; it did not
+before, which is why this shipped unnoticed. A related gap found while fixing
+this: the recorded tap point survived `clearSelection()`, so a later selection
+of the same structure made a different way (keyboard, a tour) could silently
+reuse a stale tap; `clearSelection()` now drops it. Nothing about which
+structure a tap selects, what the panel names, or the atlas itself changed.
 
 Each time the gate closed and the production build stopped shipping the scene
 until this record was taken again — the mechanism working. An earlier decision

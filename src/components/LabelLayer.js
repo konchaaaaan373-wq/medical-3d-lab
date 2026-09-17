@@ -94,7 +94,7 @@ export function createLabelLayer({ viewer, annotations }) {
    */
   const OCCLUSION_GRACE_MS = 140;
 
-  const makeItem = (annotation, priority) => {
+  const makeItem = (annotation, priority, kind) => {
     // `lead` pushes the text box away from the anchor (screen px) so the
     // label never sits on top of the structure it names; a leader line runs
     // from the anchor dot to the box. Labels without a lead keep the old
@@ -118,16 +118,23 @@ export function createLabelLayer({ viewer, annotations }) {
           ])]
         : []),
     ]);
-    const node = el('div', { class: lead ? 'label3d label3d-led' : 'label3d' }, [
+    // An authored landmark is drawn muted — it is scenery, not an answer to
+    // "what did I just tap". Without this it used the same chip as a
+    // selection, which is the bug this class exists to close: a landmark
+    // sitting on the model with nothing picked reads as a pick.
+    const classes = ['label3d', lead && 'label3d-led', kind === 'landmark' && 'label3d-landmark']
+      .filter(Boolean)
+      .join(' ');
+    const node = el('div', { class: classes }, [
       el('span', { class: 'label-dot' }),
       ...(leader ? [leader] : []),
       body,
     ]);
     element.append(node);
-    return { annotation, node, body, leader, lead, opacity: 0, priority, seenAt: 0 };
+    return { annotation, node, body, leader, lead, opacity: 0, priority, kind, seenAt: 0 };
   };
 
-  const items = shown.map((annotation) => makeItem(annotation, PRIORITY.landmark));
+  const items = shown.map((annotation) => makeItem(annotation, PRIORITY.landmark, 'landmark'));
   /** The pinned selection and the hover, when the scene offers labels for them. */
   const dynamic = new Map();
 
@@ -169,7 +176,7 @@ export function createLabelLayer({ viewer, annotations }) {
       if (!annotation) return;
       // A led label would need a lead direction nobody authored for an
       // arbitrary structure; anchored placement puts it on the structure.
-      const item = makeItem(annotation, PRIORITY[kind] ?? PRIORITY.landmark);
+      const item = makeItem(annotation, PRIORITY[kind] ?? PRIORITY.landmark, kind);
       // Shown from the moment it exists. The landmarks get their opacity from
       // the progression window on the next `update`, and a label the reader
       // just asked for cannot wait for a stage change that may never come —
@@ -214,8 +221,17 @@ export function createLabelLayer({ viewer, annotations }) {
       let drawn = 0;
       // Highest priority first, so the cap takes from the bottom.
       const order = [...dynamic.values(), ...items].sort((a, b) => b.priority - a.priority);
+      // What the reader tapped names a structure; a landmark naming the same
+      // one is the same fact stated twice on the model, not two facts. Rather
+      // than stack a muted duplicate beside the answer, the landmark steps
+      // aside and the selection carries the name alone.
+      const selectedStructureId = dynamic.get('selection')?.annotation.structureId ?? null;
       for (const item of order) {
-        if (item.opacity < 0.01) {
+        const mergedIntoSelection =
+          item.kind === 'landmark' &&
+          selectedStructureId != null &&
+          item.annotation.structureId === selectedStructureId;
+        if (item.opacity < 0.01 || mergedIntoSelection) {
           item.node.style.opacity = '0';
           item.node.style.visibility = 'hidden';
           continue;
@@ -245,11 +261,14 @@ export function createLabelLayer({ viewer, annotations }) {
         else if (item.annotation.isVisible?.(viewer.camera) !== false) item.seenAt = now;
         const unseen = item.seenAt > 0 && now - item.seenAt > OCCLUSION_GRACE_MS;
         const never = item.seenAt === 0 && item.annotation.isVisible?.(viewer.camera) === false;
-        const over = drawn >= LABEL_LIMIT;
+        // What the reader just picked is exempt from the cap: it is the one
+        // label they asked for, and a landmark stepping back for it is the
+        // point of having a cap at all — see PRIORITY above.
+        const over = item.kind !== 'selection' && drawn >= LABEL_LIMIT;
         const hide = offscreen || undrawn || unseen || never || over;
         item.node.style.visibility = hide ? 'hidden' : 'visible';
         if (hide) continue;
-        drawn += 1;
+        if (item.kind !== 'selection') drawn += 1;
         const top = compact ? 150 : 34;
         const ax = (projected.x * 0.5 + 0.5) * width;
         const ay = (-projected.y * 0.5 + 0.5) * height;
