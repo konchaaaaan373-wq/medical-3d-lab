@@ -647,3 +647,44 @@
     transition: none;
   }
 }
+
+/*
+ * Every model the drawer can reach, above the body-system accordion.
+ *
+ * The accordion opens one system at a time — right for a fourteen-system
+ * catalogue, wrong for a beta that publishes two models in two different
+ * systems. Standing on the brain, the heart sat inside a closed `<details>`
+ * with nothing to say it was there: three taps away, and the middle tap
+ * invisible (F-111). This is the shortcut; the accordion is still the map.
+ *
+ * `SceneSwitcher` hides the section when it would be a second catalogue rather
+ * than a shortcut, so this styles a short list by design.
+ */
+.global-nav-models {
+  margin: 0 0 12px;
+  padding: 10px 11px;
+  border: 1px solid rgba(56, 225, 239, 0.18);
+  border-radius: 11px;
+  background: rgba(56, 225, 239, 0.035);
+}
+
+.global-nav-models[hidden] {
+  display: none !important;
+}
+
+.global-nav-models-title {
+  margin: 0 0 7px;
+  display: flex;
+  gap: 7px;
+  /* 12px, not the 10px the favourites title uses: the floor refuses new small
+     type, and a heading a reader has to lean into is the thing it refuses. */
+  font-size: 12px;
+  color: var(--ink-faint);
+  font-weight: 700;
+  letter-spacing: 0.06em;
+}
+
+.global-nav-model-list {
+  display: grid;
+  gap: 4px;
+}
