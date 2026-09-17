@@ -23,6 +23,14 @@
    `?model=<id>` so it lands already open there instead of the flat top of
    the page. See `docs/architecture-rules.md` and `Trust.js`'s `focusId`. */
 .title-trust-link {
+  /* WCAG 2.5.8's 24 px obligation, applied locally the way `.anatomy-source`
+     and the stage button in `ui.css` do rather than through a shared
+     selector list — `min-height` does nothing to an inline box, so the flex
+     display is what makes it real. `phone-touch-targets.css` raises this
+     further, to 44 px, at phone widths. */
+  display: inline-flex;
+  align-items: center;
+  min-height: 24px;
   color: rgba(221, 229, 240, 0.82);
   font-size: 0.72rem;
   font-weight: 600;

@@ -156,6 +156,43 @@ function trustTocItem({ scene, id, review }) {
 }
 
 /**
+ * A shared-section row in the table of contents (Overview, Legal & support).
+ *
+ * A plain `href="#content"` is a native fragment navigation: the browser
+ * would replace the document's hash — `#/trust` — with `#content`, and
+ * `#content` is not a route `resolveRoute` knows. A reload, a shared link or
+ * history restoring that address lands `main.js` on an unknown hash, which
+ * resolves to the default 3D model, not back on Trust. `skipLink()` in
+ * `utils/dom.js` solved this exact problem for the same reason; this follows
+ * its own pattern rather than inventing a second one: `preventDefault`, move
+ * focus to the target itself, then scroll it into view.
+ */
+function sharedTocLink(targetId, en, ja) {
+  return el('li', {}, [
+    el(
+      'a',
+      {
+        class: 'trust-toc-shared-link',
+        href: `#${targetId}`,
+        on: {
+          click: (event) => {
+            const target = document.getElementById(targetId);
+            if (!target) return;
+            event.preventDefault();
+            target.focus({ preventScroll: true });
+            target.scrollIntoView({ block: 'start' });
+          },
+        },
+      },
+      [
+        el('span', { class: 'lang-en', text: en }),
+        el('span', { class: 'lang-ja', text: ja }),
+      ]
+    ),
+  ]);
+}
+
+/**
  * The table of contents: one row per model Trust renders, plus the short
  * shared sections that sit outside any `<details>`.
  *
@@ -174,18 +211,8 @@ function trustToc(entries) {
     ]),
     el('ol', { class: 'trust-toc-list' }, entries.map(trustTocItem)),
     el('ul', { class: 'trust-toc-shared' }, [
-      el('li', {}, [
-        el('a', { class: 'trust-toc-shared-link', href: '#content' }, [
-          el('span', { class: 'lang-en', text: 'Overview' }),
-          el('span', { class: 'lang-ja', text: '概要' }),
-        ]),
-      ]),
-      el('li', {}, [
-        el('a', { class: 'trust-toc-shared-link', href: '#trust-legal' }, [
-          el('span', { class: 'lang-en', text: 'Legal & support' }),
-          el('span', { class: 'lang-ja', text: '規約・サポート' }),
-        ]),
-      ]),
+      sharedTocLink('content', 'Overview', '概要'),
+      sharedTocLink('trust-legal', 'Legal & support', '規約・サポート'),
     ]),
   ]);
 }
@@ -324,7 +351,9 @@ export function createTrust({ ui, accountButton = null, focusId = null }) {
     ]),
     trustToc(entries),
     el('section', { class: 'trust-grid' }, cards),
-    el('footer', { class: 'trust-footer', id: 'trust-legal' }, [
+    // `tabindex="-1"` so the shared-section jump above can move focus here,
+    // the same reason `.trust-hero` (`id="content"`) already carries one.
+    el('footer', { class: 'trust-footer', id: 'trust-legal', tabindex: '-1' }, [
       bilingual('Educational conceptual models — not patient-specific diagnosis or treatment.', '教育目的の概念モデルです。個別患者の診断・治療を行うものではありません。'),
       el('nav', { class: 'trust-footer-links', 'aria-label': 'Legal and support / 規約・サポート' }, [
         el('a', { href: '#/terms' }, [

@@ -146,6 +146,47 @@ test('Trust: clicking a TOC entry opens its card and does not turn into a naviga
   });
 });
 
+test('Trust: shared-section TOC links move focus and never turn into a hash navigation', () => {
+  // A plain `href="#content"` is a native fragment jump: the browser would
+  // replace the document's hash (`#/trust`) with `#content`, which is not a
+  // route — a reload or a shared/restored URL then opens the default 3D
+  // model instead of Trust. This is the same failure the skip link already
+  // had to solve; the shared links must follow the same fix (preventDefault,
+  // move focus, then scroll), not a native anchor.
+  withFakeBrowser(() => {
+    const element = mountTrust();
+    const withId = [];
+    const collect = (node) => {
+      if (node.getAttribute?.('id')) withId.push(node);
+      for (const child of node.children ?? []) collect(child);
+    };
+    collect(element);
+    document.getElementById = (id) => withId.find((node) => node.getAttribute('id') === id) ?? null;
+
+    const sharedLinks = findByClass(element, 'trust-toc-shared-link');
+    assert.equal(sharedLinks.length, 2, 'overview and legal & support');
+
+    for (const link of sharedLinks) {
+      const targetId = link.getAttribute('href').replace(/^#/, '');
+      assert.ok(isInPageAnchor(link.getAttribute('href')), `"${link.getAttribute('href')}" must not look like a route`);
+      const target = document.getElementById(targetId);
+      assert.ok(target, `no element with id "${targetId}"`);
+
+      let focusedWith = null;
+      let scrolledWith = null;
+      target.focus = (opts) => { focusedWith = opts; };
+      target.scrollIntoView = (opts) => { scrolledWith = opts; };
+
+      let prevented = false;
+      link.dispatchEvent({ type: 'click', preventDefault: () => { prevented = true; } });
+
+      assert.ok(prevented, `"#${targetId}" must not become a hash navigation`);
+      assert.deepEqual(focusedWith, { preventScroll: true }, `"#${targetId}" should move focus, like skipLink()`);
+      assert.deepEqual(scrolledWith, { block: 'start' });
+    }
+  });
+});
+
 test('Trust: no scene id or slug is hard-coded — the TOC and cards come from PUBLIC_SCENES', () => {
   const source = read('src/app/Trust.js');
   for (const scene of PUBLIC_SCENES) {
