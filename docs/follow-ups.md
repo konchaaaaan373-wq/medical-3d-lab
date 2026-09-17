@@ -359,10 +359,31 @@ tablet-768 · Scene: the control bar scrolls sideways (245px of content in 231px
 - **いつからかは未確認。** main の履歴のどこで入ったかは測っていません。
   `final-browser-validation.yml` は候補時だけ走る手動ワークフローなので、
   気づかれずに main に載っていた可能性があります。
-- 原因の見当（**未確認**）: 14px は 1 文字ぶん程度で、WebKit と Chromium の
-  日本語ラベルの字送りの差で説明がつく大きさです。`ui-hierarchy-typography.css`
-  が `html[lang='ja'] #ui .button-row .btn` を別扱いしているので、
-  まずそこを疑う価値があります。**測ってから直してください。**
+- **最初に書いた見当は外れでした。** 「14px は 1 文字ぶんで、日本語ラベルの
+  字送りの差だろう」と書きましたが、**中身の幅は両エンジンで同じ 245 です**。
+  違うのは**箱のほう**で、Chromium は 245、WebKit は 231。ボタンは無関係です。
+- 測ったこと（Chromium、768×1024、`#/brain-anatomy`）:
+  - `#ui[data-anatomy-shell='calm'] .console` は **`width: fit-content`**
+    （`anatomy-shell-presentation.css`）。つまり箱の幅は中身が決めます。
+  - その中身は `.controls` 1 つだけ（`.stage-readout` は calm で `display:none`）で、
+    `.controls` の子は slider-row / **button-row** / disclaimer の 3 つ。
+  - **`.button-row` は `overflow-x: auto`**（`ui.css`）。
+    スクロールコンテナは祖先の intrinsic 幅への寄与が特殊で、
+    **ここでエンジンが割れているのが最有力**です——Chromium は 245 を、
+    WebKit は 231（= 行以外の子が決めた幅）を採っている、という形。
+  - **スクロールバー説は否定済み。** Playwright の Chromium は既定で
+    `--hide-scrollbars` が付き WebKit には付かないので 14px の候補でしたが、
+    `ignoreDefaultArgs: ['--hide-scrollbars']` で出しても数値は 1px も動きません。
+- **まだ確かめていないこと**: WebKit 側で 231 を出しているのがどの要素か。
+  `check-viewports.mjs` は失敗時に行から body までの箱の鎖を印字するようになったので、
+  **WebKit で 1 回走らせれば分かります**（この環境は playwright の WebKit を
+  ダウンロードできないため、CI からしか測れません）。
+- 読者に起きること: 行は `scrollbar-width: none` と
+  `::-webkit-scrollbar { display: none }` を持つので、**あふれても何も見えません**。
+  コントロールが 1 つ、ただ無いように見えます。
+  そして Chromium でも中身 245 が箱 245 に**余白ゼロ**で収まっており、
+  1px でも違えば同じことが起きる作りです——エンジン差はきっかけであって、
+  原因は「隠れてはいけない行が、自分を囲む箱の幅を決めていない」ことです。
 - 完了の定義: WebKit の `viewport matrix` が緑。直したら、Chromium / Firefox が
   緑のままであることも同じワークフローで確認する。
 
