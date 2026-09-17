@@ -41,7 +41,14 @@
  *   --scene <slug>  measure one scene (repeatable; default: all of them)
  *   --preview       unlock the build (needs VITE_ALLOW_PREVIEW=1 at build time)
  *   --dense         four times as many samples, for scenes made of thin parts
+ *   --layer <0..1>  move the anatomical-layer slider before sweeping
+ *   --view <slug>   switch to this viewpoint (its slugified label) first
  *   --json <file>   also write the raw measurement, hits included
+ *
+ * `--layer` and `--view` are for asking *what a state lets you reach*, not for
+ * producing the table: `SCENE_POINTS` is clicked in the state the scene opens
+ * in, so a table measured in any other state is stale the moment it is pasted.
+ * The run says so and withholds the table when either is given.
  */
 import { createReadStream, existsSync, readFileSync, statSync, writeFileSync } from 'node:fs';
 import { createServer } from 'node:http';
@@ -60,6 +67,9 @@ const values = (name) =>
 
 const distDir = value('--dist', 'dist');
 const jsonOut = value('--json');
+const layer = value('--layer') === null ? null : Number(value('--layer'));
+const onlyView = value('--view');
+const posed = layer !== null || onlyView !== null;
 
 const die = (message) => {
   console.error(message);
@@ -67,6 +77,10 @@ const die = (message) => {
 };
 
 if (!existsSync(join(distDir, 'index.html'))) die(`No build at "${distDir}" — run \`npm run build\` first.`);
+if (layer !== null && !(layer >= 0 && layer <= 1)) die('--layer takes a number between 0 and 1');
+
+/** The same slug the viewpoint buttons are named by in `capture-anatomy-views.mjs`. */
+const slugify = (text) => text.trim().split('\n')[0].toLowerCase().replace(/[^a-z]+/g, '-').replace(/^-|-$/g, '');
 
 /** The scenes the check knows about, read from the check rather than repeated. */
 function knownScenes() {
@@ -177,6 +191,39 @@ for (const slug of scenes) {
       await page.waitForTimeout(300);
     }
 
+    /**
+     * Put the scene in the state being asked about, before anything is read.
+     *
+     * A filter that matches nothing is a mistake, not an empty set — the same
+     * rule `--recipe` has always had in `capture-anatomy-views.mjs`, and the
+     * one `--view` there lacked until a kidney comparison came back as two
+     * empty directories and an exit code of 0.
+     */
+    if (posed) {
+      await page.locator('#anatomy-tab-display').click({ noWaitAfter: true });
+      await page.waitForTimeout(400);
+      if (onlyView !== null) {
+        const labels = await page.locator('.inspection-choice.inspection-view').allTextContents();
+        const offered = labels.map(slugify);
+        const at = offered.indexOf(onlyView);
+        if (at < 0) die(`${slug}: no viewpoint "${onlyView}" (it has: ${offered.join(', ') || 'none'})`);
+        await page.locator('.inspection-choice.inspection-view').nth(at).click({ noWaitAfter: true });
+        await page.waitForTimeout(600);
+      }
+      if (layer !== null) {
+        const slider = page.locator('.console .slider, .slider').first();
+        if (!(await slider.count())) die(`${slug}: offers no anatomical-layer slider to set`);
+        await slider.evaluate((element, fraction) => {
+          const max = Number(element.max || 1);
+          element.value = String(Math.round(fraction * max));
+          element.dispatchEvent(new Event('input', { bubbles: true }));
+        }, layer);
+        await page.waitForTimeout(600);
+      }
+      // Off the controls, so nothing is hovered when the sweep starts.
+      await page.mouse.move(4, 4);
+    }
+
     const box = await page.locator('canvas').first().boundingBox();
     if (!box) die(`${slug}: rendered no canvas`);
 
@@ -246,9 +293,30 @@ for (const slug of scenes) {
       }
     }
 
-    measured[slug] = { hits, chosen };
+    /**
+     * How many *different* structures the sweep could put a name to.
+     *
+     * This is the number to quote when the question is what a state lets a
+     * reader reach, and it is not the same number as
+     * `structures.filter((x) => !x.hidden && x.currentOpacity > 0.14).length`.
+     * That expression reproduces one clause of `_isPickable` and counts
+     * raycast *candidates*: it includes structures the framing leaves off the
+     * screen — the kidney fits to its subject and excludes the `tract` tag, so
+     * the ureters and the bladder are counted by it whether or not they are in
+     * frame — and it counts structures that are behind a frontmost hit and can
+     * never be the answer to a click. A pointer sweep cannot make either
+     * mistake, because it asks the product what is under a real pixel.
+     *
+     * It is a floor, not a total: the grid is the middle of the canvas and a
+     * structure narrower than the step can sit between two samples. Say "at
+     * least", never "all".
+     */
+    const reached = new Set(hits.map((hit) => hit.name));
+    measured[slug] = { hits, chosen, reached: [...reached].sort(), state: { layer, view: onlyView } };
     const short = chosen.length === 4 ? '' : `  ← only ${chosen.length} of 4`;
-    console.error(`${slug}: ${hits.length}/${COLUMNS * ROWS} hit, ${chosen.length} kept${short}`);
+    console.error(
+      `${slug}: ${hits.length}/${COLUMNS * ROWS} hit, ${reached.size} structure(s) reached, ${chosen.length} kept${short}`
+    );
   } catch (error) {
     measured[slug] = { error: String(error).split('\n')[0] };
     console.error(`${slug}: FAILED ${measured[slug].error}`);
@@ -270,7 +338,13 @@ server.close();
 // Printing the name in a comment beside the row is not the same thing: a
 // comment is not read by anything, and the brain's drifted for a week.
 const quoted = (name) => `'${name.replace(/\\/g, '\\\\').replace(/'/g, "\\'")}'`;
-for (const slug of scenes) {
+if (posed) {
+  console.error(
+    `\nNo table: --layer / --view measured a posed state, and \`SCENE_POINTS\` is clicked in the\n` +
+      'state the scene opens in. Re-run without them to produce rows to paste.'
+  );
+}
+for (const slug of posed ? [] : scenes) {
   const entry = measured[slug];
   if (!entry?.chosen?.length) continue;
   const points = entry.chosen.map((point) => `[${point.fx}, ${point.fy}, ${quoted(point.name)}]`);
