@@ -66,6 +66,21 @@ const LEFT_OPERCULUM = new Set([
   'Lat Fis-post',
 ]);
 
+// A medial view hides the contralateral hemisphere at the midline; nothing is
+// cut, but the result looks enough like a section that it reads as one
+// (D-2 of the 2026-09-16 AI re-review). Right medial and inferior also carry
+// a second line: the source data has no right medulla oblongata mesh
+// (F-141), so those two views show a real gap at the midline/base that must
+// not be read as a normal left/right asymmetry.
+const MEDIAL_NOTICE = {
+  notice: 'Medial 3D view: contralateral hemisphere hidden. Not a midsagittal section.',
+  noticeJa: '内側面3D：対側半球を非表示。正中矢状断ではありません。',
+};
+const NO_RIGHT_MEDULLA_LINE = {
+  en: 'This model has no right medulla oblongata mesh; this is a data gap, not a normal asymmetry.',
+  ja: 'このモデルは右側延髄の形状を収録していません。正常な左右差ではありません。',
+};
+
 const VIEW_SPECS = [
   {
     id: 'left-lateral', label: 'Left lateral', labelJa: '左外側',
@@ -74,6 +89,7 @@ const VIEW_SPECS = [
   {
     id: 'left-medial', label: 'Left medial', labelJa: '左内側', medialSide: 'left',
     position: new THREE.Vector3(5.25, 0.23, 0.25), target: new THREE.Vector3(0, -0.35, 0),
+    ...MEDIAL_NOTICE,
   },
   {
     id: 'right-lateral', label: 'Right lateral', labelJa: '右外側',
@@ -82,6 +98,8 @@ const VIEW_SPECS = [
   {
     id: 'right-medial', label: 'Right medial', labelJa: '右内側', medialSide: 'right',
     position: new THREE.Vector3(-5.25, 0.23, 0.25), target: new THREE.Vector3(0, -0.35, 0),
+    notice: `${MEDIAL_NOTICE.notice}\n${NO_RIGHT_MEDULLA_LINE.en}`,
+    noticeJa: `${MEDIAL_NOTICE.noticeJa}\n${NO_RIGHT_MEDULLA_LINE.ja}`,
   },
   {
     id: 'anterior', label: 'Anterior', labelJa: '前面',
@@ -103,6 +121,8 @@ const VIEW_SPECS = [
   {
     id: 'inferior', label: 'Inferior', labelJa: '下面',
     position: new THREE.Vector3(0, -5.05, -2.05), target: new THREE.Vector3(0, -0.45, 0),
+    notice: NO_RIGHT_MEDULLA_LINE.en,
+    noticeJa: NO_RIGHT_MEDULLA_LINE.ja,
   },
 ];
 
@@ -1024,7 +1044,12 @@ export class BrainAnatomyScene {
   }
 
   getAnatomyViews() {
-    return VIEW_SPECS.map(({ id, label, labelJa }) => ({ id, label, labelJa }));
+    return VIEW_SPECS.map(({ id, label, labelJa, notice, noticeJa }) => ({
+      id,
+      label,
+      labelJa,
+      ...(notice ? { notice, noticeJa } : {}),
+    }));
   }
 
   /** Shared inspection contract; the anatomy names are authored, not inferred. */

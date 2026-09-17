@@ -39,6 +39,7 @@
     "type-floor": "node scripts/type-floor.mjs",
     "verify:departure": "node scripts/check-departure.mjs",
     "verify:gated": "node scripts/check-gated-surfaces.mjs",
+    "review:brain-labels": "node scripts/export-anatomy-labels.mjs",
     "build:preview": "VITE_ALLOW_PREVIEW=1 VITE_SUPABASE_URL=https://stub.invalid VITE_SUPABASE_PUBLISHABLE_KEY=stub-publishable-key vite build --outDir dist-preview",
     "lessons": "node scripts/lessons.mjs",
     "follow-ups": "node scripts/follow-ups-ledger.mjs"
