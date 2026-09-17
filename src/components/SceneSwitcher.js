@@ -89,6 +89,25 @@ export function createSceneSwitcher({ groups, currentId, showLab = true }) {
     favoriteList,
   ]);
 
+  /**
+   * How many reachable models can be listed flat before the list stops being a
+   * shortcut and becomes a second catalogue.
+   *
+   * The system accordion below opens one body system at a time, which is the
+   * right shape for a fourteen-system catalogue and the wrong one for the beta:
+   * with the brain and the heart open, standing on either model put the other
+   * inside a closed `<details>` with nothing to say it was there. Measured at
+   * 390px, reaching the other published model took three taps, and the middle
+   * one — open the other body system — was invisible (F-111).
+   *
+   * So while the drawer reaches few enough models to show at once, it shows
+   * them at the top. Past this count the accordion is the better shape and this
+   * section takes itself away rather than growing into a duplicate of the list
+   * below it. A preview build, which reaches every declared scene, is over the
+   * line by an order of magnitude and never sees it.
+   */
+  const FLAT_MODEL_LIST_MAX = 16;
+
   const sceneLink = (scene) => {
     const isCurrent = scene.id === currentScene.id;
     const use = navigationUseLabel(scene, activeUsesForSceneEntry(scene));
@@ -110,6 +129,19 @@ export function createSceneSwitcher({ groups, currentId, showLab = true }) {
       ]
     );
   };
+
+  // Every model the drawer can reach, flat, above the accordion. `scenes` is
+  // already projected by `sceneRegistry`, so this widens nothing: in a
+  // production build it is exactly the published set.
+  const flatModels = scenes.length > 1 && scenes.length <= FLAT_MODEL_LIST_MAX ? scenes : [];
+  const modelSection = el(
+    'section',
+    { class: 'global-nav-models', ...(flatModels.length ? {} : { hidden: '' }) },
+    [
+      el('h2', { class: 'global-nav-models-title' }, [bilingual('Models', 'モデル')]),
+      el('div', { class: 'global-nav-model-list' }, flatModels.map((scene) => sceneLink(scene))),
+    ]
+  );
 
   const kindGroup = (kind) =>
     el('div', { class: `global-nav-kind-group is-${kind.id}` }, [
@@ -196,6 +228,7 @@ export function createSceneSwitcher({ groups, currentId, showLab = true }) {
         closeButton,
       ]),
       favoriteSection,
+      modelSection,
       list,
       footer,
     ]
