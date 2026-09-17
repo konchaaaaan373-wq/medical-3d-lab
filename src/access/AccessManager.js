@@ -754,8 +754,8 @@ export function createAccessManager({ ui }) {
       // published models are not behind it.
       return [
         head,
-        el('p', { class: 'access-copy lang-en', text: 'This site is not accepting account registrations yet. Published models remain available without signing in.' }),
-        el('p', { class: 'access-copy lang-ja', text: 'このサイトではまだアカウント登録を受け付けていません。公開中のモデルはログインなしでご覧いただけます。' }),
+        el('p', { class: 'access-copy lang-en', text: 'Accounts are not available on this site yet, so neither sign-in nor sign-up works here. Published models remain available without signing in.' }),
+        el('p', { class: 'access-copy lang-ja', text: 'このサイトではまだアカウント機能（ログイン・登録）を提供していません。公開中のモデルはログインなしでご覧いただけます。' }),
       ];
     }
 
