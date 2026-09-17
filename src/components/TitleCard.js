@@ -84,11 +84,25 @@ export function createTitleCard(meta) {
       ]
     );
 
+  // Trust only carries a card for a scene in its own `PUBLIC_SCENES` list —
+  // the same non-prototype set `review` is already gated on above — so this
+  // link only appears where landing on it would actually open something.
+  // `?model=<id>` is read by `router.trustFocusOf` / `Trust.js`'s `focusId`:
+  // that scene's record opens instead of the reader finding it themselves
+  // among every other model's.
+  const modelInfoLink =
+    review &&
+    el('a', { class: 'title-trust-link', href: `#/trust?model=${encodeURIComponent(meta.id)}` }, [
+      el('span', { class: 'lang-en', text: 'Model information →' }),
+      el('span', { class: 'lang-ja', text: 'モデル情報 →' }),
+    ]);
+
   const trustBadges =
-    maturityBadge || reviewBadge
+    maturityBadge || reviewBadge || modelInfoLink
       ? el('div', { class: 'title-trust-badges', 'aria-label': 'Model trust status' }, [
           maturityBadge || null,
           reviewBadge || null,
+          modelInfoLink || null,
         ])
       : null;
 
