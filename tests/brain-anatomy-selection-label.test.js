@@ -142,3 +142,53 @@ test('brain: the point a tap actually hit is used verbatim, without a candidate 
 
   scene.dispose();
 });
+
+test('brain: a selection annotation reanchors to a visible candidate once the camera turns', () => {
+  // A selection made without a tap (the parts tree, the keyboard, a tour)
+  // gets its anchor from whatever the camera could see at that moment. Turn
+  // the camera afterwards and that captured point can end up behind the
+  // occluder even though the structure itself — and another candidate on it
+  // — is still on screen. `reanchor()` is the label layer's way of asking
+  // for a fresh one, called only once the captured point has already failed
+  // `isVisible`.
+  const target = mkMesh({ id: TARGET_ID, label: 'Test sulcus', position: [0, 0, 0], size: [12, 12, 0.1] });
+  const occluder = mkMesh({ id: OCCLUDER_ID, label: 'Test gyrus', position: [0, 0, 5], size: [2, 2, 2], core: false });
+  const scene = buildFixture([target, occluder]);
+  const meshes = scene._meshesFor(TARGET_ID);
+  const targetMesh = meshes[0];
+
+  const occludedPoint = targetMesh.localToWorld(new THREE.Vector3(0, 0, 0.05));
+  const visiblePoint = targetMesh.localToWorld(new THREE.Vector3(4, 4, 0.05));
+  const targetCentre = targetMesh.localToWorld(new THREE.Vector3(0, 0, 0));
+  const cameraPosition = targetMesh.localToWorld(new THREE.Vector3(0, 0, 10));
+  const camera = new THREE.PerspectiveCamera(90, 1, 0.01, 1000);
+  camera.position.copy(cameraPosition);
+  camera.lookAt(targetCentre);
+  camera.updateMatrixWorld(true);
+
+  // Seed the ranked-candidate cache directly, occluded point ranked first —
+  // the case a keyboard selection made from a different angle would have
+  // produced — rather than depending on `rankedSurfacePoints`'s own ranking
+  // of this fixture's vertices, which is not what this test is about.
+  scene.structureAnchors.set(`structure:${TARGET_ID}`, [occludedPoint, visiblePoint]);
+
+  // No viewer yet: a structure named before a camera exists gets the
+  // top-ranked candidate regardless (F-40's existing fallback).
+  scene.viewer = null;
+  const annotation = scene.getStructureAnnotation(TARGET_ID);
+  assert.ok(annotation.position.equals(occludedPoint), 'captured with no camera to ask');
+
+  // The camera arrives, and from here the captured point is genuinely hidden.
+  scene.viewer = { camera };
+  assert.equal(annotation.isVisible(camera), false, 'the fixture must actually occlude this point');
+
+  const moved = annotation.reanchor(camera);
+  assert.equal(moved, true);
+  assert.ok(annotation.position.equals(visiblePoint), 'reanchor swaps in the candidate the camera can see');
+  assert.equal(annotation.isVisible(camera), true, 'the label is visible again on the same anchor object');
+
+  // Already on the best visible candidate: nothing left to swap to.
+  assert.equal(annotation.reanchor(camera), false, 'reanchor is a no-op once the anchor already holds');
+
+  scene.dispose();
+});

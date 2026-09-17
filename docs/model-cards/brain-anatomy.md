@@ -318,3 +318,24 @@ interaction and medial visibility path are implemented and tested. Independent
 medical review of the complete label set and Japanese terminology is not yet
 recorded, and the source geometry still lacks a separately selectable ACC, so
 this scene must not be marked reviewed or production.
+
+## 9. Revision history
+
+**Revision 22 → 23 — the selection-label fix closed three defects a review
+found in it.** Revision 22 gave a selection its own anchor instead of the
+landmarks' fixed one; review of that change found three ways it still failed
+its own stated behaviour, all now closed. A re-tap on the structure already
+selected kept the annotation id `structure:<id>` and was discarded as a
+no-op even though the tap landed on a new point — `LabelLayer.setStructureLabel`
+now compares the anchor as well as the id. The selection was exempt from the
+label cap *and* excluded from the count it takes, so a pinned structure could
+put a fourth label on a three-label phone screen where the card promises
+three — it is exempt from eviction, not from the count, so a landmark still
+steps aside for it. And a selection made without a tap (the parts tree, the
+keyboard) kept the one candidate anchor the camera could see at that moment;
+rotating away from it could hide the label even with another candidate on the
+same structure still on screen — the annotation now offers a fresh candidate
+through `reanchor()`, tried only once the current one has already failed the
+occlusion test, never on a point that still holds. No claim in this card
+changed: what a selection is anchored to, and when it is shown, are unchanged
+in kind — only made to hold in the cases these three did not.

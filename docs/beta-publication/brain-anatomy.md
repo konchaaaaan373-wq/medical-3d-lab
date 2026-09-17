@@ -12,11 +12,11 @@ at pictures. **No anatomist has judged this geometry or these labels.**
 
 | | |
 | --- | --- |
-| **Decided at** | 2026-09-17 (re-taken three times: a branch of the tree gained a way to be hidden whole, what a hide announces was corrected, then a selected structure's label was made to survive its own anchor being occluded) |
-| **Decided by** | Claude Sonnet 5, fixing the selection-label bug reported against 4b6cac8 |
+| **Decided at** | 2026-09-17 (re-taken four times: a branch of the tree gained a way to be hidden whole, what a hide announces was corrected, a selected structure's label was made to survive its own anchor being occluded, then a review of that fix found three ways it still failed its own stated behaviour and they were closed) |
+| **Decided by** | Claude Sonnet 5, closing three defects a review found in the selection-label fix (PR #132) |
 | **Role** | `engineering` — software behaviour, not anatomical or clinical judgement |
 | **Asset revision** | `brain-atlas-glb` @ `sha256:76a49ea4526a4880613aec7a02756bd7301b0b9d0680d7cae33e197b672c5453` |
-| **Scene revision** | model card revision **22**, source digest `19744380a86b23fe` |
+| **Scene revision** | model card revision **23**, source digest `e0dd9e3fd8babb39` |
 | **Scene sources under that digest** | [`src/data/brainAnatomy.js`](../../src/data/brainAnatomy.js), [`src/scenes/nervous/scenes/brainAnatomy/BrainAnatomyScene.js`](../../src/scenes/nervous/scenes/brainAnatomy/BrainAnatomyScene.js), [`src/scenes/shared/anatomy/tapGesture.js`](../../src/scenes/shared/anatomy/tapGesture.js) |
 
 The decision is pinned to **both** revisions in
@@ -169,6 +169,33 @@ this: the recorded tap point survived `clearSelection()`, so a later selection
 of the same structure made a different way (keyboard, a tour) could silently
 reuse a stale tap; `clearSelection()` now drops it. Nothing about which
 structure a tap selects, what the panel names, or the atlas itself changed.
+
+**Revision 22 → 23.** Code review of revision 22's fix found three ways it
+still failed the behaviour it claimed. First, a re-tap on the structure that
+was already selected recorded a new hit point (`_lastPick`) and re-emitted
+the selection, but `LabelLayer.setStructureLabel` compared only the
+annotation id — `structure:<id>`, unchanged by where the tap landed — so the
+second tap's point was silently discarded and the label stayed on the first
+one. It now compares the anchor as well as the id. Second, the selection was
+excluded from the drawn count as well as from eviction, so all six (or three,
+on a phone) landmarks kept their slots *and* the selection was added on top —
+one more label than the documented cap. The selection is still exempt from
+eviction — it is never the one dropped — but it now counts, so the
+lowest-priority landmark steps aside for it as any other label would. Third,
+a selection made without a tap — the parts tree, the keyboard — had its
+anchor chosen once, against whatever the camera saw at that moment; rotating
+away from it could hide the label even though another candidate on the same
+structure was still in view, because nothing asked again. The annotation
+`getStructureAnnotation` returns now carries a `reanchor()` method that tries
+a fresh candidate against the live camera, called by the label layer only
+once the current point has already failed its own occlusion test — never a
+per-frame search on a point that still holds. A tap's own point is unaffected
+by this: `_visibleAnchorFor` already prefers it unconditionally, so
+`reanchor()` is a no-op for it. All three were guarded before being fixed
+(`tests/label-layer.test.js`, `tests/brain-anatomy-selection-label.test.js`):
+each guard was reverted, confirmed to fail, then restored and confirmed to
+pass. Nothing about which structure a tap selects, what the panel names, or
+the atlas itself changed.
 
 Each time the gate closed and the production build stopped shipping the scene
 until this record was taken again — the mechanism working. An earlier decision

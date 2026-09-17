@@ -455,14 +455,14 @@ export const BETA_PUBLICATION_DECISIONS = Object.freeze([
     decidedAt: '2026-09-17',
     /** Who, and in what capacity. A role is a claim, and it is checked. */
     decidedBy: Object.freeze({
-      name: 'Claude Sonnet 5, fixing the selection-label bug reported against 4b6cac8',
+      name: 'Claude Sonnet 5, closing three defects a review found in the selection-label fix (PR #132)',
       role: 'engineering',
     }),
     record: 'docs/beta-publication/brain-anatomy.md',
     assetRevisions: Object.freeze({
       'brain-atlas-glb': '76a49ea4526a4880613aec7a02756bd7301b0b9d0680d7cae33e197b672c5453',
     }),
-    sceneRevision: Object.freeze({ cardRevision: 22, modelDigest: '19744380a86b23fe' }),
+    sceneRevision: Object.freeze({ cardRevision: 23, modelDigest: 'e0dd9e3fd8babb39' }),
     /** What was actually exercised. Not a plan — a list of what was done. */
     scope: Object.freeze({
       // Re-measured on 2026-09-15 and corrected. The first two of the four
@@ -532,8 +532,14 @@ export const BETA_PUBLICATION_DECISIONS = Object.freeze([
       'tests/brain-anatomy.test.js',
       'tests/anatomy-colour-ui.test.js',
       // The selection label's cap exemption, its muted-landmark styling and its
-      // landmark-merge rule — see docs/verification-lessons.md L-39.
+      // landmark-merge rule — see docs/verification-lessons.md L-39. Also
+      // guards the three defects a review found in that fix: an unchanged id
+      // discarding a changed anchor, the cap not counting the selection, and
+      // a captured anchor not reanchoring once occluded.
       'tests/label-layer.test.js',
+      // The scene-side half of the same three guards: a re-tap's new point,
+      // and `reanchor()` swapping in a visible candidate for an occluded one.
+      'tests/brain-anatomy-selection-label.test.js',
       'docs/asset-qa/brain-atlas-glb.md',
       'public/assets/brain/ATTRIBUTION.md',
       'docs/screenshots/b3-1/README.md',

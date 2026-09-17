@@ -5,6 +5,18 @@ import { clamp, smoothstep } from '../utils/math.js';
 const FADE = 0.06;
 
 /**
+ * Same point, not just the same reference — a re-tap builds a fresh
+ * `THREE.Vector3` every time, so `===` would never match even when the
+ * reader hit the exact same spot twice.
+ */
+function positionsEqual(a, b) {
+  if (a === b) return true;
+  if (!a || !b) return false;
+  if (typeof a.equals === 'function') return a.equals(b);
+  return a.x === b.x && a.y === b.y && a.z === b.z;
+}
+
+/**
  * Minimum spacing between two labels, in px. Roughly a label's own height plus
  * a little air; anything closer and the two boxes overlap and neither reads.
  */
@@ -168,7 +180,14 @@ export function createLabelLayer({ viewer, annotations }) {
      */
     setStructureLabel(kind, annotation) {
       const existing = dynamic.get(kind);
-      if (existing?.annotation.id === annotation?.id) return;
+      const sameId = existing?.annotation.id === annotation?.id;
+      // Same id is not the same label: a re-tap on the structure that is
+      // already selected keeps `structure:<id>` (the id names the structure,
+      // not the point), but can carry a new anchor — the tap this time landed
+      // somewhere else on the same surface (`_lastPick` in
+      // `BrainAnatomyScene.js`). Comparing only the id discarded that new
+      // point and left the label sitting on the old one.
+      if (sameId && positionsEqual(existing.annotation.position, annotation.position)) return;
       if (existing) {
         existing.node.remove();
         dynamic.delete(kind);
@@ -236,6 +255,22 @@ export function createLabelLayer({ viewer, annotations }) {
           item.node.style.visibility = 'hidden';
           continue;
         }
+        // The anchor a selection was given once (parts tree, keyboard, a
+        // tour — anything but a tap) can rotate out of view without the
+        // structure itself doing so; another candidate on the same surface
+        // may still be visible (F-40). Only tried once the current point has
+        // already failed the occlusion test, so a label that is still
+        // visible costs nothing beyond the one `isVisible` check every label
+        // already pays each frame — this never runs a fresh candidate search
+        // while the anchor holds. The scene stays the one deciding where the
+        // label goes (`_visibleAnchorFor`); this only asks it to try again.
+        if (
+          item.annotation.reanchor &&
+          item.annotation.isDrawn?.() !== false &&
+          item.annotation.isVisible?.(viewer.camera) === false
+        ) {
+          item.annotation.reanchor(viewer.camera);
+        }
         projected.copy(item.annotation.position).project(viewer.camera);
         // z > 1 means the anchor is behind the camera.
         const offscreen = projected.z > 1 || Math.abs(projected.x) > 1.15 || Math.abs(projected.y) > 1.15;
@@ -261,14 +296,17 @@ export function createLabelLayer({ viewer, annotations }) {
         else if (item.annotation.isVisible?.(viewer.camera) !== false) item.seenAt = now;
         const unseen = item.seenAt > 0 && now - item.seenAt > OCCLUSION_GRACE_MS;
         const never = item.seenAt === 0 && item.annotation.isVisible?.(viewer.camera) === false;
-        // What the reader just picked is exempt from the cap: it is the one
-        // label they asked for, and a landmark stepping back for it is the
-        // point of having a cap at all — see PRIORITY above.
+        // What the reader just picked is exempt from *eviction*: it is the
+        // one label they asked for, and a landmark stepping back for it is
+        // the point of having a cap at all — see PRIORITY above. It still
+        // *counts* against the cap once drawn, though: leaving it out of
+        // `drawn` let every landmark keep its slot too, so a pick could put
+        // one more label on screen than the cap says exists.
         const over = item.kind !== 'selection' && drawn >= LABEL_LIMIT;
         const hide = offscreen || undrawn || unseen || never || over;
         item.node.style.visibility = hide ? 'hidden' : 'visible';
         if (hide) continue;
-        if (item.kind !== 'selection') drawn += 1;
+        drawn += 1;
         const top = compact ? 150 : 34;
         const ax = (projected.x * 0.5 + 0.5) * width;
         const ay = (-projected.y * 0.5 + 0.5) * height;

@@ -1286,6 +1286,33 @@ export class BrainAnatomyScene {
        * reader has just taken off the screen.
        */
       isDrawn: () => this.isStructureVisible(structureId),
+      /**
+       * Try a fresh candidate against the live camera, called by the label
+       * layer only once this anchor has already failed `isVisible` — never
+       * a per-frame search while the point still holds.
+       *
+       * `_visibleAnchorFor` already prefers `_lastPick` when it matches this
+       * structure, so a tap's own point comes back unchanged here and is
+       * left exactly where the reader touched it (it carries no candidate
+       * list to fall back on, by design). For a selection made any other way
+       * — the parts tree, the keyboard, a tour — this can find a candidate
+       * the earlier call could not have known would still be visible.
+       *
+       * Mutates `point` in place, which is the same object `position` above
+       * was set to, so the label layer's own reference picks up the move
+       * without anything here replacing the annotation. That keeps the scene
+       * the one place that decides where the label is.
+       *
+       * @param {import('three').Camera} camera
+       */
+      reanchor: (camera) => {
+        if (!camera) return false;
+        const next = this._visibleAnchorFor(structureId, candidates, meshes);
+        if (next.equals(point)) return false;
+        point.copy(next);
+        this._annotationSight.delete(sightKey);
+        return true;
+      },
     };
   }
 
