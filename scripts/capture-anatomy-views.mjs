@@ -207,7 +207,7 @@ try {
    * Japanese, which is the default. It no longer presses anything, for a reason
    * worth writing down: the button now *survives* the hide. A person who
    * presses it has no other way back, and for a whole release it disappeared
-   * along with the panels around it (`docs/verification-lessons.md` L-36) —
+   * along with the panels around it (`docs/verification-lessons.md` L-31) —
    * this script only kept working because Playwright will click an element at
    * `opacity: 0`, which is exactly the thing a person cannot do.
    *
