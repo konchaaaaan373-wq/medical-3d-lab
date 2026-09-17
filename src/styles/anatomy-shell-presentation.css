@@ -141,16 +141,12 @@
  * wide enough the row is still one line, because a wrapping row's max-content
  * is its one-line width and `fit-content` takes it. Where an engine sizes the
  * box short, the row uses a second line and every control stays on screen.
- * The phone keeps `nowrap` below, where the strip scrolls by design.
+ * It wraps at every width this rule reaches: below 431px `product-shell-b6.css`
+ * takes over with a six-column grid, and there is no band left where the row
+ * scrolls sideways behind a hidden scrollbar.
  */
 #ui[data-anatomy-shell='calm'] .console .button-row {
   gap: 4px;
-}
-
-@media (max-width: 560px) {
-  #ui[data-anatomy-shell='calm'] .console .button-row {
-    flex-wrap: nowrap;
-  }
 }
 
 /*
