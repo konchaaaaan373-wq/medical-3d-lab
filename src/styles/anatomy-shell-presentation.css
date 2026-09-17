@@ -127,9 +127,30 @@
   -webkit-backdrop-filter: blur(9px) saturate(1.02);
 }
 
+/*
+ * One line where it fits, two where it does not — never a control off the edge.
+ *
+ * This said `flex-wrap: nowrap` at every width, and the console above it is
+ * `width: fit-content`, so the row's own width was supposed to size the box.
+ * Engines do not agree on that sum: at 768px Chromium measures the row's
+ * content as 245 and gives it 245, WebKit measures the same 245 of content and
+ * gives it 231 (F-137). With `nowrap` the 14px difference is a control outside
+ * a box that hides its scrollbar — invisible, not clipped.
+ *
+ * Wrapping removes the dependency instead of arguing with it. Where the box is
+ * wide enough the row is still one line, because a wrapping row's max-content
+ * is its one-line width and `fit-content` takes it. Where an engine sizes the
+ * box short, the row uses a second line and every control stays on screen.
+ * The phone keeps `nowrap` below, where the strip scrolls by design.
+ */
 #ui[data-anatomy-shell='calm'] .console .button-row {
-  flex-wrap: nowrap;
   gap: 4px;
+}
+
+@media (max-width: 560px) {
+  #ui[data-anatomy-shell='calm'] .console .button-row {
+    flex-wrap: nowrap;
+  }
 }
 
 #ui[data-anatomy-shell='calm'] .console .disclaimer {
