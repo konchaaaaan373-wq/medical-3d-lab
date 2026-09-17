@@ -432,6 +432,29 @@
   効いている規則を知りたければ、**ブラウザに聞く**のがいちばん速い
   （`styleSheets` × `matches()`）。
 
+### L-49 道具が無いとき、検査は「何も駆動していない」と言って 0 で終わる
+
+- **症状**: `verify:patient` を Playwright の入っていない環境で走らせたら、
+  **「Playwright is not installed, so nothing was driven」と印字して終了コード 0**
+  を返しました。開発者の手元では親切ですが、CI では罠です——job から
+  インストール手順が落ちれば、**1 つも駆動しないまま緑**になります。
+  そしてその緑は、全シーンが通ったときの緑と**画面上で区別がつきません**。
+  `npm test` を素の `node --test` に保つために Playwright を依存に入れない
+  という判断は正しく、だからこそ**呼ぶ側が保証するしかありません**。
+- **どう見つかったか**: CI で出た患者説明の 14 件をローカルで再現しようとして、
+  **再現する前にこの出力が出た**から。探していたものではありません。
+- **いま何が捕まえるか**: `tests/scene-drive-workflow.test.js` の
+  「every job that drives a browser installs one first」——`verify:anatomy` /
+  `verify:disease` / `verify:patient` を呼ぶ 3 job それぞれに
+  `npm i --no-save playwright@` と `npx playwright install --with-deps chromium`
+  があることを要求します。patient から package の行を消して赤、
+  anatomy からブラウザの行を消して赤、戻して緑を確認しました。
+  **捕まえるのはこの workflow だけです**——他の workflow や手元の実行は
+  **人だけ**。
+- **一般形**: **「前提が無いので何もしませんでした」を成功として返さない。**
+  返すなら、呼ぶ側にその前提を強制するガードを同時に置く。
+  前提が消えたことと、確認して問題が無かったことは、**同じ出力になってはいけません**。
+
 ### L-48 使い方の 1 行が、1 シーン少なく駆動する引数を教えていた
 
 - **症状**: `scripts/check-disease-interaction.mjs` の冒頭は
