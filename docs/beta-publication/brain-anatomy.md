@@ -12,11 +12,11 @@ at pictures. **No anatomist has judged this geometry or these labels.**
 
 | | |
 | --- | --- |
-| **Decided at** | 2026-09-15 (re-taken twice: a branch of the tree gained a way to be hidden whole, and then what a hide announces was corrected) |
-| **Decided by** | Claude Opus 5, acting as B3-1 implementer |
+| **Decided at** | 2026-09-17 (re-taken five times: a branch of the tree gained a way to be hidden whole, what a hide announces was corrected, a selected structure's label was made to survive its own anchor being occluded, then a review of that fix found three ways it still failed its own stated behaviour and they were closed, then an audit of the result found three more and a per-frame cost, also closed, then the four-round terminology review branch landed on top of it) |
+| **Decided by** | Claude Code (AI engineering agent), landing the four-round terminology review (PR #125) after the selection-label fix (PR #132) |
 | **Role** | `engineering` — software behaviour, not anatomical or clinical judgement |
 | **Asset revision** | `brain-atlas-glb` @ `sha256:76a49ea4526a4880613aec7a02756bd7301b0b9d0680d7cae33e197b672c5453` |
-| **Scene revision** | model card revision **20**, source digest `2ab8c472db1731bc` |
+| **Scene revision** | model card revision **25**, source digest `7e4825b9b5c3ce58` |
 | **Scene sources under that digest** | [`src/data/brainAnatomy.js`](../../src/data/brainAnatomy.js), [`src/scenes/nervous/scenes/brainAnatomy/BrainAnatomyScene.js`](../../src/scenes/nervous/scenes/brainAnatomy/BrainAnatomyScene.js), [`src/scenes/shared/anatomy/tapGesture.js`](../../src/scenes/shared/anatomy/tapGesture.js) |
 
 The decision is pinned to **both** revisions in
@@ -145,6 +145,174 @@ a control that says it undoes the reveal. Both are now one place:
 `_visibilityChanged()` applies the pass, announces the hidden set, announces an
 isolation it ended, and throws the stale snapshot away.
 `tests/brain-anatomy.test.js` fails on the old behaviour for both.
+
+**Revision 20 → 22.** A reader who tapped a cortical structure on a phone
+could see the panel name it while the model itself went on showing only the
+authored landmark that happened to be in view (中側頭回) — the selected
+structure's label had gone missing. Root cause: the selection label used the
+same fixed anchor a landmark uses — one outward vertex, chosen once at load,
+independent of the camera — and for a sulcus that vertex can sit behind the
+gyri folded over it (F-40); it was already known to fail for the central
+sulcus and had simply not been observed for a selection before. Fixed by
+giving a selection its own anchor: the exact point a tap hit (visible by
+construction, since the same ray selected the structure), or, for a selection
+made without a pick point, the first of several ranked candidate points the
+live camera can actually see. A selection is also now exempt from the
+on-screen label cap, and an authored landmark is drawn visibly muted and
+steps aside when a selection pins the structure it names, so a landmark no
+longer reads as an answer to "what did I just tap" — see
+[`docs/verification-lessons.md`](../verification-lessons.md) L-46.
+`npm run verify:anatomy` now asserts, after a selection, that a label for the
+selected structure is on screen and reads what the panel reads; it did not
+before, which is why this shipped unnoticed. A related gap found while fixing
+this: the recorded tap point survived `clearSelection()`, so a later selection
+of the same structure made a different way (keyboard, a tour) could silently
+reuse a stale tap; `clearSelection()` now drops it. Nothing about which
+structure a tap selects, what the panel names, or the atlas itself changed.
+
+**Revision 22 → 23.** Code review of revision 22's fix found three ways it
+still failed the behaviour it claimed. First, a re-tap on the structure that
+was already selected recorded a new hit point (`_lastPick`) and re-emitted
+the selection, but `LabelLayer.setStructureLabel` compared only the
+annotation id — `structure:<id>`, unchanged by where the tap landed — so the
+second tap's point was silently discarded and the label stayed on the first
+one. It now compares the anchor as well as the id. Second, the selection was
+excluded from the drawn count as well as from eviction, so all six (or three,
+on a phone) landmarks kept their slots *and* the selection was added on top —
+one more label than the documented cap. The selection is still exempt from
+eviction — it is never the one dropped — but it now counts, so the
+lowest-priority landmark steps aside for it as any other label would. Third,
+a selection made without a tap — the parts tree, the keyboard — had its
+anchor chosen once, against whatever the camera saw at that moment; rotating
+away from it could hide the label even though another candidate on the same
+structure was still in view, because nothing asked again. The annotation
+`getStructureAnnotation` returns now carries a `reanchor()` method that tries
+a fresh candidate against the live camera, called by the label layer only
+once the current point has already failed its own occlusion test — never a
+per-frame search on a point that still holds. A tap's own point is unaffected
+by this: `_visibleAnchorFor` already prefers it unconditionally, so
+`reanchor()` is a no-op for it. All three were guarded before being fixed
+(`tests/label-layer.test.js`, `tests/brain-anatomy-selection-label.test.js`):
+each guard was reverted, confirmed to fail, then restored and confirmed to
+pass. Nothing about which structure a tap selects, what the panel names, or
+the atlas itself changed.
+
+**Revision 23 → 24.** An independent audit of revision 23, with the code and
+not the description in hand, found three more ways the fix fell short and one
+cost. First, `_visibleAnchorFor` returned the cached candidate object itself,
+and `reanchor()` moved the label by writing into it — so one reanchor
+overwrote the structure's best-ranked candidate in the cache with the second,
+for every later selection of that structure in the session (a Rule 3 failure:
+the structure's geometry and one label's anchor had become the same object).
+The label now owns a clone. Second, a tap's own point was preferred
+unconditionally, which made `reanchor()` a permanent no-op for tapped
+selections — the revision 23 text above records that as deliberate, and it was
+the wrong trade: a tap is visible by construction only at the moment it lands,
+and it is the way most readers select. The tap point is now used verbatim
+while the camera can see it, the ranked candidates stand in once it cannot,
+and the tap point is taken back as soon as it is visible again. Third, a
+pointer resting on the structure already selected fires the hover with the
+same annotation, and only a *landmark* naming the selected structure merged
+into the selection — a hover did not, so a desktop reader who clicked a
+structure and then read its label got two chips on one point. A hover now
+merges too. Fourth, a structure with nothing visible on it (the far hemisphere
+on a medial view) was searched again every frame it stayed selected; the
+search now runs once per camera pose. Each of the four was guarded before
+being fixed (`tests/brain-anatomy-selection-label.test.js`,
+`tests/label-layer.test.js`), confirmed to fail on revision 23, then confirmed
+to pass. Nothing about which structure a tap selects, what the panel names, or
+the atlas itself changed.
+
+**Revision 24 → 25.** The four-round AI terminology review branch (PR #125)
+lands after the selection-label fix. That branch counted its own revisions
+from 20 (the review records cite them: 21 = `880eded`, 22 = `852b691`, 23 =
+`5205c6b`), so its three substantive steps land here as one, and its two
+ledger-renumbering-only steps carry nothing a reader sees. What changed, in
+the branch's own words:
+
+**(a) Branch revision 20 → 21.** The 2026-09-16 AI-assisted terminology/hierarchy/copy
+check (not a clinical attestation; see
+[`docs/clinical-reviews/brain-anatomy-ai-terminology-check-2026-09-16.md`](../clinical-reviews/brain-anatomy-ai-terminology-check-2026-09-16.md))
+drove label, hierarchy and copy corrections in `src/data/brainAnatomy.js`. No
+geometry, no mesh selection and no atlas ids changed. Category placement moved
+for one label — `Base of peduncle`, from the cerebellum to the brainstem,
+because Terminologia Anatomica's *basis pedunculi* is a midbrain structure and
+the upstream metadata filed it under the cerebellum — so its colour family
+moves from cerebellum to brainstem. Keeping all 147 named structures
+perceptually distinct after that move required a new detail-palette seed
+(`palette-v2930` → `palette-v38601`), and the seed is part of every hash, so
+**every colour-map shade changed**, not only that label's (147/147 labels).
+**Natural-anatomy shades are not seeded and did not need re-finding, but they
+are not exempt from the category move either**: `brainColorKey()` feeds both
+modes, and for `Base of peduncle` the category/region correction changes which
+colour family (cerebellum → brainstem) the natural-anatomy calculation looks
+up too. So natural-anatomy shades changed for the one corrected label (2
+structures, left and right); the other 146 labels are unchanged in that mode.
+Colour aids identification and grouping; it does not show real tissue colour,
+functional localisation, vascular territory, exact boundaries or positional
+accuracy (model card §6). Earlier colour-map screenshots under
+`docs/screenshots/` therefore no longer match the shipped shades. Other
+corrections: a hierarchy regex bug that put "Collateral sulcus" and "Posterior
+transverse collateral sulcus" under 外側溝 instead of 大脳溝; plural "sulci"
+labels and the two cortical poles now have their own families instead of the
+generic cortex/gyri fallback; the aqueduct of midbrain, septum pellucidum and
+choroid plexus are filed under ventricular-system families without describing
+the septum or plexus as CSF spaces; several Japanese names and provenance notes
+were corrected (VA/VLD/VLV thalamic nuclei, the basolateral amygdala complex,
+the paracentral lobule, the insula mesh's name, and the Najdenovska/Neudorfer
+atlas-sourced parcels). This record is taken again because what a reader is
+told about several structures changed, even though nothing about what is drawn
+or selectable did.
+
+**(b) Branch revision 21 → 22.** A 2026-09-16 re-review of revision 21 (`880eded`,
+verdict revise) found 16 of its 24 original findings resolved and 8
+unresolved or partly addressed. This revision addresses most of the
+remainder — no geometry, no atlas ids and no colour changed:
+
+- The natural-anatomy colour claim in the "Revision 20 → 21" paragraph above
+  is corrected: `Base of peduncle` (2 structures) changed in natural-anatomy
+  mode too, not only in colour-map mode; the other 146 labels did not, and
+  the model-card §6 colour wording is replaced with the re-review's own
+  sentence about what colour does and does not encode.
+- `public/assets/brain/ATTRIBUTION.md`'s "about 7 mm" generalisation for
+  every registered deep structure is retracted, matching model card §5.
+- Merged-parcel source label ids (amygdala, hypothalamus, thalamus) were
+  recovered from the pinned upstream generator script and recorded in
+  [`docs/asset-provenance/brain-merged-parcels.md`](../asset-provenance/brain-merged-parcels.md);
+  the five hypothalamic notes no longer claim uniformly that all are
+  "integrated parcels" — three of five are single-source-label parcels per
+  side.
+- The CL–LP–PuM thalamic label spells out CL as the central lateral nucleus.
+- A **display-only** `regionNames` override on two label pairs (the
+  paracentral lobule's two meshes; the lateral occipitotemporal gyrus and
+  sulcus) makes their breadcrumb show both lobes their own description
+  already names, without changing `region`, `brainColorKey()` or colour.
+- Habenula and Septal nuclei carry a note that their midline display is the
+  source data's single-mesh storage unit, not a guaranteed anatomical
+  midline structure.
+- **View-bound notices.** `VIEW_SPECS` carries an optional `notice`/
+  `noticeJa` per viewpoint. Left and right medial views now state, from the
+  viewpoint itself rather than only from a hidden layer-stage description,
+  that the contralateral hemisphere is hidden and this is not a midsagittal
+  section; right medial and inferior additionally state that this model has
+  no right medulla oblongata mesh (F-141), so a reader looking at either
+  view cannot mistake the gap for a normal asymmetry. `InspectionPanel.js`
+  renders the active view's notice as one line under the viewpoint buttons.
+- The label-export script's per-structure table is renamed "271 選択可能
+  構造一覧" (`structures.md`, replacing the stale `meshes.md`) and gains
+  `description_key`/`has_note` columns.
+
+**(c) Branch revision 22 → 23.** The third AI review (of `852b691`, verdict revise)
+accepted the insula naming, the view notices and the colour record, and
+found one regression this record's previous revision introduced: the
+two-lobe breadcrumb meant for the paracentral *lobule* had also been applied
+to the lone paracentral *sulcus* (bx_id 307/308), which is the lobule's
+anterior boundary and a frontal-lobe sulcus. It is back under 前頭葉 ›
+大脳溝 with its own description; the lobule (261/262) keeps 前頭葉・頭頂葉. The
+provenance note calling the mamillary body a single nucleus is corrected.
+Nothing drawn, selectable, coloured or announced in a view changed, but what
+the panel says about two structures did, so this record is taken again.
+
 
 Each time the gate closed and the production build stopped shipping the scene
 until this record was taken again — the mechanism working. An earlier decision

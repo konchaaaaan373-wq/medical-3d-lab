@@ -38,8 +38,30 @@ export function createInspectionPanel({
     onClick: () => {
       if (onView?.(view.id) === false) return;
       setActive(viewButtons, views, view.id);
+      setViewNotice(view.id);
     },
   }));
+
+  // A one-line caveat tied to the *active* viewpoint, not a permanent card —
+  // most views (all lateral ones, anterior/posterior, superior) have nothing
+  // to say here. Only a view whose VIEW_SPECS entry carries `notice`/
+  // `noticeJa` shows this line (2026-09-16 AI re-review, D-2 / R2-26).
+  const viewNoticeEn = el('span', { class: 'lang-en' });
+  const viewNoticeJa = el('span', { class: 'lang-ja' });
+  const viewNotice = el('p', { class: 'inspection-view-notice', hidden: true }, [viewNoticeEn, viewNoticeJa]);
+  function setViewNotice(id) {
+    const view = views.find((candidate) => candidate.id === id);
+    if (!view?.notice) {
+      viewNotice.hidden = true;
+      viewNoticeEn.textContent = '';
+      viewNoticeJa.textContent = '';
+      return;
+    }
+    viewNotice.hidden = false;
+    viewNoticeEn.textContent = view.notice;
+    viewNoticeJa.textContent = view.noticeJa ?? view.notice;
+  }
+  setViewNotice(activeView);
 
   const backgroundButtons = backgrounds.map((preset) => {
     const button = choiceButton({
@@ -119,7 +141,10 @@ export function createInspectionPanel({
     ]),
     section(
       authoredViews ? ['Anatomical views', '解剖学的視点'] : ['Model-relative views', 'モデル基準の視点'],
-      el('div', { class: 'inspection-grid inspection-views', role: 'group', 'aria-label': 'Viewpoint / 視点' }, viewButtons)
+      [
+        el('div', { class: 'inspection-grid inspection-views', role: 'group', 'aria-label': 'Viewpoint / 視点' }, viewButtons),
+        viewNotice,
+      ]
     ),
     modeButtons.length
       ? section(
@@ -157,10 +182,15 @@ export function createInspectionPanel({
       element.hidden = !open;
     },
     setView(id) {
-      return setActive(viewButtons, views, id);
+      const applied = setActive(viewButtons, views, id);
+      if (applied) setViewNotice(id);
+      return applied;
     },
     clearView() {
       clearActive(viewButtons);
+      // The camera has left the named viewpoint, so the caveat that viewpoint
+      // carried no longer describes what is on screen.
+      setViewNotice(null);
     },
     setBackground(id) {
       return setActive(backgroundButtons, backgrounds, id);

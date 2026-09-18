@@ -153,6 +153,17 @@ test('the brain atlas record states what was measured and what was not', () => {
   assert.equal(brain.components.length, 7, 'the composite is recorded component by component');
   assert.ok(brain.components.some((c) => c.id === 'hcp1065-tracts' && /WU-Minn/.test(c.additionalTerms)));
   assert.ok(brain.license.obligations.some((o) => o.id === 'hcp-acknowledgment' && o.status === OBLIGATION_STATUS.SATISFIED));
+  // What is wrong with the file is recorded here, in the field for it — not
+  // only in the scene's notices and the ledger. The audit of the review PR
+  // found this list empty while three other places warned about the medulla.
+  assert.ok(
+    brain.knownDefects.some((d) => /medulla oblongata/i.test(d) && /F-141/.test(d)),
+    'the one-sided medulla mesh (F-141) is a defect of the asset, and the asset record says so'
+  );
+  assert.ok(
+    brain.knownDefects.some((d) => /leading space/i.test(d) && /F-143/.test(d)),
+    'the leading-space node names (F-143) are a defect of the asset, and the asset record says so'
+  );
 });
 
 test('the attribution notice discharges every obligation the manifest records', () => {

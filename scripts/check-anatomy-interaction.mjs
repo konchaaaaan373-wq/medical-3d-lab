@@ -1405,6 +1405,26 @@ try {
   //     panel — and that label obeys the same occlusion rule as the authored
   //     ones, so turning away from the structure takes it with it while the
   //     card goes on naming it.
+  //
+  //     **This used to be a note, never a failure** (L-46): the scene *did*
+  //     answer "no label here", correctly, and the line below turned that
+  //     correct answer into a comment instead of a red run — so a selection
+  //     could go unlabelled on every angle, forever, without this ever
+  //     saying so. It is asserted now for the scenes whose scene class
+  //     actually implements `getStructureAnnotation` (a selection gets an
+  //     anchor of its own, on the same terms `docs/model-cards/brain-anatomy.md`
+  //     describes); the rest share `OrganAnatomyScene`, which does not yet,
+  //     and that is a real, separate gap — reported, not silently passed.
+  //     **What is asserted is the anchoring, not the method's existence.**
+  //     `heart-anatomy` implements `getStructureAnnotation` too, but its
+  //     `_anchorFor()` still keeps one fixed outward point per structure, with
+  //     no candidate list and no `reanchor()` — so a heart selection can be
+  //     occluded from an angle with nothing the scene can do about it, which
+  //     is F-40 itself and not a regression. Only a scene that can move its
+  //     anchor is held to "labelled whenever drawn"; the rest are noted, each
+  //     with the reason that applies to it.
+  const SCENES_WITH_MOVABLE_ANCHORS = new Set(['brain-anatomy']);
+  const SCENES_WITH_FIXED_ANCHORS = new Set(['heart-anatomy']);
   const labelTexts = () =>
     page.evaluate(() =>
       [...document.querySelectorAll('.label3d')]
@@ -1431,13 +1451,37 @@ try {
   if (labelled.length > 6) {
     problems.push(`${labelled.length} labels are on screen at once; the cap is 6`);
   }
-  if (pinnedForLabel && !labelled.includes(pinnedForLabel)) {
-    // Not every anchor can be seen from every angle — a fold's outward point can
-    // sit behind the gyrus beside it, which is F-40 — so this is reported with
-    // the structure named rather than asserted blindly.
+  if (pinnedForLabel && !labelled.includes(pinnedForLabel) && SCENES_WITH_MOVABLE_ANCHORS.has(sceneSlug)) {
+    // A selection is exempt from the label cap and, since L-46, is not held to
+    // the single fixed anchor a landmark is: `_visibleAnchorFor` in
+    // `BrainAnatomyScene.js` ranks candidates and `reanchor()` swaps in one the
+    // live camera can see. With that in place the label must be there whenever
+    // the structure is drawn, so a miss is a real regression — not an angle the
+    // anchor cannot help. See F-40, L-46.
+    problems.push(
+      `the pinned structure "${pinnedForLabel}" has no label on the model from this angle — ` +
+        'a selection must be labelled whenever its structure is drawn (F-40, L-46).'
+    );
+  } else if (pinnedForLabel && !labelled.includes(pinnedForLabel) && SCENES_WITH_FIXED_ANCHORS.has(sceneSlug)) {
+    // The scene names a selection on the model, but from one point chosen at
+    // load: `HeartAnatomyScene._anchorFor()` caches a single
+    // `outwardSurfacePoint()` and there is nothing to ask for another. So this
+    // is F-40 in its original shape — the anchor happens to be behind
+    // something from here — and calling it a regression would send the next
+    // reader looking for a change that did not happen (L-29).
     notes.push(
-      `the pinned structure "${pinnedForLabel}" has no label on the model from this angle ` +
-        '(F-40: one anchor point decides for the whole structure).'
+      `"${pinnedForLabel}" has no on-model selection label — ${sceneSlug} anchors a selection ` +
+        'at one fixed point and cannot move it, so this angle is F-40, not a regression. ' +
+        'Ranked candidates + reanchor() (BrainAnatomyScene) is what would make it assertable.'
+    );
+  } else if (pinnedForLabel && !labelled.includes(pinnedForLabel)) {
+    // `${sceneSlug}` shares `OrganAnatomyScene`, which does not implement
+    // `getStructureAnnotation` at all — no scene here has ever put a
+    // selection's name on the model, on any angle, so this is a known, larger
+    // gap rather than the per-angle occlusion L-46 is about. Noted, not failed.
+    notes.push(
+      `"${pinnedForLabel}" has no on-model selection label — ${sceneSlug} does not implement ` +
+        'getStructureAnnotation yet (see brain-anatomy for the pattern).'
     );
   } else if (pinnedForLabel) {
     // It is there. Now turn to the other side: it must go, and the card must not.

@@ -16,8 +16,21 @@ Last updated: 2026-09-17
   同じ番号が同時に確保され、どちらもマージされたためです（解剖側は §A、
   病態側は §E）。**片側を採番し直す必要がありますが、どちらを動かすかは
   両方の所有者が決めることなので、ここでは記録だけして触っていません。**
-  次に追加する番号は **F-139** です（F-111〜F-137 は main 側で採番済み。
-  **F-138 がこの branch**）。
+  次に追加する番号は **F-149** です（F-111〜F-148 は main 側で採番済み）。
+  **マージ直前にもう一度取り直してください**（L-16）。
+  ⚠ **9 回目（2026-09-17、PR #125）**: 脳の医学レビュー対応 branch が F-120〜F-124 →
+  F-138〜F-142 と 2 度採番し直したあと、main が F-138 を別件（private 化）で先に取った
+  ため、さらに **F-139〜F-143** に動かしました（人間の署名 F-139、画像送付 F-140〔解決〕、
+  延髄の片側メッシュ F-141、統合区画の元ラベル id F-142、ノード名の先頭スペース F-143）。
+  `docs/clinical-reviews/` の AI レビュー記録本文はレビュアーの原文なので番号を変えず、
+  各記録の冒頭の対応表を更新しています。
+  ⚠ **10 回目（2026-09-17、PR #135）**: `verify:anatomy` ほか 3 本を CI に載せる
+  branch が L-45 と F-146 を取り、作業中に main が両方を取りました。**この branch を
+  L-48 / F-148 に動かしています（L-47 / F-147 も #136 に先を越されたので、
+  **同じ日に 2 度動かしました**）。** 踏んだ理由は記録に値します——同じ PR の説明で
+  「並行セッションがいるので衝突面に注意する」と書いたうえで、**着手時に 1 回読んだ
+  番号をそのまま使いました**。L-16 が言う「main を見てから採番」は、
+  **最初に 1 回見ること**ではありません。
   ⚠ **同じ衝突が 7 回目です。** main が F-126〜F-129 を取り、この branch も
   同じ 4 つを使っていました（その前は F-124 / F-125、その前は F-107〜F-110）。
   **この branch 側を F-130〜F-133 に動かしています**
@@ -179,6 +192,62 @@ Netlify の Production には Stripe の 4 変数（`STRIPE_SECRET_KEY`、価格
 - 完了の定義: 開く場合は `npm run billing:check` が 3 行とも ok。開かない場合は
   その決定を roadmap の Gate に書く。
 
+### F-146 `liver-anatomy` の `verify:anatomy` が「開始時と reset 後のフレーミングが異なる」で 1 件赤 — P2（2026-09-17）
+
+#132（脳の選択ラベル）の検証で 4 シーンを直列に走らせたところ、brain / heart /
+lung は 0 で、**liver だけが 1 problem** でした: 開いた直後のフレーミングと、
+`resetView()` 後のフレーミングが一致しない。#132 は liver 関連ファイルを
+触っておらず、main（`4b6cac8`）でも同じ結果なので、**この branch が入れた
+回帰ではありません**。原因は未調査で、公開中のシーンなので P2。
+
+**測りました（2026-09-17、`scene-drive-validation` run 1、head `7cb4497`）**:
+枠の中央行で、**開いた直後 0.22..0.48 / `reset the display` のあと 0.2..0.52**。
+その間に何も動かしていません。**reset のほうが広い**——つまり開始時のほうが
+寄っています。読者が最初に見るのは 0.22..0.48 のほうです。
+これで下の「どう確かめるか」の 1 文目は済んでおり、**残りは切り分け**です。
+
+- どう確かめるか: ~~`npm run verify:anatomy -- --scene liver-anatomy` を
+  main で走らせ、problem の本文（2 つのカメラ姿勢）を記録する。~~ 済み。次に
+  `getSubjectBounds()` が開始時と reset 後で同じ箱を返しているか、
+  同意カードを閉じた直後のフレーミング tween が止まる前に測っていないか
+  （CLAUDE.md「待つときは、時間ではなく状態を待つ」の実例）を切り分ける
+- 完了の定義: 原因が分かり、(a) 検証側が tween の途中を測っていたなら
+  `check-anatomy-interaction.mjs` を pose が止まるまで待たせる、(b) シーン側の
+  reset が開始時と別の箱を見ているなら liver の `getSubjectBounds()` を直す。
+  どちらでも `verify:anatomy -- --scene liver-anatomy` が 0 で、
+  他 3 シーンが 0 のまま
+
+### F-147 シーン画面のフッタが、別のページを指すリンクに `aria-current="page"` と言っている — P3（2026-09-17）
+
+#129 のレビューで見つけました。マージは止めていません——この PR が足した
+`aria-current` 自体は**無いよりはっきり良い**（それまで「いまどのタブの下にいるか」を
+読み上げる手段は 1 つも無かった）ので、残るのは値の選び方だけです。
+
+`SceneSwitcher.js` はいま 1 つの文書に 2 か所 `aria-current="page"` を置きます。
+
+| 場所 | リンク先 | 現在のページか |
+| --- | --- | --- |
+| モデル一覧の中の現在シーン行（既存、`:119`） | `#/brain-anatomy` | **はい** |
+| フッタの第一リンク（#129 で追加） | `#/organs` | **いいえ** |
+
+ARIA の `page` は「一連のページの中の、現在のページ」です。フッタのリンクが
+指しているのは訪問者がいま居るページではなく、**そのページが属するタブの索引**で、
+これは `aria-current="true"` が受け持つ「集合の中の現在の項目」のほうに近い。
+いまの状態だと、読み上げは同じ文書内の 2 つのリンクを同じ言葉で紹介し、
+片方は本当に現在地、もう片方は移動先です。
+
+- **これは推測ではなく判断が要る点です。** 実際の design system では
+  「セクションのナビ項目に `page` を付ける」実装も広く見ます。だから
+  「明らかな誤り」ではなく、**この repo がどちらの語彙を採るかの決定**として
+  置きます
+- どう確かめるか: 実機のスクリーンリーダー（VoiceOver / TalkBack）で
+  シーン画面のフッタを読ませ、2 つの `aria-current` がどう案内されるかを聞く。
+  `verify:ui` は属性の言語を見ますが、**読み上げの言い回しは測っていません**
+- 完了の定義: `page` のままにする（なら理由を `SceneSwitcher.js` の
+  コメントに 1 行）か、フッタを `true` に変える。どちらでも
+  `tests/scene-switcher-current-route.test.js` が値まで固定する
+
+
 ---
 
 ## B. 医学レビュー・モデルの判断
@@ -315,79 +384,151 @@ conda-forge には存在しません。したがって CDM のフィールド名
 
 ## C. 製品・UI の判断
 
-### F-136 「UI を隠す」の戻り方は Chromium でしか測っていない — P2（2026-09-17）
+### F-139 脳解剖：人間の臨床医・解剖学者による監修署名がまだ要る — P1（2026-09-16）
+
+`brain-anatomy` は公開βの唯一のシーンですが、医学レビューは `pending` のままです。
+2026-09-16 に ChatGPT による AI 用語・階層・説明文チェックを受けましたが
+（[記録](clinical-reviews/brain-anatomy-ai-terminology-check-2026-09-16.md)、
+判定 hold・24 件）、**これは人間の医学監修署名ではありません**。レビュー本文
+自身が §3.1 で「このAI照合だけでレビューpendingを解除しない」と明記しています。
+
+**追記（2026-09-17）**: AI 照合は第 4 回（対象 `5205c6b`、revision 23）で
+**approve** に達しました（[記録](clinical-reviews/brain-anatomy-ai-terminology-check-2026-09-17-approve-5205c6b.md)）。
+これは「対象版・一般教育／医学教育の肉眼解剖・確認範囲」に限定した AI 照合であり、
+本項の**人間の署名は引き続き必要**です。署名者に渡す一式は、4 回分の記録・
+`npm run review:brain-labels` の出力・`docs/asset-provenance/brain-merged-parcels.md`・
+公開判断記録で揃っています。
+
+- どう確かめるか: レビュー本文 §3.2 の 3 条件（文面是正・元アトラスとの対応解消・
+  画像／実機／形状の受入確認）を満たしたうえで、人間の臨床医・解剖学者に
+  レビューを依頼する。
+- 完了の定義: `docs/clinical-reviews/registry.json` の `brain-anatomy` が
+  `reviewed` になり、`reviewerRole` が実在の臨床レビューア役割を示し、
+  `tests/clinical-reviews.test.js` が通る。
+
+### F-141 上流由来の片側だけのメッシュ（延髄） — 原因不明、鏡像複製はしない — P2（2026-09-16）
+
+AI照合の指摘13（付録A #5）で、**延髄が左側のみ**の独立ラベルを持つことが
+分かりました。原因（側タグの誤り／反対側の欠落／別名への統合／抽出漏れ）は
+レビュー本文からは判定できません。
+
+- どう確かめるか: 上流 `itayinbarr/brainproject` の生成コード・元データを、
+  対象コミット `7294b63` の生成版と突き合わせて原因を特定する。
+  **原因確認前に単純な左右反転複製で埋めることは禁止**（レビュー本文が明記）。
+- 完了の定義: 原因が判明し、(a) 正常な片側性である／(b) 抽出漏れで反対側を
+  補う必要がある、のどちらかを記録した上で、必要な修正（あれば）を行う。
+
+**訂正（2026-09-16）**：本項は当初「後横側副溝が右側のみ」も含んでいましたが、
+これはレビュー側の抽出スクリプトの不具合でした。実際の GLB には
+`Posterior transverse collateral sulcus` の左（`bx_id: 0`）・右（`bx_id: 1`）
+両方のメッシュが `bx_side` 込みで正しく収録されています（`bx_id: 0` は
+真理値として falsy なので、`extras.bx_id != null` ではなく truthy チェックで
+抽出すると左側メッシュが丸ごと落ちる——実際に落ちていたのはレビュー側の
+抽出であって、本リポジトリの `tests/brain-anatomy.test.js` や
+`scripts/export-anatomy-labels.mjs` は元から `!= null` 判定を使っており
+影響を受けていません）。この訂正を踏まえ、本項の対象を延髄のみに絞りました。
+後横側副溝の別の不具合（右メッシュのノード名の先頭スペース）は F-143 を参照。
+
+**記録先（2026-09-17）**：監査で、この欠落が `src/catalog/assetManifest.js` の
+`knownDefects`（asset の欠陥を持つ唯一の欄）には書かれておらず、シーンの注意・
+構造ノート・本台帳の 3 か所にだけあると分かりました。同欄に F-141 と F-143 を
+記録し、`tests/asset-manifest.test.js` が固定します。
+
+### F-143 「Posterior transverse collateral sulcus」ノード名の先頭スペースと検索 0 件 — P3（2026-09-16）
+
+GLB 内の該当メッシュのノード名（three.js の `Object3D.name` の元になる
+gltf `node.name`）には、左右どちらも先頭にスペースが付いています
+（`" Posterior transverse collateral sulcus.l"` / `" Posterior transverse
+collateral sulcus.r"`）。`extras.bx_label`（`brainStructureInfo()` が参照する
+値）自体にはスペースが無く `"Posterior transverse collateral sulcus"` なので、
+`src/app/anatomySearch.js` の検索は本来この値を経由するはずですが、
+「Posterior transverse collateral」で検索すると 0 件になるという報告があります。
+原因（検索が `node.name` 側の値を経由する経路があるのか、別の不一致か）は
+未確認です。
+
+- どう確かめるか: 実ブラウザ（`npm run verify:anatomy` 系）または
+  `tests/anatomy-contract.test.js` 相当のヘッドレス検証で、この構造名を
+  検索して実際にヒット件数を確認する。ヒットしない場合、検索経路のどこが
+  `node.name`（先頭スペース入り）を参照しているかを特定する。
+- 完了の定義: 検索がこの構造をヒットすることを確認し（またはトリム／正規化の
+  修正を入れて）、原因と結果を本項の更新として記録する。
+
+### F-142 Najdenovska／CIT168 由来の統合区画に、元ラベル id の対応記録がない — P2（2026-09-16、一部解消）
+
+AI照合の指摘8・10・11・12は、視床の拡散MRI由来7区画（Najdenovska）、扁桃体の
+Basolateral complex 等、視床下部5領域が、**元アトラスの複数ラベルを統合した
+区画**であることを表示側が説明していない、または統合元が分からない、という
+指摘です。`src/data/brainAnatomy.js` の `bx_parent` はメッシュの階層先を
+持ちますが、**統合元となった個々のラベル id は記録されていません**。
+
+- どう確かめるか: 上流 `build_nuclei.py` の `AMY_GROUPS` / `HYP_GROUPS` など
+  統合ロジックを、対象コミット `7294b63` の生成版と突き合わせ、統合区画ごとに
+  元ラベル id の対応を記録する。対象版で同じ定義かどうかは未確認（レビュー
+  本文の要照合事項）。
+- 完了の定義: 統合区画（Basolateral complex、Corticomedial group、視床
+  7区画、視床下部 5 領域など）について、元ラベル id の対応が記録され、
+  情報カードまたは根拠台帳から参照できる。
+
+**状態の更新（2026-09-16、再レビュー §2.2 の推奨状態）**：「GLB内にIDなし」から
+「固定版の生成コードから数値IDを回収済み」に前進。ATTRIBUTION が固定する上流
+`itayinbarr/brainproject` @ `2929e94f521a8ddceab26bc100a98dc06b0da060` の
+`scripts/build_nuclei.py`（blob `87d08baed296d1d14ed012e43b1ba521264b3e0b`）を読み、
+扁桃体（Lateral [1] / Basolateral [2,3,6] / Central [4] / Corticomedial
+[5,7,8,9]）、視床下部（視索前・外側・後部は片側 1 元ラベル、前部 6、隆起部 4）、
+視床（Najdenovska 7区画の左 0–6・右 7–13 のボリューム対応、CL–LP–PuM は左 4・
+右 11）を
+[`docs/asset-provenance/brain-merged-parcels.md`](asset-provenance/brain-merged-parcels.md)
+に記録した。`src/data/brainAnatomy.js` の `STRUCTURE_NOTE` もこの対応表を反映し、
+視床下部 5 領域を一律「統合区画」とする表現をやめて片側 1 ラベル由来（視索前・
+外側・後部）と複数ラベル統合（前部 6・隆起部 4）を区別した。
+
+**まだ残ること**：(1) 元 LUT（原アトラス論文）の全構成名との突き合わせ
+（数値 id が原著の何という核・区画に対応するかの再確認）、(2) この対応表が
+実際に配信中の `brain.glb` を生成したスクリプトと一致することの個別資産対応
+記録、(3) 入力ボリュームファイル（`amyg_iAmyNuc_1mm_MNI.nii.gz` 等）自体の
+ハッシュ再確認。いずれも
+[`docs/asset-provenance/brain-merged-parcels.md`](asset-provenance/brain-merged-parcels.md)
+§5 に明記。
+
+---
+
+## C. 製品・UI の判断
+
+### F-136 「UI を隠す」の戻り方——残っているのは実機の指と、2.2 秒という値 — P2（2026-09-17）
 
 戻りボタンが hide と一緒に消えていた不具合（`verification-lessons.md` L-31）を直し、
 **戻り道は操作中だけ出て、2.2 秒なにも起きなければ枠から下がり、
 ポインタ・キー・タッチのどれかで戻る**形にしました。押せる状態は保ったままで、
-hover と `:focus-visible` が光らせます。ここまでは実ブラウザで確認済みですが、
-**確かめたのは headless Chromium 1 本だけ**です。
+hover と `:focus-visible` が光らせます。
 
-- **確認済み: 他エンジン。** `final-browser-validation.yml` を候補 commit に対して
-  実行しました。**Chromium 緑・Firefox 緑・WebKit 赤**ですが、
-  WebKit の 1 件は main でも同一に出ます（下の **F-137**）。この PR の追加した
-  往復検査は 3 エンジンとも問題を出していません。
-- **未確認 2: タッチ端末。** hover の無い端末では「下がった状態から戻す」のが
-  `touchstart` / `pointerdown` だけになります。**指で画面に触れれば戻る**はずですが、
-  実機では試していません。orbit しようとして触れた時点で戻る、が期待する挙動です。
+**この項目の見出しは「Chromium でしか測っていない」でした。もう違います**
+（2026-09-17 更新）。**ただし「機械で確かめられる分は終わった」とも書いており、
+そちらは嘘でした**——宣言している 5 つの戻り道のうち、ガードが投げていたのは
+`touchstart` だけで、`keydown` を `App.js` から消しても `npm test` も
+3 エンジンの往復検査も緑のままでした（レビューで指摘された）。いま 5 つとも
+見ています。残りは下の 2 つです。
+
+- **済: 他エンジン。** `final-browser-validation.yml` を 3 エンジンで実行済みで、
+  この往復検査は Chromium / Firefox / WebKit のどれでも問題を出していません
+  （当時 WebKit だけ赤だった 1 件は別件で、**F-137** として解決しました。Resolved 参照）。
+  **下の 4 経路まで広げたガードでも 3 エンジンを回し直しています**——前回の 3 エンジン緑は
+  `touchstart` 1 本だけのガードに対する緑で、広げた版に対する緑ではありませんでした
+  （この取り違えが L-44 の一般形そのものです）。
+- **半分は機械が見るようになりました: 戻り道の配線。** `hideUiRoundTrip()` は
+  `pointermove` を実際のマウスで動かし、残る 4 つ
+  （`pointerdown` / `touchstart` / `wheel` / `keydown`）を 1 つずつ投げて
+  **そのハンドラの中で**クラスを読みます。`App.js` のリスナー一覧から
+  どれか 1 つ消せば、その名前を挙げて赤くなります
+  （`keydown` 単独で赤・`wheel` と 2 つ消して 2 件とも名指しで赤・
+  戻して緑を確認済み）。**これは配線を見ているだけで、端末ではありません**
+  ——マトリクスの context は touch context ではなく、そうすると他の全計測が変わるので、
+  合成イベントで止めています。**実機の指はまだ人だけ**:
+  orbit しようとして触れた時点で戻る、が期待する挙動です。
 - **未決定: 2.2 秒という値。** 動画プレイヤーの慣習（2〜3 秒）から取っただけで、
   実際にキャプチャを撮る人に短い／長いを聞いていません。定数は `App.js` の
   `UI_QUIET_MS` 1 か所です。
 - 完了の定義: 実機のタッチ端末で「下がる → 触れて戻る → 押して UI が戻る」を
   1 回通し、待ち時間の値を決める（変えるなら 1 か所）。
-  WebKit 全体の緑は F-137 側の条件です。
-
-### F-137 WebKit だけ、tablet-768 のシーンでコントロール列が横にはみ出す — P2（2026-09-17）
-
-`final-browser-validation.yml` の `viewport matrix (webkit)` が 1 件で赤になります。
-
-```
-tablet-768 · Scene: the control bar scrolls sideways (245px of content in 231px)
-```
-
-`.button-row`（`ControlPanel.js` のボタン列）の `scrollWidth` が 245、
-容れ物が 231。**14px 足りません。** Chromium と Firefox では出ません。
-
-- **この PR のものではありません。** 同じワークフローを候補 commit
-  (`61514c3`) と **main (`eb20eee`)** の両方に対して実行し、
-  どちらも WebKit だけが落ち、**問題は 1 件・文面も数値も同一**、
-  レポート artifact のサイズも同じ 9674 バイトでした
-  （runs [35180833403](https://github.com/konchaaaaan373-wq/medical-3d-lab/actions/runs/35180833403) /
-  [35181371823](https://github.com/konchaaaaan373-wq/medical-3d-lab/actions/runs/35181371823)）。
-  **どちらが原因かを推測せずに A/B を撮ってから書いています**（L-15）。
-- **いつからかは未確認。** main の履歴のどこで入ったかは測っていません。
-  `final-browser-validation.yml` は候補時だけ走る手動ワークフローなので、
-  気づかれずに main に載っていた可能性があります。
-- **最初に書いた見当は外れでした。** 「14px は 1 文字ぶんで、日本語ラベルの
-  字送りの差だろう」と書きましたが、**中身の幅は両エンジンで同じ 245 です**。
-  違うのは**箱のほう**で、Chromium は 245、WebKit は 231。ボタンは無関係です。
-- 測ったこと（Chromium、768×1024、`#/brain-anatomy`）:
-  - `#ui[data-anatomy-shell='calm'] .console` は **`width: fit-content`**
-    （`anatomy-shell-presentation.css`）。つまり箱の幅は中身が決めます。
-  - その中身は `.controls` 1 つだけ（`.stage-readout` は calm で `display:none`）で、
-    `.controls` の子は slider-row / **button-row** / disclaimer の 3 つ。
-  - **`.button-row` は `overflow-x: auto`**（`ui.css`）。
-    スクロールコンテナは祖先の intrinsic 幅への寄与が特殊で、
-    **ここでエンジンが割れているのが最有力**です——Chromium は 245 を、
-    WebKit は 231（= 行以外の子が決めた幅）を採っている、という形。
-  - **スクロールバー説は否定済み。** Playwright の Chromium は既定で
-    `--hide-scrollbars` が付き WebKit には付かないので 14px の候補でしたが、
-    `ignoreDefaultArgs: ['--hide-scrollbars']` で出しても数値は 1px も動きません。
-- **まだ確かめていないこと**: WebKit 側で 231 を出しているのがどの要素か。
-  `check-viewports.mjs` は失敗時に、行から `#ui` までの箱の鎖**と各段の兄弟**を
-  印字するようになったので、**WebKit で 1 回走らせれば分かります**
-  （この環境は playwright の WebKit をダウンロードできないため、CI からしか測れません）。
-- 読者に起きること: 行は `scrollbar-width: none` と
-  `::-webkit-scrollbar { display: none }` を持つので、**あふれても何も見えません**。
-  コントロールが 1 つ、ただ無いように見えます。
-  そして Chromium でも中身 245 が箱 245 に**余白ゼロ**で収まっており、
-  1px でも違えば同じことが起きる作りです——エンジン差はきっかけであって、
-  原因は「隠れてはいけない行が、自分を囲む箱の幅を決めていない」ことです。
-- 完了の定義: WebKit の `viewport matrix` が緑。直したら、Chromium / Firefox が
-  緑のままであることも同じワークフローで確認する。
-
----
-
 
 ### F-144 腎の冠状断面ビューで、尿管が管ではなく平たい刃に見える — P2（2026-09-17）
 
@@ -1047,6 +1188,105 @@ F-109 で臨床レビュー登録簿（98.5 kB）は外しましたが、まだ 
   往復（URL→選択→URL）を固定する。
 
 ## D. テスト・CI
+
+### F-148 CI で一度も走っていなかった検証が 3 本あった — P2（2026-09-17）
+
+**`verify:anatomy` / `verify:disease` / `verify:patient` は、どの workflow にも
+入っていませんでした。** 誰かの手元で走るか、走らないかのどちらかで、
+実際にはほとんど走っていません。測った結果:
+
+| script | どの workflow にあるか |
+| --- | --- |
+| `verify:ui` | `ci.yml` / `final-browser-validation` / `webkit-lifecycle-diagnostic` |
+| `verify:auth`・`verify:hero-input` | `final-browser-validation` |
+| `verify:departure`・`verify:gated` | `ci.yml` |
+| `verify:live` | `verify-live.yml` |
+| **`verify:anatomy`** | **なし** |
+| **`verify:disease`** | **なし** |
+| **`verify:patient`** | **なし** |
+
+**これは「回していない」ではなく「回せる場所が無かった」です。** そして
+2026-09-16 に**公開中の全シーンでクリック tour が壊れ、`npm test` は全緑**
+だった件を見つけたのが、まさに `verify:anatomy` です。3 本とも
+「押したら何かが起きたか」を読む検査で、`node --test` が構造的に見られない層です。
+
+**手元で走れば見つかることは、同じ日に証明されています**——**F-146** は
+別セッションが 4 シーンを手で直列に走らせて liver の 1 件を見つけたものです。
+この項目が言っているのは「誰も走らせない」ではなく、**走らせるかどうかが
+その時たまたま手が空いていた人に依存している**ということです。
+
+`.github/workflows/scene-drive-validation.yml` を足しました。**`workflow_dispatch`
+限定**で、PR ごとの CI は 1 エンジン 1 チェックのまま——F-112 が持っている判断は
+動かしていません。置き場所は `final-browser-validation.yml` と同じ「候補時」の棚です。
+
+**公開シーンの一覧は workflow に書いていません。** `published-scenes` job が
+実行時に `src/catalog/publicManifest.js` から `sceneId` を読み、それを matrix に
+渡します。公開が増えれば次の run から自動で入り、外れれば駆動されなくなります
+（CLAUDE.md の「公開一覧を書き写さない」。この文書自身が 3 か所同時に
+間違えた前科があり、workflow は誰も読み返さないぶん最悪の写し先です）。
+
+`disease` と `patient` は preview 権限つきビルドで、かつ **stub の Supabase 設定**
+が要ります——patient の walk は `localStorage` にセッションを書くので、
+アカウント層の無いビルドではサインアウト状態を駆動して「ガイドは未購入」と
+報告してしまいます。`final-browser-validation` の auth job と同じ値です。
+
+**ガードは壊して赤を確認済みです**（`tests/scene-drive-workflow.test.js`、
+ミューテーション 6 件）:
+
+| 壊した内容 | 結果 |
+| --- | --- |
+| `push:` を足して毎 push 実行にする | 赤 |
+| `verify:patient` の呼び出しを消す | 赤 |
+| 公開シーン 2 件を matrix に直書きする | 赤 |
+| 空の manifest で例外を投げるのをやめる | 赤 |
+| patient を preview 権限なしでビルドする | 赤 |
+| `verify:disease` の第 1 引数をシーン一覧にする | 赤 |
+
+最後の 1 つは**実在の不具合でした**。`check-disease-interaction.mjs` の使い方が
+`-- copd asthma pulmonary-edema` と書いていましたが、`argv[2]` は出力先なので、
+その通り打つと **copd がディレクトリ名になり copd は駆動されず、終了コードは 0**。
+usage を直し、**L-48** に記録しました。
+
+**初回 run の結果（run 1、head `7cb4497`、2026-09-17）**
+
+| job | 結果 |
+| --- | --- |
+| which scenes are published | success（matrix が公開 4 シーンに解決） |
+| anatomy drive (brain / heart / lung) | success |
+| **anatomy drive (liver)** | **failure — 1 problem** |
+| disease drive | success |
+| **patient explanation walk (copd)** | **failure — 14 problems** |
+
+**赤 2 件は、どちらも「初めて走らせたから出た」ものです。**
+
+**liver は F-146 そのもので、この run が F-146 の求めていた数字を出しました**:
+「開いた直後は枠の中央行で **0.22..0.48**、`reset the display` のあとは
+**0.2..0.52**。その間に何も動かしていない。読者が見るのは前者」。
+F-146 側にも書き写しました。**手で走らせないと得られなかった数字が、
+dispatch 1 回で出ます**——この項目が言いたかったのはこれです。
+
+**patient の 14 件は、いまのところ検査側の欠陥に見えます。** 全部が同じ形で、
+「ラベルが **1280px 枠に対して 0〜16 の帯**の外にある」。帯は
+`.global-scene-nav` の下端（**存在しないので fallback の 0**）と `.console` の上端
+（**16**）から作られており（`check-patient-explanation.mjs:224-225`）、
+患者説明ビューのレイアウトを指していません。**CI 固有ではなく、ローカルでも
+座標まで同一に再現します**（±1px）。ただし**断定はしていません**——
+`.console` が何に解決しているかは測っていません
+
+- **次にやること**: (a) patient の帯の定義を、患者説明ビューが実際に持つ
+  要素から取り直す（そのうえで赤が残るなら、それは製品側の発見）。
+  (b) liver は **F-146**。どちらも**この項目ではなく、それぞれの項目で閉じます**
+- **branch 上では試せません**: `POST /actions/workflows/<file>/dispatches` は
+  **default branch にある workflow しか見つけず**、新規ファイルは
+  マージ前だと `404` です（PR #135 で実測）。つまり**この workflow は、
+  一度もその workflow 自身で走っていない状態でマージされました**
+- **再検討のきっかけ**: private 化（F-138）で run 本数を絞るとき。
+  これは候補時の棚なので毎 push の分数には効きませんが、**1 回が高い**
+  （anatomy は 1 シーンあたり分単位）ことは変わりません
+- **確かめ方**: Actions → Scene drive validation → `commit_sha` と `pr_number` を入れて実行。
+  `mcp__github__actions_run_trigger` から起動でき、ログも読めます
+- **完了の定義**: 3 本とも 1 度は CI で走り、出た findings が
+  「直した」か「番号のついた項目になった」かのどちらかになっていること
 
 ### F-138 private に戻すのは公開前。そのとき CI は今の本数では 2,000 分に収まらない — P2（2026-09-17）
 
@@ -2864,18 +3104,21 @@ B2 で追加した 8 シーンのうち **7 シーンで、ブラウザ確認し
   （まだ足していません。Claude① / Claude② の所有文書のため）。
 
 
-### F-125 教訓の 15 件は、まだ人しか捕まえられない — P2（2026-09-16、2026-09-17 更新）
+### F-125 教訓の 18 件は、まだ人しか捕まえられない — P2（2026-09-16、2026-09-17 更新）
 
-`docs/verification-lessons.md` が 37 件を持ち（2026-09-17 に再読。
-#123 が 5 件足しました）、`npm run lessons`（`npm test`
+`docs/verification-lessons.md` が 49 件を持ち、`npm run lessons`（`npm test`
 からも走る）が台帳の側を守ります——3 つの欄が**あって中身が空でない**こと、
 **名指ししたガードが実在すること**、まだ人しか捕まえられない件数。
 
-**38 件中 15 件です**——`npm run lessons` の出力から書いています。
+**49 件中 18 件です**——`npm run lessons` の出力から書いています
+（2026-09-17、main を取り込んで L-47 を採番し直した直後に再読）。
 L-01 / L-05 / L-06 / L-09 / L-13 / L-14 / L-15 / L-16 / L-21 / L-24 / L-26 /
-L-27 / L-28 / L-30 / L-36。
-うち **L-16 / L-21 / L-27 / L-30 の 4 件は `(partly)`**——半分は機械が捕まえ、
-残り半分は人だけ、という項目です。
+L-27 / L-28 / L-30 / L-36 / L-43 / L-48 / L-49。
+うち **L-16 / L-21 / L-27 / L-30 / L-43 / L-48 / L-49 の 7 件は `(partly)`**
+——半分は機械が捕まえ、残り半分は人だけ、という項目です。
+
+**この数と一覧は、並行 branch がほぼ毎回動かします。** 書き写す前に
+`npm run lessons` を読み直してください（この節自身が 3 回それを誤りました）。
 
 ⚠ **12 → 15 は後退ではありません。計器が直っただけです。** 以前の
 `auditLessons` は「ガードを 1 つでも名指したら満額被覆」と数えていたので、
@@ -3286,6 +3529,75 @@ landmark ビルダー（`buildKidney({ parts: false })`）の `dispose()` を呼
 ---
 
 ## Resolved
+
+- **F-140 16 枚のレンダリング画像と単独選択画面をレビューアへ送る** — 解決（2026-09-17）。
+  第 2 回で 8 視点×2 配色 16 枚＋検証 8 枚、第 3 回で UI 付き 20 枚（manifest 付き）、
+  第 4 回で 3 枚を送付し、いずれも受領と所見が記録に残っています
+  （`docs/clinical-reviews/brain-anatomy-ai-terminology-check-2026-09-1{6,7}-*.md`）。
+  大脳脚底の旧名画像は第 3 回で現行名の画像に差し替え済み。撮影状態の記録
+  （commit・asset hash・bx_id・視点・layer・hiddenIds・isolatedId）は第 4 回分から
+  実行時読み取りで揃っています。第 3 回分の未取得項目は null と理由で訂正済み。
+- **F-137 WebKit だけ、tablet-768 でコントロール列が横にはみ出す** — 解決（2026-09-17）。
+  **最初に書いた見当は 2 つとも外れでした。**「14px は 1 文字ぶんで日本語ラベルの
+  字送りの差」も、「Playwright が Chromium にだけ `--hide-scrollbars` を付けるから」も
+  違います（後者は `ignoreDefaultArgs` で出して測り直して否定）。
+
+  WebKit で測った箱の鎖が答えでした——**中身の幅は両エンジンとも 245 で同じ、
+  違うのは箱**です:
+
+  ```
+  Chromium   row box 245 / content 245   console 265
+  WebKit     row box 231 / content 245   console 251
+             兄弟（slider-row・disclaimer）はどちらも箱いっぱい
+  ```
+
+  calm のコンソールは `width: fit-content` なので、**行の幅は箱を決める側の
+  1 つであるはず**でした。ところが行は `overflow-x: auto`——**スクロールコンテナが
+  祖先の intrinsic 幅にどう寄与するかでエンジンが割れます**。Chromium は 245 を
+  数え、WebKit は数えず、行以外の子が決めた 231 になっていました。
+  行は `scrollbar-width: none` なので、あふれても**何も見えません**——
+  コントロールが 1 つ、ただ無いように見えます。
+
+  **直しは 2 段で、1 段目だけでは閉じませんでした。**
+
+  1 段目は「行がスクロールするのは、コンソールが viewport に頭を打つ幅だけ」。
+  その幅はこの repo が既に持っています——`560px` で
+  `anatomy-shell-presentation.css` がコンソールを `calc(100% - 64px)` に clamp します。
+  `≤430px` では `product-shell-b6.css` が 6 列グリッドにするので、
+  スクロールが実際に効くのは 431〜560px の帯だけです。
+  これで `overflow-x` は `visible` になり、WebKit 側でも
+  `.controls` の content が 231 → 245 に動きました——**行の幅が親まで届くようには
+  なりました**。ところが**コンソールの使用幅は 251 のままで、赤も同じまま**です。
+
+  2 段目が本体でした。`anatomy-shell-presentation.css` には**もう 1 つ**
+  `#ui[data-anatomy-shell='calm'] .console .button-row { flex-wrap: nowrap }` があり、
+  詳細度で勝って全幅で 1 行を強制していました（理由のコメントは付いていません）。
+  **`nowrap` である限り、箱が足りない分はそのまま画面外です。**
+  折り返せるようにすると、エンジンの見積もりの差は**2 行目**になって吸収されます——
+  箱が足りていれば max-content が 1 行ぶんなので見た目は変わらず、
+  足りなければ行が増えるだけで、**誰も隠れません**。`nowrap` は ≤560px に残しました。
+
+  **3 段目は、残していた安全弁そのものでした。** 2 段目では
+  「≤560px はスクロールのまま」にしていました——電話は 1 本の帯が欲しいはず、
+  という理屈です。Codex の指摘で分かったのは、**431px 未満は
+  `product-shell-b6.css` が 6 列グリッドにするので、スクロールが効くのは
+  431〜560px だけ**であり、そこは**マトリクスが 430 → 768 と飛び越している帯**
+  だということ。つまり同じ欠陥が、500px の Safari ウィンドウで
+  **緑の実行に一度も触れられないまま**生き残る形でした。
+  **誰も測らない安全弁は安全弁ではありません。** 横スクロールは全部やめました。
+
+  合わせて `src/app/viewports.js` に **`tablet-500`（500×800）** を足しています。
+  この帯に立つ viewport が 1 つも無かったことが、この件が隠れられた理由です。
+
+  確認（Chromium）: 431 / 500 / 560 / 600 / 768px のどれでも
+  `overflow-x: visible`・箱 245 = 中身 245・1 行・全ボタン内側。
+  コンソールを 215px に絞ると、どの幅でも **2 行**になり全ボタンが内側に残ります
+  （WebKit が箱を短く見積もる条件の再現）。
+  WebKit の結果は下の「まだ確かめていない」を参照。
+
+  **残っている懸念**: 折り返しは 2 行目を使うので、コンソールの高さが変わります。
+  電話の 6 列グリッドは別レイアウトなので影響しませんが、
+  431〜560px で 2 行になった場合の見た目は**実機で見ていません**。
 
 - **F-135 腎: 電話サイズでシートの行が押せない** — 解決（2026-09-17）。
   **初出は「『表示』タブが押せない」でした。全部違いました**——タブは 1275ms で

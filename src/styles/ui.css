@@ -262,6 +262,26 @@
   grid-template-columns: repeat(2, minmax(0, 1fr));
 }
 
+/* A one-line (sometimes two-line) caveat tied to the active viewpoint — a
+   medial view is not a midsagittal section, or the model has no right
+   medulla mesh. Only shown when the active view declares one. */
+.inspection-view-notice {
+  margin: 6px 1px 0;
+  padding: 6px 8px;
+  border: 1px solid var(--border);
+  border-left: 2px solid var(--caution-ink);
+  border-radius: 4px;
+  background: var(--control-bg);
+  color: var(--caution-ink);
+  font-size: 12px;
+  line-height: 1.4;
+  white-space: pre-line;
+}
+
+.inspection-view-notice[hidden] {
+  display: none;
+}
+
 .inspection-annotations {
   grid-template-columns: minmax(0, 1fr);
 }
@@ -679,15 +699,34 @@
   gap: 8px;
 }
 
+/*
+ * The control row, and why nothing here scrolls sideways any more.
+ *
+ * It used to be `nowrap` + `overflow-x: auto` at every width. That is a scroll
+ * container, and a scroll container's contribution to an ancestor's intrinsic
+ * width is where engines disagree — which matters because the calm anatomy
+ * console is `width: fit-content` (`anatomy-shell-presentation.css`), so the
+ * row's own width is supposed to be one of the things deciding the box around
+ * it. Measured at 768x1024 on `#/brain-anatomy` (F-137): the row's content is
+ * 245px on both engines, and the box is 245 on Chromium and 231 on WebKit. The
+ * row hides its scrollbar, so the difference was not a clipped row — it was a
+ * control that was not there.
+ *
+ * The first attempt kept the scroll below 560px, where the console is clamped
+ * to `calc(100% - 64px)`, on the theory that a phone still wants one strip.
+ * Codex pointed out what that left: below 431px `product-shell-b6.css` lays
+ * the row out as a six-column grid, so the scroll only ever applied in
+ * **431–560px** — the one band the viewport matrix skips, and therefore the
+ * one band where the same clip could survive unmeasured on a ~500px Safari
+ * window. A safety valve nobody measures is not a safety valve.
+ *
+ * So there is no horizontal scroll left. Above the grid the row wraps: where
+ * the box is wide enough it is still one line, because a wrapping row's
+ * max-content is its one-line width; where an engine sizes the box short it
+ * takes a second line, and every control stays on screen on every engine.
+ */
 #ui[data-anatomy] .button-row {
-  flex-wrap: nowrap;
   gap: 6px;
-  overflow-x: auto;
-  scrollbar-width: none;
-}
-
-#ui[data-anatomy] .button-row::-webkit-scrollbar {
-  display: none;
 }
 
 #ui[data-anatomy] .btn.utility {
@@ -2421,6 +2460,26 @@
   /* The chip's own faint ink, not the chrome's: this text is on the dark chip
      above, which does not follow the background preset. */
   color: var(--label-ink-faint, var(--ink-faint));
+}
+
+/* An authored landmark, not a pick: with nothing selected it is the only thing
+   the model says on its own, and it must not read as an answer to "what did
+   I just tap". Dimmer chip, no glow on the dot, same shape as any other
+   label — a reader who is colour-blind to accent still has muted-vs-bright to
+   go on. */
+.label3d-landmark {
+  background: rgba(6, 11, 20, 0.4);
+  border-color: rgba(255, 255, 255, 0.12);
+}
+
+.label3d-landmark .label-dot {
+  background: var(--label-ink-faint, var(--ink-faint));
+  box-shadow: none;
+}
+
+.label3d-landmark .label-en {
+  font-weight: 500;
+  opacity: 0.78;
 }
 
 /* A name the source itself is not consistent about. Smaller than the name and

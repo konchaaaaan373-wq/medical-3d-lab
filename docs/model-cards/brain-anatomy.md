@@ -112,8 +112,13 @@ they do not convert the distributed geometry into a Destrieux atlas.
 ## 5. Accuracy and uncertainty
 
 - Gross surface anatomy is illustration / gross-anatomy grade.
-- Imaging-atlas-derived deep structures are approximate (the upstream project
-  describes their registration resolution as about 7 mm).
+- Imaging-atlas-derived deep structures are a registration approximation
+  across several population atlases, not a patient-specific reconstruction.
+  The upstream project's frequently cited "about 7 mm" figure is the position
+  difference of the red nucleus in a check that excluded the red nucleus from
+  registration itself — it is not a boundary or maximum error figure for
+  every registered structure, and this repository has not independently
+  verified it against the distributed asset.
 - The scene does not assert voxel-level boundaries, population variability or
   patient-specific dimensions.
 - Every one of the 147 unique selectable source labels has an explicit Japanese
@@ -123,7 +128,12 @@ they do not convert the distributed geometry into a Destrieux atlas.
   (ACC) mesh. Its `Middle anterior part` mesh is labelled as anterior
   midcingulate territory (aMCC) and carries an explicit warning that it is not
   ACC. Adding ACC requires a new, source-attributed cortical geometry dataset;
-  renaming the existing mesh would be anatomically false.
+  renaming the existing mesh would be anatomically false. **The absence of a
+  selectable ACC label does not mean ACC tissue is absent from every mesh in
+  this atlas** — only that no mesh here is presented as one. The aMCC naming
+  correspondence itself is a terminology cross-reference and does not assert
+  that the displayed geometry reproduces a cytoarchitectonic or functional
+  boundary.
 - Functional summaries are brief orientation notes. Functions arise from
   distributed networks and should not be read as one-to-one localisation.
 
@@ -136,7 +146,9 @@ colour for left/right homologues, and vary hue, saturation and lightness inside
 the parent lobe family. Natural-anatomy shades use a constrained low-saturation
 range with small deterministic lightness differences between named meshes. The
 same selector also updates the legend swatches; neither mode changes anatomical
-identity or geometry.
+identity or geometry. **Colour aids identification and grouping; it does not
+show real tissue colour, functional localisation, vascular territory, exact
+boundaries or positional accuracy.**
 
 **A viewpoint is fitted to the band nothing is covering.** The scene reports the
 box around what it is currently drawing — not the whole atlas, since at layer 0
@@ -166,7 +178,9 @@ the view is meant to teach. Named bundles such as the corpus callosum and fornix
 remain visible.
 
 **A medial view shows the midline block, and that is a display decision, not a
-dissection.** The contralateral hemisphere is hidden and the near hemisphere's
+dissection.** Its name is **medial 3D view (contralateral hemisphere hidden,
+not sectioned)**: nothing is cut, so it must not be read as a midsagittal
+section such as an MRI slice. The contralateral hemisphere is hidden and the near hemisphere's
 midline face — the corpus callosum, the fornix, the thalamus and hypothalamus,
 and the white matter behind them — is present at full opacity, because that is
 what a medial view of a hemisphere is a view *of*. Before this, the layer slider
@@ -199,7 +213,11 @@ beyond "this is on the outside of this mesh", and never moved to suit the
 screen. It is not enough for a sulcus: the surface of a fold lies under the
 gyri on either side of it, so the central sulcus's label is absent from the
 lateral view rather than misplaced on it. That is recorded as F-40 with what
-was tried, not papered over.
+was tried, not papered over — and it still applies to the four **authored**
+landmarks, whose anchor is fixed at load, before any camera exists to ask.
+**The reader's own selection is held to a stricter rule than that**, because a
+label with nothing under it is worse exactly when the reader just asked for
+one: see below.
 
 **A structure can be found by name.** The scene publishes its inventory — one
 record per structure, both names, its side and the hierarchy above it — and the
@@ -258,21 +276,34 @@ by colour, and answers `V` on a focused branch. **A group is not a structure**:
 pressing it changes what is drawn and never what is named, and the selection,
 the search index and the labels go on referring to structures only.
 
-**The structure a reader picks is named on the model, not only in the panel.**
-The selection and the hover get a label on the same terms as the four authored
-landmarks: the structure's own names, an anchor on its own outside, and the same
-occlusion test, so a label disappears when its structure does rather than
-floating over whatever is in front. When more labels apply than a frame can
-carry — six on a wide screen, three on a narrow one — the ones that give way are
-the ones the reader did not ask for: selection outranks hover, hover outranks
-the landmarks, and nothing is stacked into a spare corner to make it fit.
-Appearing is immediate; disappearing waits a moment, so a label does not blink
-along an occlusion edge as the model turns. **That wait is for occlusion and for
-nothing else**: a structure the settings are not drawing — hidden by the reader,
-isolated away — is not an edge flickering, it is a thing that is not there, and
-its label goes on the same frame. A name left over it for even a moment is a
-name over whatever is behind it. Hiding a label never changes what the panel
-says is pinned.
+**The structure a reader picks is named on the model, not only in the panel —
+and it is named whenever the structure is drawn, not only when the camera
+happens to be looking at the one point a fixed anchor would use.** A tapped
+structure's label sits on the exact point the tap hit, which is on the visible
+surface by construction: the ray that selected the structure stopped there. A
+selection made any other way — the keyboard, a guided tour, a test calling
+`selectStructure` — has no such point, so several of the structure's own
+outward vertices are ranked and tried against the live camera, and the first
+one that camera can actually see is used. Only a structure with **no** visible
+point at all — the far side of a medial view, say — goes unlabelled, which is
+the case a label should disappear for. This is stricter than the rule the four
+authored landmarks still use (F-40): their anchor is one point, fixed at load,
+before any camera exists to ask, and a fold can still hide it. A selection is
+the one label the reader asked for, so it is also **exempt from the on-screen
+cap** — six labels on a wide screen, three on a narrow one — where the
+landmarks are what step back to make room. And because a landmark reads as a
+pick when nothing is picked, its chip is visibly muted; when a selection pins
+the very structure a landmark names, the landmark steps aside rather than
+showing the same name twice. Hover keeps the landmarks' terms: an anchor on
+the structure's own outside and the same occlusion test, so its label
+disappears when its structure does rather than floating over whatever is in
+front. Appearing is immediate; disappearing waits a moment, so a label does not
+blink along an occlusion edge as the model turns. **That wait is for occlusion
+and for nothing else**: a structure the settings are not drawing — hidden by
+the reader, isolated away — is not an edge flickering, it is a thing that is
+not there, and its label goes on the same frame. A name left over it for even
+a moment is a name over whatever is behind it. Hiding a label never changes
+what the panel says is pinned.
 
 **Searching answers with every match.** The count is the number that matched,
 not the number drawn, and there is no quiet cap that would leave the rest
@@ -301,3 +332,202 @@ interaction and medial visibility path are implemented and tested. Independent
 medical review of the complete label set and Japanese terminology is not yet
 recorded, and the source geometry still lacks a separately selectable ACC, so
 this scene must not be marked reviewed or production.
+
+An AI-assisted terminology/hierarchy/copy check was recorded on 2026-09-16
+with verdict **hold** and 24 findings; it is not a clinical attestation and
+does not change the review status above. See
+[`docs/clinical-reviews/brain-anatomy-ai-terminology-check-2026-09-16.md`](../clinical-reviews/brain-anatomy-ai-terminology-check-2026-09-16.md).
+A re-review of the resulting revision 21 (also 2026-09-16, against `880eded`)
+found 16 of the original 24 findings resolved and 8 unresolved or partly
+addressed, verdict **revise**; it is likewise not a clinical attestation. The
+`Revision 21 → 22` entry below addresses most of that re-review's remaining
+findings (#6, #8, #12, #15, #17, #18, #21, R2-25, R2-28, R2-29); it does not
+close #2 (the insula/subcentral-gyrus boundary) or #12's LUT-name
+cross-check, which need either a landmark-annotated image or independent
+access to the original atlas lookup tables that this repository does not
+have.
+A third round (2026-09-16, against `852b691`, revision 22) accepted the insula
+naming, the view-bound notices and the colour record and found two new items
+(R3-30 the paracentral sulcus, R3-31 the mamillary body wording), verdict
+**revise**; the `Revision 22 → 23` entry below closes them. The fourth round
+(2026-09-17, against `5205c6b`, revision 23) returned **approve**, expressly
+limited to that version, to general/medical education of gross anatomy and to
+what the reviewer could see, with the constraints in the record; it is not a
+clinical attestation and the registry stays `pending` (F-139). Records:
+[`…-rereview-880eded.md`](../clinical-reviews/brain-anatomy-ai-terminology-check-2026-09-16-rereview-880eded.md),
+[`…-review3-852b691.md`](../clinical-reviews/brain-anatomy-ai-terminology-check-2026-09-16-review3-852b691.md),
+[`…-approve-5205c6b.md`](../clinical-reviews/brain-anatomy-ai-terminology-check-2026-09-17-approve-5205c6b.md).
+
+## 9. Revision history
+
+**Revision 22 → 23 — the selection-label fix closed three defects a review
+found in it.** Revision 22 gave a selection its own anchor instead of the
+landmarks' fixed one; review of that change found three ways it still failed
+its own stated behaviour, all now closed. A re-tap on the structure already
+selected kept the annotation id `structure:<id>` and was discarded as a
+no-op even though the tap landed on a new point — `LabelLayer.setStructureLabel`
+now compares the anchor as well as the id. The selection was exempt from the
+label cap *and* excluded from the count it takes, so a pinned structure could
+put a fourth label on a three-label phone screen where the card promises
+three — it is exempt from eviction, not from the count, so a landmark still
+steps aside for it. And a selection made without a tap (the parts tree, the
+keyboard) kept the one candidate anchor the camera could see at that moment;
+rotating away from it could hide the label even with another candidate on the
+same structure still on screen — the annotation now offers a fresh candidate
+through `reanchor()`, tried only once the current one has already failed the
+occlusion test, never on a point that still holds. No claim in this card
+changed: what a selection is anchored to, and when it is shown, are unchanged
+in kind — only made to hold in the cases these three did not.
+
+**Revision 23 → 24 — an audit of revision 23 found three more, and one
+cost.** The candidate points a structure offers a label are computed once and
+kept for the life of the scene; `reanchor()` moved a label by writing into the
+very object it had been handed, so one swap overwrote the structure's
+best-ranked candidate for every later selection of it — the label now owns a
+copy. A tap's own point was exempt from re-anchoring altogether, so the one
+selection method most readers use was the one that could not recover once the
+model turned the point behind a neighbour — it is now preferred only while the
+camera can see it, tried again the moment it can be, and the ranked candidates
+stand in between. A pointer resting on the structure already selected produced
+a second label on the same point reading the same name (the hover), which now
+merges into the selection as a landmark already did. And a structure with
+nothing visible on it at all paid for a full candidate search every frame it
+stayed selected; the search now runs once per camera pose. No claim in this
+card changed.
+
+**Revision 24 → 25 (2026-09-17) — the four-round terminology review lands
+(PR #125).** This branch and the selection-label branch (PR #132, revisions
+20 → 24 above) diverged from revision 20 and each counted its own revisions;
+the review records cite the branch's numbers (revision 21 = `880eded`, 22 =
+`852b691`, 23 = `5205c6b`). Merged after #132, everything the branch recorded
+as 20 → 23 lands here as one step; its two later branch revisions (24 and 25)
+were ledger renumbering only (F-120…F-124 → F-139…F-143 in the notes) and
+carry nothing a reader sees. No geometry, id or mesh selection changed in any
+of the three parts below.
+
+**(a) Branch revision 20 → 21 (2026-09-16) — label, hierarchy and copy corrections.** Label, hierarchy and copy corrections driven
+by that check, all in `src/data/brainAnatomy.js`; no geometry, no ids and no
+mesh selection changed. `Base of peduncle` moves from the cerebellum to the
+brainstem/midbrain (Terminologia Anatomica's *basis pedunculi* is a midbrain
+structure) via a new `LABEL_PLACEMENT` override, with a note naming the
+upstream cerebellum tag it corrects — this is the one label whose **colour**
+family also changes, from cerebellum to brainstem, as a direct consequence of
+the category correction. `Insula (Subcentral gyrus and ant. and post. sulci)`
+is now named 島皮質: rendering confirmed the mesh is the insular cortex under
+the opercula, not the lateral-surface subcentral gyrus the upstream label also
+names. The `structureFamily()` regex that matched "lateral sulcus" no longer
+matches the substring inside "Col**lateral sulcus**" or "Posterior transverse
+collateral sulcus", both of which now read 大脳溝 instead of 外側溝. Plural
+"sulci" labels (e.g. "Orbital sulci") and the two cortical poles now get their
+own families instead of falling to the generic 大脳皮質/大脳回 fallback. The
+aqueduct of midbrain, septum pellucidum and choroid plexus are filed under
+ventricular-system families without describing the septum or plexus as CSF
+spaces. The seven Najdenovska (2018) thalamic parcels, the `Corticomedial
+group` and five Neudorfer (2020) hypothalamic parcels now carry a note citing
+their source and stating they are not histological nuclear boundaries (F-142).
+Several Japanese names were corrected for accuracy or to mark them explicitly
+as atlas subdivisions rather than standard nuclei (VA/VLD/VLV thalamic nuclei,
+the basolateral amygdala complex, the paracentral lobule spanning frontal and
+parietal lobes, and others — see the check record for the full list). The
+detail-colour palette seed also moved (`palette-v2930` → `palette-v38601`)
+because the `Base of peduncle` colour-family change required re-finding a seed
+that keeps all 147 named structures perceptually distinct; since the seed is
+in every hash, every colour-map shade changed (147/147). Natural-anatomy
+shades are not seeded, but `brainColorKey()` feeds both modes, so the same
+category/region correction for `Base of peduncle` changes its natural-anatomy
+shade too — 1 of 147 labels (2 structures, left and right); the other 146 are
+unchanged in natural-anatomy mode. Colour aids identification and grouping; it
+does not show real tissue colour, functional localisation, vascular territory,
+exact boundaries or positional accuracy (§6).
+
+**(b) Branch revision 21 → 22 (2026-09-16) — the re-review's remaining findings.** Driven by the 2026-09-16 re-review of
+revision 21 (`880eded`, verdict revise, 8 unresolved/partial findings). No
+geometry, no atlas ids and no colour changed in this revision — every change
+is to copy, notes, a display-only breadcrumb override and per-view UI text.
+
+- **#25/§R2-29 — colour wording corrected.** The claim that natural-anatomy
+  shades were unaffected by the revision-21 palette move was wrong:
+  `brainColorKey()` feeds both modes, so `Base of peduncle` (2 structures)
+  also changed in natural-anatomy mode; the other 146 labels did not. "Colour
+  encodes no anatomy" is replaced with the re-review's own wording: colour
+  aids identification and grouping and does not show real tissue colour,
+  functional localisation, vascular territory, exact boundaries or
+  positional accuracy (§6, and `docs/beta-publication/brain-anatomy.md`).
+- **#17 — the ATTRIBUTION.md "about 7 mm" generalisation is retracted**, in
+  `public/assets/brain/ATTRIBUTION.md`, matching the wording already in §5
+  above (registration approximation across several population atlases; the
+  upstream ~7.2 mm figure is a red-nucleus position check, not a bound for
+  every structure).
+- **#12/F-142 — merged-parcel source label ids recovered from the pinned
+  upstream generator script**, recorded in
+  [`docs/asset-provenance/brain-merged-parcels.md`](../asset-provenance/brain-merged-parcels.md)
+  (amygdala Lateral/Basolateral/Central/Corticomedial; hypothalamic
+  preoptic/anterior/tuberal/lateral/posterior per-side label counts; thalamic
+  volume order and the CL–LP–PuM left/right index). The five hypothalamic
+  `STRUCTURE_NOTE` entries no longer share one "integrated parcel" wording:
+  preoptic, lateral and posterior are single-source-label parcels per side;
+  only anterior (6 labels) and tuberal (4 labels) actually combine several.
+  Corticomedial group and Basolateral complex each cite their specific source
+  ids. What is **not** verified is stated plainly in that document: original
+  lookup-table names, regeneration from source volumes, and input-file
+  hashes.
+- **#8 — the CL–LP–PuM thalamic label now names CL explicitly**: "視床
+  CL–LP–PuM 区画（外側中心核・後外側核・内側視床枕を含む）", with a note
+  naming CL as the central lateral nucleus specifically (not the broader
+  intralaminar group) and pointing at the provenance record above.
+- **#6/#21 — a display-only `regionNames` override** on `LABEL_PLACEMENT`
+  makes the breadcrumb for the paracentral lobule's two meshes read "Frontal
+  and parietal lobes/前頭葉・頭頂葉" and for the lateral occipitotemporal
+  gyrus/sulcus read "Temporal and occipital lobes/側頭葉・後頭葉", matching
+  what their own description already said. This touches only the breadcrumb:
+  `region`/`regionJa` and `brainColorKey()` still resolve from the unchanged
+  upstream region, so colour is untouched (asserted in
+  `tests/brain-anatomy.test.js`). Each also gets a note stating the upstream
+  navigation region is the single lobe it was filed under.
+- **#15 — Habenula and Septal nuclei** now carry a note stating the source
+  data records each as one mesh that does not distinguish left and right, so
+  the midline display is the data's storage unit, not a guaranteed
+  anatomical midline structure.
+- **#18/R2-26 — view-bound notices.** `VIEW_SPECS` in
+  `BrainAnatomyScene.js` carries an optional `notice`/`noticeJa` per
+  viewpoint, exposed through `getAnatomyViews()`/`getInspectionViews()` and
+  rendered by `InspectionPanel.js` as one line under the viewpoint buttons
+  whenever the active view declares one. Left and right medial views state
+  that the contralateral hemisphere is hidden and this is not a midsagittal
+  section; right medial and inferior additionally state that this model has
+  no right medulla oblongata mesh (F-141) and that this is a data gap, not a
+  normal left/right asymmetry. Lateral, anterior, posterior and superior
+  views carry no notice.
+- **R2-28 — export tooling.** `scripts/export-anatomy-labels.mjs` renames
+  its per-structure table to "271 選択可能構造一覧" (`structures.md`,
+  replacing the stale `meshes.md`) and adds `description_key` (which of
+  structure/region/category/default resolved a row's description, via the
+  new `brainCopySource()` helper in `src/data/brainAnatomy.js`) and
+  `has_note` columns.
+
+**(c) Branch revision 22 → 23 (2026-09-17) — the third review's two findings.** Driven by the third AI review (of
+revision 22, `852b691`, verdict revise: 12 of 13 carried findings resolved,
+R2-27 partly, two new). No geometry, ids, colour or view text changed.
+
+- **R3-30 — the paracentral *sulcus* is no longer swept up by the lobule's
+  override.** Revision 22 applied the "frontal and parietal lobes" breadcrumb
+  and the lobule's note to the lone `Paracentral sulcus` label (bx_id
+  307/308) as well as to `Paracentral gyrus and sulcus` (261/262). The sulcus
+  is the anterior boundary of the lobule and a frontal-lobe sulcus, so it
+  returns to 前頭葉 › 大脳溝 with its own one-sentence description; the
+  lobule keeps the two-lobe breadcrumb. A regression test pins both.
+- **R3-31 — mamillary body wording.** The provenance record and a code
+  comment called the mamillary body "a classically named individual
+  nucleus"; it contains medial and lateral mamillary nuclei, so both now say
+  it is a separately named gross-anatomical structure that is not one of
+  the five Neudorfer-sourced parcels. Display name, id and mesh unchanged.
+- **R2-27 — capture records.** The evidence manifest sent with the third
+  submission claimed hidden-structure ids were recorded; they were not read
+  from the runtime, so those fields are now `null` with the reason stated
+  rather than filled in afterwards.
+
+Sources in scope: `src/data/brainAnatomy.js`,
+`src/scenes/nervous/scenes/brainAnatomy/BrainAnatomyScene.js`,
+`src/components/InspectionPanel.js`. `src/components/InspectionPanel.js` is
+shared UI, not a medical source, and is not part of the revision digest below
+— see `docs/model-cards/revisions.json`.

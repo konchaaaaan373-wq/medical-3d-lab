@@ -65,6 +65,13 @@ guide copy. Paid public launch must add an explicit `patient-guide` / `education
 review scope (or a new review record) before those surfaces are presented as clinically
 reviewed.
 
+## Regenerating the brain atlas's full label/mesh appendix
+
+`npm run review:brain-labels` writes the full 147-unique-label and 271-mesh
+tables a terminology reviewer needs, straight from the shipped GLB and
+`src/data/brainAnatomy.js` (see `scripts/export-anatomy-labels.mjs`). Re-run it
+rather than hand-editing the files under `packets/brain-anatomy-labels/`.
+
 ## Maintenance rule
 
 Do not edit a reviewed commit SHA to make a record look current. When a medical change is

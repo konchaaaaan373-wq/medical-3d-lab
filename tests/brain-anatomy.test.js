@@ -4,7 +4,7 @@ import { readFileSync } from 'node:fs';
 import { createHash } from 'node:crypto';
 import * as THREE from 'three';
 import BrainAnatomyScene from '../src/scenes/nervous/scenes/brainAnatomy/index.js';
-import { BRAIN_COLOR_MODES, brainColor, brainStructureInfo } from '../src/data/brainAnatomy.js';
+import { BRAIN_COLOR_MODES, brainColor, brainColorKey, brainStructureInfo } from '../src/data/brainAnatomy.js';
 
 test('brain anatomy adopts individually named atlas meshes instead of proxy lobes', () => {
   const scene = buildScene();
@@ -147,6 +147,33 @@ test('medial views expose the selected hemisphere without moving anatomy', () =>
   assert.equal(left.material.opacity, 1);
   assert.equal(right.material.opacity, 1, 'leaving a medial view restores the contralateral hemisphere');
   for (const [mesh, position] of positions) assert.ok(mesh.position.equals(position));
+  scene.dispose();
+});
+
+test('only the medial and inferior views carry a display notice, and it is bilingual', () => {
+  const scene = buildScene();
+  const byId = new Map(scene.getAnatomyViews().map((view) => [view.id, view]));
+
+  for (const id of ['left-lateral', 'right-lateral', 'anterior', 'posterior', 'superior']) {
+    assert.equal(byId.get(id).notice, undefined, `${id} carries no notice`);
+    assert.equal(byId.get(id).noticeJa, undefined, `${id} carries no notice`);
+  }
+
+  // Both medial views: a 3D display with the contralateral hemisphere hidden
+  // is not a midsagittal section (D-2 of the 2026-09-16 AI re-review).
+  for (const id of ['left-medial', 'right-medial']) {
+    assert.match(byId.get(id).notice, /[Nn]ot a midsagittal section/);
+    assert.match(byId.get(id).noticeJa, /正中矢状断ではありません/);
+  }
+
+  // Right medial and inferior additionally flag the missing right medulla
+  // mesh (F-141) as a data gap, not a normal left/right asymmetry.
+  for (const id of ['right-medial', 'inferior']) {
+    assert.match(byId.get(id).notice, /no right medulla oblongata mesh/);
+    assert.match(byId.get(id).noticeJa, /右側延髄の形状を収録していません/);
+  }
+  assert.doesNotMatch(byId.get('left-medial').notice, /medulla/);
+
   scene.dispose();
 });
 
@@ -437,7 +464,8 @@ test('cingulate terminology distinguishes aMCC from an unavailable ACC mesh', ()
   assert.equal(info.nameJa, '帯状回・帯状溝（前中部／aMCC）');
   assert.deepEqual(info.hierarchyJa, ['左大脳半球', '辺縁葉', '帯状皮質']);
   assert.equal(info.preferredView, 'left-medial');
-  assert.match(info.noteJa, /前部帯状皮質（ACC）ではありません/);
+  assert.match(info.noteJa, /ACCの独立ラベルはありません/);
+  assert.match(info.note, /no independent ACC label/);
 
   const bytes = readFileSync(new URL('../public/assets/brain/brain.glb', import.meta.url));
   const jsonLength = bytes.readUInt32LE(12);
@@ -469,6 +497,105 @@ test('fine hierarchy keeps epithalamus and cerebellar vermis distinct', () => {
   assert.deepEqual(culmen.hierarchyJa, ['正中', '小脳', '小脳虫部']);
 });
 
+test('a display-only region override changes the breadcrumb but never the colour or the region field', () => {
+  const paracentral = brainStructureInfo({
+    bx_id: 261, bx_cat: 'cortex', bx_label: 'Paracentral gyrus and sulcus',
+    bx_side: 'left', bx_region: 'Frontal lobe',
+  });
+  assert.deepEqual(paracentral.hierarchyJa, ['左大脳半球', '前頭葉・頭頂葉', '大脳回・大脳溝']);
+  // `region`/`regionJa` (as opposed to the breadcrumb) and colour are derived
+  // from the true upstream region, `Frontal lobe`, not from the display
+  // override — #6/#21 of the 2026-09-16 AI re-review asked only for the
+  // breadcrumb to change.
+  assert.equal(paracentral.region, 'Frontal lobe');
+  assert.equal(paracentral.regionJa, '前頭葉');
+  assert.match(paracentral.noteJa, /前頭葉のみに分類/);
+
+  // The lone paracentral *sulcus* is a different structure: the anterior
+  // boundary of the lobule, a frontal-lobe sulcus. The lobule's two-lobe
+  // reading must not leak onto it (third review, R3-30).
+  const paracentralSulcus = brainStructureInfo({
+    bx_id: 307, bx_cat: 'cortex', bx_label: 'Paracentral sulcus',
+    bx_side: 'left', bx_region: 'Frontal lobe',
+  });
+  assert.deepEqual(paracentralSulcus.hierarchyJa, ['左大脳半球', '前頭葉', '大脳溝']);
+  assert.equal(paracentralSulcus.noteJa, null);
+  assert.match(paracentralSulcus.descriptionJa, /中心傍小葉の前方の境界/);
+
+  const lateralOT = brainStructureInfo({
+    bx_id: 169, bx_cat: 'cortex', bx_label: 'Lateral occipitotemporal gyrus',
+    bx_side: 'left', bx_region: 'Temporal lobe',
+  });
+  assert.deepEqual(lateralOT.hierarchyJa, ['左大脳半球', '側頭葉・後頭葉', '大脳回']);
+  assert.equal(lateralOT.region, 'Temporal lobe');
+  assert.equal(lateralOT.regionJa, '側頭葉');
+
+  // Colour is keyed off the true region (via brainColorKey), which the
+  // display override never touches: the paracentral parcel's colour key
+  // still matches a plain frontal-lobe structure's, not a temporal one's.
+  assert.equal(
+    brainColorKey({ bx_cat: 'cortex', bx_label: 'Paracentral gyrus and sulcus', bx_region: 'Frontal lobe' }),
+    brainColorKey({ bx_cat: 'cortex', bx_label: 'Middle frontal gyrus', bx_region: 'Frontal lobe' })
+  );
+  assert.notEqual(
+    brainColorKey({ bx_cat: 'cortex', bx_label: 'Paracentral gyrus and sulcus', bx_region: 'Frontal lobe' }),
+    brainColorKey({ bx_cat: 'cortex', bx_label: 'Lateral occipitotemporal gyrus', bx_region: 'Temporal lobe' })
+  );
+});
+
+test('CL in the thalamic CL–LP–PuM parcel names the central lateral nucleus, not the intralaminar group', () => {
+  const info = brainStructureInfo({
+    bx_cat: 'diencephalon', bx_label: 'Intralaminar and lateral posterior nuclei',
+    bx_side: 'left', bx_region: 'Diencephalon',
+  });
+  assert.equal(info.nameJa, '視床 CL–LP–PuM 区画（外側中心核・後外側核・内側視床枕を含む）');
+  assert.match(info.noteJa, /外側中心核/);
+  assert.match(info.note, /central lateral nucleus/);
+  assert.match(info.noteJa, /brain-merged-parcels\.md/);
+});
+
+test('the hypothalamic parcels no longer share one "integrated parcel" note — 3 of 5 are single-label', () => {
+  for (const label of ['Preoptic hypothalamus', 'Lateral hypothalamus', 'Posterior hypothalamus']) {
+    const info = brainStructureInfo({
+      bx_cat: 'diencephalon', bx_label: label, bx_side: 'left', bx_region: 'Diencephalon',
+    });
+    assert.match(info.noteJa, /片側 1 元ラベル/, `${label} is single-label per side`);
+    assert.doesNotMatch(info.noteJa, /6 元ラベル|4 元ラベル/, `${label} is not described as multi-label`);
+  }
+  const anterior = brainStructureInfo({
+    bx_cat: 'diencephalon', bx_label: 'Anterior hypothalamus', bx_side: 'left', bx_region: 'Diencephalon',
+  });
+  assert.match(anterior.noteJa, /6 元ラベル/);
+  const tuberal = brainStructureInfo({
+    bx_cat: 'diencephalon', bx_label: 'Tuberal hypothalamus', bx_side: 'left', bx_region: 'Diencephalon',
+  });
+  assert.match(tuberal.noteJa, /4 元ラベル/);
+});
+
+test('amygdala notes cite the recovered source label ids and the provenance record', () => {
+  const corticomedial = brainStructureInfo({
+    bx_cat: 'deep_grey', bx_label: 'Corticomedial group', bx_side: 'left', bx_region: 'Telencephalon',
+  });
+  assert.match(corticomedial.noteJa, /\[5, 7, 8, 9\]/);
+  assert.match(corticomedial.noteJa, /brain-merged-parcels\.md/);
+
+  const basolateral = brainStructureInfo({
+    bx_cat: 'deep_grey', bx_label: 'Basolateral complex', bx_side: 'left', bx_region: 'Telencephalon',
+  });
+  assert.match(basolateral.noteJa, /\[2, 3, 6\]/);
+  assert.match(basolateral.noteJa, /外側核（\[1\]）を含まない/);
+});
+
+test('median single-mesh structures say the midline is a storage unit, not an anatomical guarantee', () => {
+  for (const label of ['Habenula', 'Septal nuclei']) {
+    const info = brainStructureInfo({
+      bx_cat: 'diencephalon', bx_label: label, bx_side: 'median', bx_region: 'Diencephalon',
+    });
+    assert.match(info.noteJa, /左右を分けない 1 つのメッシュ/, `${label} explains its midline storage`);
+    assert.match(info.noteJa, /解剖学的な正中構造であることを保証しない/, `${label} does not overclaim`);
+  }
+});
+
 test('capitalized brainstem nuclei and cerebellar peduncles keep their fine families', () => {
   for (const label of ['Nucleus of oculomotor nerve', 'Nucleus of abducens nerve']) {
     const info = brainStructureInfo({
@@ -482,6 +609,84 @@ test('capitalized brainstem nuclei and cerebellar peduncles keep their fine fami
   });
   assert.equal(floccularPeduncle.hierarchy.at(-1), 'Cerebellar peduncles');
   assert.equal(floccularPeduncle.hierarchyJa.at(-1), '小脳脚');
+});
+
+test('"Collateral sulcus" and its posterior transverse variant are cerebral sulci, not the lateral sulcus', () => {
+  // The unfixed regex (`/Lat Fis|lateral sulcus/i`) matched the "lateral
+  // sulcus" substring inside "Col*lateral sulcus*", so both of these fell
+  // under 外側溝 instead of 大脳溝 (2026-09-16 AI terminology check, #3).
+  for (const label of ['Collateral sulcus', 'Posterior transverse collateral sulcus']) {
+    const info = brainStructureInfo({
+      bx_cat: 'cortex', bx_label: label, bx_side: 'left', bx_region: 'Telencephalon',
+    });
+    assert.equal(info.hierarchy.at(-1), 'Cerebral sulci');
+    assert.equal(info.hierarchyJa.at(-1), '大脳溝');
+  }
+});
+
+test('plural "sulci" labels and cortical poles get their own families instead of falling to 大脳皮質/大脳回', () => {
+  const orbitalSulci = brainStructureInfo({
+    bx_cat: 'cortex', bx_label: 'Orbital sulci (H-shaped orbital sulci)', bx_side: 'left', bx_region: 'Frontal lobe',
+  });
+  assert.equal(orbitalSulci.hierarchy.at(-1), 'Cerebral sulci');
+  assert.equal(orbitalSulci.hierarchyJa.at(-1), '大脳溝');
+
+  for (const label of ['Occipital pole', 'Temporal pole']) {
+    const info = brainStructureInfo({
+      bx_cat: 'cortex', bx_label: label, bx_side: 'left',
+      bx_region: label === 'Occipital pole' ? 'Occipital lobe' : 'Temporal lobe',
+    });
+    assert.equal(info.hierarchy.at(-1), 'Cerebral poles');
+    assert.equal(info.hierarchyJa.at(-1), '大脳の極');
+  }
+});
+
+test('the aqueduct of midbrain is filed under the ventricular system, not generic brainstem anatomy', () => {
+  const info = brainStructureInfo({
+    bx_cat: 'brainstem', bx_label: 'Aqueduct of midbrain', bx_side: 'median', bx_region: 'Brainstem',
+  });
+  assert.equal(info.hierarchy.at(-1), 'Ventricular system');
+  assert.equal(info.hierarchyJa.at(-1), '脳室系');
+  // The side/region position stays with the brainstem/midbrain it runs
+  // through — only the fine family moves.
+  assert.equal(info.region, 'Brainstem');
+  assert.equal(info.regionJa, '脳幹');
+});
+
+test('base of peduncle is corrected to the midbrain, and its note names the upstream cerebellum tag', () => {
+  const info = brainStructureInfo({
+    bx_cat: 'cerebellum', bx_label: 'Base of peduncle', bx_side: 'left', bx_region: 'Cerebellum',
+  });
+  assert.equal(info.nameJa, '大脳脚底');
+  assert.equal(info.category, 'brainstem');
+  assert.equal(info.categoryNameJa, '脳幹');
+  assert.equal(info.region, 'Midbrain');
+  assert.equal(info.regionJa, '中脳');
+  assert.deepEqual(info.hierarchyJa, ['左中脳', '中脳', '中脳表面解剖']);
+  assert.match(info.noteJa, /小脳/, 'the note names the upstream placement it corrects');
+  assert.match(info.note, /cerebellum/i, 'the note names the upstream placement it corrects');
+});
+
+test('septum pellucidum and choroid plexus are not described as CSF spaces', () => {
+  const septum = brainStructureInfo({
+    bx_cat: 'ventricles', bx_label: 'Septum pellucidum', bx_side: 'median', bx_region: 'Telencephalon',
+  });
+  const plexus = brainStructureInfo({
+    bx_cat: 'ventricles', bx_label: 'Choroid plexus', bx_side: 'left', bx_region: 'ventricles',
+  });
+  for (const info of [septum, plexus]) {
+    assert.doesNotMatch(info.descriptionJa, /脳脊髄液腔(そのもの)?です/);
+    assert.doesNotMatch(info.description, /is a( connected)? cerebrospinal-fluid space/i);
+    assert.equal(info.hierarchy.at(-1), 'Ventricular system — related structures');
+    assert.equal(info.hierarchyJa.at(-1), '脳室系の関連構造');
+  }
+  // The shared fallback used by any remaining ventricle mesh must still read
+  // correctly — i.e. it must not claim every ventricular-system mesh is a CSF
+  // space either.
+  const unlabelledVentricleMesh = brainStructureInfo({
+    bx_cat: 'ventricles', bx_label: 'Some unlisted ventricular mesh', bx_side: 'median', bx_region: 'ventricles',
+  });
+  assert.doesNotMatch(unlabelledVentricleMesh.descriptionJa, /^脳内で連続する脳脊髄液腔の一部です。$/);
 });
 
 const FIXTURE_STRUCTURES = [
