@@ -142,9 +142,18 @@ export const BETA_ANATOMY_CANDIDATES = Object.freeze([
   // few organs at a time rather than all at once. These three are procedural:
   // no external asset, so no licence obligation and nothing but the scene
   // revision to pin. Three others were examined in the same pass and are *not*
-  // here — kidney and stomach expose only two click-reachable structures from
-  // their opening view, and the shoulder's run reported a real defect. Being
-  // gate-clear was never the bar; see docs/follow-ups.md F-126 and F-127.
+  // here — the stomach names three structures of eight from its opening view,
+  // and the shoulder's run reported a real defect. Being gate-clear was never
+  // the bar; see docs/follow-ups.md F-126 and F-127.
+  //
+  // **The kidney's reason has changed, and the old one was wrong.** It was
+  // held here as exposing "only two click-reachable structures", measured by
+  // counting where four tour points happened to land — two of them on the
+  // right kidney, which is deliberately one structure. Swept with a pointer it
+  // names **four**, and `SCENE_POINTS` now pins all four (F-126, resolved
+  // 2026-09-17). What holds it is the one thing left in F-126: what the scene
+  // should show on arrival, which is the owner's composition call and not a
+  // defect. Do not re-reject it for the count.
   //
   // **An organ the landing hero cannot draw is not published.** Decided
   // 2026-09-16, after the knee ran into it: six points naming six distinct
@@ -154,7 +163,8 @@ export const BETA_ANATOMY_CANDIDATES = Object.freeze([
   // visitors meet first, and an organ that cannot appear there would be
   // published into a place nobody arrives at. `ORGAN_HERO_BUILDERS` therefore
   // bounds the release: brain, heart, lungs, liver and kidney are the organs
-  // that have a model, four of them are open, and the kidney is held by F-126.
+  // that have a model, four of them are open, and the kidney is held by the
+  // composition question in F-126 rather than by anything it fails.
   //
   // `tests/beta-release.test.js` states it once and fails with the remedy in
   // the message — add a hero model, or do not publish the organ.

@@ -234,19 +234,26 @@ const SCENE_POINTS = {
     [0.477, 0.323, 'Segment II — Left lateral superior'],
     [0.44, 0.417, 'Segment IVa — Left medial superior'],
   ],
-  // One kidney, the other, and twice on the opened one.
-  // Re-measured 2026-09-16: the safe-area fit (#112) moved this scene and the
-  // previous four points hit **nothing at all**, so the drive could not run.
-  // These four are over the model, and they are deliberately **unnamed**: all
-  // four resolve, but to only two structures — "Right kidney" twice and "Renal
-  // cortex" twice, out of 32 in the part tree. Naming them would pin a tour
-  // that claims two, which is F-126's point. Re-measure and name when the
-  // opening view reaches more of the organ.
+  // The landmark kidney, the opened one's cortex, and both ureters.
+  //
+  // These were unnamed until 2026-09-17, on the belief that the opening view
+  // reached only two structures. It reaches **four**: the earlier count was of
+  // where four points happened to land, not of what the scene lets you point
+  // at, and two of those points were both on the right kidney — which is
+  // deliberately one structure. A pointer sweep of the canvas
+  // (`npm run points:anatomy -- --scene kidney-anatomy --preview --dense`)
+  // names Renal cortex, Right kidney and both ureters, which is four different
+  // structures and what F-126 asked this tour to hold.
+  //
+  // The ureters are the thin ones: about ten pixels across at this framing, so
+  // a point on one is a point on a tube, and the drive will say so the moment
+  // the framing moves. That is the reason to name them rather than leave bare
+  // coordinates that can slide onto the background and stay green (F-123).
   'kidney-anatomy': [
-    [0.1617, 0.45],
-    [0.5617, 0.45],
-    [0.0817, 0.45],
-    [0.5617, 0.34],
+    [0.14, 0.417, 'Right kidney'],
+    [0.552, 0.275, 'Renal cortex'],
+    [0.215, 0.56, 'Right ureter'],
+    [0.515, 0.512, 'Left ureter'],
   ],
   // Fundus, body, antrum, and the duodenum it empties into.
   // Re-measured 2026-09-16, same story as the kidney: the previous points hit
