@@ -698,18 +698,60 @@ const resetFocus = (page) =>
  * why Playwright's own `isVisible()` answers yes on a button no one can see:
  * the question has to be asked of the boxes above it, not only of the button.
  *
- * The frame it leaves has to be clean, too — that is the whole feature, and
- * keeping the button lit would trade one defect for the other. So the round
- * trip is four questions, not one: the way back is there the moment the
- * interface goes; it steps back on its own once nothing is happening; **any**
- * pointer move brings it straight back; and pressing it returns the frame.
- * The wait for the quiet state is a wait for the class, never for a duration
- * (L-14) — the delay lives in `App.js` and this does not restate it.
+ * The frame it leaves has to be clean, too — that is the whole feature. For a
+ * while the answer to both was a fade, and this checked four things about it.
+ * It is three now, because the fade is gone (L-51): the way back is there the
+ * moment the controls go, it is **still** there after seconds of nobody doing
+ * anything, and pressing it brings the controls back. An empty frame belongs
+ * to `is-capture`, which only a script sets.
+ *
+ * The first of those is asked immediately after the click, before this moves
+ * the mouse or the focus, so that a timer put back into `App.js` cannot fire
+ * in the gap and be reported as the hide rule's doing. How long that gap
+ * actually was is measured in the page and carried into the message, because
+ * on a stalled software-GL thread it is not always small (L-34).
  *
  * Measured only where the control is offered to begin with, so a viewport that
  * does not show it is not failed for not showing it.
  */
-async function hideUiRoundTrip(page) {
+/**
+ * Is this control on screen, in the browser's own terms?
+ *
+ * Source text, not a function, so the same measurement can be handed to
+ * Playwright and installed inside the page (see `look` and `armAtHide`).
+ * Playwright evaluates a string that reads as a function expression, and the
+ * page builds the same one for its own observer.
+ */
+const SEEN_SOURCE = `(node) => {
+  const name = (element) => {
+    if (!element) return 'nothing';
+    const classes = String(element.className ?? '').trim().split(/\\s+/).filter(Boolean);
+    return element.tagName.toLowerCase() + (classes.length ? '.' + classes.join('.') : '');
+  };
+  const box = node.getBoundingClientRect();
+  if (box.width < 1 || box.height < 1) return { seen: false, why: 'it has no box' };
+  // Its own \`visibility\`, not its ancestors': the whole point of the property
+  // is that a descendant may turn it back on, and the computed value here
+  // already accounts for whatever the boxes above it said.
+  const own = getComputedStyle(node);
+  if (own.visibility !== 'visible') return { seen: false, why: 'its visibility is ' + own.visibility };
+  // \`opacity\` is the opposite case. It composites down the tree and no
+  // descendant can undo it, so every box above this one has to be asked.
+  let opacity = 1;
+  for (let element = node; element; element = element.parentElement) {
+    opacity *= Number(getComputedStyle(element).opacity);
+  }
+  if (opacity < 0.1) {
+    return { seen: false, why: 'the boxes above it multiply out to opacity ' + opacity.toFixed(2) };
+  }
+  const at = document.elementFromPoint(box.left + box.width / 2, box.top + box.height / 2);
+  if (!(at === node || node.contains(at))) {
+    return { seen: false, why: 'a click at its centre would land on ' + name(at) };
+  }
+  return { seen: true };
+}`;
+
+async function hideUiRoundTrip(page, { measureStillness = false } = {}) {
   const toggle = page.locator('#ui [data-control="hideUi"]');
   if ((await toggle.count()) !== 1) return { control: false };
 
@@ -736,35 +778,16 @@ async function hideUiRoundTrip(page) {
   const uiHidden = (want) => hasClass('is-hidden', want);
 
   // What a person would see, in the browser's own terms.
-  const look = () =>
-    toggle.evaluate((node) => {
-      const name = (element) => {
-        if (!element) return 'nothing';
-        const classes = String(element.className ?? '').trim().split(/\s+/).filter(Boolean);
-        return `${element.tagName.toLowerCase()}${classes.length ? `.${classes.join('.')}` : ''}`;
-      };
-      const box = node.getBoundingClientRect();
-      if (box.width < 1 || box.height < 1) return { seen: false, why: 'it has no box' };
-      // Its own `visibility`, not its ancestors': the whole point of the
-      // property is that a descendant may turn it back on, and the computed
-      // value here already accounts for whatever the boxes above it said.
-      const own = getComputedStyle(node);
-      if (own.visibility !== 'visible') return { seen: false, why: `its visibility is ${own.visibility}` };
-      // `opacity` is the opposite case. It composites down the tree and no
-      // descendant can undo it, so every box above this one has to be asked.
-      let opacity = 1;
-      for (let element = node; element; element = element.parentElement) {
-        opacity *= Number(getComputedStyle(element).opacity);
-      }
-      if (opacity < 0.1) {
-        return { seen: false, why: `the boxes above it multiply out to opacity ${opacity.toFixed(2)}` };
-      }
-      const at = document.elementFromPoint(box.left + box.width / 2, box.top + box.height / 2);
-      if (!(at === node || node.contains(at))) {
-        return { seen: false, why: `a click at its centre would land on ${name(at)}` };
-      }
-      return { seen: true };
-    });
+  //
+  // Kept as source text rather than a function literal because it is needed in
+  // two places that cannot share a closure: called from here, and installed
+  // *inside* the page so the moment the controls are hidden can be measured by
+  // the page itself. One copy, so the two answers cannot drift apart.
+  // Built in the page from the same source the observer below uses. Handing
+  // the string straight to `evaluate` does not work: Playwright evaluates it
+  // as an expression and hands back the function itself, which serialises to
+  // `undefined` — the first draft did that and every look answered nothing.
+  const look = () => toggle.evaluate((node, source) => (0, eval)(source)(node), SEEN_SOURCE);
 
   /**
    * Leave the page the way this found it, whatever happened in between.
@@ -787,153 +810,87 @@ async function hideUiRoundTrip(page) {
   };
 
   /**
-   * Both halves of the contract, read inside one task.
+   * And it is still there when nobody is doing anything.
    *
-   * The product puts the way back out of the frame a couple of seconds after
-   * the reader stops doing anything, and this runner draws a brain atlas on
-   * software GL — measured here, the main thread stalls for longer than that,
-   * so any answer assembled across two CDP calls is a coin toss. (It landed
-   * wrong on the first run: the class arrived between the nudge and the look,
-   * and the check reported the frame's own timer as the stylesheet's defect.)
-   * So the class is driven from inside the page, both states are read before
-   * the task ends, and whatever was there is put back.
+   * This is the one measurement in this file that waits on a duration rather
+   * than on a state, and it is the case L-14 does not cover: the contract is
+   * that **nothing happens** — no timer takes the way back off the screen —
+   * and there is no state to wait for when the correct answer is "unchanged".
+   * The wait is longer than the 2.2 s timer this replaced, so the exact
+   * regression it guards against (a fade put back) fails here.
    *
-   * The context runs with `reducedMotion: 'reduce'`, which turns the fade off
-   * (`base.css`), so these are the settled values rather than a transition
-   * caught mid-way.
+   * Measured on one viewport per run, not all nineteen. That is sampling, and
+   * L-44 says not to sample — but what that lesson is about is a dimension the
+   * behaviour varies over, like the five separate event listeners it was
+   * written for. A timer in `App.js` or a rule in `base.css` does not vary by
+   * viewport width, and nineteen waits would add a minute to every run to
+   * re-measure the same stylesheet.
    */
-  const bothStates = () =>
-    toggle.evaluate((node) => {
-      const ui = document.getElementById('ui');
-      const name = (element) => {
-        if (!element) return 'nothing';
-        const classes = String(element.className ?? '').trim().split(/\s+/).filter(Boolean);
-        return `${element.tagName.toLowerCase()}${classes.length ? `.${classes.join('.')}` : ''}`;
-      };
-      const centre = () => {
-        const box = node.getBoundingClientRect();
-        return [box, document.elementFromPoint(box.left + box.width / 2, box.top + box.height / 2)];
-      };
-      const look = () => {
-        const [box, at] = centre();
-        if (box.width < 1 || box.height < 1) return { seen: false, why: 'it has no box' };
-        const own = getComputedStyle(node);
-        if (own.visibility !== 'visible') return { seen: false, why: `its visibility is ${own.visibility}` };
-        let opacity = 1;
-        for (let element = node; element; element = element.parentElement) {
-          opacity *= Number(getComputedStyle(element).opacity);
-        }
-        if (opacity < 0.1) {
-          return { seen: false, why: `the boxes above it multiply out to opacity ${opacity.toFixed(2)}` };
-        }
-        if (!(at === node || node.contains(at))) {
-          return { seen: false, why: `a click at its centre would land on ${name(at)}` };
-        }
-        return { seen: true };
-      };
-
-      const was = ui.classList.contains('is-quiet');
-      ui.classList.remove('is-quiet');
-      const awake = look();
-      ui.classList.add('is-quiet');
-      const quiet = look();
-      // Out of the frame is not out of reach: faded, it still has to be the
-      // thing a click at its centre lands on, or a reader who knows where it
-      // is cannot use it until it lights up.
-      const [, at] = centre();
-      const reachable = at === node || node.contains(at);
-      ui.classList.toggle('is-quiet', was);
-      return { awake, quiet, reachable, reachedInstead: name(at) };
-    });
-
-  /**
-   * Does a real pointer move bring it back?
-   *
-   * Asked with a real input event, and answered **in the handler**: the page
-   * records what the class was the moment the move arrived, so the same stall
-   * that broke the first draft cannot answer this one either. `App.js`
-   * registers its listener at start-up, so it runs before this one.
-   */
-  const wokenByPointer = async () => {
-    await page.evaluate(() => {
-      const ui = document.getElementById('ui');
-      window.__hideUiWoke = null;
-      ui.classList.add('is-quiet');
-      window.addEventListener(
-        'pointermove',
-        () => {
-          window.__hideUiWoke = !ui.classList.contains('is-quiet');
-        },
-        { once: true },
-      );
-    });
-    await page.mouse.move(4, 4);
-    await page.mouse.move(6, 6);
-    return page.evaluate(() => window.__hideUiWoke);
+  const STILLNESS_MS = 3200;
+  const stillThere = async () => {
+    await page.waitForTimeout(STILLNESS_MS);
+    return look();
   };
-
-  /**
-   * And every other way the product says the way back can be woken.
-   *
-   * `App.js` listens for five: `pointermove`, `pointerdown`, `touchstart`,
-   * `wheel` and `keydown`. The first is driven above with a real mouse. The
-   * rest are dispatched, because the matrix's contexts are not touch contexts
-   * and making them so would change every other measurement in the run — so
-   * this pins the wiring rather than the device.
-   *
-   * It is the whole list on purpose. The first draft checked a touch and
-   * stopped there, and F-136 then claimed the machine-checkable part was done:
-   * dropping `keydown` from that list would have left `npm test` and all three
-   * engines green while "any pointer, key or touch brings it back" quietly
-   * stopped being true (Codex caught the claim, not the code).
-   */
-  const WAKES = ['pointerdown', 'touchstart', 'wheel', 'keydown'];
-  const wokenByEach = () =>
-    page.evaluate((types) => {
-      const ui = document.getElementById('ui');
-      const failed = [];
-      for (const type of types) {
-        ui.classList.add('is-quiet');
-        let woke = null;
-        const seen = () => {
-          woke = !ui.classList.contains('is-quiet');
-        };
-        window.addEventListener(type, seen, { once: true });
-        window.dispatchEvent(new Event(type, { bubbles: true }));
-        window.removeEventListener(type, seen);
-        if (woke !== true) failed.push(`${type} (${woke === null ? 'never arrived' : 'left it faded'})`);
-      }
-      ui.classList.remove('is-quiet');
-      return failed;
-    }, WAKES);
 
   const before = await look();
   if (!before.seen) return { control: true, offered: false, why: before.why };
 
+  /**
+   * Have the page measure the way back for itself, the instant it is hidden.
+   *
+   * Asking from here cannot answer this. The click and the look are separate
+   * round trips, and this runner draws a brain atlas on software GL: measured,
+   * the gap between them reaches **four seconds**, which is long enough for a
+   * timer in `App.js` to fire in between. The check would then see a way back
+   * that was already gone and report the hide rule for it — a true failure
+   * with the wrong cause on it, which is the shape L-29 is about.
+   *
+   * A `MutationObserver` callback runs as a microtask, in the same turn as the
+   * class change that triggered it, so nothing on a timer can have run yet.
+   * `getComputedStyle` inside it flushes style on demand, so the values are
+   * the ones the class just produced — and no `requestAnimationFrame` is
+   * involved, which on this renderer is the difference between a measurement
+   * and a guess (L-35).
+   */
+  await toggle.evaluate((node, source) => {
+    const seen = (0, eval)(source);
+    const ui = document.getElementById('ui');
+    delete window.__hideUiAtHide;
+    const observer = new MutationObserver(() => {
+      if (!ui.classList.contains('is-hidden')) return;
+      observer.disconnect();
+      window.__hideUiAtHide = { at: performance.now(), look: seen(node) };
+    });
+    observer.observe(ui, { attributes: true, attributeFilter: ['class'] });
+  }, SEEN_SOURCE);
   await toggle.click({ noWaitAfter: true });
   const hid = await uiHidden(true);
-  // Hands off first. Clicking leaves the pointer on the button and the focus
-  // in it, and both are *meant* to keep it lit — so measuring without moving
-  // away measures the mouse, not the stylesheet. (It did, on the first run.)
+  // The page's own answer if the observer caught the change; a look from here
+  // only if it did not, with the gap named so nobody reads a stale measurement
+  // as a fresh one.
+  const atHide = await page.evaluate(() => {
+    const record = window.__hideUiAtHide;
+    return record ? { ...record, since: Math.round(performance.now() - record.at) } : null;
+  });
+  const hidden = atHide?.look ?? (await look());
+  const sinceHide = atHide ? 0 : null;
   await page.mouse.move(4, 4);
   await resetFocus(page);
-  const states = hid ? await bothStates() : null;
-  const woke = states?.awake.seen && !states.quiet.seen ? await wokenByPointer() : null;
-  const deaf = woke === true ? await wokenByEach() : null;
+  const settled = hid && hidden.seen && measureStillness ? await stillThere() : null;
 
   // Bounded, and a refusal is an answer rather than an exception: a button the
   // reader cannot press is exactly one of the failures this is here to name,
   // and letting Playwright's 30-second default surface it as `locator.click:
   // Timeout` buries which of them it was.
   let back = null;
-  if (woke === true) {
+  if (hid && hidden.seen) {
     const pressed = await toggle
       .click({ noWaitAfter: true, timeout: 15_000 })
       .then(() => true, () => false);
     back = pressed ? await uiHidden(false) : 'refused';
   }
   await restore();
-  return { control: true, offered: true, hid, states, woke, deaf, back };
+  return { control: true, offered: true, hid, hidden, sinceHide, settled, back };
 }
 
 /**
@@ -1564,6 +1521,15 @@ const RENDERER_CONSOLE = [
 let engineRendererNote = false;
 const problems = [];
 const notes = [];
+/**
+ * Whether the "it does not go away on its own" wait has been paid once.
+ *
+ * A stylesheet rule and a `setTimeout` in `App.js` do not vary by viewport
+ * width, and the wait is three seconds — see `stillThere` in
+ * `hideUiRoundTrip`, which explains why this is the one duration this file
+ * waits on and why once per run is the right number of times to wait it.
+ */
+let stillnessMeasured = false;
 // Set when an engine turned out not to tab to links at all, so the summary can
 // say which coverage this run did not have rather than implying it did.
 let engineLinkNote = false;
@@ -1679,46 +1645,44 @@ try {
         // Before anything else opens a panel: the frame has to be the one a
         // reader arrives at, and this check leaves it exactly as it found it.
         if (surface.needsRenderer) {
-          const hideUi = await hideUiRoundTrip(page);
+          const hideUi = await hideUiRoundTrip(page, { measureStillness: !stillnessMeasured });
+          if (hideUi.settled) stillnessMeasured = true;
           if (!hideUi.control) {
             // An engine with no WebGL2 gets the renderer fallback, which has no
             // scene chrome to hide. That is the runner talking, and the rest of
             // this file is careful to record it as a note rather than a defect.
-            const missing = `${where}: a scene surface with no "hide interface" control`;
+            const missing = `${where}: a scene surface with no "hide controls" control`;
             if (rendererDown()) notes.push(`${missing} — the renderer did not start on this engine`);
             else problems.push(missing);
           } else if (!hideUi.offered) {
-            notes.push(`${where}: the "hide interface" control is not offered here — ${hideUi.why}`);
+            notes.push(`${where}: the "hide controls" control is not offered here — ${hideUi.why}`);
           } else if (!hideUi.hid) {
-            problems.push(`${where}: pressing "hide interface" did not hide the interface`);
-          } else if (!hideUi.states?.awake.seen) {
+            problems.push(`${where}: pressing "hide controls" did not hide the controls`);
+          } else if (!hideUi.hidden?.seen) {
+            // The gap is in the message on purpose. A few milliseconds means
+            // the hide rule itself took the way back; hundreds mean something
+            // on a timer could have, and the next reader should not have to
+            // guess which (L-34).
             problems.push(
-              `${where}: hiding the interface hid the only control that brings it back — ` +
-                `${hideUi.states?.awake.why}`,
+              `${where}: hiding the controls hid the only control that brings them back — ` +
+                `${hideUi.hidden?.why}` +
+                (hideUi.sinceHide === 0
+                  ? ' (measured by the page in the same turn the controls went)'
+                  : ' (measured from here, after the fact — a timer could have done this)'),
             );
-          } else if (hideUi.states.quiet.seen) {
+          } else if (hideUi.settled && !hideUi.settled.seen) {
+            // The way back is not on a timer. It was once, and a reader
+            // reported the interface as unrecoverable because of it: a control
+            // that goes away on its own reads as one that is gone, and nothing
+            // on screen says that moving the mouse brings it back.
             problems.push(
-              `${where}: the way back never leaves the frame, so a capture keeps a button in the corner`,
-            );
-          } else if (!hideUi.states.reachable) {
-            problems.push(
-              `${where}: faded, the way back is not what a click at its centre reaches — ` +
-                `that is ${hideUi.states.reachedInstead}`,
-            );
-          } else if (hideUi.woke !== true) {
-            problems.push(
-              `${where}: a pointer move did not bring the way back — ` +
-                (hideUi.woke === null ? 'the page saw no pointer move at all' : 'it stayed faded'),
-            );
-          } else if (hideUi.deaf?.length) {
-            problems.push(
-              `${where}: the way back does not answer ${hideUi.deaf.length} of the ways it says ` +
-                `it does — ${hideUi.deaf.join(', ')}`,
+              `${where}: the way back left the screen on its own after a few seconds of stillness — ` +
+                `${hideUi.settled.why}`,
             );
           } else if (hideUi.back === 'refused') {
-            problems.push(`${where}: the way back could not be pressed while the interface was hidden`);
+            problems.push(`${where}: the way back could not be pressed while the controls were hidden`);
           } else if (hideUi.back === false) {
-            problems.push(`${where}: the interface did not come back when the control was pressed again`);
+            problems.push(`${where}: the controls did not come back when the way back was pressed`);
           }
         }
 
