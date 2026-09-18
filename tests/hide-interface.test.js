@@ -94,11 +94,21 @@ test('the way back does not fade, and nothing schedules it away', () => {
     );
   }
   assert.doesNotMatch(APP_CODE, /is-quiet/, 'App.js schedules the way back off the screen again');
-  assert.doesNotMatch(
-    APP_CODE,
-    /setTimeout\([^)]*classList\.add/,
-    'App.js puts a class on the interface on a timer',
-  );
+
+  // Any timer that puts a class on the interface, whatever the class is called
+  // this time. Written against the *whole* timer call, because the obvious
+  // `setTimeout\([^)]*classList\.add` cannot match the thing it is aimed at:
+  // the callback is an arrow function, so the text between `setTimeout(` and
+  // `classList.add` contains `()`, and `[^)]*` stops at the first one. That
+  // version was green against a re-inserted 2.2 s fade — a guard that reads
+  // like it holds and matches nothing (L-01, L-09).
+  const timers = [...APP_CODE.matchAll(/setTimeout\(([\s\S]{0,200}?)\)\s*,\s*\d/g)];
+  for (const [, body] of timers) {
+    assert.ok(
+      !/classList\.(add|toggle)\(/.test(body),
+      `App.js schedules a class onto the interface: setTimeout(${body.trim().slice(0, 80)}…)`,
+    );
+  }
 });
 
 test('the way back is pinned out of the way, not left where its bar was', () => {
@@ -106,6 +116,7 @@ test('the way back is pinned out of the way, not left where its bar was', () => 
   // unobtrusive. Fixed to the bottom corner, inside the safe area, so it is
   // neither over the organ nor under a notch.
   const rule = ruleFor(BASE, "#ui.is-hidden [data-control='hideUi']");
+  assert.ok(rule, 'nothing places the way back while the controls are hidden');
   assert.equal(declaration(rule.body, 'position'), 'fixed');
   for (const side of ['right', 'bottom']) {
     assert.match(

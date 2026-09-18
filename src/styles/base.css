@@ -162,23 +162,29 @@ body {
   /* Above the canvas and the label layer; below nothing, because nothing else
      is on screen. */
   z-index: 40;
-  /* Quiet, not hidden: it recedes by being low-contrast and by sitting in the
-     corner, not by shrinking under the 12px floor `tests/type-floor.test.js`
-     holds. Standing alone on an otherwise empty frame, it is the one thing a
-     reader has to be able to read. `--panel` already carries the blur that
-     keeps its text off the geometry behind it. */
+  /* Quiet, and quiet against **the bar it came from**, which is the only
+     comparison that means anything — the first version of this said "recedes"
+     while setting the same `--ink-dim` the bar already uses and a *larger*
+     font than it, so nothing receded but the border. It is dimmer text on a
+     thinner edge now. It does not go below the 12px floor
+     `tests/type-floor.test.js` holds: standing alone on an otherwise empty
+     frame, this is the one thing a reader has to be able to read, and small
+     print in a corner is how a control becomes furniture. `--panel` carries
+     the blur that keeps its text off the geometry behind it. */
   font-size: 12px;
-  color: var(--ink-dim);
-  border-color: color-mix(in srgb, var(--border) 70%, transparent);
+  color: color-mix(in srgb, var(--ink-dim) 76%, transparent);
+  border-color: color-mix(in srgb, var(--border) 60%, transparent);
   box-shadow: 0 1px 8px rgba(0, 0, 0, 0.18);
 }
 
 /* And it comes forward the moment it is aimed at, so "quiet" never costs the
-   reader a second guess about whether it is a control. */
+   reader a second guess about whether it is a control. Colour only: the border
+   highlight belongs to `.ui-toggle:hover` in `ui.css`, and restating it here
+   with a plain `var(--border)` — which is what the first version did — made
+   hovering this button *less* marked than hovering any other. */
 #ui.is-hidden [data-control='hideUi']:hover,
 #ui.is-hidden [data-control='hideUi']:focus-visible {
   color: var(--ink);
-  border-color: color-mix(in srgb, var(--border) 100%, transparent);
 }
 
 /* Except for a scripted capture, which sets `is-capture` itself and needs no

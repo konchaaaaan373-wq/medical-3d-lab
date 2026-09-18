@@ -1062,7 +1062,7 @@ export async function createApp({ stage, ui, onRetryModel = null }) {
     dataset: { control: 'hideUi' },
     on: {
       click: () => {
-        setUiHidden(ui.classList.toggle('is-hidden'));
+        paintUiToggle(ui.classList.toggle('is-hidden'));
       },
     },
   });
@@ -1095,10 +1095,13 @@ export async function createApp({ stage, ui, onRetryModel = null }) {
    * person to trust a control they cannot see. What the reader gets instead
    * is a small, quiet button in the corner, always there. `base.css` puts it
    * there and keeps it legible; nothing here times anything.
+   *
+   * Which is why there is no `setUiHidden` wrapper any more. It existed to
+   * hold the timer's state alongside the label, and once the timer went it was
+   * a second name for `paintUiToggle` — one the keyboard path had never called
+   * in the first place, so the two ways of hiding the controls went through
+   * different code for no reason. Both call the same function now.
    */
-  function setUiHidden(hidden) {
-    paintUiToggle(hidden);
-  }
 
   onLanguageChange(() => paintUiToggle(ui.classList.contains('is-hidden')));
 
@@ -1628,7 +1631,7 @@ export async function createApp({ stage, ui, onRetryModel = null }) {
     ui,
     // The shortcut and the button land in the same place: the quiet timer is
     // part of what "hidden" means, not part of what the button does.
-    paintUiToggle: setUiHidden,
+    paintUiToggle,
     toggleComparison: scene.setComparison ? () => setComparison(!comparing) : null,
     zoomBy,
     exitReel: () => {

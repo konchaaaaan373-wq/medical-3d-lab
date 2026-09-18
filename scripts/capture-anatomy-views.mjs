@@ -220,10 +220,6 @@ try {
       const ui = document.getElementById('ui');
       ui?.classList.toggle('is-hidden', hide);
       ui?.classList.toggle('is-capture', hide);
-      // The app fades its own way back in and out while hidden; `is-capture`
-      // outranks that either way, and clearing it keeps the class meaning what
-      // it says rather than leaving a stale one on a shown interface.
-      ui?.classList.remove('is-quiet');
     }, hidden);
   const hideUi = () => setUi(true);
 
