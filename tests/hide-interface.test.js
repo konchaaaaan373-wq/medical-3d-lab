@@ -18,9 +18,14 @@ const read = (path) => readFileSync(new URL(`../${path}`, import.meta.url), 'utf
  *    a *child* of `#ui` and the button is three levels down — an exemption
  *    that read as intent and matched nothing (`docs/verification-lessons.md`
  *    L-31).
- * 2. **The frame it leaves is empty.** That is what the feature is named for.
- *    Keeping the button lit to satisfy (1) would put chrome in every capture,
- *    which is the same defect wearing the other coat (L-33).
+ * 2. **The frame a capture takes is empty.** That is what the feature is for.
+ *    The first answer to this was a fade: the way back dimmed after a couple
+ *    of seconds of stillness (L-33). It satisfied both promises on paper and
+ *    failed the reader in practice — a control that leaves on its own reads as
+ *    one that is gone, and nothing on screen says a mouse move brings it back.
+ *    A person reported the interface as unrecoverable *after* that fix. So the
+ *    empty frame belongs to `is-capture`, which only a program sets, and the
+ *    reader keeps a control that is simply always there.
  *
  * Both promises live in a selector and a class name, and both are invisible to
  * `npm test` unless something reads them. `verify:ui` measures them in a real
@@ -30,6 +35,18 @@ const read = (path) => readFileSync(new URL(`../${path}`, import.meta.url), 'utf
 
 const BASE = read('src/styles/base.css');
 const APP = read('src/app/App.js');
+/**
+ * `App.js` with its comments taken off.
+ *
+ * L-06: a `doesNotMatch` that matched the comment explaining why the thing it
+ * forbids is forbidden. `App.js` explains in prose that `is-capture` belongs
+ * to the capture script — the assertion below is about what the code does, so
+ * it reads the code.
+ */
+const APP_CODE = APP.replace(/\/\*[\s\S]*?\*\//g, '')
+  .split('\n')
+  .map((line) => line.replace(/\/\/.*$/, ''))
+  .join('\n');
 const CAPTURE = read('scripts/capture-anatomy-views.mjs');
 
 /** The rule with exactly this selector list, or nothing. */
@@ -62,28 +79,41 @@ test('the way back survives the hide', () => {
   assert.match(APP, /dataset: \{ control: 'hideUi' \}/, 'App.js no longer names the control');
 });
 
-test('and then steps back, so the frame a capture takes is empty', () => {
-  // L-33: the fix for L-31 satisfied the bug report and broke the reason the
-  // feature exists. `is-quiet` is what holds both promises at once.
-  const rule = ruleFor(BASE, "#ui.is-hidden.is-quiet [data-control='hideUi']");
-  assert.ok(rule, 'the way back never leaves the frame');
-  assert.equal(declaration(rule.body, 'opacity'), '0');
-
-  // Faded, not removed: `visibility` or `display` here would take it out of
-  // the hit test and put the reader back where L-31 left them.
-  assert.equal(declaration(rule.body, 'visibility'), null);
-  assert.equal(declaration(rule.body, 'display'), null);
-
-  const lit = ruleFor(
-    BASE,
-    "#ui.is-hidden.is-quiet [data-control='hideUi']:hover, #ui.is-hidden.is-quiet [data-control='hideUi']:focus-visible",
+test('the way back does not fade, and nothing schedules it away', () => {
+  // The other direction of L-33, learned the hard way a second time. A rule
+  // that takes this to `opacity: 0` on its own — or a timer in `App.js` that
+  // adds a class doing so — puts the reader back in front of a frame with no
+  // visible way out.
+  for (const rule of rulesOf(BASE)) {
+    if (!rule.selectors.includes("[data-control='hideUi']")) continue;
+    if (rule.selectors.includes('is-capture')) continue;
+    const opacity = declaration(rule.body, 'opacity');
+    assert.ok(
+      opacity === null || Number(opacity) > 0.5,
+      `${rule.selectors} takes the way back to opacity ${opacity}`,
+    );
+  }
+  assert.doesNotMatch(APP_CODE, /is-quiet/, 'App.js schedules the way back off the screen again');
+  assert.doesNotMatch(
+    APP_CODE,
+    /setTimeout\([^)]*classList\.add/,
+    'App.js puts a class on the interface on a timer',
   );
-  assert.ok(lit, 'hover and keyboard focus do not light it again');
-  assert.equal(declaration(lit.body, 'opacity'), '1');
+});
 
-  // And something has to put the class on and take it off again.
-  assert.match(APP, /classList\.add\('is-quiet'\)/, 'App.js never lets the way back step back');
-  assert.match(APP, /classList\.remove\('is-quiet'\)/, 'App.js never brings the way back');
+test('the way back is pinned out of the way, not left where its bar was', () => {
+  // Asked for by the reader who hit the defect above: keep it, and keep it
+  // unobtrusive. Fixed to the bottom corner, inside the safe area, so it is
+  // neither over the organ nor under a notch.
+  const rule = ruleFor(BASE, "#ui.is-hidden [data-control='hideUi']");
+  assert.equal(declaration(rule.body, 'position'), 'fixed');
+  for (const side of ['right', 'bottom']) {
+    assert.match(
+      declaration(rule.body, side) ?? '',
+      /env\(safe-area-inset-/,
+      `the way back ignores the safe area on the ${side}`,
+    );
+  }
 });
 
 test('a scripted capture takes the last control off the frame too', () => {
@@ -102,5 +132,5 @@ test('a scripted capture takes the last control off the frame too', () => {
 test('the capture escape hatch belongs to the scripts, not to the app', () => {
   // `is-capture` empties the frame completely. If the product ever set it, a
   // reader could reach the state this whole file exists to make impossible.
-  assert.doesNotMatch(APP, /is-capture/, 'App.js sets the capture-only class');
+  assert.doesNotMatch(APP_CODE, /is-capture/, 'App.js sets the capture-only class');
 });

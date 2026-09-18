@@ -162,13 +162,24 @@ test('language: the account button asks for the language rather than assuming En
 });
 
 test('language: the scene chrome has no label that exists in only one language', () => {
-  // The interface-hiding button shipped with Japanese text and an English
+  // The controls-hiding button shipped with Japanese text and an English
   // title — both halves of the same mistake, in opposite directions.
   const source = read('src/app/App.js');
   assert.ok(
-    !source.includes("text: 'UIを隠す'"),
-    'the hide-interface button carries one language as plain text',
+    !source.includes("text: '操作パネルを隠す'"),
+    'the hide-controls button carries one language as plain text',
   );
-  assert.match(source, /class: 'lang-en', text: hidden \? 'Show interface' : 'Hide interface'/);
-  assert.match(source, /class: 'lang-ja', text: hidden \? 'UIを表示' : 'UIを隠す'/);
+  assert.match(source, /class: 'lang-en', text: hidden \? 'Show controls' : 'Hide controls'/);
+  assert.match(source, /class: 'lang-ja', text: hidden \? '操作パネルを表示' : '操作パネルを隠す'/);
+
+  // And it says "controls", not "UI". For three releases this button was
+  // labelled 「UIを隠す」/"Hide interface" — our name for the thing, not a word
+  // the reader of an anatomy page uses. A label is not an internal identifier;
+  // `data-control="hideUi"` is where that name belongs, and it stays there.
+  for (const jargon of ['UIを隠す', 'UIを表示', 'Hide interface', 'Show interface']) {
+    assert.ok(
+      !source.includes(`'${jargon}'`),
+      `the scene chrome labels a control "${jargon}", which is our vocabulary rather than the reader's`,
+    );
+  }
 });

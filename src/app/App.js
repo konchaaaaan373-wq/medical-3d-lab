@@ -1044,6 +1044,12 @@ export async function createApp({ stage, ui, onRetryModel = null }) {
   // Both languages in the DOM, CSS hides one — this button had only the
   // Japanese, so an English interface carried a button reading UIを隠す. The
   // `title` is the other half of the same defect and holds the one on screen.
+  //
+  // **It says "controls", not "UI".** For three releases the label read
+  // 「UIを隠す」/"Hide interface": our word for the thing, not the reader's.
+  // A visitor here is looking at an organ, and "UI" is the vocabulary of the
+  // people who built the page. What the button does to them is take the
+  // panels off the model, so that is what it says.
   const uiToggle = el('button', {
     class: 'ui-toggle',
     type: 'button',
@@ -1063,54 +1069,35 @@ export async function createApp({ stage, ui, onRetryModel = null }) {
 
   function paintUiToggle(hidden) {
     uiToggle.replaceChildren(
-      el('span', { class: 'lang-en', text: hidden ? 'Show interface' : 'Hide interface' }),
-      el('span', { class: 'lang-ja', text: hidden ? 'UIを表示' : 'UIを隠す' })
+      el('span', { class: 'lang-en', text: hidden ? 'Show controls' : 'Hide controls' }),
+      el('span', { class: 'lang-ja', text: hidden ? '操作パネルを表示' : '操作パネルを隠す' })
     );
     uiToggle.title = hidden
-      ? inLanguage('Show the interface again (H)', 'UI を再表示する（H）')
-      : inLanguage('Hide interface for capture (H)', 'キャプチャ用に UI を隠す（H）');
+      ? inLanguage('Show the controls again (H)', '操作パネルを表示する（H）')
+      : inLanguage('Hide the controls and see the model alone (H)', '操作パネルを隠してモデルだけ見る（H）');
   }
 
   /**
-   * The way back, and why it does not simply stay on screen.
+   * The way back stays on screen. It does not fade, and it is not on a timer.
    *
-   * This button hides everything for a capture, and it is the only thing in
-   * the frame that says how to undo that — the H shortcut is written in the
-   * `title` of a button that is no longer there to read. For one release it
-   * went with the panels around it and left no way back at all
-   * (`docs/verification-lessons.md` L-31). Keeping it is the fix; keeping it
-   * *lit* is not, because then the frame this feature exists to produce has a
-   * button in the corner of it.
+   * The first version of this feature hid the way back along with the panels
+   * (`docs/verification-lessons.md` L-31). The second kept it but let it fade
+   * after 2.2 seconds of stillness, on the reasoning that a capture wants an
+   * empty frame — every video player does this, so it looked like the settled
+   * answer. It is the wrong one here, and a reader said so while looking at
+   * the screen: a control that is sometimes there and sometimes not reads as
+   * one that is gone, and the reader has to discover that moving the mouse
+   * brings it back. Nothing on screen tells them that.
    *
-   * So: it stays while the reader is doing something and steps back when they
-   * stop, and anything at all — a pointer, a key, a touch — brings it back
-   * before they can reach for it. Same answer every video player settled on.
-   * It never stops being clickable, so the fade costs nothing but the ink.
-   */
-  const UI_QUIET_MS = 2200;
-  let quietTimer = 0;
-
-  /** Anything the reader does means they are still here. */
-  const wakeWayBack = () => {
-    if (!ui.classList.contains('is-hidden')) return;
-    ui.classList.remove('is-quiet');
-    clearTimeout(quietTimer);
-    quietTimer = setTimeout(() => ui.classList.add('is-quiet'), UI_QUIET_MS);
-  };
-
-  for (const type of ['pointermove', 'pointerdown', 'touchstart', 'wheel', 'keydown']) {
-    window.addEventListener(type, wakeWayBack, { passive: true });
-  }
-
-  /**
-   * One place decides what "hidden" looks like, for both the button and the
-   * shortcut — the class is already flipped by the time this is called.
+   * A capture that must be empty is taken by a program, and a program sets
+   * `is-capture` itself (`scripts/capture-anatomy-views.mjs`) — so the frame
+   * this feature exists to produce is still available, without asking a
+   * person to trust a control they cannot see. What the reader gets instead
+   * is a small, quiet button in the corner, always there. `base.css` puts it
+   * there and keeps it legible; nothing here times anything.
    */
   function setUiHidden(hidden) {
     paintUiToggle(hidden);
-    clearTimeout(quietTimer);
-    ui.classList.remove('is-quiet');
-    if (hidden) wakeWayBack();
   }
 
   onLanguageChange(() => paintUiToggle(ui.classList.contains('is-hidden')));
