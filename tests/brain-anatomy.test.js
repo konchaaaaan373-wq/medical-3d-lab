@@ -4,7 +4,13 @@ import { readFileSync } from 'node:fs';
 import { createHash } from 'node:crypto';
 import * as THREE from 'three';
 import BrainAnatomyScene from '../src/scenes/nervous/scenes/brainAnatomy/index.js';
-import { BRAIN_COLOR_MODES, brainColor, brainColorKey, brainStructureInfo } from '../src/data/brainAnatomy.js';
+import {
+  BRAIN_COLOR_MODES,
+  BRAIN_PALETTE,
+  brainColor,
+  brainColorKey,
+  brainStructureInfo,
+} from '../src/data/brainAnatomy.js';
 
 test('brain anatomy adopts individually named atlas meshes instead of proxy lobes', () => {
   const scene = buildScene();
@@ -406,20 +412,7 @@ test('abbreviated lateral-sulcus labels are expanded without losing atlas identi
 });
 
 test('every selectable atlas label has a deliberate Japanese name and hierarchy', () => {
-  const bytes = readFileSync(new URL('../public/assets/brain/brain.glb', import.meta.url));
-  const jsonLength = bytes.readUInt32LE(12);
-  const gltf = JSON.parse(bytes.subarray(20, 20 + jsonLength).toString());
-  const selectableCategories = new Set([
-    'cortex', 'deep_grey', 'diencephalon', 'white_matter',
-    'ventricles', 'cerebellum', 'brainstem',
-  ]);
-  const structures = new Map();
-  for (const node of gltf.nodes) {
-    const metadata = node.extras;
-    if (metadata && selectableCategories.has(metadata.bx_cat)) {
-      structures.set(`${metadata.bx_cat}:${metadata.bx_label}`, metadata);
-    }
-  }
+  const structures = atlasStructures();
   assert.equal(structures.size, 147);
   const detailColours = new Set();
   const naturalColours = new Set();
@@ -451,6 +444,53 @@ test('every selectable atlas label has a deliberate Japanese name and hierarchy'
     closest.distance >= 3.8,
     `closest detail colours are too similar: ${closest.labels.join(' / ')} (ΔE ${closest.distance.toFixed(2)})`
   );
+});
+
+test('each large anatomical unit reads as one colour family', () => {
+  const structures = atlasStructures();
+  const byFamily = new Map();
+  for (const metadata of structures.values()) {
+    const key = brainColorKey(metadata);
+    if (!byFamily.has(key)) byFamily.set(key, []);
+    byFamily.get(key).push({ label: metadata.bx_label, hue: labHue(hexToLab(brainColor(metadata))) });
+  }
+
+  // A reader points at the frontal lobe as a whole before they point at one
+  // gyrus, so the gyri have to look like members of one thing. Each family
+  // holds a narrow hue band and separates its members by lightness and
+  // saturation inside it. The palette this replaced put the frontal lobe
+  // across 155° of Lab hue — magenta through to yellow within one lobe — and
+  // its *tightest* family was still 61° wide, so this bound fails all twelve
+  // of them.
+  for (const [key, members] of byFamily) {
+    const withSwatch = [...members.map((member) => member.hue), labHue(hexToLab(BRAIN_PALETTE[key]))];
+    const spread = circularSpread(withSwatch);
+    assert.ok(
+      spread <= 44,
+      `${key} spans ${spread.toFixed(1)}° of hue across ${members.length} structures and its legend swatch`
+    );
+  }
+
+  // And the lobes have to be different families from each other: no gyrus of
+  // one lobe may land on another lobe's hue.
+  const lobes = ['frontal', 'parietal', 'temporal', 'occipital', 'limbic', 'insula'];
+  for (const lobe of lobes) {
+    assert.ok(byFamily.get(lobe)?.length, `${lobe} has structures to be a family of`);
+  }
+  for (let left = 0; left < lobes.length; left += 1) {
+    for (let right = left + 1; right < lobes.length; right += 1) {
+      let closest = Infinity;
+      for (const a of byFamily.get(lobes[left])) {
+        for (const b of byFamily.get(lobes[right])) {
+          closest = Math.min(closest, circularDistance(a.hue, b.hue));
+        }
+      }
+      assert.ok(
+        closest >= 18,
+        `${lobes[left]} and ${lobes[right]} come within ${closest.toFixed(1)}° of hue of each other`
+      );
+    }
+  }
 });
 
 test('cingulate terminology distinguishes aMCC from an unavailable ACC mesh', () => {
@@ -780,6 +820,46 @@ function hslOf(mesh) {
 
 function settle(scene) {
   for (let i = 0; i < 240; i += 1) scene.update(1 / 60);
+}
+
+function atlasStructures() {
+  const bytes = readFileSync(new URL('../public/assets/brain/brain.glb', import.meta.url));
+  const jsonLength = bytes.readUInt32LE(12);
+  const gltf = JSON.parse(bytes.subarray(20, 20 + jsonLength).toString());
+  const selectableCategories = new Set([
+    'cortex', 'deep_grey', 'diencephalon', 'white_matter',
+    'ventricles', 'cerebellum', 'brainstem',
+  ]);
+  const structures = new Map();
+  for (const node of gltf.nodes) {
+    const metadata = node.extras;
+    if (metadata && selectableCategories.has(metadata.bx_cat)) {
+      structures.set(`${metadata.bx_cat}:${metadata.bx_label}`, metadata);
+    }
+  }
+  return structures;
+}
+
+/** Where a colour sits on the Lab hue circle, which is what "family" means here. */
+function labHue([, a, b]) {
+  return ((Math.atan2(b, a) * 180) / Math.PI + 360) % 360;
+}
+
+function circularDistance(left, right) {
+  const raw = Math.abs(left - right) % 360;
+  return raw > 180 ? 360 - raw : raw;
+}
+
+/** The arc a set of hues occupies — the circle minus its largest empty gap. */
+function circularSpread(hues) {
+  if (hues.length < 2) return 0;
+  const sorted = [...hues].sort((left, right) => left - right);
+  let widestGap = 0;
+  for (let index = 0; index < sorted.length; index += 1) {
+    const next = index === sorted.length - 1 ? sorted[0] + 360 : sorted[index + 1];
+    widestGap = Math.max(widestGap, next - sorted[index]);
+  }
+  return 360 - widestGap;
 }
 
 function hexToLab(hex) {

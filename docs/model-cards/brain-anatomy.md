@@ -141,9 +141,13 @@ they do not convert the distributed geometry into a Destrieux atlas.
 
 Geometry is never enlarged, separated or moved by hover, selection, camera
 view, or the layer slider. Hover and selection change emissive emphasis only.
-Colour-map shades are deterministic from anatomical metadata, use the same
-colour for left/right homologues, and vary hue, saturation and lightness inside
-the parent lobe family. Natural-anatomy shades use a constrained low-saturation
+Colour-map shades are deterministic from anatomical metadata and use the same
+colour for left/right homologues. Each large unit — a lobe, the ventricular
+system, the cerebellum, the brainstem — owns one narrow hue band, and the
+structures inside it are told apart by lightness and saturation within that
+band, so a lobe reads as one family before its gyri read as individuals. The
+legend swatch for a unit is the centre of its band rather than a separate
+picked colour. Natural-anatomy shades use a constrained low-saturation
 range with small deterministic lightness differences between named meshes. The
 same selector also updates the legend swatches; neither mode changes anatomical
 identity or geometry. **Colour aids identification and grouping; it does not
@@ -531,3 +535,37 @@ Sources in scope: `src/data/brainAnatomy.js`,
 `src/components/InspectionPanel.js`. `src/components/InspectionPanel.js` is
 shared UI, not a medical source, and is not part of the revision digest below
 — see `docs/model-cards/revisions.json`.
+
+**Revision 25 → 26 (2026-09-19) — the colour map groups by lobe.** A
+presentation change only: no geometry, no atlas ids, no labels, no
+hierarchy, no copy and no claim in this card changed, and natural-anatomy
+mode is untouched. Each colour family in `DETAIL_COLOR_FAMILY`
+(`src/data/brainAnatomy.js`) now holds a narrow hue band and separates its
+members by lightness and saturation inside it, where before a family spanned
+up to 130° of HSL hue — 155° of CIE Lab hue for the frontal lobe in the
+render, magenta through to yellow within one lobe — which left the large
+units with no visible identity of their own. The bands were also pushed
+apart: the frontal and parietal lobes had overlapped, and the cerebellum now
+sits clear of the temporal lobe and the limbic lobe. The palette is seeded
+per family rather than once for the whole atlas, because the placement
+inside a band is a deterministic hash and the seed that is even enough for
+35 deep-grey nuclei is not the one that is even enough for 21 frontal gyri;
+each seed is the outcome of a search against the same all-label perceptual
+distance audit, whose closest pair improves from ΔE 4.31 to 4.65 across all
+147 named structures. The cost is paid inside a family: the median
+nearest-neighbour distance among the 21 frontal structures falls from ΔE 10.9
+to 7.3, because hue is no longer available to separate them. That trade is
+the change — the lobe is now a visible group and its gyri are separated by
+value instead of by hue. Since the seeds and the bands are both in every hash,
+every colour-map shade changed (147/147); all 147 remain distinct.
+`BRAIN_PALETTE` — the legend swatches, and the colour-mode selector's own
+preview — is now derived from the band centres instead of being a separate
+hand-picked list, so a swatch cannot drift away from the meshes it stands
+for. `tests/brain-anatomy.test.js` holds both halves of the new rule: the
+hue spread inside each family, including its legend swatch, and the hue gap
+between the cortical lobes. Colour still aids identification and grouping
+and does not show real tissue colour, functional localisation, vascular
+territory, exact boundaries or positional accuracy (§6).
+
+Sources in scope: `src/data/brainAnatomy.js`,
+`src/scenes/nervous/scenes/brainAnatomy/BrainAnatomyScene.js`.

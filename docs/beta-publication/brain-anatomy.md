@@ -12,11 +12,11 @@ at pictures. **No anatomist has judged this geometry or these labels.**
 
 | | |
 | --- | --- |
-| **Decided at** | 2026-09-17 (re-taken five times: a branch of the tree gained a way to be hidden whole, what a hide announces was corrected, a selected structure's label was made to survive its own anchor being occluded, then a review of that fix found three ways it still failed its own stated behaviour and they were closed, then an audit of the result found three more and a per-frame cost, also closed, then the four-round terminology review branch landed on top of it) |
-| **Decided by** | Claude Code (AI engineering agent), landing the four-round terminology review (PR #125) after the selection-label fix (PR #132) |
+| **Decided at** | 2026-09-19 (re-taken six times: a branch of the tree gained a way to be hidden whole, what a hide announces was corrected, a selected structure's label was made to survive its own anchor being occluded, then a review of that fix found three ways it still failed its own stated behaviour and they were closed, then an audit of the result found three more and a per-frame cost, also closed, then the four-round terminology review branch landed on top of it, then the colour map was regrouped so that a lobe reads as one colour family) |
+| **Decided by** | Claude Code (AI engineering agent), re-taken for the lobe-coherent colour map |
 | **Role** | `engineering` — software behaviour, not anatomical or clinical judgement |
 | **Asset revision** | `brain-atlas-glb` @ `sha256:76a49ea4526a4880613aec7a02756bd7301b0b9d0680d7cae33e197b672c5453` |
-| **Scene revision** | model card revision **25**, source digest `7e4825b9b5c3ce58` |
+| **Scene revision** | model card revision **26**, source digest `bdd9aac1ffb0502e` |
 | **Scene sources under that digest** | [`src/data/brainAnatomy.js`](../../src/data/brainAnatomy.js), [`src/scenes/nervous/scenes/brainAnatomy/BrainAnatomyScene.js`](../../src/scenes/nervous/scenes/brainAnatomy/BrainAnatomyScene.js), [`src/scenes/shared/anatomy/tapGesture.js`](../../src/scenes/shared/anatomy/tapGesture.js) |
 
 The decision is pinned to **both** revisions in
@@ -312,6 +312,39 @@ anterior boundary and a frontal-lobe sulcus. It is back under 前頭葉 ›
 provenance note calling the mamillary body a single nucleus is corrected.
 Nothing drawn, selectable, coloured or announced in a view changed, but what
 the panel says about two structures did, so this record is taken again.
+
+
+**Revision 25 → 26.** The colour map was regrouped. Every one of the 147
+named structures was already distinct from every other — the all-label
+perceptual-distance audit in `tests/brain-anatomy.test.js` held at ΔE 4.31 —
+but the large units were not: each colour family spanned up to 130° of HSL
+hue, which reached 155° of CIE Lab hue for the frontal lobe in the render, so
+a lobe had no colour of its own and the frontal and parietal bands overlapped.
+Each family now holds a narrow hue band (at most 34° of Lab hue across its
+members) and separates them by lightness and saturation inside it, seeded per
+family rather than once for the whole atlas. `BRAIN_PALETTE` — the legend
+swatches and the colour-mode preview — is derived from the band centres rather
+than picked separately, so a swatch cannot promise a colour the meshes do not
+have.
+
+*What was actually done for this decision*: all eight named viewpoints were
+re-rendered in colour-map mode and looked at, and the superior and left-lateral
+views were rendered before and after the change for comparison; the interaction
+drive (`npm run verify:anatomy`) was re-run for this scene. The measured
+numbers: the closest pair over all 147 structures improves from ΔE 4.31 to
+4.65, and the median nearest-neighbour distance *inside* the frontal lobe falls
+from ΔE 10.9 to 7.3 — hue is no longer available to separate members of one
+lobe, and that cost is the change rather than a side effect of it. Two new
+assertions hold the new rule (hue spread within a family including its legend
+swatch; hue gap between cortical lobes) and were confirmed red against three
+mutations. **Nothing about geometry, atlas ids, labels, hierarchy, copy or
+what is selectable changed, and natural-anatomy mode is untouched.** This
+record is taken again because every colour-map shade a reader sees is
+different, which is what the pin is for. Earlier colour-map screenshots under
+`docs/screenshots/` no longer match the shipped shades. Colour aids
+identification and grouping; it does not show real tissue colour, functional
+localisation, vascular territory, exact boundaries or positional accuracy
+(model card §6).
 
 
 Each time the gate closed and the production build stopped shipping the scene

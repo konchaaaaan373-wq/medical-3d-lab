@@ -6,41 +6,68 @@
  * browser or a WebGL context.
  */
 
-export const BRAIN_PALETTE = {
-  frontal: '#d9826b',
-  parietal: '#d8b35f',
-  temporal: '#9b78c8',
-  occipital: '#5f93c8',
-  limbic: '#d56f8f',
-  insula: '#54b6a4',
-  telencephalon: '#b9957d',
-  deep: '#58bca8',
-  whiteMatter: '#d9ceb9',
-  ventricles: '#4ab8d2',
-  cerebellum: '#b9788d',
-  brainstem: '#9c7b65',
+/**
+ * One hue band per large anatomical unit.
+ *
+ * A lobe is a thing a reader points at as a whole ("the frontal lobe"), so the
+ * gyri inside it have to read as members of one family before they read as
+ * individuals. Each family therefore owns a narrow hue band — at most 34° of
+ * CIE Lab hue across all of its structures — and separates its members by
+ * lightness and saturation inside that band. Widening `hueSpan` back out is
+ * what destroys this: the palette before this one gave the frontal lobe an
+ * 80° HSL span, which reached 155° of Lab hue in the render, so its gyri ran
+ * from magenta through to yellow and the lobe stopped being a visible group.
+ * `tests/brain-anatomy.test.js` fixes both halves — the spread inside a family
+ * and the gap between the cortical lobes.
+ *
+ * Each family carries its own `seed` because the placement inside a band is a
+ * deterministic hash, and a hash that is even enough for 35 deep-grey nuclei
+ * is not the same one that is even enough for 21 frontal gyri. The seeds are
+ * the outcome of a per-family search against the same all-label perceptual
+ * distance audit the test runs, so changing a band means re-running that
+ * search rather than nudging a number.
+ *
+ * The band is bought with distance inside it: the median nearest-neighbour
+ * distance among the 21 frontal structures is ΔE 7.3, where the old wide-hue
+ * palette had 10.9. The boxes below are as large as the cross-family audit
+ * allows for that reason — narrowing one to taste takes visible separation
+ * away from the structures inside it.
+ */
+const DETAIL_COLOR_FAMILY = {
+  frontal: { hue: 26, hueSpan: 18, saturation: 62, saturationSpan: 38, lightness: 63, lightnessSpan: 28, seed: 'frontal-v6132' },
+  parietal: { hue: 62, hueSpan: 14, saturation: 64, saturationSpan: 18, lightness: 59, lightnessSpan: 32, seed: 'parietal-v18433' },
+  temporal: { hue: 268, hueSpan: 18, saturation: 52, saturationSpan: 18, lightness: 61, lightnessSpan: 32, seed: 'temporal-v9216' },
+  occipital: { hue: 206, hueSpan: 13, saturation: 58, saturationSpan: 18, lightness: 58, lightnessSpan: 32, seed: 'occipital-v24638' },
+  limbic: { hue: 348, hueSpan: 14, saturation: 58, saturationSpan: 16, lightness: 61, lightnessSpan: 30, seed: 'limbic-v1436' },
+  insula: { hue: 176, hueSpan: 8, saturation: 56, saturationSpan: 10, lightness: 54, lightnessSpan: 10, seed: 'insula-v0' },
+  // Cortex the atlas does not place in a lobe. A near-neutral band says so:
+  // it is the one cortical family that is deliberately not a colour.
+  telencephalon: { hue: 30, hueSpan: 18, saturation: 20, saturationSpan: 24, lightness: 62, lightnessSpan: 40, seed: 'telencephalon-v19482' },
+  deep: { hue: 150, hueSpan: 30, saturation: 44, saturationSpan: 46, lightness: 56, lightnessSpan: 44, seed: 'deep-v5286' },
+  whiteMatter: { hue: 46, hueSpan: 12, saturation: 34, saturationSpan: 16, lightness: 80, lightnessSpan: 16, seed: 'whiteMatter-v12743' },
+  ventricles: { hue: 192, hueSpan: 10, saturation: 62, saturationSpan: 14, lightness: 56, lightnessSpan: 24, seed: 'ventricles-v13728' },
+  cerebellum: { hue: 308, hueSpan: 20, saturation: 38, saturationSpan: 38, lightness: 58, lightnessSpan: 44, seed: 'cerebellum-v19191' },
+  brainstem: { hue: 14, hueSpan: 14, saturation: 42, saturationSpan: 32, lightness: 42, lightnessSpan: 30, seed: 'brainstem-v19322' },
 };
+
+/**
+ * The legend swatch for each family, and the answer to "what colour is the
+ * frontal lobe?" now that the question has one. It is the centre of the band
+ * rather than a hand-picked hex, so a swatch cannot drift away from the
+ * meshes it stands for.
+ */
+export const BRAIN_PALETTE = Object.fromEntries(
+  Object.entries(DETAIL_COLOR_FAMILY).map(([key, family]) => [
+    key,
+    hslToHex(family.hue, family.saturation, family.lightness),
+  ])
+);
 
 /** Two deliberately different readings of the same, unmoved geometry. */
 export const BRAIN_COLOR_MODES = [
   { id: 'detail', label: 'Colour map', labelJa: 'カラー' },
   { id: 'anatomical', label: 'Natural anatomy', labelJa: '通常解剖色' },
 ];
-
-const DETAIL_COLOR_FAMILY = {
-  frontal: { hue: 14, hueSpan: 80, saturation: 66, saturationSpan: 38, lightness: 59, lightnessSpan: 34 },
-  parietal: { hue: 44, hueSpan: 75, saturation: 68, saturationSpan: 38, lightness: 58, lightnessSpan: 34 },
-  temporal: { hue: 272, hueSpan: 85, saturation: 60, saturationSpan: 38, lightness: 60, lightnessSpan: 34 },
-  occipital: { hue: 210, hueSpan: 80, saturation: 65, saturationSpan: 38, lightness: 58, lightnessSpan: 34 },
-  limbic: { hue: 337, hueSpan: 75, saturation: 65, saturationSpan: 38, lightness: 59, lightnessSpan: 34 },
-  insula: { hue: 164, hueSpan: 55, saturation: 60, saturationSpan: 32, lightness: 55, lightnessSpan: 30 },
-  telencephalon: { hue: 24, hueSpan: 90, saturation: 58, saturationSpan: 36, lightness: 58, lightnessSpan: 34 },
-  deep: { hue: 151, hueSpan: 130, saturation: 62, saturationSpan: 40, lightness: 55, lightnessSpan: 36 },
-  whiteMatter: { hue: 41, hueSpan: 35, saturation: 31, saturationSpan: 18, lightness: 75, lightnessSpan: 18 },
-  ventricles: { hue: 190, hueSpan: 65, saturation: 68, saturationSpan: 34, lightness: 55, lightnessSpan: 30 },
-  cerebellum: { hue: 329, hueSpan: 130, saturation: 56, saturationSpan: 40, lightness: 57, lightnessSpan: 36 },
-  brainstem: { hue: 26, hueSpan: 110, saturation: 50, saturationSpan: 36, lightness: 53, lightnessSpan: 34 },
-};
 
 /**
  * A low-saturation gross-anatomy palette. Small, deterministic lightness
@@ -726,10 +753,12 @@ export function brainColor(metadata = {}, mode = 'detail') {
   // Natural tones occupy a deliberately narrow range, so use independent
   // deterministic hash streams. This avoids two named structures collapsing
   // to the same rounded RGB value without introducing conspicuous colour jumps.
-  // Keep the detail palette versioned: its seed is locked by the all-label
-  // perceptual-distance audit so nearby atlas structures remain distinguishable.
+  // The detail palette seeds per family, not once for the whole atlas: each
+  // band is narrow enough that its own seed is what decides whether the
+  // structures inside it stay apart, and the all-label perceptual-distance
+  // audit is what locked each of them.
   const hash = stableHash(
-    natural ? `anatomical:h:${key}:${label}` : `${key}:palette-v38601:${label}`
+    natural ? `anatomical:h:${key}:${label}` : `${key}:${family.seed}:${label}`
   );
   const saturationHash = natural
     ? stableHash(`anatomical:s:${key}:${label}`)
