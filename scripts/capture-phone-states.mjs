@@ -125,6 +125,10 @@ if (await page.locator('.locked-copy').count()) {
 await page.evaluate((lang) => {
   const ui = document.getElementById('ui');
   if (ui) ui.dataset.lang = lang;
+  // A program is taking these, and a local build is not production — without
+  // this every documentation screenshot would carry the "not the live site"
+  // line in the corner, which is true and not what the shot is about.
+  document.body.classList.add('is-capture');
 }, language);
 await settle();
 await shot('1-initial');

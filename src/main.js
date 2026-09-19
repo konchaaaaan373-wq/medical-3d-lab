@@ -30,6 +30,7 @@ import './styles/patient-consultation.css';
 // for phone widths, and it has to outrank every surface sheet that compacts —
 // the consultation view above included.
 import './styles/phone-touch-targets.css';
+import { createBuildMarker } from './components/BuildMarker.js';
 import { resolveRoute } from './app/router.js';
 import { installDeparture } from './app/departure.js';
 import { looksLikeAuthRedirect } from './access/authRedirect.js';
@@ -101,6 +102,13 @@ async function boot() {
   // fix belongs in one place rather than six. `shownHash` is captured here,
   // once: it is the route this document rendered, and only a new document
   // changes it.
+  // Before any route decides what to render: a build that is not the site says
+  // so on every surface, including the ones that never reach `App.js`. It is
+  // appended to `document.body` rather than to `#ui` so that hiding the
+  // controls cannot take it — the screenshot people send is the hidden one.
+  const buildMarker = createBuildMarker();
+  if (buildMarker) document.body.append(buildMarker);
+
   const shownHash = window.location.hash;
   const leaveOnRouteChange = () => installDeparture({
     shownHash,

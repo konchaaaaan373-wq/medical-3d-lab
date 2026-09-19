@@ -17,8 +17,22 @@ export default defineConfig(({ mode }) => {
   // decides whether the locked scenes are in the bundle to be unlocked.
   const allowPreview = env.VITE_ALLOW_PREVIEW === '1';
 
+  // Which build this is, carried inside the bundle.
+  //
+  // Netlify sets these on every build it runs; a local `npm run build` sets
+  // none of them, and `local` is the right answer there. They are `define`d
+  // rather than read through `import.meta.env` because they are not
+  // `VITE_`-prefixed and they are not configuration a deploy chooses — they
+  // are facts about the build, and the deploy states them by existing.
+  const buildIdentity = {
+    __BUILD_CONTEXT__: JSON.stringify(process.env.CONTEXT || 'local'),
+    __BUILD_COMMIT__: JSON.stringify(process.env.COMMIT_REF || ''),
+    __BUILD_REVIEW__: JSON.stringify(process.env.REVIEW_ID || ''),
+  };
+
   return {
     base: './',
+    define: buildIdentity,
     server: { host: true, port: 5173 },
     build: {
       target: 'es2020',
@@ -34,6 +48,20 @@ export default defineConfig(({ mode }) => {
         released: RELEASED_SCENES,
         enabled: !allowPreview,
       }),
+      // The same answer where no JavaScript runs: `curl`, a crawler, or CI
+      // asking "which build is served here?" without a browser. A screenshot
+      // can be read by a person; this is for everything else.
+      {
+        name: 'build-identity-meta',
+        transformIndexHtml(html) {
+          const meta = [
+            `<meta name="build-context" content="${process.env.CONTEXT || 'local'}">`,
+            `<meta name="build-commit" content="${process.env.COMMIT_REF || ''}">`,
+            `<meta name="build-review" content="${process.env.REVIEW_ID || ''}">`,
+          ].join('\n    ');
+          return html.replace('</head>', `  ${meta}\n  </head>`);
+        },
+      },
       siteMetadataPlugin({
         // Open *and* public — `catalog/release.js` holds the two rules
         // together, because a set that satisfies only one of them is a bug in

@@ -194,6 +194,40 @@ body {
   visibility: hidden;
 }
 
+/*
+ * "This is not the site."
+ *
+ * Bottom-left, opposite the way back, so the two never collide. It is outside
+ * `#ui` on purpose (`main.js` appends it to the body), which is what keeps it
+ * on screen when the controls are hidden — the screenshot somebody sends is
+ * almost always that one, and the whole point is that the screenshot answers
+ * "which build is this?" by itself.
+ *
+ * Only a scripted capture clears it, by the same class that clears the way
+ * back, so `shots:*` frames stay clean.
+ */
+.build-marker {
+  position: fixed;
+  left: max(14px, env(safe-area-inset-left));
+  bottom: max(14px, env(safe-area-inset-bottom));
+  z-index: 40;
+  margin: 0;
+  padding: 5px 9px;
+  font-size: 12px;
+  line-height: 1.2;
+  color: var(--ink-dim);
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-left: 2px solid var(--caution-ink, #d08a3a);
+  border-radius: 6px;
+  backdrop-filter: blur(10px);
+  pointer-events: none;
+}
+
+body.is-capture .build-marker {
+  display: none;
+}
+
 #ui.is-hidden .label-layer {
   opacity: 0.85;
 }
