@@ -33,6 +33,11 @@ person: Safari, Firefox, touch and a screen reader.
 - **The atlas's tract meshes are on screen for the first time.** The brain file
   has carried fifty-four of them — the arcuate fasciculus among them — and no
   scene had ever drawn one. A disconnection now lights the bundle it cuts.
+- **Executive function is in it, as the frontal–subcortical circuits.** Three
+  closed loops — dorsolateral, orbitofrontal, medial — each running cortex →
+  striatum → pallidum → thalamus → back to the same cortex. Cut one anywhere and
+  the behaviour goes: a caudate infarct reads as a frontal syndrome, and a
+  capsular lesion takes all three while the frontal cortex is untouched.
 - **Not a lesion localiser**, and it says so on the screen: one normal specimen,
   whole named structures, no imaging, no course over time, and no statement
   about anybody. Medical review is not yet recorded.

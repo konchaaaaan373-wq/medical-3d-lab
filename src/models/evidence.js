@@ -3527,6 +3527,46 @@ export const HIGHER_BRAIN_FUNCTION_EVIDENCE = defineEvidence('higher-brain-funct
     layer: LAYER.EXTERNAL,
   },
   {
+    id: 'naming-needs-the-word-form',
+    claim:
+      'Producing a word means retrieving its sound form before it can be planned, so naming fails when the posterior temporal store or the route out of it is damaged \u2014 not only when the frontal end is.',
+    confidence: CONFIDENCE.SUPPORTED,
+    source:
+      'The classical account of word production in the Wernicke\u2013Lichtheim scheme, and the clinical descriptions of Wernicke and conduction aphasia, both of which include prominent naming failure.',
+    validation: 'physiology: naming needs the word\u2019s sound form, so it fails wherever that is cut off',
+    layer: LAYER.EXTERNAL,
+  },
+  {
+    id: 'frontal-subcortical-circuits-share-a-signature',
+    claim:
+      'The prefrontal cortex, the striatum, the pallidum and the mediodorsal thalamus form closed circuits, and a lesion anywhere along one produces the behavioural picture of a lesion of the cortex it starts from \u2014 which is why a small deep infarct can present as a frontal syndrome.',
+    confidence: CONFIDENCE.SUPPORTED,
+    source:
+      'The frontal\u2013subcortical circuits as described by Alexander, DeLong and Strick and taken up in the clinical literature on caudate and thalamic infarcts.',
+    validation: 'physiology: a frontal\u2013subcortical circuit reads the same wherever it is cut',
+    layer: LAYER.EXTERNAL,
+  },
+  {
+    id: 'three-prefrontal-patterns',
+    claim:
+      'Dorsolateral, orbitofrontal and medial frontal damage take different things: the ability to change tack, the ability to hold a response back, and the drive to start at all.',
+    confidence: CONFIDENCE.SUPPORTED,
+    source: 'The standard clinical description of the three prefrontal syndromes.',
+    validation: 'physiology: the three prefrontal patterns come apart',
+    layer: LAYER.EXTERNAL,
+  },
+  {
+    id: 'the-prefrontal-patterns-are-not-this-separate-in-people',
+    claim:
+      'The model produces the three prefrontal patterns as three separable circuits, each with its own behaviour.',
+    confidence: CONFIDENCE.UNCERTAIN,
+    source:
+      'The circuits are anatomically distinct, but the syndromes named after them overlap heavily in practice: real lesions rarely respect one circuit, and apathy, disinhibition and dysexecutive features commonly appear together.',
+    note:
+      'Known weakness, and the direction this part of the model is most likely to mislead in: it will show a cleaner dissociation than a person presents with. The circuits are the claim; the tidiness of the three pictures is not.',
+    layer: LAYER.EXTERNAL,
+  },
+  {
     id: 'the-gerstmann-cluster-is-not-settled',
     claim:
       'The model produces agraphia, acalculia, finger agnosia and left\u2013right disorientation together from one dominant angular gyrus, as the classical teaching has it.',
@@ -3559,7 +3599,7 @@ export const HIGHER_BRAIN_FUNCTION_EVIDENCE = defineEvidence('higher-brain-funct
   {
     id: 'one-mesh-per-named-structure',
     claim:
-      'A lesion takes whole named structures of the atlas, because that is the smallest thing the atlas can show.',
+      'A lesion is declared as named structures of the atlas, whole or as a stated share of one, because a named mesh is the smallest thing the atlas can show.',
     confidence: CONFIDENCE.APPROXIMATION,
     source:
       'The distributed atlas: the corpus callosum is one mesh with no splenium, body or genu, and the precentral gyrus is one mesh with no somatotopy.',

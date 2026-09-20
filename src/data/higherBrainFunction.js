@@ -15,6 +15,7 @@
 
 export const PALETTE = {
   tissue: '#cbb6a6',
+  executive: '#86b74a',
   language: '#e8a13c',
   visual: '#5f93c8',
   praxis: '#54b6a4',
@@ -32,6 +33,7 @@ export const LEGEND = [
   { key: 'praxis', label: 'Praxis — knowing how a tool is used', labelJa: '行為（道具の使い方の図式）' },
   { key: 'attention', label: 'Spatial attention, non-dominant hemisphere', labelJa: '空間性注意（非優位半球）' },
   { key: 'memory', label: 'Memory circuit', labelJa: '記憶の回路' },
+  { key: 'executive', label: 'Frontal–subcortical circuits', labelJa: '前頭葉–皮質下の回路' },
   { key: 'tract', label: 'The tract a step runs in', labelJa: 'その段階が通る線維束' },
   { key: 'lesion', label: 'The lesion', labelJa: '病変' },
   { key: 'carrying', label: 'The task getting through', labelJa: '課題の信号が通っているところ' },
@@ -118,6 +120,10 @@ export const STRUCTURE_NAMES_JA = {
   'Acoustic radiation': '聴放線',
   'Corticospinal tract': '皮質脊髄路',
   'Corticobulbar tract': '皮質延髄路',
+  'Corticostriatal tract (anterior)': '皮質線条体路（前方）',
+  'Corticostriatal tract (posterior)': '皮質線条体路（後方）',
+  'Corticostriatal tract (superior)': '皮質線条体路（上方）',
+  'Anterior thalamic radiation': '前視床放線',
 };
 
 /**
@@ -173,6 +179,22 @@ export const LESION_NOTES = {
     text: "One of them would have been enough.",
     textJa: '**片側だけなら足りていました**。',
   },
+  'bifrontal-dorsolateral': {
+    text: 'The convexity in front of the premotor cortex, on both sides.',
+    textJa: '運動前野より前の凸面を、両側とも。',
+  },
+  'orbitofrontal-cortex': {
+    text: 'The under-surface of the frontal lobes. Language and movement are nowhere near it.',
+    textJa: '前頭葉の下面。**言語も運動もここにはありません**。',
+  },
+  'thalamocortical-disconnection': {
+    text: 'The fibres the circuits close through. No frontal cortex is damaged at all.',
+    textJa: '回路が環を閉じる線維。**前頭葉の皮質はどこも壊れていません**。',
+  },
+  'striatum-head': {
+    text: 'Deep grey, not cortex — and the circuits pass through it.',
+    textJa: '皮質ではなく深部灰白質。**回路がここを通ります**。',
+  },
 };
 
 /**
@@ -200,6 +222,53 @@ export const TASK_READOUT_LABELS = {
   'attention-left-space': { label: 'Attention, left', labelJa: '左空間の注意' },
   'attention-right-space': { label: 'Attention, right', labelJa: '右空間の注意' },
   'episodic-memory-formation': { label: 'New memory', labelJa: '記憶の形成' },
+  'set-shifting-and-planning': { label: 'Executive', labelJa: '遂行機能' },
+  'behavioural-inhibition': { label: 'Inhibition', labelJa: '行動の抑制' },
+  'initiation-and-drive': { label: 'Drive', labelJa: '発動性' },
+};
+
+/**
+ * How each task is tested at the bedside, in the words a clinician would use.
+ *
+ * These were in the model, and they are copy: `src/models/README.md` rule 6
+ * says a model may not carry any. What is medical about a task — the structures
+ * it needs, in order — stays there; the sentence somebody says out loud is here.
+ */
+export const TASK_PROBES = {
+  'auditory-comprehension': { text: 'Point to the one I name.', textJa: '「言った物を指してください」' },
+  repetition: { text: 'Say after me.', textJa: '「私のあとに続けて言ってください」' },
+  'speech-fluency': {
+    text: 'Does speech come out, at length and without effort?',
+    textJa: '発話が努力なく、まとまった長さで出てくるか',
+  },
+  'propositional-speech': { text: 'Tell me what happened.', textJa: '「何があったか話してください」' },
+  naming: { text: 'What is this called?', textJa: '「これは何ですか」' },
+  reading: { text: 'Read this out, and tell me what it says.', textJa: '「これを読んで、意味を教えてください」' },
+  writing: { text: 'Write this sentence.', textJa: '「この文を書いてください」' },
+  'calculation-and-body-schema': {
+    text: 'Take 7 from 100. Which is your left thumb?',
+    textJa: '「100 から 7 を引いてください」「左手の親指はどれですか」',
+  },
+  'praxis-right-hand': { text: 'Show me how you would use a comb.', textJa: '「櫛を使うまねをしてください」' },
+  'praxis-left-hand': { text: 'Now the same thing with the other hand.', textJa: '「同じことを反対の手でしてください」' },
+  'attention-left-space': { text: 'Cross out every line on the page.', textJa: '「紙の上の線を全部消してください」' },
+  'attention-right-space': { text: 'The same page, on the other side.', textJa: '同じ課題の反対側' },
+  'episodic-memory-formation': {
+    text: 'Three words now; I will ask again in five minutes.',
+    textJa: '「3 つの単語を覚えてください。5 分後に聞きます」',
+  },
+  'set-shifting-and-planning': {
+    text: 'Sort by colour — now by shape, without being told the rule.',
+    textJa: '「色で分けてください」——次に規則を告げずに「形で分けてください」',
+  },
+  'behavioural-inhibition': {
+    text: 'Tap once when I tap twice, and not at all when I tap once.',
+    textJa: '「私が 2 回叩いたら 1 回、1 回叩いたら叩かないでください」',
+  },
+  'initiation-and-drive': {
+    text: 'Left alone in the room, does anything get started?',
+    textJa: '一人にしたとき、自分から何かを始めるか',
+  },
 };
 
 /**
@@ -221,6 +290,8 @@ export const TRACEABLE_TASKS = Object.freeze([
   'praxis-left-hand',
   'attention-left-space',
   'episodic-memory-formation',
+  'set-shifting-and-planning',
+  'initiation-and-drive',
 ]);
 
 export const MODEL_CONTROLS_COPY = {
@@ -257,6 +328,11 @@ export const MODEL_SCOPE = {
         '**利き手は仮定であり、それを明示している**こと。ここでは代表的な右利きの場合を扱います——言語は左、行為も左、空間性注意は右。最後の 1 つがあるために、同じ頭頂葉の病変が片側では失語を、反対側では無視を起こします。',
     },
     {
+      text: '**That a behaviour can be lost without its cortex being touched.** The three frontal–subcortical circuits — dorsolateral, orbitofrontal, medial — run cortex → striatum → pallidum → thalamus → back, and a lesion anywhere along one reads like a lesion of the cortex it starts from. It is why a small deep infarct can present as a frontal syndrome.',
+      textJa:
+        '**その皮質に触れなくても、行動が失われうる**こと。背外側・眼窩前頭・内側前頭の 3 つの前頭葉–皮質下回路は「皮質 → 線条体 → 淡蒼球 → 視床 → 同じ皮質」と一周し、**どこで切れても**その皮質を損傷したのと同じ読みになります。小さな深部梗塞が前頭葉症状として現れうる理由です。',
+    },
+    {
       text: '**Where a route fails, not only that it failed.** The view traces the task through the atlas and stops the signal at the step that stopped it.',
       textJa:
         '**どこで経路が途切れたか**（途切れたという事実だけでなく）。課題の信号をアトラスの上で辿り、止めた段階で止めて見せます。',
@@ -279,9 +355,9 @@ export const MODEL_SCOPE = {
         '**特定の誰かの脳。** アトラスは 1 体の正常標本で、病変は名前の付いた構造まるごととして置かれています。画像検査ではなく、実在する人の病巣は入っておらず、**病巣同定に用いてはなりません**。',
     },
     {
-      text: '**Executive function, behaviour and social cognition.** Deliberately absent: this model localises by route, and those are not localised that way. A model that placed them on one gyrus would be teaching something false.',
+      text: '**Anything behavioural the circuits do not carry.** Executive function is here *as the frontal–subcortical circuits*, because those are routes. Mood, personality, insight, social cognition and anything a scale would score are not routes, and are not here.',
       textJa:
-        '**遂行機能・行動・社会的認知。** 意図的に含めていません。本模型は「経路」で局在を述べる形式で、これらはその形式で局在しません。1 つの脳回に置いた時点で誤りを教えることになります。',
+        '**回路が運んでいない行動面のすべて。** 遂行機能は**前頭葉–皮質下回路として**入れています——回路は経路だからです。気分・人格・病識・社会的認知、そして尺度で点数化するようなものは経路ではなく、ここにはありません。',
     },
   ],
   cautions: [
@@ -301,6 +377,11 @@ export const MODEL_SCOPE = {
         '**このアトラスには膨大部も体部位局在もありません。** 脳梁は 1 つのメッシュなので、後方 1/5 の病変も全体の病変として描かれます。中心前回も 1 つなので、そこの病変は口と手を同時に奪います。どちらも土台の限界であり、実際には見られる解離——とくに純粋失読で物品呼称が保たれること——がここに出てこない理由です。',
     },
     {
+      text: '**The three prefrontal pictures are cleaner here than in a person.** The circuits are anatomically separate; the syndromes named after them are not. Real lesions rarely respect one circuit, and apathy, disinhibition and dysexecutive features commonly arrive together.',
+      textJa:
+        '**3 つの前頭葉症状は、実際の患者よりもここでは分離して見えます。** 回路は解剖学的に分かれていますが、その名を冠した症候群は分かれていません。実際の病変が 1 つの回路だけを侵すことは稀で、アパシー・脱抑制・遂行機能障害はしばしば同時に現れます。',
+    },
+    {
       text: '**Thresholds are where a line was drawn, not where one was measured.** Intact / impaired / lost are three steps on a dimensionless 0–1 transmission. Nothing here is a score, a severity scale or a test result, and two lesions adding up to a failure is a statement about routes, not about a number of points.',
       textJa:
         '**しきい値は「線を引いた場所」であって「測った場所」ではありません。** 保たれる／低下／消失は、無次元の 0–1 の伝達量を 3 段階に切ったものです。これは点数でも重症度尺度でも検査結果でもなく、2 つの病変が足し合わさって破綻するというのも**経路についての主張**であって点数の話ではありません。',
@@ -315,9 +396,9 @@ export const MODEL_SCOPE = {
     },
     {
       kind: 'model',
-      text: 'Network: the classical connectionist account of the higher cortical functions — the perisylvian language network and its dorsal and ventral routes, the parietal praxis and attention systems, and the hippocampal–fornix–mamillary–anterior thalamic circuit — as a textbook description, with no parameter calibrated to any dataset.',
+      text: 'Network: the classical connectionist account of the higher cortical functions — the perisylvian language network and its dorsal and ventral routes, the parietal praxis and attention systems, the hippocampal–fornix–mamillary–anterior thalamic circuit, and the frontal–subcortical circuits of Alexander, DeLong and Strick — as a textbook description, with no parameter calibrated to any dataset.',
       textJa:
-        'ネットワーク：高次脳機能の古典的な離断（connectionist）的記述——シルビウス裂周囲の言語ネットワークと背側・腹側経路、頭頂葉の行為と注意の系、海馬–脳弓–乳頭体–視床前核の回路——を教科書的記述として実装したもので、いずれの係数もデータセットに較正されていません。',
+        'ネットワーク：高次脳機能の古典的な離断（connectionist）的記述——シルビウス裂周囲の言語ネットワークと背側・腹側経路、頭頂葉の行為と注意の系、海馬–脳弓–乳頭体–視床前核の回路、および Alexander・DeLong・Strick の前頭葉–皮質下回路——を教科書的記述として実装したもので、いずれの係数もデータセットに較正されていません。',
     },
   ],
   evidence: 'docs/model-evidence/higher-brain-function.md',
@@ -346,6 +427,13 @@ export const VISUAL_MAPPING = [
     showsJa: '課題の信号が経路を進む様子と、止まる場所',
     encoding: 'A moving marker along the route, halted at the failing step',
     encodingJa: '経路上を進むマーカー（破綻した段階で停止）',
+  },
+  {
+    id: 'deep-route-reveal',
+    shows: 'A route that runs under the cortical surface, and the structures it runs through',
+    showsJa: '皮質の下を通る経路と、その経路が通る構造',
+    encoding: 'The cortex in front is faded, and the deep structures on that route are drawn in front of it, in their own places',
+    encodingJa: '手前の皮質を薄くし、その経路上の深部構造を**本来の位置のまま**手前に描きます',
   },
   {
     id: 'node-tint',

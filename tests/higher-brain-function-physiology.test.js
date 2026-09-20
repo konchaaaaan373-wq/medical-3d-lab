@@ -80,7 +80,11 @@ test('physiology: a lesion outside the perisylvian zone leaves repetition intact
   assert.equal(affected(anteriorWatershed, 'speech-fluency'), true);
   assert.equal(affected(anteriorWatershed, 'repetition'), false, 'repetition does not pass through initiation');
   assert.equal(affected(anteriorWatershed, 'auditory-comprehension'), false);
-  assert.deepEqual(syndromeIds(anteriorWatershed), ['transcortical-motor-aphasia']);
+  // And a second finding nobody put there: the medial frontal cortex this
+  // lesion takes is in the initiation circuit as well as in the speech one, so
+  // the model reports reduced drive alongside the aphasia — which is what a
+  // medial frontal or anterior cerebral artery lesion does.
+  assert.deepEqual(syndromeIds(anteriorWatershed), ['transcortical-motor-aphasia', 'abulia']);
 
   const posteriorWatershed = withLesion('dominant-posterior-watershed');
   assert.equal(affected(posteriorWatershed, 'auditory-comprehension'), true);
@@ -211,4 +215,89 @@ test('physiology: the callosum carries the left hand, so cutting it spares the r
   assert.equal(affected(parietal, 'praxis-left-hand'), true);
   assert.equal(affected(parietal, 'praxis-right-hand'), true);
   assert.ok(syndromeIds(parietal).includes('ideomotor-apraxia'));
+});
+
+test('physiology: naming needs the word’s sound form, so it fails wherever that is cut off', () => {
+  // The model used to route naming straight from meaning to the inferior
+  // frontal gyrus, and so reported naming as intact in Wernicke aphasia and in
+  // conduction aphasia. It is not intact in either: producing a word means
+  // retrieving its sound form before it can be planned.
+  for (const id of ['dominant-posterior-superior-temporal', 'dominant-arcuate', 'dominant-inferior-frontal']) {
+    assert.equal(affected(withLesion(id), 'naming'), true, `${id} takes naming with it`);
+  }
+  // And the dissociation that makes it a claim rather than a blanket: a lesion
+  // that leaves the whole word-production chain alone leaves naming alone.
+  for (const id of ['nondominant-parietal', 'bilateral-medial-temporal', 'corpus-callosum']) {
+    assert.equal(affected(withLesion(id), 'naming'), false, `${id} does not touch naming`);
+  }
+});
+
+test('physiology: a frontal–subcortical circuit reads the same wherever it is cut', () => {
+  // The clinically important half of the frontal circuits: the behaviour that
+  // goes is the circuit's, not the cortex's. A lesion of the striatum the
+  // circuit passes through produces the picture of a lesion of the cortex it
+  // starts from — which is why a small deep infarct can present as a frontal
+  // syndrome.
+  const cortex = withLesion('bifrontal-dorsolateral');
+  const deep = withLesion('striatum-head');
+  assert.equal(affected(cortex, 'set-shifting-and-planning'), true);
+  assert.equal(affected(deep, 'set-shifting-and-planning'), true, 'the same circuit, cut deeper');
+  assert.ok(syndromeIds(cortex).includes('dysexecutive-syndrome'));
+  assert.ok(syndromeIds(deep).includes('dysexecutive-syndrome'));
+  // Neither is an aphasia, and neither touches memory: this is a different
+  // network and the model keeps it separate.
+  for (const state of [cortex, deep]) {
+    assert.equal(affected(state, 'auditory-comprehension'), false);
+    assert.equal(affected(state, 'repetition'), false);
+    assert.equal(affected(state, 'episodic-memory-formation'), false);
+  }
+});
+
+test('physiology: the three prefrontal patterns come apart', () => {
+  // Dorsolateral, orbitofrontal and medial: three circuits through the same
+  // pallidum and the same thalamus, and a lesion of one cortex takes one
+  // behaviour.
+  const dorsolateral = withLesion('bifrontal-dorsolateral');
+  assert.equal(affected(dorsolateral, 'set-shifting-and-planning'), true);
+  assert.equal(affected(dorsolateral, 'behavioural-inhibition'), false);
+  assert.equal(affected(dorsolateral, 'initiation-and-drive'), false);
+
+  const orbital = withLesion('orbitofrontal-cortex');
+  assert.equal(affected(orbital, 'behavioural-inhibition'), true);
+  assert.equal(affected(orbital, 'set-shifting-and-planning'), false);
+  assert.deepEqual(syndromeIds(orbital), ['disinhibition']);
+
+  // And the shared parts of the circuits take all three together, which is the
+  // other half of the same claim.
+  const shared = solveHigherBrainFunction({
+    lesions: [{
+      id: 'mediodorsal-thalamus-bilateral',
+      structures: [{ label: 'Mediodorsal nucleus', side: 'dominant' }, { label: 'Mediodorsal nucleus', side: 'nondominant' }],
+      connections: [],
+    }],
+  });
+  assert.equal(statusOf(shared, 'set-shifting-and-planning'), FUNCTION_STATUS.LOST);
+  assert.equal(statusOf(shared, 'behavioural-inhibition'), FUNCTION_STATUS.LOST);
+  assert.equal(statusOf(shared, 'initiation-and-drive'), FUNCTION_STATUS.LOST);
+  assert.equal(statusOf(shared, 'auditory-comprehension'), FUNCTION_STATUS.INTACT);
+});
+
+test('physiology: a frontal syndrome can arrive with the frontal cortex untouched', () => {
+  // The clinical point of drawing the circuits as loops rather than as pieces
+  // of cortex: cut where they close — the fibres between the thalamus and the
+  // frontal lobe — and all three behaviours go while the cortex they belong to
+  // is intact. A capsular genu infarct is a small lesion that does this.
+  const state = withLesion('thalamocortical-disconnection');
+  assert.equal(statusOf(state, 'set-shifting-and-planning'), FUNCTION_STATUS.LOST);
+  assert.equal(statusOf(state, 'behavioural-inhibition'), FUNCTION_STATUS.LOST);
+  assert.equal(statusOf(state, 'initiation-and-drive'), FUNCTION_STATUS.LOST);
+
+  const cortex = ['dorsolateral-prefrontal', 'orbitofrontal', 'medial-frontal-drive'];
+  for (const id of cortex) {
+    assert.equal(state.nodes.find((node) => node.id === id).integrity, 1, `${id} is undamaged`);
+  }
+  // Language, memory and attention are elsewhere and stay where they are.
+  for (const id of ['auditory-comprehension', 'repetition', 'naming', 'episodic-memory-formation', 'attention-left-space']) {
+    assert.equal(statusOf(state, id), FUNCTION_STATUS.INTACT, `${id} is untouched`);
+  }
 });

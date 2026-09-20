@@ -3,7 +3,7 @@ import * as THREE from 'three';
 import {
   DISCLAIMER, DISCLAIMER_JA, DISCLAIMER_SHORT, DISCLAIMER_SHORT_JA,
   LEGEND, LESION_NOTES, MODEL_CONTROLS_COPY, MODEL_SCOPE, PALETTE,
-  PROGRESS_LABEL, RANGE, RELATED, STAGES, STRUCTURE_NAMES_JA, TASK_READOUT_LABELS, TRACEABLE_TASKS, VISUAL_MAPPING,
+  PROGRESS_LABEL, RANGE, RELATED, STAGES, STRUCTURE_NAMES_JA, TASK_PROBES, TASK_READOUT_LABELS, TRACEABLE_TASKS, VISUAL_MAPPING,
 } from '../../../../data/higherBrainFunction.js';
 import {
   FUNCTION_STATUS, FUNCTION_TASKS, LESION_SITES,
@@ -96,7 +96,34 @@ export class HigherBrainFunctionScene {
     'spatial-attention-nondominant': 'attention',
     'medial-temporal-memory': 'memory',
     'limbic-memory-relay': 'memory',
+    'dorsolateral-prefrontal': 'executive',
+    orbitofrontal: 'executive',
+    'medial-frontal-drive': 'executive',
+    'dorsal-striatum': 'executive',
+    'ventral-striatum': 'executive',
+    'pallidal-outflow': 'executive',
+    'mediodorsal-thalamus': 'executive',
   });
+
+  /**
+   * The grey structures inside the brain, which a reader cannot see at all
+   * unless the cortex in front of them is faded.
+   *
+   * White matter is deliberately not here. Almost every connection in the
+   * model is anchored in it, so counting it would make every route "deep" and
+   * fade the cortex on a route that never leaves the surface.
+   */
+  static DEEP_CATEGORIES = new Set([ATLAS_CATEGORIES.DEEP_GREY, ATLAS_CATEGORIES.DIENCEPHALON]);
+
+  /**
+   * How far the cortex is faded to show a route that runs underneath it.
+   *
+   * Low, because a reader looks through **two** layers of it — the near wall
+   * and the far one — and at 0.26 each the caudate behind them came out at
+   * about half strength and read as a smudge. Measured from the picture, not
+   * chosen: `docs/organ-3d-playbook.md` on two-sided shells compositing twice.
+   */
+  static CORTEX_GHOST_OPACITY = 0.14;
 
   /** Categories drawn as the brain a reader is looking at. */
   static CONTEXT_CATEGORIES = new Set([
@@ -188,6 +215,9 @@ export class HigherBrainFunctionScene {
     const model = atlas.scene ?? atlas;
     if (!model?.isObject3D) throw new TypeError('the brain atlas must contain a THREE.Object3D scene');
 
+    // Adopting a second atlas has to let go of the first, or its meshes and
+    // their materials stay on the GPU with nothing pointing at them.
+    for (const child of [...this.atlasRoot.children]) disposeObject(child);
     this.atlasRoot.clear();
     this.meshesByStructure.clear();
     this.centroids.clear();
@@ -266,12 +296,10 @@ export class HigherBrainFunctionScene {
         label: 'Where the lesion is',
         labelJa: '病変の場所',
         value: this.controls.lesion,
+        // No "none" option: the progress slider already starts at an intact
+        // brain, and offering the same state twice makes a pair of controls
+        // that can disagree about which one is in charge of it.
         options: [
-          {
-            value: 'none', label: 'No lesion', labelJa: '病変なし',
-            effect: 'Every route carries; this is what the tasks look like when nothing is gone.',
-            effectJa: 'すべての経路が通っています。何も失われていないときの課題の姿です。',
-          },
           ...LESION_SITES.map((site) => ({
             value: site.id,
             label: site.label,
@@ -290,11 +318,17 @@ export class HigherBrainFunctionScene {
         // Label only. The probe — what a clinician would actually ask — is on
         // the read-out for whichever task is traced, so thirteen cards here do
         // not each carry a sentence of prose over the brain they are about.
-        options: FUNCTION_TASKS.filter((task) => TRACEABLE_TASKS.includes(task.id)).map((task) => ({
-          value: task.id,
-          label: TASK_READOUT_LABELS[task.id]?.label ?? task.label,
-          labelJa: TASK_READOUT_LABELS[task.id]?.labelJa ?? task.labelJa,
-        })),
+        // In the order the copy layer lists them: the buttons are a reading
+        // order, and the model's own order is the order the network was
+        // written in.
+        options: TRACEABLE_TASKS.map((id) => {
+          const task = FUNCTION_TASKS.find((candidate) => candidate.id === id);
+          return {
+            value: id,
+            label: TASK_READOUT_LABELS[id]?.label ?? task.label,
+            labelJa: TASK_READOUT_LABELS[id]?.labelJa ?? task.labelJa,
+          };
+        }),
       },
     ];
   }
@@ -344,22 +378,58 @@ export class HigherBrainFunctionScene {
     const traced = this.tracedTask();
     const routeAnchors = new Set(this._routeStructureKeys(traced));
     const lesionColour = new THREE.Color(PALETTE.lesion);
+    // The frontal–subcortical circuits are almost entirely inside the brain:
+    // the caudate, the pallidum and the thalamus are behind an opaque cortex,
+    // so tracing one drew a line diving into a solid object. When the route
+    // goes under the surface the cortex is faded to show what it is running
+    // through. Presentation only — nothing moves, nothing resizes, and no
+    // colour that encodes damage is touched (architecture rule 4).
+    const routeRunsDeep = [...routeAnchors].some((key) => {
+      const meshes = this.meshesByStructure.get(key) ?? [];
+      return meshes.some((mesh) => HigherBrainFunctionScene.DEEP_CATEGORIES.has(mesh.userData.bx_cat));
+    });
 
     for (const [key, meshes] of this.meshesByStructure) {
       const hurt = damage.get(key) ?? 0;
       const family = network.get(key);
       const onRoute = routeAnchors.has(key);
       const base = new THREE.Color(family ? PALETTE[family] : PALETTE.tissue);
-      const colour = hurt > 0 ? base.clone().lerp(lesionColour, Math.min(1, 0.35 + hurt * 0.65)) : base;
+      // Linear, with no step at the bottom: the colour says *how much* of the
+      // structure the lesion took, and a floor made a structure the lesion had
+      // barely touched read as a third destroyed.
+      const colour = hurt > 0 ? base.clone().lerp(lesionColour, hurt) : base;
       for (const mesh of meshes) {
         const isTract = mesh.userData.isTract === true;
+        const isCortex = mesh.userData.bx_cat === ATLAS_CATEGORIES.CORTEX;
+        const ghosted = routeRunsDeep && isCortex && !onRoute && hurt === 0;
+        // Fading the cortex was not enough on its own: a caudate seen through
+        // two translucent walls of gyri, at the size it really is, reads as a
+        // smudge and a reader cannot tell it is there at all. When the traced
+        // route goes under the surface, the structures **that route runs
+        // through** are drawn in front of the brain instead — in their own
+        // places, at their own size, with nothing moved. It is the same
+        // decision the route line itself makes, and the visual mapping says so.
+        // Only what is actually hidden. Lifting the route's cortical node as
+        // well put a whole lateral gyrus in front of the caudate sitting
+        // behind it — the two overlap completely in a lateral projection, and
+        // with depth testing off the gyrus simply painted over the structure
+        // this was meant to reveal.
+        const liftedToFront = routeRunsDeep && onRoute
+          && HigherBrainFunctionScene.DEEP_CATEGORIES.has(mesh.userData.bx_cat);
         // A tract is drawn when this task runs through it or when the lesion
         // has taken it. The other fifty are anatomy this scene is not about.
         mesh.visible = !isTract || onRoute || hurt > 0;
         mesh.material.color.copy(colour);
         mesh.material.emissive.copy(colour);
-        mesh.material.emissiveIntensity = hurt > 0 ? 0.16 : (family ? 0.1 : 0.02);
-        mesh.material.opacity = isTract ? 0.92 : 1;
+        mesh.material.emissiveIntensity = (family ? 0.1 : 0.02) + hurt * 0.08;
+        mesh.material.opacity = ghosted
+          ? HigherBrainFunctionScene.CORTEX_GHOST_OPACITY
+          : (isTract ? 0.92 : 1);
+        // A ghost is something the reader is looking *through*; writing depth
+        // for it would hide the deep structures it was faded to reveal.
+        mesh.material.depthWrite = !ghosted && !liftedToFront;
+        mesh.material.depthTest = !liftedToFront;
+        mesh.renderOrder = liftedToFront ? 24 : 0;
       }
     }
 
@@ -483,7 +553,7 @@ export class HigherBrainFunctionScene {
   }
 
   update(dt) {
-    if (!this.pulse.visible) return;
+    if (!this.pulse?.visible) return;
     const reach = this.blockedFraction();
     if (!this.routeCurve) {
       // A one-structure task: nothing travels, so the marker only says whether
@@ -493,7 +563,15 @@ export class HigherBrainFunctionScene {
     }
     this.pulseTime = (this.pulseTime + dt * 0.45) % 1;
     const travelled = this.pulseTime * Math.max(reach, 0.02);
-    this.pulse.position.copy(this.routeCurve.getPointAt(clamp(travelled)));
+    // `getPoint`, not `getPointAt`: the second is parameterised by arc length,
+    // and a route's points are nothing like evenly spaced — a node and the
+    // tract beside it are close together, then the next step is across the
+    // hemisphere. Asking for arc-length 1/3 of a four-point route put the
+    // marker two steps past the one that stopped it, so the scene showed the
+    // signal getting through a connection the model had cut. `getPoint(t)`
+    // maps t = i/(n-1) to control point i, which is what `blockedFraction()`
+    // computes.
+    this.pulse.position.copy(this.routeCurve.getPoint(clamp(travelled)));
     // At a block the signal arrives and stops; the marker dims as it piles up
     // against the step rather than sailing through it.
     const arriving = reach < 1 && this.pulseTime > 0.88;
@@ -542,10 +620,16 @@ export class HigherBrainFunctionScene {
       // The pattern is read on a wider window; the phone gets the headline.
       emphasis: false,
     }));
+    const probe = TASK_PROBES[traced?.id] ?? { text: '', textJa: '' };
+    // A task can be impaired without being blocked outright, and reporting
+    // "it gets through" beside a row reading 低下 is two answers to one
+    // question. When nothing blocks it, the weakest step is the answer.
+    const blockingStep = traced?.blockedAt
+      ?? (traced && traced.status !== FUNCTION_STATUS.INTACT ? traced.weakestLink : null);
     rows.push({
       id: 'probe',
-      label: `Tested by: “${traced?.probe ?? ''}”`,
-      labelJa: `試し方：${traced?.probeJa ?? ''}`,
+      label: `Tested by: “${probe.text}”`,
+      labelJa: `試し方：${probe.textJa}`,
       value: TASK_READOUT_LABELS[traced?.id]?.label ?? '',
       valueJa: TASK_READOUT_LABELS[traced?.id]?.labelJa ?? '',
       unit: '',
@@ -554,8 +638,8 @@ export class HigherBrainFunctionScene {
       id: 'blocked-at',
       label: 'Where the traced task stops',
       labelJa: '辿った課題が止まるところ',
-      value: traced?.blockedAt?.label ?? 'It gets through',
-      valueJa: traced?.blockedAt?.labelJa ?? '通っています',
+      value: blockingStep?.label ?? 'It gets through',
+      valueJa: blockingStep?.labelJa ?? '通っています',
       unit: '',
     });
     const syndromes = this.solved.syndromes;
@@ -586,9 +670,11 @@ export class HigherBrainFunctionScene {
       }));
     const lesion = lesionSiteById(this.controls.lesion);
     if (lesion && this.progress > 0) {
-      const centre = this._centroidOf(
-        this.solved.affectedStructures.map((structure) => `${structure.label}|${structure.side}`)
-      );
+      // The worst-hit structure, not the average of them all: averaging an
+      // occipital lobe with the corpus callosum puts the label in the
+      // ventricle between them, naming a lesion that is in neither place.
+      const worst = this.solved.affectedStructures[0];
+      const centre = worst ? this._centroidOf([`${worst.label}|${worst.side}`]) : null;
       if (centre) {
         annotations.push({
           id: 'lesion',

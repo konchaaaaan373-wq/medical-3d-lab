@@ -18,7 +18,7 @@ import {
   solveHigherBrainFunction,
 } from '../src/models/higherBrainFunction.js';
 import HigherBrainFunctionScene from '../src/scenes/nervous/scenes/higherBrainFunction/index.js';
-import { TRACEABLE_TASKS } from '../src/data/higherBrainFunction.js';
+import { PALETTE, TRACEABLE_TASKS } from '../src/data/higherBrainFunction.js';
 
 /**
  * The model's own consistency, and the scene reading it.
@@ -185,13 +185,13 @@ test('model: the scene lights the structures the model damaged, and nothing else
     'Triangular part of inferior frontal gyrus|left',
   ]);
 
-  const lesionColour = new THREE.Color('#e3483f');
+  const lesionColour = new THREE.Color(PALETTE.lesion);
   for (const [key, meshes] of scene.meshesByStructure) {
     const isDamaged = damaged.has(key);
     for (const mesh of meshes) {
-      const distance = mesh.material.color.getHex() === lesionColour.getHex();
-      if (isDamaged) assert.ok(distance, `${key} is drawn as the lesion`);
-      else assert.ok(!distance, `${key} is not drawn as the lesion`);
+      const drawnAsLesion = mesh.material.color.getHex() === lesionColour.getHex();
+      if (isDamaged) assert.ok(drawnAsLesion, `${key} is drawn as the lesion`);
+      else assert.ok(!drawnAsLesion, `${key} is not drawn as the lesion`);
     }
   }
 
@@ -206,7 +206,7 @@ test('model: the scene lights the structures the model damaged, and nothing else
 });
 
 test('model: the traced route stops where the model says it stops', () => {
-  const intact = buildScene({ lesion: 'none', task: 'repetition' });
+  const intact = buildScene({ task: 'repetition' }, 0);
   assert.equal(intact.blockedFraction(), 1, 'nothing stops a signal in an intact brain');
   assert.ok(intact.routePoints().length >= 4, 'the route has a point for every step');
   intact.dispose();
@@ -217,16 +217,37 @@ test('model: the traced route stops where the model says it stops', () => {
   const fraction = cut.blockedFraction();
   assert.ok(fraction > 0 && fraction < 1, 'the signal gets part of the way and stops');
 
-  // The marker never travels past the step that stopped it.
-  cut.update(10);
-  const reached = cut.routeCurve.getUtoTmapping(0, 0);
-  assert.equal(typeof reached, 'number');
-  for (let i = 0; i < 40; i += 1) cut.update(0.1);
-  const furthest = cut.routeCurve.getPointAt(fraction);
+  // Where the marker is allowed to get to is the blocked step's own point on
+  // the atlas, **at the end of its travel**. Two earlier versions of this
+  // check were green while the scene placed the marker by arc length, three
+  // quarters of a unit past the connection the model had cut (L-53). The
+  // first compared distances *from the start* — a radius, which the wrong
+  // point matched by accident. The second took the closest approach over a
+  // whole pass, and a curve runs through every one of its control points on
+  // the way, so the marker touched the right place while travelling straight
+  // on through it. What tells a signal that stops from one that does not is
+  // where it is when it has finished moving.
+  const blockedStepIndex = task.route.findIndex((step) => step === task.blockedAt);
+  const points = cut.routePoints();
+  const stopsAt = points[blockedStepIndex].position;
+  const beyond = points[blockedStepIndex + 1].position;
+  let atFullTravel = null;
+  let closestToBeyond = Infinity;
+  for (let i = 0; i < 400; i += 1) {
+    cut.update(0.05);
+    if (cut.pulseTime > 0.97) atFullTravel = cut.pulse.position.clone();
+    closestToBeyond = Math.min(closestToBeyond, cut.pulse.position.distanceTo(beyond));
+  }
+  assert.ok(atFullTravel, 'the marker completed a pass');
   assert.ok(
-    cut.pulse.position.distanceTo(cut.routeCurve.getPointAt(0)) <= furthest.distanceTo(cut.routeCurve.getPointAt(0)) + 1e-6,
-    'the signal never passes the block'
+    atFullTravel.distanceTo(stopsAt) < 0.1,
+    `the signal ends at the cut connection (it ended ${atFullTravel.distanceTo(stopsAt).toFixed(3)} away)`
   );
+  assert.ok(
+    closestToBeyond > 0.5,
+    `and never reaches the step beyond it (closest approach ${closestToBeyond.toFixed(3)})`
+  );
+
   cut.dispose();
 });
 
@@ -255,8 +276,28 @@ test('model: the read-out is the solved state, not a second calculation', () => 
   scene.dispose();
 });
 
+test('model: a task that is impaired without being blocked still says where it is weakest', () => {
+  // Half a lesion leaves every step carrying something, so nothing is
+  // "blocked" — and the row that answers "where does it stop?" used to say
+  // 「通っています」 next to a row reading 低下, which is two answers to one
+  // question.
+  const scene = buildScene({ lesion: 'dominant-inferior-frontal', task: 'repetition' }, 0.5);
+  const task = scene.tracedTask();
+  assert.equal(task.status, FUNCTION_STATUS.IMPAIRED);
+  assert.equal(task.blockedAt, null, 'nothing is cut outright at half extent');
+  const row = scene.getMetrics().find((candidate) => candidate.id === 'blocked-at');
+  assert.equal(row.valueJa, task.weakestLink.labelJa);
+  assert.notEqual(row.valueJa, '通っています');
+
+  // And when the task really is intact, it says so.
+  const intact = buildScene({ task: 'repetition' }, 0);
+  assert.equal(intact.getMetrics().find((candidate) => candidate.id === 'blocked-at').valueJa, '通っています');
+  scene.dispose();
+  intact.dispose();
+});
+
 test('model: a tract is drawn only when the task runs through it or the lesion took it', () => {
-  const scene = buildScene({ lesion: 'none', task: 'repetition' });
+  const scene = buildScene({ task: 'repetition' }, 0);
   const visibleTracts = () => [...scene.meshesByStructure.entries()]
     .filter(([, meshes]) => meshes.some((mesh) => mesh.userData.isTract && mesh.visible))
     .map(([key]) => key).sort();
@@ -286,7 +327,7 @@ test('model: a tract is drawn only when the task runs through it or the lesion t
 });
 
 test('model: changing the lesion changes the colours and moves no anatomy', () => {
-  const scene = buildScene({ lesion: 'none' });
+  const scene = buildScene({}, 1);
   const before = new Map();
   for (const [key, meshes] of scene.meshesByStructure) before.set(key, meshes.map((mesh) => mesh.position.clone()));
 
@@ -330,6 +371,23 @@ test('model: every task is on the read-out, and every traceable one has a route 
   scene.dispose();
 });
 
+test('model: no declared site produces an isolated naming failure', () => {
+  // Every step of naming is shared with another task now that the word's sound
+  // form is retrieved on the way — so the classifier's anomic branch, which is
+  // the right reading of a naming-only failure, is not reachable from any of
+  // the declared sites. The model card says so; this is what would notice if a
+  // route change made it reachable and the card stopped being true.
+  for (const site of LESION_SITES) {
+    for (const extent of [0.4, 0.7, 1]) {
+      const state = solveHigherBrainFunction({ lesions: [site], extent });
+      assert.ok(
+        !state.syndromes.some((syndrome) => syndrome.id === 'anomic-aphasia'),
+        `${site.id} at ${extent} does not read as anomic aphasia`
+      );
+    }
+  }
+});
+
 test('model: the scene refuses to answer for a handedness the model will not model', () => {
   // The scene names the handedness it solves for in one place. If that is ever
   // made a control, this is what stops it silently mirroring the brain.
@@ -337,4 +395,52 @@ test('model: the scene refuses to answer for a handedness the model will not mod
   assert.equal(scene.solved.dominance.handedness, 'right');
   assert.equal(scene.getModelControls().some((control) => control.id === 'handedness'), false);
   scene.dispose();
+});
+
+test('model: tracing a route that runs under the cortex shows what it runs through', () => {
+  // The frontal–subcortical circuits are deep: cortex, then caudate, pallidum
+  // and thalamus. Left opaque, the cortex hid every part of the route except
+  // the one node on the surface.
+  const surface = buildScene({ lesion: 'dominant-inferior-frontal', task: 'repetition' }, 1);
+  const cortexOpacity = (scene, label, side) =>
+    (scene.meshesByStructure.get(`${label}|${side}`) ?? [])[0]?.material.opacity;
+  assert.equal(cortexOpacity(surface, 'Lingual gyrus', 'right'), 1, 'a surface route leaves the cortex alone');
+
+  const deep = buildScene({ lesion: 'striatum-head', task: 'set-shifting-and-planning' }, 1);
+  assert.ok(
+    cortexOpacity(deep, 'Lingual gyrus', 'right') < 0.4,
+    'cortex the route runs under is faded to show it'
+  );
+  // The structures the route is actually about stay solid, and so does the lesion.
+  assert.equal(cortexOpacity(deep, 'Middle frontal gyrus', 'left'), 1, 'a node of the route is not a ghost');
+  const caudate = deep.meshesByStructure.get('Caudate nucleus|left')[0];
+  assert.equal(caudate.material.opacity, 1);
+  assert.ok(caudate.material.color.getHex() !== new THREE.Color(PALETTE.tissue).getHex(), 'the lesion is on it');
+  surface.dispose();
+  deep.dispose();
+});
+
+test('model: a route that runs deep draws its own structures in front, and moves none of them', () => {
+  const deep = buildScene({ lesion: 'striatum-head', task: 'set-shifting-and-planning' }, 1);
+  const caudate = deep.meshesByStructure.get('Caudate nucleus|left')[0];
+  const cortexOffRoute = deep.meshesByStructure.get('Lingual gyrus|right')[0];
+  const before = caudate.position.clone();
+
+  assert.equal(caudate.material.depthTest, false, 'the structure the route runs through is in front');
+  assert.ok(caudate.renderOrder > cortexOffRoute.renderOrder);
+  // But the route's cortical node is not lifted: it is on the surface already,
+  // and in a lateral view a gyrus and the basal ganglia behind it occupy the
+  // same screen space — lifting both painted the gyrus over the structure the
+  // lift existed to reveal.
+  const frontalCortexOnRoute = deep.meshesByStructure.get('Middle frontal gyrus|left')[0];
+  assert.equal(frontalCortexOnRoute.material.depthTest, true, 'surface cortex stays where it is in the depth order');
+  assert.ok(caudate.position.equals(before), 'and it is still where it was');
+  assert.deepEqual(caudate.scale.toArray(), [1, 1, 1]);
+
+  // A route that stays on the surface does not lift anything.
+  const surface = buildScene({ lesion: 'dominant-inferior-frontal', task: 'repetition' }, 1);
+  const broca = surface.meshesByStructure.get('Opercular part of inferior frontal gyrus|left')[0];
+  assert.equal(broca.material.depthTest, true, 'a surface route is seen the ordinary way');
+  deep.dispose();
+  surface.dispose();
 });

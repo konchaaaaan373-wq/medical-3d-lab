@@ -329,6 +329,64 @@ export const FUNCTION_NODES = Object.freeze([
     ]),
   },
   {
+    id: 'dorsolateral-prefrontal',
+    label: 'Dorsolateral prefrontal cortex',
+    labelJa: '背外側前頭前野',
+    substrate: NODE_SUBSTRATE.COMPOSITE,
+    structures: Object.freeze([...bilateral('Middle frontal gyrus')]),
+    note: 'Both sides, combined rather than paired: one-sided damage here impairs without abolishing.',
+    noteJa: '両側を合算しています（paired ではありません）。片側だけの障害でも完全には失われず、低下します。',
+  },
+  {
+    id: 'orbitofrontal',
+    label: 'Orbitofrontal cortex',
+    labelJa: '眼窩前頭皮質',
+    substrate: NODE_SUBSTRATE.COMPOSITE,
+    structures: Object.freeze([
+      ...bilateral('Orbital gyri'),
+      ...bilateral('Straight gyrus (Gyrus rectus)'),
+      ...bilateral('Orbital part of inferior frontal gyrus'),
+    ]),
+  },
+  {
+    id: 'medial-frontal-drive',
+    label: 'Medial frontal cortex and anterior cingulate',
+    labelJa: '内側前頭葉・前部帯状回',
+    substrate: NODE_SUBSTRATE.COMPOSITE,
+    structures: Object.freeze([
+      ...bilateral('Superior frontal gyrus'),
+      ...bilateral('Cingulate gyrus and sulcus (Middle anterior part)'),
+    ]),
+  },
+  {
+    id: 'dorsal-striatum',
+    label: 'Dorsal striatum (caudate nucleus)',
+    labelJa: '背側線条体（尾状核）',
+    substrate: NODE_SUBSTRATE.COMPOSITE,
+    structures: Object.freeze([...bilateral('Caudate nucleus')]),
+  },
+  {
+    id: 'ventral-striatum',
+    label: 'Ventral striatum (nucleus accumbens)',
+    labelJa: '腹側線条体（側坐核）',
+    substrate: NODE_SUBSTRATE.COMPOSITE,
+    structures: Object.freeze([...bilateral('Nucleus accumbens')]),
+  },
+  {
+    id: 'pallidal-outflow',
+    label: 'Pallidal outflow',
+    labelJa: '淡蒼球からの出力',
+    substrate: NODE_SUBSTRATE.COMPOSITE,
+    structures: Object.freeze([...bilateral('Globus pallidus internal')]),
+  },
+  {
+    id: 'mediodorsal-thalamus',
+    label: 'Mediodorsal thalamic nucleus',
+    labelJa: '視床背内側核',
+    substrate: NODE_SUBSTRATE.COMPOSITE,
+    structures: Object.freeze([...bilateral('Mediodorsal nucleus')]),
+  },
+  {
     id: 'medial-temporal-memory',
     label: 'Medial temporal memory formation',
     labelJa: '内側側頭葉（海馬）での記憶形成',
@@ -390,7 +448,11 @@ export const FUNCTION_EDGES = Object.freeze([
   {
     id: 'semantic-to-initiation', from: 'lexical-semantic', to: 'speech-initiation',
     label: 'Meaning to speech initiation', labelJa: '意味 → 発話の起動',
-    within: Object.freeze([dominant('White matter of telencephalon')]),
+    // The ventral association bundle running from the temporal lobe forward.
+    // It ends in the frontal convexity rather than on the medial surface where
+    // the supplementary motor area is, so this is the nearest named bundle
+    // rather than the tract itself.
+    within: Object.freeze([dominant('Inferior fronto-occipital fasciculus')]),
   },
   {
     id: 'initiation-to-output', from: 'speech-initiation', to: 'phonological-output',
@@ -398,9 +460,14 @@ export const FUNCTION_EDGES = Object.freeze([
     within: Object.freeze([dominant('Frontal aslant tract')]),
   },
   {
-    id: 'semantic-to-output', from: 'lexical-semantic', to: 'phonological-output',
-    label: 'Meaning to output planning', labelJa: '意味 → 出力計画',
-    within: Object.freeze([dominant('Inferior fronto-occipital fasciculus')]),
+    // Producing a word is not "meaning, then articulation": the word's sound
+    // form has to be retrieved before it can be planned, and that store is the
+    // posterior temporal one. Routing naming straight from meaning to the
+    // inferior frontal gyrus is what made this model report naming as intact in
+    // Wernicke aphasia and in conduction aphasia, which it is not in either.
+    id: 'semantic-to-phonological', from: 'lexical-semantic', to: 'phonological-analysis',
+    label: 'Meaning to the word’s sound form', labelJa: '意味 → 語の音韻形',
+    within: Object.freeze([dominant('Middle longitudinal fasciculus')]),
   },
   {
     id: 'output-to-motor', from: 'phonological-output', to: 'speech-motor',
@@ -463,6 +530,54 @@ export const FUNCTION_EDGES = Object.freeze([
     within: Object.freeze([nondominant('White matter of telencephalon')]),
   },
   {
+    id: 'dlpfc-to-striatum', from: 'dorsolateral-prefrontal', to: 'dorsal-striatum',
+    label: 'Dorsolateral prefrontal cortex to caudate', labelJa: '背外側前頭前野 → 尾状核',
+    within: Object.freeze([...bilateral('Corticostriatal tract (anterior)')]),
+  },
+  {
+    id: 'orbitofrontal-to-striatum', from: 'orbitofrontal', to: 'ventral-striatum',
+    label: 'Orbitofrontal cortex to ventral striatum', labelJa: '眼窩前頭皮質 → 腹側線条体',
+    within: Object.freeze([...bilateral('Corticostriatal tract (anterior)')]),
+  },
+  {
+    id: 'medial-frontal-to-striatum', from: 'medial-frontal-drive', to: 'ventral-striatum',
+    label: 'Medial frontal cortex to ventral striatum', labelJa: '内側前頭葉 → 腹側線条体',
+    within: Object.freeze([...bilateral('Corticostriatal tract (anterior)')]),
+  },
+  {
+    id: 'dorsal-striatum-to-pallidum', from: 'dorsal-striatum', to: 'pallidal-outflow',
+    label: 'Caudate to pallidum', labelJa: '尾状核 → 淡蒼球',
+    // The striatopallidal fibres run between two grey structures the atlas has
+    // and through white matter it does not divide; this is the mesh that
+    // contains them, not the bundle itself.
+    within: Object.freeze([...bilateral('White matter of telencephalon')]),
+  },
+  {
+    id: 'ventral-striatum-to-pallidum', from: 'ventral-striatum', to: 'pallidal-outflow',
+    label: 'Ventral striatum to pallidum', labelJa: '腹側線条体 → 淡蒼球',
+    within: Object.freeze([...bilateral('White matter of telencephalon')]),
+  },
+  {
+    id: 'pallidum-to-thalamus', from: 'pallidal-outflow', to: 'mediodorsal-thalamus',
+    label: 'Pallidum to mediodorsal thalamus', labelJa: '淡蒼球 → 視床背内側核',
+    within: Object.freeze([...bilateral('White matter of telencephalon')]),
+  },
+  {
+    id: 'thalamus-to-dlpfc', from: 'mediodorsal-thalamus', to: 'dorsolateral-prefrontal',
+    label: 'Thalamus back to dorsolateral prefrontal cortex', labelJa: '視床 → 背外側前頭前野（環の閉じ）',
+    within: Object.freeze([...bilateral('Anterior thalamic radiation')]),
+  },
+  {
+    id: 'thalamus-to-orbitofrontal', from: 'mediodorsal-thalamus', to: 'orbitofrontal',
+    label: 'Thalamus back to orbitofrontal cortex', labelJa: '視床 → 眼窩前頭皮質（環の閉じ）',
+    within: Object.freeze([...bilateral('Anterior thalamic radiation')]),
+  },
+  {
+    id: 'thalamus-to-medial-frontal', from: 'mediodorsal-thalamus', to: 'medial-frontal-drive',
+    label: 'Thalamus back to medial frontal cortex', labelJa: '視床 → 内側前頭葉（環の閉じ）',
+    within: Object.freeze([...bilateral('Anterior thalamic radiation')]),
+  },
+  {
     id: 'fornix-outflow', from: 'medial-temporal-memory', to: 'limbic-memory-relay',
     label: 'Hippocampal outflow', labelJa: '海馬からの出力（脳弓）',
     within: Object.freeze([...bilateral('Fornix')]),
@@ -480,22 +595,17 @@ export const FUNCTION_EDGES = Object.freeze([
  * exactly one such place: printed words reaching the dominant hemisphere either
  * directly or across the corpus callosum.
  *
- * @type {readonly {id:string,label:string,labelJa:string,probe:string,probeJa:string,
- *   impairment:string,impairmentJa:string,routes:readonly (readonly string[])[]}[]}
+ * @type {readonly {id:string,label:string,labelJa:string,routes:readonly (readonly string[])[]}[]}
  */
 export const FUNCTION_TASKS = Object.freeze([
   {
     id: 'auditory-comprehension',
     label: 'Understanding speech', labelJa: '聴覚的理解',
-    probe: 'Point to the one I name.', probeJa: '「言った物を指してください」',
-    impairment: 'Comprehension impaired', impairmentJa: '聴覚的理解の障害',
     routes: Object.freeze([Object.freeze(['auditory-input', 'phonological-analysis', 'lexical-semantic'])]),
   },
   {
     id: 'repetition',
     label: 'Repeating what is heard', labelJa: '復唱',
-    probe: 'Say after me.', probeJa: '「私のあとに続けて言ってください」',
-    impairment: 'Repetition impaired', impairmentJa: '復唱の障害',
     routes: Object.freeze([
       Object.freeze(['auditory-input', 'phonological-analysis', 'phonological-output', 'speech-motor']),
     ]),
@@ -503,15 +613,11 @@ export const FUNCTION_TASKS = Object.freeze([
   {
     id: 'speech-fluency',
     label: 'Producing fluent speech', labelJa: '発話の流暢性',
-    probe: 'Does speech come out, at length and without effort?', probeJa: '発話が努力なく、まとまった長さで出てくるか',
-    impairment: 'Non-fluent speech', impairmentJa: '非流暢な発話',
     routes: Object.freeze([Object.freeze(['speech-initiation', 'phonological-output', 'speech-motor'])]),
   },
   {
     id: 'propositional-speech',
     label: 'Saying something with content', labelJa: '内容のある自発話',
-    probe: 'Tell me what happened.', probeJa: '「何があったか話してください」',
-    impairment: 'Empty speech', impairmentJa: '内容の乏しい発話',
     routes: Object.freeze([
       Object.freeze(['lexical-semantic', 'speech-initiation', 'phonological-output', 'speech-motor']),
     ]),
@@ -519,18 +625,16 @@ export const FUNCTION_TASKS = Object.freeze([
   {
     id: 'naming',
     label: 'Naming what is seen', labelJa: '呼称',
-    probe: 'What is this called?', probeJa: '「これは何ですか」',
-    impairment: 'Anomia', impairmentJa: '喚語・呼称の障害',
     routes: Object.freeze([
-      Object.freeze(['visual-input-dominant', 'ventral-visual-form', 'lexical-semantic', 'phonological-output', 'speech-motor']),
-      Object.freeze(['visual-input-nondominant', 'ventral-visual-form', 'lexical-semantic', 'phonological-output', 'speech-motor']),
+      Object.freeze(['visual-input-dominant', 'ventral-visual-form', 'lexical-semantic',
+        'phonological-analysis', 'phonological-output', 'speech-motor']),
+      Object.freeze(['visual-input-nondominant', 'ventral-visual-form', 'lexical-semantic',
+        'phonological-analysis', 'phonological-output', 'speech-motor']),
     ]),
   },
   {
     id: 'reading',
     label: 'Reading', labelJa: '読字',
-    probe: 'Read this out, and tell me what it says.', probeJa: '「これを読んで、意味を教えてください」',
-    impairment: 'Alexia', impairmentJa: '失読',
     routes: Object.freeze([
       Object.freeze(['visual-input-dominant', 'ventral-visual-form', 'cross-modal-integration', 'lexical-semantic']),
       Object.freeze(['visual-input-nondominant', 'ventral-visual-form', 'cross-modal-integration', 'lexical-semantic']),
@@ -539,8 +643,6 @@ export const FUNCTION_TASKS = Object.freeze([
   {
     id: 'writing',
     label: 'Writing', labelJa: '書字',
-    probe: 'Write this sentence.', probeJa: '「この文を書いてください」',
-    impairment: 'Agraphia', impairmentJa: '失書',
     routes: Object.freeze([
       Object.freeze(['lexical-semantic', 'cross-modal-integration', 'premotor-dominant', 'hand-motor-dominant']),
     ]),
@@ -548,47 +650,58 @@ export const FUNCTION_TASKS = Object.freeze([
   {
     id: 'calculation-and-body-schema',
     label: 'Calculation, fingers, left and right', labelJa: '計算・手指認知・左右の識別',
-    probe: 'Take 7 from 100. Which is your left thumb?', probeJa: '「100 から 7 を引いてください」「左手の親指はどれですか」',
-    impairment: 'Acalculia, finger agnosia, left–right disorientation',
-    impairmentJa: '失算・手指失認・左右失認',
     routes: Object.freeze([Object.freeze(['cross-modal-integration'])]),
   },
   {
     id: 'praxis-right-hand',
     label: 'Using a tool with the right hand', labelJa: '右手での道具使用（模倣・パントマイム）',
-    probe: 'Show me how you would use a comb.', probeJa: '「櫛を使うまねをしてください」',
-    impairment: 'Ideomotor apraxia, right hand', impairmentJa: '右手の観念運動失行',
     routes: Object.freeze([Object.freeze(['praxis-formula', 'premotor-dominant', 'hand-motor-dominant'])]),
   },
   {
     id: 'praxis-left-hand',
     label: 'Using a tool with the left hand', labelJa: '左手での道具使用（模倣・パントマイム）',
-    probe: 'Now the same thing with the other hand.', probeJa: '「同じことを反対の手でしてください」',
-    impairment: 'Ideomotor apraxia, left hand', impairmentJa: '左手の観念運動失行',
     routes: Object.freeze([Object.freeze(['praxis-formula', 'premotor-nondominant', 'hand-motor-nondominant'])]),
   },
   {
     id: 'attention-left-space',
     label: 'Attending to the left of space', labelJa: '左空間への注意',
-    probe: 'Cross out every line on the page.', probeJa: '「紙の上の線を全部消してください」',
-    impairment: 'Left hemispatial neglect', impairmentJa: '左半側空間無視',
     routes: Object.freeze([Object.freeze(['spatial-attention-nondominant'])]),
   },
   {
     id: 'attention-right-space',
     label: 'Attending to the right of space', labelJa: '右空間への注意',
-    probe: 'The same page, on the other side.', probeJa: '同じ課題の反対側',
-    impairment: 'Right hemispatial neglect', impairmentJa: '右半側空間無視',
     routes: Object.freeze([
       Object.freeze(['spatial-attention-nondominant']),
       Object.freeze(['spatial-attention-dominant']),
     ]),
   },
   {
+    id: 'set-shifting-and-planning',
+    label: 'Changing tack, and planning ahead', labelJa: '遂行機能（セットの転換・計画）',
+    routes: Object.freeze([Object.freeze([
+      'dorsolateral-prefrontal', 'dorsal-striatum', 'pallidal-outflow',
+      'mediodorsal-thalamus', 'dorsolateral-prefrontal',
+    ])]),
+  },
+  {
+    id: 'behavioural-inhibition',
+    label: 'Holding a response back', labelJa: '行動の抑制（社会的なふるまい）',
+    routes: Object.freeze([Object.freeze([
+      'orbitofrontal', 'ventral-striatum', 'pallidal-outflow',
+      'mediodorsal-thalamus', 'orbitofrontal',
+    ])]),
+  },
+  {
+    id: 'initiation-and-drive',
+    label: 'Starting something without being asked', labelJa: '発動性（自分から始めること）',
+    routes: Object.freeze([Object.freeze([
+      'medial-frontal-drive', 'ventral-striatum', 'pallidal-outflow',
+      'mediodorsal-thalamus', 'medial-frontal-drive',
+    ])]),
+  },
+  {
     id: 'episodic-memory-formation',
     label: 'Laying down a new memory', labelJa: 'エピソード記憶の形成',
-    probe: 'Three words now; I will ask again in five minutes.', probeJa: '「3 つの単語を覚えてください。5 分後に聞きます」',
-    impairment: 'Anterograde amnesia', impairmentJa: '前向性健忘',
     routes: Object.freeze([Object.freeze(['medial-temporal-memory', 'limbic-memory-relay'])]),
   },
 ]);
@@ -725,6 +838,49 @@ export const LESION_SITES = Object.freeze([
     connections: Object.freeze(['callosal-visual', 'callosal-praxis']),
   },
   {
+    id: 'bifrontal-dorsolateral',
+    label: 'Both dorsolateral prefrontal convexities', labelJa: '両側 背外側前頭前野（凸面）',
+    usualCause: 'Traumatic brain injury, or a frontal tumour',
+    usualCauseJa: '外傷性脳損傷、前頭葉腫瘍',
+    structures: Object.freeze([...bilateral('Middle frontal gyrus')]),
+    connections: Object.freeze([]),
+  },
+  {
+    id: 'orbitofrontal-cortex',
+    label: 'Both orbitofrontal cortices', labelJa: '両側 眼窩前頭皮質',
+    usualCause: 'Frontobasal trauma, an olfactory groove meningioma, or frontotemporal degeneration',
+    usualCauseJa: '前頭蓋底の外傷、嗅溝髄膜腫、前頭側頭型変性症',
+    structures: Object.freeze([
+      ...bilateral('Orbital gyri'),
+      ...bilateral('Straight gyrus (Gyrus rectus)'),
+      ...bilateral('Orbital part of inferior frontal gyrus'),
+    ]),
+    connections: Object.freeze([]),
+  },
+  {
+    id: 'striatum-head',
+    label: 'Head of the striatum on one side', labelJa: '片側 線条体（尾状核頭部〜腹側線条体）',
+    usualCause: 'Lenticulostriate branch infarct',
+    usualCauseJa: 'レンズ核線条体動脈の梗塞',
+    structures: Object.freeze([
+      dominant('Caudate nucleus'),
+      { ...dominant('Nucleus accumbens'), share: 0.6 },
+    ]),
+    connections: Object.freeze([]),
+  },
+  {
+    id: 'thalamocortical-disconnection',
+    label: 'Thalamus cut off from the frontal cortex', labelJa: '視床–前頭連絡の遮断（内包膝部など）',
+    usualCause: 'Capsular genu infarct, or a lesion of the anterior thalamic peduncle',
+    usualCauseJa: '内包膝部の梗塞、視床前脚の病変',
+    structures: Object.freeze([...bilateral('Anterior thalamic radiation')]),
+    // Connections in this model are not sided — there is one of each, standing
+    // for both — so cutting these stands for a bilateral interruption. Stated
+    // here because a one-sided capsular lesion is the commoner event, and this
+    // model will read it as heavier than it is.
+    connections: Object.freeze(['thalamus-to-dlpfc', 'thalamus-to-orbitofrontal', 'thalamus-to-medial-frontal']),
+  },
+  {
     id: 'bilateral-medial-temporal',
     label: 'Both medial temporal lobes', labelJa: '両側 内側側頭葉（海馬）',
     usualCause: 'Bilateral posterior cerebral artery territory, herpes simplex encephalitis, or hypoxia',
@@ -733,6 +889,21 @@ export const LESION_SITES = Object.freeze([
     connections: Object.freeze([]),
   },
 ]);
+
+/**
+ * A `paired` node claims that one side can do the job when the other cannot.
+ * A node with structures on only one side cannot make that claim, and filing
+ * one as paired would quietly turn "needs both sides gone" into "needs this one
+ * gone" — the difference between amnesia and no amnesia. Checked here, at
+ * import, so it fails on the way in rather than in a scene nobody is looking at.
+ */
+for (const node of FUNCTION_NODES) {
+  if (node.substrate !== NODE_SUBSTRATE.PAIRED) continue;
+  const sides = new Set(node.structures.map((structure) => structure.side).filter((side) => side !== SIDE.MEDIAN));
+  if (sides.size < 2) {
+    throw new Error(`higherBrainFunction: "${node.id}" is paired but has structures on ${sides.size} side(s)`);
+  }
+}
 
 /** @param {string} id */
 export function lesionSiteById(id) {
@@ -840,10 +1011,6 @@ export function solveHigherBrainFunction({
       id: task.id,
       label: task.label,
       labelJa: task.labelJa,
-      impairment: task.impairment,
-      impairmentJa: task.impairmentJa,
-      probe: task.probe,
-      probeJa: task.probeJa,
       transmission: best.transmission,
       status: statusFor(best.transmission),
       /** The surviving route, in order, and what each step is worth. */
@@ -852,7 +1019,6 @@ export function solveHigherBrainFunction({
       blockedAt: best.steps.find((step) => step.integrity < TRANSMISSION_LOST) ?? null,
       /** The worst step, whether or not it blocks. */
       weakestLink: best.steps.reduce((worst, step) => (step.integrity < worst.integrity ? step : worst), best.steps[0]),
-      alternativeRoutes: solved.length - 1,
     };
   });
 
@@ -957,6 +1123,28 @@ function classifySyndromes(tasks) {
       because: ['praxis-left-hand', 'praxis-right-hand'],
     });
   }
+  // The frontal--subcortical circuits. Each is named for the behaviour it
+  // takes away, and a lesion anywhere along one -- cortex, striatum, pallidum
+  // or thalamus -- reads the same way, which is the whole reason they are
+  // drawn as circuits rather than as three pieces of cortex.
+  if (bad('set-shifting-and-planning')) {
+    syndromes.push({
+      id: 'dysexecutive-syndrome', label: 'Dysexecutive syndrome', labelJa: '遂行機能障害',
+      because: ['set-shifting-and-planning'],
+    });
+  }
+  if (bad('behavioural-inhibition')) {
+    syndromes.push({
+      id: 'disinhibition', label: 'Disinhibition', labelJa: '脱抑制（社会的行動の障害）',
+      because: ['behavioural-inhibition'],
+    });
+  }
+  if (bad('initiation-and-drive')) {
+    syndromes.push({
+      id: 'abulia', label: 'Abulia', labelJa: '発動性低下（アパシー）',
+      because: ['initiation-and-drive'],
+    });
+  }
   if (bad('episodic-memory-formation')) {
     syndromes.push({
       id: 'anterograde-amnesia', label: 'Anterograde amnesia', labelJa: '前向性健忘',
@@ -989,11 +1177,26 @@ function solveRoute(route, nodeById, edgeById) {
     if (!node) throw new Error(`higherBrainFunction: route names an unknown node ${nodeId}`);
     steps.push({ kind: 'node', id: node.id, label: node.label, labelJa: node.labelJa, integrity: node.integrity });
   }
-  const transmission = round(steps.reduce((carried, step) => carried * step.integrity, 1));
+  // A closed loop — the frontal–subcortical circuits return to the cortex they
+  // started from — passes its first node twice. It is one structure, and
+  // counting its integrity twice would make a cortical lesion weigh double for
+  // no reason anybody could defend. Distinct things only.
+  const counted = new Set();
+  const transmission = round(steps.reduce((carried, step) => {
+    const key = `${step.kind}:${step.id}`;
+    if (counted.has(key)) return carried;
+    counted.add(key);
+    return carried * step.integrity;
+  }, 1));
   return { steps, transmission };
 }
 
-/** The best side of a paired node: the side whose structures are least damaged. */
+/**
+ * The best side of a paired node: the side whose structures are least damaged.
+ *
+ * `median` structures count towards every side, because a midline structure is
+ * on neither side and available to both.
+ */
 function bestSideIntegrity(structures) {
   const sides = new Set(structures.map((structure) => structure.side));
   let best = 0;

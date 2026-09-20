@@ -22,9 +22,16 @@ the other?
 A **route model** over named anatomy, solved rather than looked up. Each
 clinical task — understanding speech, repeating, speaking fluently, saying
 something with content, naming, reading, writing, calculating, using a tool with
-either hand, attending to either side of space, laying down a memory — is
-declared as the structures it passes through, in order, with the connection
-between each pair anchored in the mesh that connection runs inside.
+either hand, attending to either side of space, laying down a memory, changing
+tack, holding a response back, starting something unprompted — is declared as
+the structures it passes through, in order, with the connection between each
+pair anchored in the mesh that connection runs inside.
+
+Three of those routes are **closed loops**: the frontal–subcortical circuits run
+cortex → striatum → pallidum → mediodorsal thalamus → back to the same cortex.
+They are in this model for the same reason the language routes are — they are
+routes — and they are what lets it say that a behaviour can be lost without its
+cortex being touched.
 
 A lesion damages structures and connections. Everything after that is solved:
 how far each task's best route still carries, where along it the signal stops,
@@ -50,17 +57,18 @@ There is **no course over time**: no oedema, no penumbra, no diaschisis, no
 recovery, no rehabilitation, no plasticity. How far a lesion has been taken is
 an input on a slider and never a prediction about a day, a week or a year.
 
-**Executive function, behaviour and social cognition are deliberately absent.**
-This model localises by route, and those are not localised that way. Putting
-them on one gyrus to make the coverage look complete would be teaching something
-false.
+**Executive function is here as the circuits, and no further.** Mood,
+personality, insight, social cognition and anything a scale would score are not
+routes and are not in this model. Nor is any psychiatric or degenerative
+diagnosis: an orbitofrontal lesion reading as disinhibition is a statement about
+the circuit, not about frontotemporal dementia or about anybody's behaviour.
 
 ## 4. Inputs
 
 | Input | Range | Meaning |
 | --- | --- | --- |
 | `handedness` | `right` only | Which hemisphere every `dominant` side resolves to. Any other value is **refused** |
-| `lesions` | none, or one of eleven declared sites | Which structures are gone and which connections are cut |
+| `lesions` | one of the declared sites in `LESION_SITES` | Which structures are gone and which connections are cut |
 | `extent` | 0–1 | How far the lesion has been taken. An input, never a prediction |
 
 ## 5. Outputs
@@ -81,10 +89,14 @@ extent. There is no integration and no time.
 ```text
 node integrity       = 1 − mean(damage over its structures)        (composite)
                      = best side's integrity                       (paired)
-route transmission   = ∏ integrity over every node and connection on it
+route transmission   = ∏ integrity over the distinct nodes and connections on it
 task transmission    = max over the task's declared routes
 status               = intact ≥ 0.85 > impaired ≥ 0.25 > lost
 ```
+
+*Distinct*, because a closed loop passes its first node twice and counting one
+structure twice would make a cortical lesion weigh double for no reason anybody
+could defend.
 
 A product and not an average, because a route is a chain: a step that carries
 nothing leaves nothing for the rest of the route to carry.
@@ -120,6 +132,13 @@ severity scale or a test result.
 - The signal travels the route and **stops at the step that stopped it**.
 - The route is drawn in front of the brain rather than inside it, because most
   of it runs through white matter a reader cannot see from outside.
+- **When a route runs under the surface** — the frontal–subcortical circuits and
+  the memory circuit — the cortex in front is faded and the deep structures on
+  that route are drawn in front of it, **in their own places and at their own
+  size**. Only the depth order changes. The route's own cortical node is not
+  lifted: a gyrus and the basal ganglia behind it cover the same screen space in
+  a lateral view, and lifting both painted the gyrus over the structure the
+  reveal existed to show.
 - Nothing moves, resizes or deforms any anatomy. A lesion is a colour, not a
   hole.
 
@@ -133,6 +152,16 @@ severity scale or a test result.
   pure alexia sparing object naming — a real and well-described dissociation.
 - **Transcortical motor aphasia keeps naming here**, where in a person naming is
   variably impaired.
+- **No declared site produces an isolated naming failure**, so the anomic
+  aphasia the classifier can read is not reachable from any of them: every step
+  of naming is shared with another task. A test holds that, so the sentence
+  cannot quietly stop being true.
+- **The three prefrontal pictures come apart more cleanly here than in a
+  person.** The circuits are anatomically separate; the syndromes named after
+  them overlap heavily, and real lesions rarely respect one circuit.
+- **The middle frontal gyrus is one mesh**, so the premotor cortex a praxis
+  route uses and the dorsolateral prefrontal cortex an executive circuit starts
+  from are the same structure here: a lesion of one takes the other.
 - **The Gerstmann tetrad is drawn from one gyrus** because that is the classical
   account; later work has repeatedly questioned it. It is the model's least
   secure claim, and the evidence dossier marks it `uncertain`.

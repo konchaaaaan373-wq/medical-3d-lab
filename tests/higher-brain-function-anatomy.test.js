@@ -147,7 +147,9 @@ test('a connection points at the real tract where the atlas has one', () => {
   const named = new Map(FUNCTION_EDGES.map((edge) => [edge.id, edge.within.map((w) => w.label)]));
   assert.deepEqual(named.get('dorsal-phonological'), ['Arcuate fasciculus']);
   assert.deepEqual(named.get('initiation-to-output'), ['Frontal aslant tract']);
-  assert.deepEqual(named.get('semantic-to-output'), ['Inferior fronto-occipital fasciculus']);
+  assert.deepEqual(named.get('semantic-to-initiation'), ['Inferior fronto-occipital fasciculus']);
+  assert.deepEqual(named.get('dlpfc-to-striatum'), ['Corticostriatal tract (anterior)', 'Corticostriatal tract (anterior)']);
+  assert.deepEqual(named.get('thalamus-to-dlpfc'), ['Anterior thalamic radiation', 'Anterior thalamic radiation']);
   assert.deepEqual(named.get('praxis-to-premotor'), ['Superior longitudinal fasciculus III']);
 
   // And the ones anchored in bulk white matter are only the ones the atlas
@@ -159,12 +161,17 @@ test('a connection points at the real tract where the atlas has one', () => {
     .map((edge) => edge.id)
     .sort();
   assert.deepEqual(bulk, [
+    // Short association fibres between neighbouring cortex, and the fibres
+    // between the deep grey structures of the frontal--subcortical circuits.
+    // The atlas draws neither as a bundle of its own.
     'auditory-to-phonological',
+    'dorsal-striatum-to-pallidum',
     'form-to-integration',
     'output-to-motor',
+    'pallidum-to-thalamus',
     'premotor-to-hand-dominant',
     'premotor-to-hand-nondominant',
-    'semantic-to-initiation',
+    'ventral-striatum-to-pallidum',
   ]);
 
   const labels = new Set(ATLAS.map((extras) => extras.bx_label));
