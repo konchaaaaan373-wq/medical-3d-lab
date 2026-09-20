@@ -471,24 +471,57 @@ test('each large anatomical unit reads as one colour family', () => {
     );
   }
 
-  // And the lobes have to be different families from each other: no gyrus of
-  // one lobe may land on another lobe's hue.
-  const lobes = ['frontal', 'parietal', 'temporal', 'occipital', 'limbic', 'insula'];
-  for (const lobe of lobes) {
+  for (const lobe of CORTICAL_LOBES) {
     assert.ok(byFamily.get(lobe)?.length, `${lobe} has structures to be a family of`);
   }
-  for (let left = 0; left < lobes.length; left += 1) {
-    for (let right = left + 1; right < lobes.length; right += 1) {
-      let closest = Infinity;
-      for (const a of byFamily.get(lobes[left])) {
-        for (const b of byFamily.get(lobes[right])) {
-          closest = Math.min(closest, circularDistance(a.hue, b.hue));
+});
+
+test('the large units stay apart for a reader who cannot see one of the axes', () => {
+  const structures = atlasStructures();
+  const byFamily = new Map();
+  for (const metadata of structures.values()) {
+    const key = brainColorKey(metadata);
+    if (!byFamily.has(key)) byFamily.set(key, []);
+    byFamily.get(key).push(brainColor(metadata));
+  }
+
+  // Hue alone cannot carry the grouping. A palette that separates the lobes
+  // only along red-green is separating them along the axis a protanope and a
+  // deuteranope do not have: the palette this replaced put the temporal and
+  // occipital lobes ΔE 0.5 apart under simulated deuteranopia while looking
+  // 27 apart to everyone else. So the floors are measured under all four
+  // visions, not only the one the author has.
+  //
+  // The claim is about the large units, not about every structure: inside one
+  // family the members are separated by lightness and saturation, which
+  // dichromacy compresses, and no bound here pretends otherwise.
+  // Floors, not the measured values: the palette clears them by 1.2 to 2.4
+  // (normal 18.7/17.4, protan 13.5/13.3, deutan 12.2/12.2, tritan 13.9/13.4).
+  // A floor set at the measurement would go red on a rounding change and teach
+  // everyone to raise it.
+  const floors = {
+    normal: { lobes: 17, surface: 15 },
+    protan: { lobes: 11, surface: 11 },
+    deutan: { lobes: 11, surface: 11 },
+    tritan: { lobes: 11, surface: 11 },
+  };
+  for (const [vision, floor] of Object.entries(floors)) {
+    const labs = new Map(
+      [...byFamily].map(([key, hexes]) => [key, hexes.map((hex) => hexToLab(simulate(hex, vision)))])
+    );
+    for (const [set, bound] of [[CORTICAL_LOBES, floor.lobes], [SURFACE_FAMILIES, floor.surface]]) {
+      for (let left = 0; left < set.length; left += 1) {
+        for (let right = left + 1; right < set.length; right += 1) {
+          let closest = Infinity;
+          for (const a of labs.get(set[left])) {
+            for (const b of labs.get(set[right])) closest = Math.min(closest, cie76(a, b));
+          }
+          assert.ok(
+            closest >= bound,
+            `under ${vision}, ${set[left]} and ${set[right]} come within ΔE ${closest.toFixed(1)} of each other (floor ${bound})`
+          );
         }
       }
-      assert.ok(
-        closest >= 18,
-        `${lobes[left]} and ${lobes[right]} come within ${closest.toFixed(1)}° of hue of each other`
-      );
     }
   }
 });
@@ -822,6 +855,38 @@ function settle(scene) {
   for (let i = 0; i < 240; i += 1) scene.update(1 / 60);
 }
 
+const CORTICAL_LOBES = ['frontal', 'parietal', 'temporal', 'occipital', 'limbic', 'insula'];
+/** The families a reader meets on the outside of the model, before any slider. */
+const SURFACE_FAMILIES = [...CORTICAL_LOBES, 'cerebellum', 'brainstem'];
+
+/**
+ * Dichromacy simulation — Machado, Oliveira & Fernandes (2009), severity 1.0,
+ * applied in linear RGB. It is a model of what a dichromat sees, not a
+ * measurement of it; it is here to keep a palette from being separated along
+ * an axis a reader may not have, which is a mistake that is otherwise
+ * invisible to whoever picked the colours.
+ */
+const DICHROMACY = {
+  normal: [[1, 0, 0], [0, 1, 0], [0, 0, 1]],
+  protan: [[0.152286, 1.052583, -0.204868], [0.114503, 0.786281, 0.099216], [-0.003882, -0.048116, 1.051998]],
+  deutan: [[0.367322, 0.860646, -0.227968], [0.280085, 0.672501, 0.047413], [-0.011820, 0.042940, 0.968881]],
+  tritan: [[1.255528, -0.076749, -0.178779], [-0.078411, 0.930809, 0.147602], [0.004733, 0.691367, 0.303900]],
+};
+
+function simulate(hex, vision) {
+  if (vision === 'normal') return hex;
+  const linear = [1, 3, 5]
+    .map((start) => Number.parseInt(hex.slice(start, start + 2), 16) / 255)
+    .map((value) => (value <= 0.04045 ? value / 12.92 : ((value + 0.055) / 1.055) ** 2.4));
+  const seen = DICHROMACY[vision].map((row) => (
+    Math.min(1, Math.max(0, row[0] * linear[0] + row[1] * linear[1] + row[2] * linear[2]))
+  ));
+  return `#${seen
+    .map((value) => (value <= 0.0031308 ? value * 12.92 : 1.055 * value ** (1 / 2.4) - 0.055))
+    .map((value) => Math.round(Math.min(1, Math.max(0, value)) * 255).toString(16).padStart(2, '0'))
+    .join('')}`;
+}
+
 function atlasStructures() {
   const bytes = readFileSync(new URL('../public/assets/brain/brain.glb', import.meta.url));
   const jsonLength = bytes.readUInt32LE(12);
@@ -843,11 +908,6 @@ function atlasStructures() {
 /** Where a colour sits on the Lab hue circle, which is what "family" means here. */
 function labHue([, a, b]) {
   return ((Math.atan2(b, a) * 180) / Math.PI + 360) % 360;
-}
-
-function circularDistance(left, right) {
-  const raw = Math.abs(left - right) % 360;
-  return raw > 180 ? 360 - raw : raw;
 }
 
 /** The arc a set of hues occupies — the circle minus its largest empty gap. */

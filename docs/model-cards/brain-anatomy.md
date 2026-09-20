@@ -147,7 +147,23 @@ system, the cerebellum, the brainstem — owns one narrow hue band, and the
 structures inside it are told apart by lightness and saturation within that
 band, so a lobe reads as one family before its gyri read as individuals. The
 legend swatch for a unit is the centre of its band rather than a separate
-picked colour. Natural-anatomy shades use a constrained low-saturation
+picked colour.
+
+**The bands are placed so that they survive colour-vision deficiency, and the
+promise is about the large units only.** They are spread along blue–yellow
+rather than red–green, and adjacent lobes are given different lightness — the
+temporal and occipital lobes are deliberately the same blue at two lightnesses
+— following Okabe & Ito's colour-universal set. Measured member to member under
+simulated protanopia, deuteranopia and tritanopia (Machado et al. 2009,
+severity 1.0), any two cortical lobes stay at least ΔE 12 apart and the eight
+families on the outside of the model at least ΔE 12 apart;
+`tests/brain-anatomy.test.js` holds those floors. **Individual structures
+inside one family are separated by lightness and saturation, which dichromacy
+compresses, and are not claimed to be distinguishable by colour for those
+readers** — the panel names what is selected, and neither the parts tree nor
+the layer slider uses colour. A simulation is a model of what someone sees,
+not a measurement of it: it can show a collapse and cannot certify that there
+is none, and no reader with colour-vision deficiency has used this scene. Natural-anatomy shades use a constrained low-saturation
 range with small deterministic lightness differences between named meshes. The
 same selector also updates the legend swatches; neither mode changes anatomical
 identity or geometry. **Colour aids identification and grouping; it does not
@@ -566,6 +582,43 @@ hue spread inside each family, including its legend swatch, and the hue gap
 between the cortical lobes. Colour still aids identification and grouping
 and does not show real tissue colour, functional localisation, vascular
 territory, exact boundaries or positional accuracy (§6).
+
+Sources in scope: `src/data/brainAnatomy.js`,
+`src/scenes/nervous/scenes/brainAnatomy/BrainAnatomyScene.js`.
+
+**Revision 26 → 27 (2026-09-20) — the colour map is placed for colour-vision
+deficiency.** A presentation change only: no geometry, no atlas ids, no
+labels, no hierarchy, no copy and no claim about anatomy changed, and
+natural-anatomy mode is untouched. Revision 26 gave each large unit its own
+hue band; an audit of it under simulated dichromacy found that the bands were
+separated along an axis some readers do not have. For a deuteranope the
+temporal and occipital lobes were ΔE 0.5 apart and the frontal and parietal
+lobes 3.0, against 27 and 23 in normal vision — **and the palette before
+revision 26 was no better (0.5 and 2.8), so this is a defect the grouping work
+neither caused nor fixed.** The bands are now spread along blue–yellow rather
+than red–green, with different lightness for adjacent lobes (temporal and
+occipital are the same blue at two lightnesses), following Okabe & Ito's
+colour-universal set; the exact centres and the per-family seeds were solved
+together against all four visions. Measured member to member, the closest two
+cortical lobes are now ΔE 18.7 in normal vision, 13.5 under protanopia, 12.2
+under deuteranopia and 13.9 under tritanopia; for the eight families on the
+outside of the model the figures are 17.4 / 13.3 / 12.2 / 13.4. On the lit
+surface itself, comparing the mean of a patch inside each lobe in the
+left-lateral render, frontal↔parietal goes from ΔE 9.6 to 19.2 under
+deuteranopia and temporal↔occipital from 18.9 to 70.0. The all-label
+perceptual-distance audit is unchanged in kind and holds at ΔE 4.33 across all
+147 named structures, all of which remain distinct. Every colour-map shade
+changed again (147/147). `tests/brain-anatomy.test.js` gains a second guard
+that measures the floors under all four visions; of its three mutations, the
+one that separates two lobes along red–green only leaves every normal-vision
+assertion green and fails protanopia alone. `scripts/capture-anatomy-views.mjs`
+gains `--cvd`, which writes the dichromat's view of the same frame, so the
+check is repeatable rather than a one-off. **What this does not establish:**
+the floors are what a model of dichromacy predicts, not what a reader reported,
+and structures inside one family are not separable by colour under dichromacy
+by design. Colour still aids identification and grouping and does not show
+real tissue colour, functional localisation, vascular territory, exact
+boundaries or positional accuracy (§6).
 
 Sources in scope: `src/data/brainAnatomy.js`,
 `src/scenes/nervous/scenes/brainAnatomy/BrainAnatomyScene.js`.

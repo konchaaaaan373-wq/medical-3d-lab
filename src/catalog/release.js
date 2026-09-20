@@ -465,14 +465,14 @@ export const BETA_PUBLICATION_DECISIONS = Object.freeze([
     decidedAt: '2026-09-19',
     /** Who, and in what capacity. A role is a claim, and it is checked. */
     decidedBy: Object.freeze({
-      name: 'Claude Code (AI engineering agent), re-taken for the lobe-coherent colour map',
+      name: 'Claude Code (AI engineering agent), re-taken for the colour-vision-safe lobe palette',
       role: 'engineering',
     }),
     record: 'docs/beta-publication/brain-anatomy.md',
     assetRevisions: Object.freeze({
       'brain-atlas-glb': '76a49ea4526a4880613aec7a02756bd7301b0b9d0680d7cae33e197b672c5453',
     }),
-    sceneRevision: Object.freeze({ cardRevision: 26, modelDigest: 'bdd9aac1ffb0502e' }),
+    sceneRevision: Object.freeze({ cardRevision: 27, modelDigest: 'e143ba8b23c43eaf' }),
     /** What was actually exercised. Not a plan — a list of what was done. */
     scope: Object.freeze({
       // Re-measured on 2026-09-15 and corrected. The first two of the four
@@ -499,6 +499,7 @@ export const BETA_PUBLICATION_DECISIONS = Object.freeze([
         'left-lateral (applied by the interaction drive)',
         'all eight named viewpoints rendered in both colour modes at one camera each; the six that existed before this work were rendered before and after it (docs/screenshots/b3-1/)',
         'for the 2026-09-19 colour re-take: all eight viewpoints re-rendered in colour-map mode and read, with superior and left-lateral also rendered on the previous palette to compare; natural-anatomy mode was not re-rendered because its shades did not change',
+        'for the 2026-09-20 colour-vision re-take: the eight viewpoints re-rendered again, and left-lateral and superior also written out as a deuteranope and a protanope see them (shots:anatomy --cvd) — a simulation, not a reader',
       ]),
       interactions: Object.freeze([
         'click pins a structure and the panel names it in both languages',
@@ -568,6 +569,8 @@ export const BETA_PUBLICATION_DECISIONS = Object.freeze([
       'the anatomy/CG quality bar for the beta (B3) is measured only for what the fixed views show; nothing here is an anatomical judgement',
       'whether the cerebellum should show folia was not settled — it is a question about the source mesh (F-38)',
       'the posterior and inferior viewpoints were rendered and read by an engineer; no anatomist has confirmed what they show',
+      'no reader with colour-vision deficiency has used this scene — the palette clears floors measured against a simulation of dichromacy, which is a model of what someone sees rather than a report from one',
+      'inside one colour family the structures are separated by lightness and saturation, which dichromacy compresses: that separation is not claimed for those readers, and anomalous trichromacy at partial severity and monochromacy are unmeasured',
     ]),
   }),
 ]);
