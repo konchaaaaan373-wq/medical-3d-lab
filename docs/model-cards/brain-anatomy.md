@@ -149,21 +149,27 @@ band, so a lobe reads as one family before its gyri read as individuals. The
 legend swatch for a unit is the centre of its band rather than a separate
 picked colour.
 
-**The bands are placed so that they survive colour-vision deficiency, and the
-promise is about the large units only.** They are spread along blue–yellow
-rather than red–green, and adjacent lobes are given different lightness — the
-temporal and occipital lobes are deliberately the same blue at two lightnesses
-— following Okabe & Ito's colour-universal set. Measured member to member under
-simulated protanopia, deuteranopia and tritanopia (Machado et al. 2009,
-severity 1.0), any two cortical lobes stay at least ΔE 12 apart and the eight
-families on the outside of the model at least ΔE 12 apart;
-`tests/brain-anatomy.test.js` holds those floors. **Individual structures
-inside one family are separated by lightness and saturation, which dichromacy
-compresses, and are not claimed to be distinguishable by colour for those
-readers** — the panel names what is selected, and neither the parts tree nor
-the layer slider uses colour. A simulation is a model of what someone sees,
-not a measurement of it: it can show a collapse and cannot certify that there
-is none, and no reader with colour-vision deficiency has used this scene. Natural-anatomy shades use a constrained low-saturation
+**Two readers are served, and the split is deliberate rather than even.** What
+is measured first is the boundary between two units that actually meet — the
+central sulcus, the edge of the cerebellum — because that is what a reader
+traces; every touching pair is at least ΔE 22 apart, and the list of which
+units touch is anatomy, written down in `tests/brain-anatomy.test.js` rather
+than derived. Colour-vision deficiency is then given what is available without
+spending that: the bands are nudged along blue–yellow rather than red–green
+and neighbouring units are given different lightness where it is free, which
+holds the worst pair among the eight families on the outside of the model at
+ΔE 4 or better under simulated protanopia, deuteranopia and tritanopia
+(Machado et al. 2009, severity 1.0), against ΔE 0.5 before any of this work.
+**That is a partial measure and is recorded as one: ΔE 4–5 is a difference,
+not a comfortable one.** A version that raised those floors to ΔE 12 was
+measured and rejected because it cost the central sulcus, which dropped to
+ΔE 18.7 and stopped reading for everyone. **Structures inside one family are
+separated by lightness and saturation, which dichromacy compresses, and are
+not claimed to be distinguishable by colour for those readers** — the panel
+names what is selected, and neither the parts tree nor the layer slider uses
+colour. A simulation is a model of what someone sees, not a measurement of it:
+it can show a collapse and cannot certify that there is none, and no reader
+with colour-vision deficiency has used this scene. Natural-anatomy shades use a constrained low-saturation
 range with small deterministic lightness differences between named meshes. The
 same selector also updates the legend swatches; neither mode changes anatomical
 identity or geometry. **Colour aids identification and grouping; it does not
@@ -619,6 +625,43 @@ and structures inside one family are not separable by colour under dichromacy
 by design. Colour still aids identification and grouping and does not show
 real tissue colour, functional localisation, vascular territory, exact
 boundaries or positional accuracy (§6).
+
+Sources in scope: `src/data/brainAnatomy.js`,
+`src/scenes/nervous/scenes/brainAnatomy/BrainAnatomyScene.js`.
+
+**Revision 27 → 28 (2026-09-20) — the colour-vision floors are traded back for
+the boundary a reader traces.** A presentation change only: no geometry, no
+atlas ids, no labels, no hierarchy, no copy and no claim about anatomy
+changed, and natural-anatomy mode is untouched. Revision 27 raised the
+dichromacy floors to ΔE 12 by optimising the minimum distance over *every*
+pair of colour families. Most of those pairs are never on screen together, and
+the budget they took came out of the ones that are: the central sulcus — the
+frontal-to-parietal boundary — fell to ΔE 18.7, from 23.5 in revision 26 and
+25.8 before that, and a reader reported it as unreadable. Every guard was
+green while that happened, which is recorded as L-52 in
+`docs/verification-lessons.md`.
+
+The objective and the constraint are now the other way round. What is
+maximised is the worst boundary between two units that actually touch, listed
+explicitly because which lobe borders which is anatomy and cannot be read off
+the mesh names; colour-vision separation is a floor the solution must clear,
+set at ΔE 4 rather than 12. Measured member to member: every touching pair is
+at least ΔE 26.2 apart in normal vision (frontal↔parietal 26.5), and the worst
+pair among the eight surface families is ΔE 4.9 under protanopia, 4.7 under
+deuteranopia and 5.8 under tritanopia. On the lit surface, comparing the mean
+of a patch inside each lobe in the left-lateral render, frontal↔parietal is
+ΔE 31.9 in normal vision and 20.5 under deuteranopia — **better than both
+revision 26 (26.3 / 9.6) and revision 27 (22.9 / 19.2)**, because the two
+readers stopped being traded against each other on the pairs that matter. The
+all-label audit holds at ΔE 4.30 across all 147 structures, all distinct.
+Every colour-map shade changed again (147/147). The guard is rewritten to
+match the claim, and one of its three mutations is the reported defect itself
+— putting the parietal lobe back on the frontal lobe's tone fails at ΔE 4.1.
+**What this does not establish** is unchanged from revision 27: the dichromacy
+floors are what a model predicts, not what a reader reported, and the promise
+stops at the large units. Colour still aids identification and grouping and
+does not show real tissue colour, functional localisation, vascular territory,
+exact boundaries or positional accuracy (§6).
 
 Sources in scope: `src/data/brainAnatomy.js`,
 `src/scenes/nervous/scenes/brainAnatomy/BrainAnatomyScene.js`.

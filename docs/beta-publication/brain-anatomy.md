@@ -12,11 +12,11 @@ at pictures. **No anatomist has judged this geometry or these labels.**
 
 | | |
 | --- | --- |
-| **Decided at** | 2026-09-20 (re-taken seven times: a branch of the tree gained a way to be hidden whole, what a hide announces was corrected, a selected structure's label was made to survive its own anchor being occluded, then a review of that fix found three ways it still failed its own stated behaviour and they were closed, then an audit of the result found three more and a per-frame cost, also closed, then the four-round terminology review branch landed on top of it, then the colour map was regrouped so that a lobe reads as one colour family, then those groups were placed so that they survive colour-vision deficiency) |
-| **Decided by** | Claude Code (AI engineering agent), re-taken for the colour-vision-safe lobe palette |
+| **Decided at** | 2026-09-20 (re-taken eight times: a branch of the tree gained a way to be hidden whole, what a hide announces was corrected, a selected structure's label was made to survive its own anchor being occluded, then a review of that fix found three ways it still failed its own stated behaviour and they were closed, then an audit of the result found three more and a per-frame cost, also closed, then the four-round terminology review branch landed on top of it, then the colour map was regrouped so that a lobe reads as one colour family, then those groups were placed so that they survive colour-vision deficiency, then that was traded back to a smaller amount so the boundaries a reader traces stayed readable) |
+| **Decided by** | Claude Code (AI engineering agent), re-taken for the rebalanced lobe palette |
 | **Role** | `engineering` — software behaviour, not anatomical or clinical judgement |
 | **Asset revision** | `brain-atlas-glb` @ `sha256:76a49ea4526a4880613aec7a02756bd7301b0b9d0680d7cae33e197b672c5453` |
-| **Scene revision** | model card revision **27**, source digest `e143ba8b23c43eaf` |
+| **Scene revision** | model card revision **28**, source digest `0ac1c0887de55535` |
 | **Scene sources under that digest** | [`src/data/brainAnatomy.js`](../../src/data/brainAnatomy.js), [`src/scenes/nervous/scenes/brainAnatomy/BrainAnatomyScene.js`](../../src/scenes/nervous/scenes/brainAnatomy/BrainAnatomyScene.js), [`src/scenes/shared/anatomy/tapGesture.js`](../../src/scenes/shared/anatomy/tapGesture.js) |
 
 The decision is pinned to **both** revisions in
@@ -390,6 +390,53 @@ lobe are separated by lightness and saturation, which dichromacy compresses,
 and are not distinguishable by colour for those readers by design. Anomalous
 trichromacy at partial severity, monochromacy, and everything about contrast
 on real displays are unmeasured.
+
+
+**Revision 27 → 28.** Revision 27 bought its colour-vision floors with the
+wrong budget. It maximised the smallest distance over *every* pair of colour
+families; most of those pairs are never on screen together, and what it spent
+came out of the pairs that are. The central sulcus — the frontal-to-parietal
+boundary — fell to ΔE 18.7, from 23.5 in revision 26 and 25.8 before that, and
+a reader reported that the parietal lobe's edge could no longer be traced.
+**Every guard was green while that happened**, which is recorded as L-52 in
+`docs/verification-lessons.md`.
+
+The objective and the constraint are swapped. What is maximised is the worst
+boundary between two units that actually meet — listed explicitly in the test,
+because which lobe borders which is anatomy and cannot be read off the mesh
+names — and colour-vision separation becomes a floor to clear rather than the
+thing being maximised, set at ΔE 4 instead of 12. Both readers came out ahead
+of revision 27 on the pairs that matter, which is the point: they were being
+traded against each other over pairs nobody looks at.
+
+*What was actually done for this decision*: the eight viewpoints were
+re-rendered in colour-map mode and read, with every one of them also written
+out as a deuteranope and a protanope see them (`shots:anatomy --cvd`);
+`npm run verify:anatomy` was re-run for this scene. The numbers, member to
+member: every touching pair is at least ΔE 26.2 apart in normal vision
+(frontal↔parietal 26.5), and the worst pair among the eight surface families
+is ΔE 4.9 / 4.7 / 5.8 under protanopia / deuteranopia / tritanopia, against
+0.5 before any of this work and 12.2 in revision 27. On the lit surface,
+comparing the mean of a patch inside each lobe in the left-lateral render,
+frontal↔parietal is ΔE 31.9 in normal vision and 20.5 under deuteranopia —
+better than revision 26 (26.3 / 9.6) and than revision 27 (22.9 / 19.2). The
+all-label audit holds at ΔE 4.30 across all 147 structures, all distinct. The
+guard is rewritten to match the claim, and one of its three mutations is the
+reported defect itself: putting the parietal lobe back on the frontal lobe's
+tone fails at ΔE 4.1. **Nothing about geometry, atlas ids, labels, hierarchy,
+copy or what is selectable changed, and natural-anatomy mode is untouched.**
+Earlier colour-map screenshots under `docs/screenshots/` no longer match the
+shipped shades.
+
+**What this decision does not establish.** ΔE 4–5 under dichromacy is a
+difference, not a comfortable one, and it is a deliberate partial measure
+rather than a target met: the higher floors were measured, cost the central
+sulcus, and were rejected. The floors are what a model of dichromacy (Machado
+et al. 2009, severity 1.0) predicts, not what any reader reported — **no
+person with colour-vision deficiency has used this scene.** The promise is
+about the large units only; structures inside one family are not
+distinguishable by colour under dichromacy by design. Anomalous trichromacy at
+partial severity, monochromacy, and contrast on real displays are unmeasured.
 
 
 Each time the gate closed and the production build stopped shipping the scene

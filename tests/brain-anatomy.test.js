@@ -476,7 +476,7 @@ test('each large anatomical unit reads as one colour family', () => {
   }
 });
 
-test('the large units stay apart for a reader who cannot see one of the axes', () => {
+test('the units that touch are told apart, and dichromacy gets what is free', () => {
   const structures = atlasStructures();
   const byFamily = new Map();
   for (const metadata of structures.values()) {
@@ -484,43 +484,43 @@ test('the large units stay apart for a reader who cannot see one of the axes', (
     if (!byFamily.has(key)) byFamily.set(key, []);
     byFamily.get(key).push(brainColor(metadata));
   }
-
-  // Hue alone cannot carry the grouping. A palette that separates the lobes
-  // only along red-green is separating them along the axis a protanope and a
-  // deuteranope do not have: the palette this replaced put the temporal and
-  // occipital lobes ΔE 0.5 apart under simulated deuteranopia while looking
-  // 27 apart to everyone else. So the floors are measured under all four
-  // visions, not only the one the author has.
-  //
-  // The claim is about the large units, not about every structure: inside one
-  // family the members are separated by lightness and saturation, which
-  // dichromacy compresses, and no bound here pretends otherwise.
-  // Floors, not the measured values: the palette clears them by 1.2 to 2.4
-  // (normal 18.7/17.4, protan 13.5/13.3, deutan 12.2/12.2, tritan 13.9/13.4).
-  // A floor set at the measurement would go red on a rounding change and teach
-  // everyone to raise it.
-  const floors = {
-    normal: { lobes: 17, surface: 15 },
-    protan: { lobes: 11, surface: 11 },
-    deutan: { lobes: 11, surface: 11 },
-    tritan: { lobes: 11, surface: 11 },
+  const closest = (vision, left, right) => {
+    let best = Infinity;
+    for (const a of byFamily.get(left)) {
+      for (const b of byFamily.get(right)) {
+        best = Math.min(best, cie76(hexToLab(simulate(a, vision)), hexToLab(simulate(b, vision))));
+      }
+    }
+    return best;
   };
-  for (const [vision, floor] of Object.entries(floors)) {
-    const labs = new Map(
-      [...byFamily].map(([key, hexes]) => [key, hexes.map((hex) => hexToLab(simulate(hex, vision)))])
-    );
-    for (const [set, bound] of [[CORTICAL_LOBES, floor.lobes], [SURFACE_FAMILIES, floor.surface]]) {
-      for (let left = 0; left < set.length; left += 1) {
-        for (let right = left + 1; right < set.length; right += 1) {
-          let closest = Infinity;
-          for (const a of labs.get(set[left])) {
-            for (const b of labs.get(set[right])) closest = Math.min(closest, cie76(a, b));
-          }
-          assert.ok(
-            closest >= bound,
-            `under ${vision}, ${set[left]} and ${set[right]} come within ΔE ${closest.toFixed(1)} of each other (floor ${bound})`
-          );
-        }
+
+  // What a reader traces is the boundary between two units that actually meet,
+  // so that is what is measured — not the average distance between families,
+  // and not every pair in the catalogue. A palette can put the whole set far
+  // apart on average and still lose the central sulcus, which is what happened
+  // when an earlier version spent its separation on colour-vision headroom and
+  // left the frontal and parietal lobes ΔE 18.7 apart.
+  for (const [left, right] of TOUCHING_UNITS) {
+    const apart = closest('normal', left, right);
+    assert.ok(apart >= 22, `${left} and ${right} touch and are only ΔE ${apart.toFixed(1)} apart (floor 22)`);
+  }
+
+  // Colour-vision deficiency is given what is available rather than what it
+  // would cost: the bands are nudged along blue-yellow and given different
+  // lightness where that is free, which lifts the worst pair from ΔE 0.5 to
+  // about 5. **Five is a difference, not a comfortable one.** This floor is a
+  // deliberate partial measure, chosen over a high one that made the central
+  // sulcus unreadable for everyone, and the claim stops at the large units:
+  // structures inside one family are separated by lightness and saturation,
+  // which dichromacy compresses, and nothing here pretends otherwise.
+  for (const vision of ['protan', 'deutan', 'tritan']) {
+    for (let left = 0; left < SURFACE_FAMILIES.length; left += 1) {
+      for (let right = left + 1; right < SURFACE_FAMILIES.length; right += 1) {
+        const apart = closest(vision, SURFACE_FAMILIES[left], SURFACE_FAMILIES[right]);
+        assert.ok(
+          apart >= 4,
+          `under ${vision}, ${SURFACE_FAMILIES[left]} and ${SURFACE_FAMILIES[right]} come within ΔE ${apart.toFixed(1)} (floor 4)`
+        );
       }
     }
   }
@@ -858,6 +858,20 @@ function settle(scene) {
 const CORTICAL_LOBES = ['frontal', 'parietal', 'temporal', 'occipital', 'limbic', 'insula'];
 /** The families a reader meets on the outside of the model, before any slider. */
 const SURFACE_FAMILIES = [...CORTICAL_LOBES, 'cerebellum', 'brainstem'];
+
+/**
+ * Units whose surfaces actually meet, so a reader has to see where one ends.
+ * Listed rather than derived: which lobes border which is anatomy, not
+ * something the palette or the mesh names can be asked.
+ */
+const TOUCHING_UNITS = [
+  ['frontal', 'parietal'], ['frontal', 'temporal'], ['parietal', 'temporal'],
+  ['parietal', 'occipital'], ['temporal', 'occipital'], ['frontal', 'limbic'],
+  ['parietal', 'limbic'], ['occipital', 'limbic'], ['temporal', 'limbic'],
+  ['frontal', 'telencephalon'], ['parietal', 'telencephalon'], ['temporal', 'telencephalon'],
+  ['frontal', 'insula'], ['parietal', 'insula'], ['temporal', 'insula'],
+  ['temporal', 'cerebellum'], ['occipital', 'cerebellum'], ['cerebellum', 'brainstem'],
+];
 
 /**
  * Dichromacy simulation — Machado, Oliveira & Fernandes (2009), severity 1.0,
