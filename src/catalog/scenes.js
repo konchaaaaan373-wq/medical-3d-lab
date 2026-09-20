@@ -104,6 +104,32 @@ export const SCENE_MANIFEST = [
     load: () => import('../scenes/nervous/scenes/amyloidBeta/index.js'),
   },
   {
+    id: 'higher-brain-function',
+    slug: 'higher-brain-function',
+    titleEn: 'Higher cortical function and the lesion that cuts it',
+    titleJa: '高次脳機能と、それを切る病変',
+    storyTitleEn: 'Which route did the lesion take away?',
+    storyTitleJa: 'その病変が奪ったのは、どの経路か',
+    system: 'nervous',
+    organ: 'brain',
+    disease: 'higher-cortical-dysfunction',
+    conditions: [
+      'aphasia', 'Broca aphasia', 'Wernicke aphasia', 'conduction aphasia', 'transcortical aphasia',
+      'hemispatial neglect', 'apraxia', 'Gerstmann syndrome', 'alexia without agraphia',
+      'disconnection syndrome', 'amnesia',
+      '失語', '高次脳機能障害', '半側空間無視', '失行', '失読', '失書', '離断症候群', 'Gerstmann 症候群',
+    ],
+    status: 'alpha',
+    modelCard: 'docs/model-cards/higher-brain-function.md',
+    modelProfile: 'higher-brain-function-route-network',
+    description:
+      'A right-handed brain: each clinical task is a route through named structures, and which routes a lesion leaves is the syndrome.',
+    descriptionJa:
+      '右利きの脳。各課題は名前の付いた構造を通る 1 本の経路で、病変が残した経路の組み合わせが症候になります。',
+    tags: ['localisation', 'language', 'disconnection', 'attention'],
+    load: () => import('../scenes/nervous/scenes/higherBrainFunction/index.js'),
+  },
+  {
     id: 'heart-anatomy',
     slug: 'heart-anatomy',
     titleEn: 'Interactive heart anatomy',

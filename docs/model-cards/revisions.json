@@ -829,5 +829,15 @@
     "cardRevision": 9,
     "modelDigest": "6bf49e29f6a71144",
     "cardUpdatedAt": "2026-09-16"
+  },
+  {
+    "sceneId": "higher-brain-function",
+    "card": "docs/model-cards/higher-brain-function.md",
+    "modelSources": [
+      "src/models/higherBrainFunction.js"
+    ],
+    "cardRevision": 1,
+    "modelDigest": "764212ade7efff89",
+    "cardUpdatedAt": "2026-09-19"
   }
 ]

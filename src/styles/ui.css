@@ -1040,6 +1040,21 @@
   color: var(--ink);
 }
 
+/* A row whose value is a phrase rather than a figure. Numbers must not break
+   across lines; words must, or a long one pushes the whole panel off the side
+   of a phone. */
+.metric.is-qualitative {
+  align-items: flex-start;
+}
+
+.metric.is-qualitative .metric-figure {
+  white-space: normal;
+  overflow-wrap: anywhere;
+  text-align: right;
+  justify-content: flex-end;
+  min-width: 0;
+}
+
 .metric-unit {
   font-size: 9.5px;
   color: var(--ink-faint);

@@ -14,6 +14,31 @@ Not yet tagged. Gate 0 and most of Gate 1 are complete; the remaining blockers
 are branch protection on `main`, and the parts of device testing that need a
 person: Safari, Firefox, touch and a screen reader.
 
+### Higher cortical function, as the route a lesion cut
+
+- **A new model and scene: `higher-brain-function`.** A right-handed brain, and
+  every clinical task — understanding, repeating, speaking, naming, reading,
+  writing, using a tool with either hand, attending to either side of space,
+  laying down a memory — declared as the named structures it passes through. A
+  lesion damages structures and connections; which tasks survive, where the
+  signal stops and what the pattern is called are all **solved** from those
+  routes. No syndrome is stored anywhere: cut the arcuate fasciculus and
+  repetition fails while comprehension and fluency do not, because repetition is
+  the one task whose route uses it.
+- **Handedness is an input, and only the right-handed case is answered.** The
+  model refuses any other value rather than mirroring the brain, because left
+  handedness is not the mirror image of right: most left-handers are also
+  left-dominant for language. Spatial attention is deliberately not filed with
+  language, which is why one parietal lobe is not the mirror of the other.
+- **The atlas's tract meshes are on screen for the first time.** The brain file
+  has carried fifty-four of them — the arcuate fasciculus among them — and no
+  scene had ever drawn one. A disconnection now lights the bundle it cuts.
+- **Not a lesion localiser**, and it says so on the screen: one normal specimen,
+  whole named structures, no imaging, no course over time, and no statement
+  about anybody. Medical review is not yet recorded.
+- A read-out row whose value is a phrase now wraps instead of widening the
+  panel, which is what had pushed it off the side of a phone.
+
 ### Every vessel in the product was drawn inside out
 
 - **Tubes were wound the wrong way, and had no ends.** All 42 of them, plus the

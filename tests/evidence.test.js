@@ -15,6 +15,7 @@ import {
   CUFF_EVIDENCE,
   EVIDENCE_REGISTRIES,
   HEPATORENAL_EVIDENCE,
+  HIGHER_BRAIN_FUNCTION_EVIDENCE,
   HIP_OA_EVIDENCE,
   URINARY_OBSTRUCTION_EVIDENCE,
   LOBAR_COLLAPSE_EVIDENCE,
@@ -86,12 +87,14 @@ const FILE_LAYERS = {
   'acl-injury-physiology.test.js': LAYER.EXTERNAL,
   'rotator-cuff-tear-physiology.test.js': LAYER.EXTERNAL,
   'hip-osteoarthritis-physiology.test.js': LAYER.EXTERNAL,
+  'higher-brain-function-physiology.test.js': LAYER.EXTERNAL,
   'calibration.test.js': LAYER.CALIBRATION,
 };
 const layerOf = (file) => FILE_LAYERS[file] ?? LAYER.INTEGRITY;
 
 const DOSSIERS = {
   circulation: 'docs/model-evidence/circulation.md',
+  'higher-brain-function': 'docs/model-evidence/higher-brain-function.md',
   copd: 'docs/model-evidence/copd.md',
   asthma: 'docs/model-evidence/asthma.md',
   'portal-hypertension': 'docs/model-evidence/cirrhosis-portal-hypertension.md',
@@ -243,6 +246,7 @@ test('the registries cover every model-backed scene and nothing is duplicated ac
     EVIDENCE_REGISTRIES.map((registry) => registry[0].scene),
     [
       'circulation',
+      'higher-brain-function',
       'copd',
       'asthma',
       'portal-hypertension',
@@ -271,6 +275,7 @@ test('the registries cover every model-backed scene and nothing is duplicated ac
     ]
   );
   assert.ok(CIRCULATION_EVIDENCE.length >= 8);
+  assert.ok(HIGHER_BRAIN_FUNCTION_EVIDENCE.length >= 8);
   assert.ok(COPD_EVIDENCE.length >= 8);
   assert.ok(ASTHMA_EVIDENCE.length >= 8);
   assert.ok(PORTAL_EVIDENCE.length >= 8);
