@@ -1261,7 +1261,7 @@ test('recording: leaving while the recorder chunks load cancels rather than re-e
   const captured = body.indexOf('const startedActive = active;');
   assert.ok(captured >= 0, 'recordVideo must read whether it was already in the sequence');
   assert.ok(captured < imports, 'and read it before the first await, or it is reading the answer afterwards');
-  const abort = body.indexOf('if (startedActive && !active)');
+  const abort = body.indexOf('if (startedActive && (!active || sessionId !== startedSession))');
   assert.ok(abort > imports, 'the departure has to be checked after the chunks resolve');
   assert.ok(abort < body.indexOf('enter();'), 'and before anything re-enters the sequence');
   assert.match(body.slice(abort, body.indexOf('enter();')), /return \{[^}]*complete: false/, 'an abandoned export returns an unfinished result, never a blob');

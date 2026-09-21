@@ -49,6 +49,8 @@
  *
  * Options:
  *   --engine <name>  chromium (default), firefox or webkit
+ *   --dpr <number>   device scale factor (default 1)
+ *   --dist <path>    build directory (default dist)
  *   the scene slugs to drive, as arguments, after an optional output directory
  *   for the screenshots.
  */
@@ -72,6 +74,13 @@ import { VIDEO_MIME_CANDIDATES } from '../src/app/videoRecorder.js';
  * them.
  */
 const argv = process.argv.slice(2);
+const dprAt = argv.indexOf('--dpr');
+const dpr = dprAt >= 0 ? Number(argv[dprAt + 1]) : 1;
+if (dprAt >= 0) argv.splice(dprAt, 2);
+if (!Number.isFinite(dpr) || dpr <= 0 || dpr > 4) {
+  console.error('--dpr must be a number greater than 0 and at most 4.');
+  process.exit(1);
+}
 const engineAt = argv.indexOf('--engine');
 const engineName = engineAt >= 0 ? argv[engineAt + 1] : 'chromium';
 if (engineAt >= 0) argv.splice(engineAt, 2);
@@ -80,7 +89,9 @@ if (!['chromium', 'firefox', 'webkit'].includes(engineName)) {
   process.exit(1);
 }
 
-const distDir = resolve('dist');
+const distAt = argv.indexOf('--dist');
+const distDir = resolve(distAt >= 0 ? argv[distAt + 1] : 'dist');
+if (distAt >= 0) argv.splice(distAt, 2);
 const outDir = argv[0] ?? '/tmp/disease-shots';
 mkdirSync(outDir, { recursive: true });
 
@@ -99,7 +110,8 @@ const browser = await engine.launch(
   engineName === 'chromium' ? { executablePath: chromiumExecutable(engine) } : {}
 );
 if (engineName !== 'chromium') console.log(`engine: ${engineName}`);
-const page = await browser.newPage({ viewport: { width: 1440, height: 900 } });
+const page = await browser.newPage({ viewport: { width: 1440, height: 900 }, deviceScaleFactor: dpr });
+console.log(`deviceScaleFactor: ${dpr}`);
 
 /**
  * Whether this engine can make a WebGL2 context *here*.
@@ -125,7 +137,7 @@ if (!hasWebgl2) {
   );
   await browser.close();
   closeServer();
-  process.exit(0);
+  process.exit(dpr > 1 ? 1 : 0);
 }
 
 const state = () =>
@@ -317,9 +329,34 @@ for (const slug of SLUGS) {
           })
       );
 
+      // Observe the actual Three.js targets during the probe, not only the
+      // encoded file (which can have the right size despite oversized passes).
+      await page.evaluate(() => {
+        const viewer = window.__app.viewer;
+        const capture = viewer.captureSize.bind(viewer);
+        window.__captureProbe = [];
+        viewer.captureSize = (size) => {
+          const release = capture(size);
+          const targets = [viewer.composer.renderTarget1, viewer.composer.renderTarget2];
+          window.__captureProbe.push({
+            requested: size,
+            rendererRatio: viewer.renderer.getPixelRatio(),
+            targets: targets.map(({width, height}) => ({width, height})),
+          });
+          return release;
+        };
+      });
       const downloadPromise = page.waitForEvent('download', { timeout: 90_000 }).catch(() => null);
       await agree.click();
       const download = await downloadPromise;
+      const probes = await page.evaluate(() => window.__captureProbe);
+      if (!probes.length) problems.push('no capture-size probe was observed');
+      for (const probe of probes) {
+        if (probe.rendererRatio !== 1 || probe.targets.some(
+          (target) => target.width !== probe.requested.width || target.height !== probe.requested.height
+        )) problems.push(`capture targets exceed the requested size: ${JSON.stringify(probe)}`);
+        console.log(`  DPR ${dpr} capture probe: ${JSON.stringify(probe)}`);
+      }
       if (!download) problems.push('no file arrived within 90s of agreeing');
       else {
         const name = download.suggestedFilename();
@@ -443,6 +480,11 @@ if (report.length === 0) {
   );
   await browser.close();
   closeServer();
+  process.exit(1);
+}
+
+if (dpr > 1 && exportsRecorded === 0) {
+  console.error('DPR validation requires at least one recorded and decoded export.');
   process.exit(1);
 }
 

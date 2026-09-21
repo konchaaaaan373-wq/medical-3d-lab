@@ -81,6 +81,8 @@ export function createReelMode({
   const overlay = createReelOverlay();
   let formatId = 'reel';
   let active = false;
+  // Identity of one visit; an exit followed by re-entry is a different request owner.
+  let sessionId = 0;
   let metrics = null;
   /** The most recent overlay description, for the exported frame. */
   let lastFrame = null;
@@ -232,6 +234,7 @@ export function createReelMode({
   function enter() {
     if (active) return;
     active = true;
+    sessionId += 1;
     // Taken before anything is touched, so leaving is exact no matter how many
     // times the viewer comes and goes.
     sessionSnapshot = captureState?.() ?? null;
@@ -262,6 +265,7 @@ export function createReelMode({
   function exit() {
     if (!active) return;
     active = false;
+    sessionId += 1;
     timeline.stop();
 
     ui.classList.remove('is-reel');
@@ -318,11 +322,12 @@ export function createReelMode({
     // Without this, `!active` below reads that departure as "not in the
     // sequence yet", re-enters the sequence they just left, and records it.
     const startedActive = active;
+    const startedSession = sessionId;
     const [{ paintReelFrame }, { createCanvasRecorder }] = await Promise.all([
       import('./reelFramePainter.js'),
       import('./videoRecorder.js'),
     ]);
-    if (startedActive && !active) {
+    if (startedActive && (!active || sessionId !== startedSession)) {
       return { blob: null, mimeType: '', formatId, complete: false, width: 0, height: 0, sizeReason: 'left while loading' };
     }
     if (!active) {
@@ -467,6 +472,9 @@ export function createReelMode({
   return {
     get active() {
       return active;
+    },
+    get sessionId() {
+      return sessionId;
     },
     get elapsed() {
       return timeline.elapsed;

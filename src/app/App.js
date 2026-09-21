@@ -1694,6 +1694,7 @@ export async function createApp({ stage, ui, onRetryModel = null }) {
   /** @type {ReturnType<typeof createVideoConsentDialog>|null} */
   let videoConsent = null;
   let videoRecording = false;
+  let videoConsentRequest = null;
 
   /**
    * What the file says about itself, once it is somewhere this app is not.
@@ -1718,28 +1719,43 @@ export async function createApp({ stage, ui, onRetryModel = null }) {
   }
 
   async function requestVideoDownload() {
-    if (videoConsent || videoRecording) return;
-    const terms = videoConsentTerms(entry?.id ?? meta.id);
-    const { createVideoConsentDialog } = await import('../components/VideoConsentDialog.js');
-    // A second press while the first was still loading would build two.
-    if (videoConsent || videoRecording) return;
-    videoConsent = createVideoConsentDialog({
-      terms,
-      subject: {
-        title: meta.title,
-        titleJa: meta.titleJa,
-        caveat: meta.disclaimerShort ?? meta.disclaimer,
-        caveatJa: meta.disclaimerShortJa ?? meta.disclaimerJa,
-      },
-      onAgree: () => {
-        videoConsent = null;
-        void runVideoDownload(terms);
-      },
-      onCancel: () => {
-        videoConsent = null;
-      },
-    });
-    videoConsent.open(ui);
+    if (!reelMode?.active || videoConsent || videoRecording) return;
+    const sessionId = reelMode.sessionId;
+    if (videoConsentRequest?.sessionId === sessionId) return;
+    const request = { sessionId };
+    videoConsentRequest = request;
+    const isCurrent = () => videoConsentRequest === request &&
+      reelMode.active && reelMode.sessionId === sessionId;
+    try {
+      const terms = videoConsentTerms(entry?.id ?? meta.id);
+      const { createVideoConsentDialog } = await import('../components/VideoConsentDialog.js');
+      // Exit, including Exit followed by re-entry, invalidates this visit's request.
+      if (!isCurrent() || videoConsent || videoRecording) return;
+      videoConsent = createVideoConsentDialog({
+        terms,
+        subject: {
+          title: meta.title,
+          titleJa: meta.titleJa,
+          caveat: meta.disclaimerShort ?? meta.disclaimer,
+          caveatJa: meta.disclaimerShortJa ?? meta.disclaimerJa,
+        },
+        onAgree: () => {
+          videoConsent = null;
+          if (reelMode.active && reelMode.sessionId === sessionId) void runVideoDownload(terms);
+        },
+        onCancel: () => {
+          videoConsent = null;
+        },
+      });
+      videoConsent.open(ui);
+    } catch (error) {
+      if (!isCurrent()) return;
+      console.warn('[video] the consent dialog could not load', error);
+      reelMode.setDownloadLabel(VIDEO_EXPORT_COPY.failedShort, { busy: false });
+    } finally {
+      // An older import must not unlock a new visit's in-flight request.
+      if (videoConsentRequest === request) videoConsentRequest = null;
+    }
   }
 
   async function runVideoDownload(terms) {
