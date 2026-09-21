@@ -31,6 +31,7 @@ export class Viewer {
     this.container = container;
     this.clock = new THREE.Clock();
     this.frameHandlers = new Set();
+    this.afterFrameHandlers = new Set();
     this.resizeHandlers = new Set();
     this.running = false;
     this.qualityHandlers = new Set();
@@ -126,6 +127,23 @@ export class Viewer {
   }
 
   /**
+   * Register a callback that runs *after* the frame has been rendered, in the
+   * same task.
+   *
+   * The renderer keeps `preserveDrawingBuffer: false`, so the drawing buffer
+   * is valid only until the browser composites — which happens after this
+   * task returns. Anything that has to read the pixels it just drew (the
+   * video export copies them into a 2D canvas) has to do it here. A handler
+   * registered on `onFrame` would read the *previous* frame, or an empty one.
+   *
+   * Returns an unsubscribe function.
+   */
+  onAfterFrame(handler) {
+    this.afterFrameHandlers.add(handler);
+    return () => this.afterFrameHandlers.delete(handler);
+  }
+
+  /**
    * Register a callback for "the drawing buffer changed size".
    * Scenes use this to keep resolution-dependent uniforms in sync — including
    * during an off-screen snapshot, which resizes without a window event.
@@ -189,6 +207,8 @@ export class Viewer {
     this.controls.update();
     for (const handler of this.frameHandlers) handler(dt, elapsed);
     this.composer.render();
+    // Same task as the render, so the drawing buffer is still readable.
+    for (const handler of this.afterFrameHandlers) handler(dt, elapsed);
     this._watchPerformance(dt);
   }
 

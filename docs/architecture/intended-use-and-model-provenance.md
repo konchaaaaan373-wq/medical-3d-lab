@@ -269,6 +269,51 @@ model-driven chamber are two things at different scales, and
 
 ---
 
+## 5b. A file that leaves the app
+
+A downloaded video is the first artefact this product makes that **nothing here
+can explain afterwards**. The scope panel, the console's disclaimer, the model
+card, the badge and the route all stay behind. Whoever opens the file next may
+have no idea what a `mechanismLevel` is, and no way to ask.
+
+So an export is not a feature bolted onto a scene; it is a claim leaving the
+building, and it answers to the same registers as everything else.
+
+- **The rule lives in one place.** `src/app/videoExport.js` decides whether a
+  scene may produce a file at all, reading the records that already exist: the
+  model profile (a `mechanismLevel` of `none` has no motion to export), the
+  asset manifest's licence assessment (a video is a redistribution — an asset
+  whose `redistribution` is not `allowed` stops the file), and the candidate
+  list (an asset still under examination is not handed out). Nothing new is
+  declared, and a reader pressing a button does not change an answer.
+- **The consent screen is assembled, not written.** Its clauses come from the
+  profile's `prohibitedUses` and from the credits the asset manifest records,
+  so a scene that adds a prohibition or an attributed asset changes its
+  consent screen without anybody remembering to. The sentences live in
+  `src/data/videoExport.js`; the rules never do.
+- **Consent is per file, not a preference.** It is an agreement about one
+  model, whose prohibited uses and credits differ from the next one's; nothing
+  is stored, and nothing is sent. This is the opposite of the usage-recording
+  setting on purpose — that one prompts nobody because nothing is at stake if
+  it is never opened.
+- **The file carries its own bounds.** Every exported frame is composited:
+  the rendered canvas, the sequence's own captions, and a footer naming the
+  model, the sentence that bounds it (the scene's own disclaimer, quoted) and
+  any credit the geometry's licence asks for. Recording the bare canvas would
+  produce a disease model with its caveats removed, which is the one artefact
+  this product must not hand out.
+- **The β is unaffected.** The β publishes anatomy, anatomy makes no mechanism
+  claim, and the rule refuses it — so no download surface exists in the public
+  build. `tests/video-export.test.js` holds that against the published
+  manifest rather than against a list somebody maintains.
+
+What this does *not* do: it grants no new intended use. A file taken from a
+`general-education` / `patient-explanation` / `medical-education` model is that
+same model in a different container, and diagnosis, treatment selection and
+dose selection are outside it in a video exactly as they are on screen.
+
+---
+
 ## 6. What this decision does not do
 
 It does not change any scene's `status`, any review state, any A level, any

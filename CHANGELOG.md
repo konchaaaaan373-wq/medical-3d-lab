@@ -14,6 +14,38 @@ Not yet tagged. Gate 0 and most of Gate 1 are complete; the remaining blockers
 are branch protection on `main`, and the parts of device testing that need a
 person: Safari, Firefox, touch and a screen reader.
 
+### A disease sequence can now be taken away as a video file
+
+- **The 15-second sequence saves as a video.** On every scene that has one —
+  COPD, asthma, heart failure, portal hypertension, hepatorenal syndrome and
+  higher cortical function — the sequence's controls now carry a download. The
+  file is made in the browser from the frames your own machine drew; nothing is
+  uploaded, and there is no audio.
+- **The captions are in the picture, not over it.** The recording composites
+  the model and the sequence's own captions and figures, and adds a footer to
+  every frame naming the model and the sentence that bounds it — the same
+  disclaimer the console shows. A video of a disease model with its caveats
+  left behind is the one thing this product will not hand out.
+- **It asks first, every time.** The terms are assembled from the model's own
+  record: what it is, what it may not be used for, that the burnt-in caption
+  stays in view, and any credit the geometry's licence asks for — which is why
+  the brain's sequence asks for one thing more than the lung's, without anybody
+  writing it a screen. Nothing is
+  stored and nothing is remembered — a second file from a second model is a
+  second agreement, because the two models forbid different things.
+- **Anatomy is not affected.** An atlas makes no mechanism claim and has no
+  motion to export, so the published models offer no download at all.
+- **Leaving the sequence now actually leaves it.** Its caption layer and its
+  control row were added on the first entry and never removed, so exiting left
+  the last frame's numbers, a caption and a row of controls drawn over the
+  interactive scene. Both come off the page with the sequence.
+- **The sequence's four frame shapes each export as themselves.** A 16:9 file
+  used to carry the 9:16 layout — bigger figures, in different places, than the
+  ones on screen.
+- **The sequence's controls go quiet while it records.** Changing the frame
+  shape part-way through stretched the rest of the take into the old one and
+  named the file after a shape it was not.
+
 ### Higher cortical function, as the route a lesion cut
 
 - **A new model and scene: `higher-brain-function`.** A right-handed brain, and

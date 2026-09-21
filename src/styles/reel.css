@@ -261,6 +261,15 @@
 }
 
 /* ---------- out-of-frame controls ---------- */
+/*
+ * The row wraps, and is bounded by the viewport.
+ *
+ * It gained a download control, and at 390px that pushed both ends off the
+ * screen — the 9:16 chip half off the left, "Exit (Esc)" half off the right.
+ * Photographed by `npm run shots:phone -- --scene copd --preview`
+ * (`6-reel-controls.png`); `verify:ui` does not open this surface, so nothing
+ * measured it.
+ */
 .reel-chrome {
   position: fixed;
   left: 50%;
@@ -269,6 +278,9 @@
   z-index: 30;
   display: flex;
   align-items: center;
+  justify-content: center;
+  flex-wrap: wrap;
+  max-width: calc(100vw - 16px);
   gap: 8px;
   padding: 5px;
   border-radius: 999px;
@@ -319,6 +331,30 @@
 
 .reel-frame[data-format='wide'] .reel-cards {
   top: 6%;
+}
+
+/*
+ * A short frame has no empty band for the figures, so they are read over the
+ * model instead of beside it.
+ *
+ * At 16:9 and 1:1 the comparison fills the frame — measured, not assumed: a
+ * 16:9 recording of heart failure has both ventricles spanning nearly the whole
+ * height, and the same is true on screen (F-171). Moving the cards has nowhere
+ * to go and pulling the camera back shrinks the subject to make room for its
+ * own caption. So the cards get the backing the marker and the callout already
+ * use, and stay where the reader expects them.
+ *
+ * `paintReelFrame` mirrors this for the exported frame; the colour and the
+ * formats it applies to are checked against this rule in
+ * `tests/video-export.test.js`.
+ */
+.reel-frame[data-format='wide'] .reel-cards,
+.reel-frame[data-format='square'] .reel-cards {
+  /* Faded at the foot rather than cut off there. A flat band ends in a hard
+     horizontal seam across the subject — measured, on both surfaces, and worse
+     than the overlap it fixes. The hook's scrim fades for the same reason. */
+  background: linear-gradient(to bottom, rgba(4, 6, 12, 0.78) 0%, rgba(4, 6, 12, 0.62) 55%, rgba(4, 6, 12, 0) 100%);
+  padding: 0.7em 0.9em 2.2em;
 }
 
 .reel-frame[data-format='wide'] .reel-card-ef {
