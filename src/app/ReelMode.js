@@ -330,8 +330,10 @@ export function createReelMode({
     if (startedActive && (!active || sessionId !== startedSession)) {
       return { blob: null, mimeType: '', formatId, complete: false, width: 0, height: 0, sizeReason: 'left while loading' };
     }
+    let recordingSession = startedSession;
     if (!active) {
       enter();
+      recordingSession = sessionId;
       // Entering sets the format, and `setFormat` defers `viewer.resize()` to
       // the next frame — so the canvas is still the *interactive* one for a
       // tick after `enter()` returns. Measuring it then wrote a file in the
@@ -340,6 +342,9 @@ export function createReelMode({
       await nextFrame();
       await nextFrame();
     }
+    const cancelled = () => ({ blob: null, mimeType: '', formatId, complete: false, width: 0, height: 0, sizeReason: 'left before recording' });
+    const sameVisit = () => active && sessionId === recordingSession;
+    if (!sameVisit()) return cancelled();
     // The shape the file is: read once, here. `setFormat` can still be called
     // while this runs (the chrome disables its chips, and a keyboard or a
     // script is not the chrome), and a file named after the format the reader
@@ -371,6 +376,14 @@ export function createReelMode({
         release = null;
         await nextFrame();
       }
+    }
+
+    // The sizing probe awaits frames too: loading is not the only point at
+    // which the reader can leave, including leaving and entering a new visit.
+    if (!sameVisit()) {
+      release?.();
+      if (release) viewer.resize();
+      return cancelled();
     }
 
     // Even dimensions: the H.264 encoders behind `video/mp4` reject odd ones,
@@ -406,9 +419,9 @@ export function createReelMode({
       restart();
       paint();
       recorder.start();
-      const complete = await sequenceEnd(onProgress);
+      const complete = await sequenceEnd(onProgress, recordingSession);
       const blob = await recorder.stop();
-      return { blob, mimeType: recorder.mimeType, formatId: recordedFormat, complete, width, height, sizeReason: size.reason };
+      return { blob, mimeType: recorder.mimeType, formatId: recordedFormat, complete: complete && sameVisit(), width, height, sizeReason: size.reason };
     } finally {
       detach?.();
       release?.();
@@ -430,7 +443,8 @@ export function createReelMode({
   /** One animation frame, as a promise. */
   const nextFrame = () => new Promise((resolve) => requestAnimationFrame(() => resolve()));
 
-  function sequenceEnd(onProgress) {
+  function sequenceEnd(onProgress, recordingSession) {
+    const sameVisit = () => active && sessionId === recordingSession;
     const duration = reel.durationSeconds;
     return new Promise((resolve) => {
       let settled = false;
@@ -442,10 +456,10 @@ export function createReelMode({
       // A backgrounded tab stops calling `requestAnimationFrame` altogether.
       // Without this the promise would never settle and the recorder would run
       // until the page was closed.
-      const guard = setTimeout(() => finish(timeline.elapsed >= duration), (duration + 20) * 1000);
+      const guard = setTimeout(() => finish(sameVisit() && timeline.elapsed >= duration), (duration + 20) * 1000);
       const step = () => {
         if (settled) return;
-        if (!active) {
+        if (!sameVisit()) {
           clearTimeout(guard);
           finish(false);
           return;
@@ -454,7 +468,7 @@ export function createReelMode({
         if (timeline.elapsed >= duration) {
           setTimeout(() => {
             clearTimeout(guard);
-            finish(true);
+            finish(sameVisit());
           }, RECORDING_TAIL_MS);
           return;
         }
