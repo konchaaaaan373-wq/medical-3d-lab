@@ -1,0 +1,231 @@
+/*
+ * Video export: the consent screen, and the download control inside the reel.
+ *
+ * The dialog is the one modal this product opens without being asked to open
+ * something — it is the last screen before a file leaves — so it is sized to be
+ * read rather than dismissed: full-height scroll on a phone, a column on a
+ * desktop, and the agree button unreachable until every line is ticked.
+ */
+
+.video-consent {
+  position: fixed;
+  inset: 0;
+  z-index: 80;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 16px;
+  pointer-events: auto;
+}
+
+.video-consent-scrim {
+  position: absolute;
+  inset: 0;
+  background: rgba(2, 4, 9, 0.78);
+  backdrop-filter: blur(3px);
+}
+
+.video-consent-panel {
+  position: relative;
+  width: min(620px, 100%);
+  max-height: min(86vh, 900px);
+  overflow-y: auto;
+  padding: 22px 22px 18px;
+  border-radius: var(--radius);
+  border: 1px solid var(--border);
+  background: var(--panel-sheet);
+  box-shadow: var(--shadow);
+  color: var(--ink);
+}
+
+.video-consent-title {
+  margin: 0 0 10px;
+  font-size: 19px;
+  font-weight: var(--weight-bold);
+  line-height: 1.35;
+}
+
+.video-consent-intro {
+  margin: 0 0 12px;
+  font-size: 13px;
+  line-height: 1.65;
+  color: var(--ink-dim);
+}
+
+/* The model's own sentence, quoted from the console rather than rewritten. */
+.video-consent-subject {
+  margin: 0 0 16px;
+  padding: 10px 12px;
+  border-left: 2px solid var(--accent-border);
+  background: var(--accent-soft);
+  font-size: 13px;
+  line-height: 1.6;
+}
+
+.video-consent-section {
+  margin: 0 0 16px;
+}
+
+.video-consent-section-title {
+  margin: 0 0 8px;
+  font-size: 12px;
+  font-weight: var(--weight-semibold);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--ink-faint);
+}
+
+.video-consent-clauses,
+.video-consent-contents {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  display: grid;
+  gap: 10px;
+}
+
+.video-consent-clause {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 10px 12px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--panel);
+}
+
+/* A 20px box inside a 44px row: the label is part of the target, and it is
+   the label a reader on a phone actually hits. */
+.video-consent-box {
+  width: 20px;
+  height: 20px;
+  margin: 2px 0 0;
+  flex: none;
+  accent-color: var(--accent);
+}
+
+.video-consent-clause-text {
+  flex: 1 1 auto;
+  min-height: 24px;
+  display: flex;
+  align-items: center;
+  font-size: 13px;
+  line-height: 1.65;
+  cursor: pointer;
+}
+
+.video-consent-content {
+  position: relative;
+  padding-left: 16px;
+  font-size: 13px;
+  line-height: 1.6;
+  color: var(--ink-dim);
+}
+
+.video-consent-content::before {
+  content: '·';
+  position: absolute;
+  left: 4px;
+  color: var(--ink-faint);
+}
+
+.video-consent-hint {
+  margin: 0 0 10px;
+  font-size: 12px;
+  color: var(--caution-ink);
+}
+
+.video-consent-actions {
+  display: flex;
+  gap: 10px;
+  justify-content: flex-end;
+  flex-wrap: wrap;
+}
+
+.video-consent-actions button {
+  min-height: 44px;
+  padding: 0 18px;
+  border-radius: var(--radius);
+  font-family: inherit;
+  font-size: 14px;
+  font-weight: var(--weight-semibold);
+  cursor: pointer;
+}
+
+.video-consent-cancel {
+  border: 1px solid var(--border);
+  background: var(--control-bg);
+  color: var(--ink-dim);
+}
+
+.video-consent-cancel:hover {
+  background: var(--control-hover);
+  color: var(--ink);
+}
+
+.video-consent-agree {
+  border: 1px solid var(--accent-border);
+  background: var(--accent);
+  color: var(--accent-ink);
+}
+
+.video-consent-agree:hover {
+  background: var(--accent-hover);
+}
+
+.video-consent-agree[disabled] {
+  background: var(--control-bg);
+  border-color: var(--border);
+  color: var(--ink-faint);
+  cursor: not-allowed;
+}
+
+.video-consent-terms {
+  display: inline-block;
+  margin-top: 14px;
+  font-size: 12px;
+  color: var(--ink-faint);
+}
+
+.video-consent-terms:hover {
+  color: var(--accent);
+}
+
+/* ---------- the control inside the reel ---------- */
+.reel-chip.is-download {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  min-height: 44px;
+  color: var(--ink);
+  border: 1px solid var(--accent-border);
+  background: var(--accent-soft);
+}
+
+.reel-chip.is-download:hover {
+  background: var(--accent);
+  color: var(--accent-ink);
+}
+
+.reel-chip.is-download.is-busy,
+.reel-chip.is-download[disabled] {
+  color: var(--ink-faint);
+  border-color: var(--border);
+  background: var(--control-bg);
+  cursor: progress;
+}
+
+.reel-chip-mark {
+  font-size: 12px;
+}
+
+@media (max-width: 720px) {
+  .video-consent-panel {
+    max-height: 92vh;
+    padding: 18px 16px 16px;
+  }
+
+  .video-consent-actions button {
+    flex: 1 1 auto;
+  }
+}

@@ -13,6 +13,7 @@ import './styles/patient-presentation.css';
 import './styles/patient-fullscreen.css';
 import './styles/education-access.css';
 import './styles/reel.css';
+import './styles/video-export.css';
 import './styles/explorer.css';
 import './styles/explorer-search.css';
 import './styles/access-explorer.css';

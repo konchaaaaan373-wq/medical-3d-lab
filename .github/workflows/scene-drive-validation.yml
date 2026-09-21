@@ -163,7 +163,12 @@ jobs:
       # The first argument is the screenshot directory, not a scene. Passing a
       # slug there silently turns it into a directory name and drops that scene
       # from the drive, which is what the script's own usage note used to say.
-      - name: Drive baseline to disease and back
+      # Also the video export, on the scenes that carry a 15-second sequence:
+      # consent, record, and play the written file back in the browser. That
+      # adds about 25 seconds per such scene, and the artefact below carries
+      # the file and the frame pulled out of it, so a reviewer can watch what
+      # a reader would have downloaded.
+      - name: Drive baseline to disease and back, and export the sequence
         env:
           DISEASE_SCENES: ${{ inputs.disease_scenes }}
         run: npm run verify:disease -- disease-shots ${DISEASE_SCENES}

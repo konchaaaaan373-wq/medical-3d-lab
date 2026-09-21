@@ -261,6 +261,15 @@
 }
 
 /* ---------- out-of-frame controls ---------- */
+/*
+ * The row wraps, and is bounded by the viewport.
+ *
+ * It gained a download control, and at 390px that pushed both ends off the
+ * screen — the 9:16 chip half off the left, "Exit (Esc)" half off the right.
+ * Photographed by `npm run shots:phone -- --scene copd --preview`
+ * (`6-reel-controls.png`); `verify:ui` does not open this surface, so nothing
+ * measured it.
+ */
 .reel-chrome {
   position: fixed;
   left: 50%;
@@ -269,6 +278,9 @@
   z-index: 30;
   display: flex;
   align-items: center;
+  justify-content: center;
+  flex-wrap: wrap;
+  max-width: calc(100vw - 16px);
   gap: 8px;
   padding: 5px;
   border-radius: 999px;

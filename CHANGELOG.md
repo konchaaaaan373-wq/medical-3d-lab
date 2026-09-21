@@ -14,6 +14,26 @@ Not yet tagged. Gate 0 and most of Gate 1 are complete; the remaining blockers
 are branch protection on `main`, and the parts of device testing that need a
 person: Safari, Firefox, touch and a screen reader.
 
+### A disease sequence can now be taken away as a video file
+
+- **The 15-second sequence saves as a video.** On the scenes that have one —
+  COPD, asthma, heart failure, portal hypertension, hepatorenal syndrome — the
+  sequence's controls now carry a download. The file is made in the browser
+  from the frames your own machine drew; nothing is uploaded, and there is no
+  audio.
+- **The captions are in the picture, not over it.** The recording composites
+  the model and the sequence's own captions and figures, and adds a footer to
+  every frame naming the model and the sentence that bounds it — the same
+  disclaimer the console shows. A video of a disease model with its caveats
+  left behind is the one thing this product will not hand out.
+- **It asks first, every time.** The terms are assembled from the model's own
+  record: what it is, what it may not be used for, that the burnt-in caption
+  stays in view, and any credit the geometry's licence asks for. Nothing is
+  stored and nothing is remembered — a second file from a second model is a
+  second agreement, because the two models forbid different things.
+- **Anatomy is not affected.** An atlas makes no mechanism claim and has no
+  motion to export, so the published models offer no download at all.
+
 ### Every vessel in the product was drawn inside out
 
 - **Tubes were wound the wrong way, and had no ends.** All 42 of them, plus the

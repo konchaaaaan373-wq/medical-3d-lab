@@ -15,7 +15,10 @@
  *
  * The five states are the ones F-101's checklist walks: what a phone shows on
  * arrival, what it shows after a part is picked, the sheet behind 詳しく見る,
- * the bottom control bar on its own, and the account dialog. Taken together
+ * the bottom control bar on its own, and the account dialog. A disease scene
+ * with a 15-second sequence adds two more — the sequence's own controls, and
+ * the consent screen its download asks for, which is the one modal here that
+ * has to be read rather than dismissed. Taken together
  * they are the evidence a reviewer needs without a phone in their hand — and
  * they are taken the same way every time, so a before and an after differ by
  * the change rather than by how somebody held the device.
@@ -206,6 +209,39 @@ if (await account.count()) {
   await settle(900);
 }
 await shot('5-login-modal');
+await page.keyboard.press('Escape');
+await settle(500);
+
+// --- the consent screen a video download asks for
+//
+// Only on a scene that has a sequence to record, which is why the default
+// scene here photographs five states and a disease scene photographs six. It
+// is the one modal in the product that has to be *read* rather than dismissed,
+// and a phone is where a wall of text stops being readable — so the picture is
+// the question, and `verify:ui` still owns the measurements.
+const reelButton = page.locator('button[data-control="reel"]');
+if (await reelButton.count()) {
+  await reelButton.first().click();
+  await settle(1200);
+  // The sequence's own controls first: they gained a download, and a row of
+  // chips that wraps or runs off the side of a phone is only visible here.
+  await shot('6-reel-controls');
+  const download = page.locator('button[data-control="video-download"]');
+  if (await download.count()) {
+    await download.first().click();
+    await page.waitForSelector('.video-consent-panel', { timeout: 5000 }).catch(() => {});
+    await settle(500);
+    await shot('7-video-consent');
+    await page.keyboard.press('Escape');
+    await settle(400);
+  } else {
+    console.log('  (this scene offers no video download — 7 not taken)');
+  }
+  const exitReel = page.locator('.reel-chip.is-exit');
+  if (await exitReel.count()) await exitReel.first().click().catch(() => {});
+} else {
+  console.log('  (no sequence on this scene — 6 and 7 not taken)');
+}
 
 await browser.close();
 server.close();

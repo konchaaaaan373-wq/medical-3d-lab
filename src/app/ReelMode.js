@@ -2,6 +2,8 @@ import * as THREE from 'three';
 import { Timeline } from '../utils/Timeline.js';
 import { createReelOverlay } from '../components/ReelOverlay.js';
 import { createReelChrome } from '../components/ReelChrome.js';
+import { paintReelFrame } from './reelFramePainter.js';
+import { createCanvasRecorder } from './videoRecorder.js';
 import { distanceToFit } from './framing.js';
 import { fovForAspect } from './Viewer.js';
 
@@ -12,6 +14,17 @@ export const REEL_FORMATS = [
   { id: 'square', label: '1:1', width: 1080, height: 1080 },
   { id: 'wide', label: '16:9', width: 1920, height: 1080 },
 ];
+
+/** Frames per second asked of the recorder. Social video is 30; the sequence is authored for it. */
+const RECORDING_FPS = 30;
+
+/**
+ * How long the final frame is held in the file after the sequence ends.
+ *
+ * The last second is the take-home, and a cut on the instant it appears reads
+ * as a file that stopped early.
+ */
+const RECORDING_TAIL_MS = 600;
 
 /**
  * Runs a scene's 15-second social sequence.
@@ -52,11 +65,15 @@ export function createReelMode({
   getLanguage,
   captureState,
   restoreState,
+  onDownload,
+  getProvenance,
 }) {
   const overlay = createReelOverlay();
   let formatId = 'reel';
   let active = false;
   let metrics = null;
+  /** The most recent overlay description, for the exported frame. */
+  let lastFrame = null;
   /** Everything the interactive session looked like before the reel took over. */
   let sessionSnapshot = null;
 
@@ -66,6 +83,10 @@ export function createReelMode({
     onFormat: (id) => setFormat(id),
     onRestart: () => restart(),
     onExit: () => exit(),
+    // The app owns the offer: whether this scene may produce a file at all is
+    // a release question (`videoExport.js`), and what has to be agreed to
+    // first is a consent question. The sequence only knows how to play.
+    onDownload,
   });
 
   // Wall-clock, not the render loop's delta.
@@ -145,7 +166,11 @@ export function createReelMode({
     // Keep the controls' target in step so exiting hands back a sane camera.
     viewer.controls.target.copy(target);
 
-    overlay.render(reel.overlayAt(t, { language: resolveLanguage(), metrics }));
+    // Kept, not only rendered: the video export paints this same description
+    // into the recorded frame, so the file carries the captions the reader
+    // sees rather than a bare picture of the model.
+    lastFrame = reel.overlayAt(t, { language: resolveLanguage(), metrics });
+    overlay.render(lastFrame);
   }
 
   /** The video shows one language: bilingual captions are too much for social. */
@@ -244,6 +269,106 @@ export function createReelMode({
     requestAnimationFrame(() => viewer.resize());
   }
 
+  /**
+   * Records the sequence into a file, without an application in it.
+   *
+   * Two things are composited every frame, in this order: the rendered canvas,
+   * then the caption layer (`paintReelFrame`). The second is not decoration.
+   * `captureStream` sees the canvas and nothing else, so recording the bare
+   * canvas would produce exactly the artefact this product must not hand out —
+   * a disease model with its caveats stripped off. The provenance footer is
+   * painted on every frame for the same reason.
+   *
+   * The frames are copied in `onAfterFrame`, in the same task as the render:
+   * the renderer keeps `preserveDrawingBuffer: false`, so a copy taken any
+   * later reads an empty buffer.
+   *
+   * Resolves with `complete: false` rather than throwing when the reader
+   * leaves mid-recording; a partial file is not offered as a finished one.
+   *
+   * @param {{ onProgress?: (fraction: number) => void, MediaRecorderCtor?: Function }} [options]
+   * @returns {Promise<{ blob: Blob, mimeType: string, formatId: string, complete: boolean }>}
+   */
+  async function recordVideo({ onProgress = () => {}, MediaRecorderCtor } = {}) {
+    if (!active) enter();
+    const source = viewer.renderer.domElement;
+    // Even dimensions: the H.264 encoders behind `video/mp4` reject odd ones,
+    // and a canvas sized by CSS is odd about half the time.
+    const width = Math.max(2, Math.floor(source.width / 2) * 2);
+    const height = Math.max(2, Math.floor(source.height / 2) * 2);
+
+    const target = document.createElement('canvas');
+    target.width = width;
+    target.height = height;
+    const ctx = target.getContext('2d');
+
+    const provenance = getProvenance?.(resolveLanguage()) ?? null;
+    const paint = () => {
+      ctx.drawImage(source, 0, 0, width, height);
+      paintReelFrame(ctx, { frame: lastFrame ?? {}, width, height, provenance });
+    };
+
+    const detach = viewer.onAfterFrame(paint);
+    const recorder = createCanvasRecorder({
+      canvas: target,
+      fps: RECORDING_FPS,
+      ...(MediaRecorderCtor ? { MediaRecorderCtor } : {}),
+    });
+
+    // From the top, so the file is the whole sequence however long the reader
+    // had been watching when they pressed the button.
+    restart();
+    paint();
+    recorder.start();
+    const complete = await sequenceEnd(onProgress);
+    const blob = await recorder.stop();
+    detach();
+    return { blob, mimeType: recorder.mimeType, formatId, complete };
+  }
+
+  /**
+   * Resolves when the sequence has played out, `false` if it was abandoned.
+   *
+   * Watches the timeline rather than sleeping for its duration: the sequence
+   * advances on the wall clock and the renderer keeps up as best it can, so
+   * the moment the last frame has actually been drawn is the only honest
+   * signal that the file is finished. The tail keeps the take-home frame in
+   * the file rather than cutting on the instant it appears.
+   */
+  function sequenceEnd(onProgress) {
+    const duration = reel.durationSeconds;
+    return new Promise((resolve) => {
+      let settled = false;
+      const finish = (value) => {
+        if (settled) return;
+        settled = true;
+        resolve(value);
+      };
+      // A backgrounded tab stops calling `requestAnimationFrame` altogether.
+      // Without this the promise would never settle and the recorder would run
+      // until the page was closed.
+      const guard = setTimeout(() => finish(timeline.elapsed >= duration), (duration + 20) * 1000);
+      const step = () => {
+        if (settled) return;
+        if (!active) {
+          clearTimeout(guard);
+          finish(false);
+          return;
+        }
+        onProgress(Math.min(1, timeline.elapsed / duration));
+        if (timeline.elapsed >= duration) {
+          setTimeout(() => {
+            clearTimeout(guard);
+            finish(true);
+          }, RECORDING_TAIL_MS);
+          return;
+        }
+        requestAnimationFrame(step);
+      };
+      requestAnimationFrame(step);
+    });
+  }
+
   window.addEventListener('resize', () => {
     if (!active) return;
     syncOverlayScale();
@@ -267,6 +392,9 @@ export function createReelMode({
     exit,
     restart,
     setFormat,
+    recordVideo,
+    /** The download button's own label, while a recording runs. */
+    setDownloadLabel: (label, state) => chrome.setDownloadLabel(label, state),
     toggle: () => (active ? exit() : enter()),
     /**
      * Advance the sequence.

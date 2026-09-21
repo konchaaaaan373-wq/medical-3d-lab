@@ -33,14 +33,29 @@
  * scene whose controls include a treatment is not the worst state — read the
  * scene's own tests for the states that matter.
  *
+ * ## The video export
+ *
+ * A second phase, on the scenes that carry a 15-second sequence: enter the
+ * sequence, ask for the file, and check that the consent screen refuses until
+ * every clause is ticked and that a file with bytes in it actually arrives.
+ *
+ * It is here rather than in `node --test` because nothing below a real browser
+ * can answer the question. `MediaRecorder` over `canvas.captureStream()` is the
+ * whole mechanism; a unit test can check which container was asked for and
+ * whether the right frames were composited, and cannot check that the browser
+ * encoded anything at all. It is here rather than in its own script because
+ * these are the same scenes, in the same session, and a second browser check
+ * costs four cores and ten minutes of somebody's afternoon.
+ *
  * Options: the scene slugs to drive, as arguments, after an optional output
  * directory for the screenshots.
  */
-import { mkdirSync } from 'node:fs';
+import { mkdirSync, readFileSync, statSync, writeFileSync } from 'node:fs';
 import { join, resolve } from 'node:path';
 import { chromium } from 'playwright';
 import { chromiumExecutable } from './lib/browser.mjs';
 import { serveDist } from './lib/serve-dist.mjs';
+import { videoExportOffered } from '../src/app/videoExport.js';
 
 const distDir = resolve('dist');
 const outDir = process.argv[2] ?? '/tmp/disease-shots';
@@ -146,6 +161,81 @@ for (const slug of SLUGS) {
     }
   }
 
+  // --- the sequence as a file ---------------------------------------------
+  //
+  // `videoExportOffered` is the product's own rule, imported rather than
+  // restated: whether this scene may hand out a file is decided in one place,
+  // and this check reads it instead of keeping a list that would drift.
+  const animated = await page.evaluate(() => Boolean(window.__app?.reel));
+  const shouldOffer = videoExportOffered(slug, { animated });
+  const reelButton = page.locator('button[data-control="reel"]');
+  if (animated && (await reelButton.count())) {
+    await reelButton.first().click();
+    await page.waitForTimeout(1200);
+    const downloadButton = page.locator('button[data-control="video-download"]');
+    const offered = (await downloadButton.count()) > 0;
+    if (offered !== shouldOffer) {
+      problems.push(`the download button is ${offered ? 'offered' : 'absent'} but the rule says ${shouldOffer ? 'offered' : 'absent'}`);
+    }
+    if (offered) {
+      await downloadButton.first().click();
+      await page.waitForSelector('.video-consent-panel', { timeout: 5000 });
+      await page.screenshot({ path: join(outDir, `${slug}-video-consent.png`) });
+
+      // The agree button must be shut until every clause is ticked. This is the
+      // half a unit test can also check; it is checked again here because the
+      // attribute and the rule are two different things, and what a reader can
+      // press is the attribute.
+      const agree = page.locator('.video-consent-agree');
+      if (!(await agree.isDisabled())) problems.push('the consent screen can be agreed to with nothing ticked');
+      const boxes = page.locator('.video-consent-box');
+      const boxCount = await boxes.count();
+      if (!boxCount) problems.push('the consent screen has no clauses');
+      for (let i = 0; i < boxCount; i += 1) await boxes.nth(i).check();
+      if (await agree.isDisabled()) problems.push('the consent screen stayed shut with every clause ticked');
+
+      const downloadPromise = page.waitForEvent('download', { timeout: 90_000 }).catch(() => null);
+      await agree.click();
+      const download = await downloadPromise;
+      if (!download) problems.push('no file arrived within 90s of agreeing');
+      else {
+        const name = download.suggestedFilename();
+        const saved = join(outDir, `${slug}-${name}`);
+        await download.saveAs(saved);
+        const { size } = statSync(saved);
+        // A container with headers and no frames is a few hundred bytes. A
+        // 15-second recording is tens of kilobytes at the very least, so a
+        // small file is an empty one however successfully it downloaded.
+        if (size < 20_000) problems.push(`the file is ${size} bytes, which is a container with nothing in it`);
+        problems.push(...containerProblems(saved, name));
+        // Then make the browser open what it just wrote. Size and magic bytes
+        // say a file arrived; only decoding it says there are pictures in it,
+        // and the extracted frame is the only place anybody can *see* that the
+        // captions and the provenance footer were composited in.
+        const decoded = await decodeRecording(page, saved, name);
+        if (decoded.error) problems.push(`the browser could not play back its own file: ${decoded.error}`);
+        else {
+          writeFileSync(join(outDir, `${slug}-video-frame.png`), Buffer.from(decoded.frame.split(',')[1], 'base64'));
+          if (!decoded.width || !decoded.height) problems.push('the file decodes to a frame with no size');
+          if (decoded.distinctColours < 24) {
+            problems.push(`the decoded frame is flat (${decoded.distinctColours} colours): the recording caught nothing`);
+          }
+          console.log(
+            `  ${slug}: ${name} — ${(size / 1024).toFixed(0)} kB, ${decoded.width}×${decoded.height}, `
+              + `${Number.isFinite(decoded.duration) ? `${decoded.duration.toFixed(1)}s` : 'duration not written by the recorder'}`
+          );
+        }
+      }
+      await page.screenshot({ path: join(outDir, `${slug}-video-recorded.png`) });
+    }
+    // Back out of the sequence so the page is where the next scene expects it.
+    const exit = page.locator('.reel-chip.is-exit');
+    if (await exit.count()) await exit.first().click();
+    await page.waitForTimeout(600);
+  } else if (shouldOffer) {
+    problems.push('the rule offers a video file but the scene has no sequence to record');
+  }
+
   report.push({ slug, controlCount, problems, baseline, diseased });
   if (process.env.VERBOSE) console.log(JSON.stringify({ slug, baseline, diseased }, null, 1));
   console.log(
@@ -155,3 +245,83 @@ for (const slug of SLUGS) {
 
 await browser.close();
 closeServer();
+
+/**
+ * What the first bytes say the file is, against what its name claims.
+ *
+ * Found by looking: Chromium answers `isTypeSupported('video/mp4')` with
+ * `true` on a build with no H.264 encoder and then writes VP9 into an MP4
+ * container — a file branded `.mp4` that QuickTime will not open, and which
+ * every size check in the world would have passed.
+ */
+function containerProblems(path, name) {
+  const head = readFileSync(path).subarray(0, 64);
+  const ascii = head.toString('latin1');
+  const problems = [];
+  const isMp4 = ascii.slice(4, 8) === 'ftyp';
+  const isWebm = head[0] === 0x1a && head[1] === 0x45 && head[2] === 0xdf && head[3] === 0xa3;
+  if (name.endsWith('.mp4') && !isMp4) problems.push('the file is named .mp4 and is not one');
+  if (name.endsWith('.webm') && !isWebm) problems.push('the file is named .webm and is not one');
+  if (isMp4 && /vp0?9|vp08/.test(ascii)) {
+    problems.push('the file is an MP4 holding VP9, which most players refuse — name the codec when claiming MP4');
+  }
+  return problems;
+}
+
+/**
+ * Plays the file back in the browser that wrote it and returns one frame.
+ *
+ * The file goes in as bytes rather than by URL: it has already left the page,
+ * and the point is to make the decoder read exactly what landed on disk.
+ *
+ * `duration` is often not finite — `MediaRecorder` writes WebM without a
+ * duration in the header — which is a property of the format, not a fault in
+ * the recording, so it is reported rather than judged.
+ */
+async function decodeRecording(page, path, name) {
+  const base64 = readFileSync(path).toString('base64');
+  const mimeType = name.endsWith('.mp4') ? 'video/mp4' : 'video/webm';
+  return page.evaluate(
+    async ({ base64: bytes, mimeType: type }) => {
+      try {
+        const binary = atob(bytes);
+        const buffer = new Uint8Array(binary.length);
+        for (let i = 0; i < binary.length; i += 1) buffer[i] = binary.charCodeAt(i);
+        const url = URL.createObjectURL(new Blob([buffer], { type }));
+        const video = document.createElement('video');
+        video.muted = true;
+        video.src = url;
+        await new Promise((resolve, reject) => {
+          video.onloadeddata = resolve;
+          video.onerror = () => reject(new Error('decode failed'));
+          setTimeout(() => reject(new Error('the file never loaded')), 20000);
+        });
+        // Mid-sequence rather than the first frame: the opening of every reel
+        // is a fade from black, which is exactly what a broken recording looks
+        // like.
+        const target = Number.isFinite(video.duration) ? video.duration / 2 : 7;
+        await new Promise((resolve) => {
+          video.onseeked = resolve;
+          video.currentTime = target;
+          setTimeout(resolve, 4000);
+        });
+        const canvas = document.createElement('canvas');
+        canvas.width = video.videoWidth;
+        canvas.height = video.videoHeight;
+        const ctx = canvas.getContext('2d');
+        ctx.drawImage(video, 0, 0);
+        const { data } = ctx.getImageData(0, 0, canvas.width, canvas.height);
+        const seen = new Set();
+        for (let i = 0; i < data.length; i += 4 * 97) {
+          seen.add((data[i] >> 3) * 1024 + (data[i + 1] >> 3) * 32 + (data[i + 2] >> 3));
+        }
+        const frame = canvas.toDataURL('image/png');
+        URL.revokeObjectURL(url);
+        return { duration: video.duration, width: video.videoWidth, height: video.videoHeight, distinctColours: seen.size, frame };
+      } catch (error) {
+        return { error: String(error?.message ?? error) };
+      }
+    },
+    { base64, mimeType }
+  );
+}
