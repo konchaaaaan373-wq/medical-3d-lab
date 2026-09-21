@@ -12,6 +12,9 @@ import {
 import {
   ATLAS_CATEGORIES, brainAtlasMetadata, loadBrainAtlas, placeBrainAtlas,
 } from '../../organs/brainAtlasSource.js';
+import {
+  REEL_CUES, REEL_DURATION, REEL_LESION, REEL_TASK, cameraAt, extentAt, overlayAt,
+} from './reelStoryboard.js';
 import { brainStructureInfo } from '../../../../data/brainAnatomy.js';
 import { disposeObject } from '../../../../utils/dispose.js';
 import { clamp } from '../../../../utils/math.js';
@@ -116,6 +119,21 @@ export class HigherBrainFunctionScene {
   static DEEP_CATEGORIES = new Set([ATLAS_CATEGORIES.DEEP_GREY, ATLAS_CATEGORIES.DIENCEPHALON]);
 
   /**
+   * One run of the examination, in seconds.
+   *
+   * **The order is the model's claim; the length is not.** Nothing in the model
+   * is a conduction time, a latency or a reaction time, and a reader must not
+   * take these seconds for any of those. What the rhythm carries is that a task
+   * is asked, travels, and either arrives or does not — and that it is the same
+   * rhythm whichever task is asked, so two lesions can be told apart by where
+   * the run stops rather than by how long it took.
+   */
+  static CYCLE_SECONDS = 4.4;
+
+  /** Where the run is asked, where it travels, and where it answers. */
+  static CYCLE_PHASES = Object.freeze({ askedUntil: 0.14, travelUntil: 0.82 });
+
+  /**
    * How far the cortex is faded to show a route that runs underneath it.
    *
    * Low, because a reader looks through **two** layers of it — the near wall
@@ -172,6 +190,14 @@ export class HigherBrainFunctionScene {
     this.routeGroup.name = 'traced-route';
     this.root.add(this.routeGroup);
 
+    // The examination has two moments besides the travelling: the word being
+    // said, and the answer coming back. Both are drawn as a brief swelling at
+    // the end of the route they belong to, so a reader watching the model alone
+    // can see that something was asked and whether anything came of it.
+    this.stimulus = this._makeFlash('stimulus', PALETTE.carrying);
+    this.answer = this._makeFlash('answer', PALETTE.carrying);
+    this.cycleTime = 0;
+
     this.pulseMaterial = new THREE.MeshBasicMaterial({ color: PALETTE.carrying, depthTest: false });
     this.pulseGeometry = new THREE.SphereGeometry(0.075, 16, 12);
     this.pulse = new THREE.Mesh(this.pulseGeometry, this.pulseMaterial);
@@ -179,6 +205,8 @@ export class HigherBrainFunctionScene {
     this.pulse.name = 'task-signal';
     this.pulse.visible = false;
     this.routeGroup.add(this.pulse);
+    this.routeGroup.add(this.stimulus.mesh);
+    this.routeGroup.add(this.answer.mesh);
 
     if (this.atlasSource) {
       this.attachAtlas(this.atlasSource);
@@ -263,6 +291,10 @@ export class HigherBrainFunctionScene {
     if (typeof window !== 'undefined') window.removeEventListener('pagehide', this._pageHide);
     this.pulseGeometry?.dispose();
     this.pulseMaterial?.dispose();
+    for (const flash of [this.stimulus, this.answer]) {
+      flash?.geometry.dispose();
+      flash?.material.dispose();
+    }
     this._disposeRouteLine();
     disposeObject(this.root);
     this.root.clear();
@@ -414,8 +446,17 @@ export class HigherBrainFunctionScene {
         // behind it — the two overlap completely in a lateral projection, and
         // with depth testing off the gyrus simply painted over the structure
         // this was meant to reveal.
-        const liftedToFront = routeRunsDeep && onRoute
-          && HigherBrainFunctionScene.DEEP_CATEGORIES.has(mesh.userData.bx_cat);
+        //
+        // A tract the route runs inside is lifted whether or not the route goes
+        // deep, and that is not a special case: it is the same treatment the
+        // route line itself gets. The arcuate fasciculus is the model's
+        // signature claim — cut it and repetition alone fails — and it sits
+        // under the cortex, so a sequence about cutting it was showing a signal
+        // stopping at nothing a viewer could see.
+        const liftedToFront = onRoute && (
+          (routeRunsDeep && HigherBrainFunctionScene.DEEP_CATEGORIES.has(mesh.userData.bx_cat))
+          || isTract
+        );
         // A tract is drawn when this task runs through it or when the lesion
         // has taken it. The other fifty are anatomy this scene is not about.
         mesh.visible = !isTract || onRoute || hurt > 0;
@@ -493,6 +534,7 @@ export class HigherBrainFunctionScene {
   }
 
   _disposeRouteLine() {
+    this.routeShape = null;
     if (!this.routeLine) return;
     this.routeGroup?.remove(this.routeLine);
     this.routeLine.geometry.dispose();
@@ -508,8 +550,18 @@ export class HigherBrainFunctionScene {
    * disappears behind a gyrus teaches nothing about where it went.
    */
   _buildRouteLine(task) {
-    this._disposeRouteLine();
     const points = this.routePoints(task);
+    // The line depends on *which* steps the route takes, not on how damaged
+    // they are — and the lesion slider re-solves on every frame it moves, and
+    // the fifteen-second sequence re-solves on every frame full stop. Rebuilding
+    // an identical tube sixty times a second is geometry churn nobody can see.
+    const shape = `${task?.id ?? ''}:${points.map((point) => point.step.id).join('>')}`;
+    if (this.routeLine && shape === this.routeShape) {
+      this.routePositions = points;
+      return;
+    }
+    this._disposeRouteLine();
+    this.routeShape = shape;
     this.routePositions = points;
     this.routeCurve = null;
     if (points.length === 0) {
@@ -552,30 +604,98 @@ export class HigherBrainFunctionScene {
     return index / (task.route.length - 1);
   }
 
-  update(dt) {
-    if (!this.pulse?.visible) return;
+  /** A marker that swells and fades where something happened. */
+  _makeFlash(name, colour) {
+    const geometry = new THREE.SphereGeometry(0.13, 18, 12);
+    const material = new THREE.MeshBasicMaterial({
+      color: colour, transparent: true, opacity: 0, depthTest: false,
+    });
+    const mesh = new THREE.Mesh(geometry, material);
+    mesh.name = name;
+    mesh.renderOrder = 29;
+    mesh.visible = false;
+    return { mesh, geometry, material };
+  }
+
+  /**
+   * Draw the examination at a given moment of its run.
+   *
+   * Separated from `update` and driven by an absolute time, so the same second
+   * renders identically on any machine and at any frame rate — which is what a
+   * fifteen-second sequence needs in order to be a recording rather than a
+   * performance.
+   *
+   * @param {number} seconds since the run started; it repeats
+   */
+  renderAtSeconds(seconds) {
+    const cycle = HigherBrainFunctionScene.CYCLE_SECONDS;
+    this.cycleTime = ((seconds % cycle) + cycle) % cycle;
+    this._applyCycle();
+  }
+
+  /** Which part of the run this instant is in, and how far through that part. */
+  cyclePhase() {
+    const { askedUntil, travelUntil } = HigherBrainFunctionScene.CYCLE_PHASES;
+    const at = this.cycleTime / HigherBrainFunctionScene.CYCLE_SECONDS;
+    if (at < askedUntil) return { id: 'asked', through: at / askedUntil };
+    if (at < travelUntil) return { id: 'travelling', through: (at - askedUntil) / (travelUntil - askedUntil) };
+    return { id: 'answered', through: (at - travelUntil) / (1 - travelUntil) };
+  }
+
+  /**
+   * What comes back at the end of a run: the traced task's own status, and
+   * nothing else. A route that carries answers; a blocked one does not.
+   */
+  answerStrength() {
+    const status = this.tracedTask()?.status;
+    if (status === FUNCTION_STATUS.INTACT) return 1;
+    if (status === FUNCTION_STATUS.IMPAIRED) return 0.45;
+    return 0;
+  }
+
+  _applyCycle() {
+    const points = this.routePositions ?? [];
+    if (!this.pulse || points.length === 0) return;
+    const phase = this.cyclePhase();
     const reach = this.blockedFraction();
+    const swell = (through) => Math.sin(clamp(through) * Math.PI);
+
+    // The word being said, at the end of the route it enters by.
+    const asking = phase.id === 'asked';
+    this.stimulus.mesh.position.copy(points[0].position);
+    this.stimulus.mesh.visible = asking;
+    this.stimulus.material.opacity = asking ? 0.75 * swell(phase.through) : 0;
+    this.stimulus.mesh.scale.setScalar(1 + (asking ? swell(phase.through) * 0.6 : 0));
+
+    // The answer, at the far end, as strong as the route that reached it.
+    const strength = this.answerStrength();
+    const answering = phase.id === 'answered' && strength > 0;
+    this.answer.mesh.position.copy(points[points.length - 1].position);
+    this.answer.mesh.visible = answering;
+    this.answer.material.opacity = answering ? 0.8 * strength * swell(phase.through) : 0;
+    this.answer.mesh.scale.setScalar(1 + (answering ? swell(phase.through) * 0.9 * strength : 0));
+
     if (!this.routeCurve) {
       // A one-structure task: nothing travels, so the marker only says whether
       // the structure is carrying.
+      this.pulse.visible = points.length === 1;
       this.pulseMaterial.color.set(reach < 1 ? PALETTE.blocked : PALETTE.carrying);
       return;
     }
-    this.pulseTime = (this.pulseTime + dt * 0.45) % 1;
-    const travelled = this.pulseTime * Math.max(reach, 0.02);
-    // `getPoint`, not `getPointAt`: the second is parameterised by arc length,
-    // and a route's points are nothing like evenly spaced — a node and the
-    // tract beside it are close together, then the next step is across the
-    // hemisphere. Asking for arc-length 1/3 of a four-point route put the
-    // marker two steps past the one that stopped it, so the scene showed the
-    // signal getting through a connection the model had cut. `getPoint(t)`
-    // maps t = i/(n-1) to control point i, which is what `blockedFraction()`
-    // computes.
+    // Travelling: from where it was asked to as far as it gets. It waits at the
+    // start while the word is being said, and stays where it stopped while the
+    // answer is, or is not, given.
+    const travelled = asking
+      ? 0
+      : Math.max(reach, 0.02) * (phase.id === 'travelling' ? phase.through : 1);
+    this.pulse.visible = true;
     this.pulse.position.copy(this.routeCurve.getPoint(clamp(travelled)));
-    // At a block the signal arrives and stops; the marker dims as it piles up
-    // against the step rather than sailing through it.
-    const arriving = reach < 1 && this.pulseTime > 0.88;
-    this.pulseMaterial.color.set(arriving ? PALETTE.blocked : PALETTE.carrying);
+    this.pulseMaterial.color.set(reach < 1 && !asking ? PALETTE.blocked : PALETTE.carrying);
+  }
+
+  update(dt) {
+    if (!this.pulse) return;
+    this.renderAtSeconds(this.cycleTime + dt);
   }
 
   // --- what the panels read -------------------------------------------------
@@ -654,6 +774,56 @@ export class HigherBrainFunctionScene {
       emphasis: true,
     });
     return rows;
+  }
+
+  /**
+   * The fifteen-second sequence: one word asked twice, either side of a cut.
+   *
+   * The scene is driven by **absolute sequence time** rather than played, so a
+   * recording is reproducible — see `renderAtSeconds`. The rows the overlay
+   * prints are read out of this scene's own read-out every frame, so the video
+   * and the panel cannot come to say different things.
+   */
+  getReel() {
+    const scene = this;
+    return {
+      durationSeconds: REEL_DURATION,
+      cues: REEL_CUES,
+      progress: 1,
+      viewDirection: HigherBrainFunctionScene.cameraPose.position.clone().normalize(),
+      framing: {
+        halfWidth: 2.6,
+        halfHeight: 2.4,
+        minimumDistance: 4.6,
+        target: HigherBrainFunctionScene.cameraPose.target.clone(),
+      },
+      cameraAt,
+      overlayAt,
+
+      /**
+       * Put the scene where the sequence is at `t`.
+       *
+       * The controls are set rather than assumed: a sequence starts after
+       * `resetModelControls()`, and it must show what it is about whatever the
+       * reader had been looking at.
+       */
+      driveAt(t, target = scene) {
+        if (target.controls.lesion !== REEL_LESION) target.setModelControl('lesion', REEL_LESION);
+        if (target.controls.task !== REEL_TASK) target.setModelControl('task', REEL_TASK);
+        target.setProgress(extentAt(t));
+        target.renderAtSeconds(t);
+      },
+
+      /** The three rows this sequence is about, from the solved state. */
+      readMetrics(target = scene) {
+        const rows = {};
+        for (const id of ['repetition', 'auditory-comprehension', 'speech-fluency']) {
+          const task = target.solved.tasks.find((candidate) => candidate.id === id);
+          rows[id] = { en: STATUS_TEXT[task.status].en, ja: STATUS_TEXT[task.status].ja };
+        }
+        return rows;
+      },
+    };
   }
 
   getAnnotations() {

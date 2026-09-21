@@ -429,6 +429,27 @@ export const VISUAL_MAPPING = [
     encodingJa: '経路上を進むマーカー（破綻した段階で停止）',
   },
   {
+    id: 'examination-cycle',
+    shows: 'That the task is asked, carried, and answered — in that order',
+    showsJa: '課題が「求められ・運ばれ・答えが返る」という順序',
+    encoding: 'A repeating run: a swelling where the task enters, the marker travelling, a swelling where it comes out. **The order is the claim; the seconds are a rhythm for reading, not a latency, a conduction time or a reaction time.**',
+    encodingJa: '繰り返される 1 回の試行：入口での膨らみ → マーカーの移動 → 出口での膨らみ。**主張は順序であって、秒数は読みのためのリズムです**（潜時でも伝導時間でも反応時間でもありません）。',
+  },
+  {
+    id: 'answer-strength',
+    shows: 'Whether anything comes out at the end, and how much',
+    showsJa: '最後に何かが出てくるか、どの程度か',
+    encoding: 'The swelling at the far end: full for an intact route, faint for an impaired one, absent for a lost one — the task’s own status and nothing else',
+    encodingJa: '出口の膨らみ（保たれる＝強い／低下＝弱い／消失＝出ない）。課題の状態そのものであり、他の何かではありません',
+  },
+  {
+    id: 'lifted-bundle',
+    shows: 'The tract a route runs inside, including one a lesion has cut',
+    showsJa: '経路が通る線維束（病変が切ったものを含む）',
+    encoding: 'Drawn in front of the cortex, in its own place — the same treatment the route line gets, because a bundle under the surface is a cut nobody can see',
+    encodingJa: '皮質より手前に、**本来の位置のまま**描きます（経路線と同じ扱い）。皮質の下の束は、切れても見えないためです',
+  },
+  {
     id: 'deep-route-reveal',
     shows: 'A route that runs under the cortical surface, and the structures it runs through',
     showsJa: '皮質の下を通る経路と、その経路が通る構造',
@@ -443,6 +464,58 @@ export const VISUAL_MAPPING = [
     encodingJa: 'ネットワークごとの色（アトラスのメッシュ自体を着色）',
   },
 ];
+
+/**
+ * The fifteen-second sequence's words.
+ *
+ * The subject is the one finding that cannot be guessed from the anatomy: the
+ * person hears perfectly and speaks fluently, and cannot repeat a word back,
+ * because a bundle of fibres between the two ends is gone. It is chosen for a
+ * short sequence precisely because a still picture cannot make it — what a
+ * viewer has to see is a signal getting through, and then not.
+ *
+ * No number is written down here, and no second is either: the timings live in
+ * the storyboard, and what the sequence says about them is that the order is
+ * the claim and the length is a rhythm.
+ */
+export const REEL_COPY = {
+  hook: {
+    title: 'Hears you. Speaks fluently. Cannot repeat a word.',
+    titleJa: '聞こえている。流暢に話せる。なのに復唱できない。',
+    subtitle: 'The same word, asked twice — before and after one bundle is cut',
+    subtitleJa: '同じ語を 2 回。線維束を 1 本切る前と、切ったあとで',
+  },
+  cards: {
+    task: { label: 'Asked to repeat', labelJa: '復唱を求める' },
+    spared: { label: 'Untouched', labelJa: '保たれているもの' },
+  },
+  badge: {
+    label: 'One representative right-handed brain',
+    labelJa: '代表的な右利きの脳 1 例',
+  },
+  lesion: {
+    caption: 'The arcuate fasciculus — fibres only. The cortex at both ends is intact.',
+    captionJa: '弓状束——線維だけ。両端の皮質は無傷です。',
+  },
+  blocked: {
+    caption: 'The word arrives, is understood, and stops on the way to the mouth',
+    captionJa: '語は届き、理解され、口へ向かう途中で止まります',
+  },
+  spared: {
+    caption: 'Understanding and fluency never used that bundle',
+    captionJa: '理解と流暢性は、その束を通っていません',
+  },
+  takeHome: {
+    title: 'Conduction aphasia',
+    titleJa: '伝導失語',
+    subtitle: 'Not a smaller Broca’s. A different route, cut.',
+    subtitleJa: '「軽い Broca 失語」ではありません。**別の経路**が切れたのです。',
+  },
+  note: {
+    text: 'Educational model. The order is the claim; the seconds are a rhythm, not a latency.',
+    textJa: '教育用モデル。主張は「順序」で、秒数は読みのためのリズムです（潜時ではありません）。',
+  },
+};
 
 export const RELATED = {
   scenes: [

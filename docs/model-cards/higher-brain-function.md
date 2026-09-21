@@ -130,6 +130,15 @@ severity scale or a test result.
   between two gyri. These tract meshes are in the distributed atlas and **no
   scene in this repository had ever drawn them**.
 - The signal travels the route and **stops at the step that stopped it**.
+- **The run repeats as an examination**: the task is asked at the end it enters
+  by, carried, and either answered or not. **The order is the claim and the
+  seconds are a rhythm** — nothing in this model is a latency, a conduction time
+  or a reaction time, and the sequence says so on screen. The answer at the far
+  end is the task's own status: full, faint, or absent.
+- **A tract the route runs inside is drawn in front of the cortex**, in its own
+  place. Cutting the arcuate fasciculus is this model's signature claim and the
+  bundle sits under the surface, so drawn the ordinary way the picture showed a
+  signal stopping at nothing a reader could see.
 - The route is drawn in front of the brain rather than inside it, because most
   of it runs through white matter a reader cannot see from outside.
 - **When a route runs under the surface** — the frontal–subcortical circuits and
@@ -156,6 +165,18 @@ production build the section does not exist. The scene that owns the reading is
 declared in the catalogue (`providesStructureFunctions`) rather than named in
 the surface that shows it. See `src/app/anatomyFunctionLink.js` and
 `docs/follow-ups.md` F-166.
+
+## 9.6 The fifteen-second sequence
+
+One subject: a word asked twice, either side of a single cut bundle. It opens on
+an intact brain, the arcuate fasciculus is taken over two seconds, and the same
+word is asked again — it arrives, it is understood, and it stops on the way out,
+while comprehension and fluency do not move. The name comes last.
+
+It is chosen because it is the one finding here a still picture cannot carry.
+Every row the overlay prints is read from the scene's own read-out each frame,
+and the scene is driven by absolute sequence time (`renderAtSeconds`), so the
+same second renders identically on any machine and at any frame rate.
 
 ## 10. Known failure modes
 

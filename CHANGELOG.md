@@ -44,6 +44,14 @@ person: Safari, Firefox, touch and a screen reader.
   memory and takes none of it away when it goes, and the panel says both. It
   appears only where the function model itself is released, so the published
   atlas is unchanged until that model has been reviewed.
+- **It plays.** A run of the examination repeats on screen — the task is asked
+  at the end it enters by, carried along its route, and either answered or not —
+  and there is a fifteen-second sequence built on it: a word asked twice, either
+  side of one cut bundle. It arrives, it is understood, and it stops on the way
+  out, while comprehension and fluency do not move. The order is the claim; the
+  seconds are a rhythm, and the sequence says so on screen. The cut arcuate
+  fasciculus is drawn in front of the cortex, because a bundle under the surface
+  is a cut nobody can see.
 - **Not a lesion localiser**, and it says so on the screen: one normal specimen,
   whole named structures, no imaging, no course over time, and no statement
   about anybody. Medical review is not yet recorded.

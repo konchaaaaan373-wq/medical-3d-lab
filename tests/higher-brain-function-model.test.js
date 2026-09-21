@@ -231,18 +231,22 @@ test('model: the traced route stops where the model says it stops', () => {
   const points = cut.routePoints();
   const stopsAt = points[blockedStepIndex].position;
   const beyond = points[blockedStepIndex + 1].position;
-  let atFullTravel = null;
+  // Driven by absolute time rather than by sampling a free-running animation:
+  // the run is deterministic, so the instant the travelling is over is a
+  // number, and where the marker is at that instant is the claim.
+  const cycle = HigherBrainFunctionScene.CYCLE_SECONDS;
+  cut.renderAtSeconds(cycle * 0.9);
+  assert.equal(cut.cyclePhase().id, 'answered', 'the travelling is over by then');
+  assert.ok(
+    cut.pulse.position.distanceTo(stopsAt) < 0.1,
+    `the signal ends at the cut connection (it ended ${cut.pulse.position.distanceTo(stopsAt).toFixed(3)} away)`
+  );
+
   let closestToBeyond = Infinity;
-  for (let i = 0; i < 400; i += 1) {
-    cut.update(0.05);
-    if (cut.pulseTime > 0.97) atFullTravel = cut.pulse.position.clone();
+  for (let i = 0; i <= 120; i += 1) {
+    cut.renderAtSeconds((cycle * i) / 120);
     closestToBeyond = Math.min(closestToBeyond, cut.pulse.position.distanceTo(beyond));
   }
-  assert.ok(atFullTravel, 'the marker completed a pass');
-  assert.ok(
-    atFullTravel.distanceTo(stopsAt) < 0.1,
-    `the signal ends at the cut connection (it ended ${atFullTravel.distanceTo(stopsAt).toFixed(3)} away)`
-  );
   assert.ok(
     closestToBeyond > 0.5,
     `and never reaches the step beyond it (closest approach ${closestToBeyond.toFixed(3)})`
@@ -443,4 +447,96 @@ test('model: a route that runs deep draws its own structures in front, and moves
   assert.equal(broca.material.depthTest, true, 'a surface route is seen the ordinary way');
   deep.dispose();
   surface.dispose();
+});
+
+test('model: the run asks, carries, and answers — and the answer is the task’s own status', () => {
+  const cycle = HigherBrainFunctionScene.CYCLE_SECONDS;
+  const intact = buildScene({ task: 'repetition' }, 0);
+
+  // Three parts, in that order, every run.
+  assert.deepEqual(
+    [0.02, 0.5, 0.95].map((at) => { intact.renderAtSeconds(cycle * at); return intact.cyclePhase().id; }),
+    ['asked', 'travelling', 'answered']
+  );
+
+  // Asked: the marker is at the structure the task enters by, and the stimulus
+  // is on screen there.
+  intact.renderAtSeconds(cycle * 0.07);
+  const entry = intact.routePoints()[0].position;
+  assert.ok(intact.stimulus.mesh.visible);
+  assert.ok(intact.stimulus.mesh.position.equals(entry));
+  assert.ok(intact.stimulus.material.opacity > 0.3);
+  assert.ok(intact.pulse.position.distanceTo(entry) < 1e-6, 'nothing has travelled yet');
+
+  // Answered: an intact route answers, at the far end.
+  intact.renderAtSeconds(cycle * 0.9);
+  assert.equal(intact.answerStrength(), 1);
+  assert.ok(intact.answer.mesh.visible);
+  assert.ok(intact.answer.mesh.position.equals(intact.routePoints().at(-1).position));
+
+  // A route that is cut answers with nothing at all — not a weaker flash, none.
+  const cut = buildScene({ lesion: 'dominant-inferior-frontal', task: 'repetition' }, 1);
+  assert.equal(cut.tracedTask().status, FUNCTION_STATUS.LOST);
+  assert.equal(cut.answerStrength(), 0);
+  for (let i = 0; i <= 40; i += 1) {
+    cut.renderAtSeconds((cycle * i) / 40);
+    assert.equal(cut.answer.mesh.visible, false, 'a lost task never answers');
+  }
+
+  // And a route that is only weakened answers weakly.
+  const weak = buildScene({ lesion: 'dominant-inferior-frontal', task: 'repetition' }, 0.5);
+  assert.equal(weak.tracedTask().status, FUNCTION_STATUS.IMPAIRED);
+  weak.renderAtSeconds(cycle * 0.9);
+  assert.ok(weak.answer.mesh.visible);
+  assert.ok(
+    weak.answer.material.opacity < intact.answer.material.opacity,
+    'an impaired route answers more faintly than an intact one'
+  );
+  intact.dispose();
+  cut.dispose();
+  weak.dispose();
+});
+
+test('model: the same second of the run renders the same, whatever the frame rate', () => {
+  // The sequence has to be a recording, not a performance: a screen capture at
+  // 30 frames a second and one at 60 have to show the same thing at 2.0 s.
+  const cycle = HigherBrainFunctionScene.CYCLE_SECONDS;
+  const coarse = buildScene({ lesion: 'dominant-arcuate', task: 'repetition' }, 1);
+  const fine = buildScene({ lesion: 'dominant-arcuate', task: 'repetition' }, 1);
+  for (let i = 0; i < 60; i += 1) coarse.update(1 / 30);
+  for (let i = 0; i < 120; i += 1) fine.update(1 / 60);
+  assert.ok(Math.abs(coarse.cycleTime - fine.cycleTime) < 1e-9);
+  assert.ok(coarse.pulse.position.distanceTo(fine.pulse.position) < 1e-9);
+
+  // And driving it by absolute time gives the same answer as having played it.
+  const driven = buildScene({ lesion: 'dominant-arcuate', task: 'repetition' }, 1);
+  driven.renderAtSeconds(2.0);
+  coarse.renderAtSeconds(2.0);
+  assert.ok(driven.pulse.position.distanceTo(coarse.pulse.position) < 1e-9);
+  assert.equal(driven.cyclePhase().id, coarse.cyclePhase().id);
+  coarse.dispose();
+  fine.dispose();
+  driven.dispose();
+});
+
+test('model: the bundle a route runs inside is drawn where a reader can see it', () => {
+  // Cutting the arcuate fasciculus is this model's signature claim, and the
+  // bundle sits under the cortex: drawn the ordinary way, the sequence showed a
+  // signal stopping at nothing visible.
+  const scene = buildScene({ lesion: 'dominant-arcuate', task: 'repetition' }, 1);
+  const arcuate = scene.meshesByStructure.get('Arcuate fasciculus|left')[0];
+  assert.equal(arcuate.visible, true);
+  assert.equal(arcuate.material.depthTest, false, 'the cut bundle is in front of the cortex');
+  assert.ok(arcuate.renderOrder > 0);
+  assert.ok(arcuate.position.equals(arcuate.position.clone()), 'and it has not been moved');
+
+  // The cortex is not faded for it, though: this route never leaves the surface
+  // except inside that one bundle.
+  const cortex = scene.meshesByStructure.get('Lingual gyrus|right')[0];
+  assert.equal(cortex.material.opacity, 1);
+
+  // A tract no route is using stays out of the way entirely.
+  const unused = scene.meshesByStructure.get('Uncinate fasciculus|left')[0];
+  assert.equal(unused.visible, false);
+  scene.dispose();
 });
