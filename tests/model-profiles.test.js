@@ -189,6 +189,11 @@ test('every solver scene is mechanistic, amyloid is illustrative and the brain a
     'ear-anatomy': MECHANISM_LEVEL.NONE,
     'eye-anatomy': MECHANISM_LEVEL.NONE,
     'amyloid-beta': MECHANISM_LEVEL.ILLUSTRATIVE,
+    // The atlas carrying a causal model on top of it: routes through named
+    // structures, solved rather than looked up. Mechanistic and no further —
+    // the transmission it computes is a dimensionless ordering with chosen
+    // thresholds, and no parameter of it is calibrated to a dataset.
+    'higher-brain-function': MECHANISM_LEVEL.MECHANISTIC,
     'heart-failure': MECHANISM_LEVEL.MECHANISTIC,
     circulation: MECHANISM_LEVEL.MECHANISTIC,
     'myocardial-ischemia': MECHANISM_LEVEL.MECHANISTIC,
@@ -236,9 +241,12 @@ test('every scene with a paid patient capability declares patient-explanation', 
   }
 });
 
-test('the two atlas scenes are the only asset-backed geometry, and each names a real file', () => {
+test('atlas-backed geometry is exactly the scenes that load a shipped asset, and each names a real file', () => {
   const backed = NON_PROTOTYPE.filter((scene) => modelProfileForScene(scene).geometryBasis !== GEOMETRY_BASIS.PROCEDURAL);
-  assert.deepEqual(backed.map((scene) => scene.id), ['brain-anatomy', 'heart-anatomy']);
+  // Three scenes, two files: the higher-function scene stands on the same brain
+  // atlas as the anatomy scene, which is why it carries the same geometry basis
+  // and the same prohibitions rather than a softer pair of its own.
+  assert.deepEqual(backed.map((scene) => scene.id), ['brain-anatomy', 'higher-brain-function', 'heart-anatomy']);
   for (const scene of backed) {
     const profile = modelProfileForScene(scene);
     assert.equal(profile.geometryBasis, GEOMETRY_BASIS.REFERENCE_ATLAS);

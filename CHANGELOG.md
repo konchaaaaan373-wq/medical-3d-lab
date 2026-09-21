@@ -14,6 +14,56 @@ Not yet tagged. Gate 0 and most of Gate 1 are complete; the remaining blockers
 are branch protection on `main`, and the parts of device testing that need a
 person: Safari, Firefox, touch and a screen reader.
 
+### Higher cortical function, as the route a lesion cut
+
+- **A new model and scene: `higher-brain-function`.** A right-handed brain, and
+  every clinical task — understanding, repeating, speaking, naming, reading,
+  writing, using a tool with either hand, attending to either side of space,
+  laying down a memory — declared as the named structures it passes through. A
+  lesion damages structures and connections; which tasks survive, where the
+  signal stops and what the pattern is called are all **solved** from those
+  routes. No syndrome is stored anywhere: cut the arcuate fasciculus and
+  repetition fails while comprehension and fluency do not, because repetition is
+  the one task whose route uses it.
+- **Handedness is an input, and only the right-handed case is answered.** The
+  model refuses any other value rather than mirroring the brain, because left
+  handedness is not the mirror image of right: most left-handers are also
+  left-dominant for language. Spatial attention is deliberately not filed with
+  language, which is why one parietal lobe is not the mirror of the other.
+- **The atlas's tract meshes are on screen for the first time.** The brain file
+  has carried fifty-four of them — the arcuate fasciculus among them — and no
+  scene had ever drawn one. A disconnection now lights the bundle it cuts.
+- **Executive function is in it, as the frontal–subcortical circuits.** Three
+  closed loops — dorsolateral, orbitofrontal, medial — each running cortex →
+  striatum → pallidum → thalamus → back to the same cortex. Cut one anywhere and
+  the behaviour goes: a caudate infarct reads as a frontal syndrome, and a
+  capsular lesion takes all three while the frontal cortex is untouched.
+- **Touch a structure in an anatomy scene and it says what that structure is
+  for**: which tasks run through it, and what is lost if it alone is destroyed —
+  solved from the same model, not a list kept beside it. One hippocampus carries
+  memory and takes none of it away when it goes, and the panel says both. It
+  appears only where the function model itself is released, so the published
+  atlas is unchanged until that model has been reviewed.
+- **It plays.** A run of the examination repeats on screen — the task is asked
+  at the end it enters by, carried along its route, and either answered or not —
+  and there is a fifteen-second sequence built on it: a word asked twice, either
+  side of one cut bundle. It arrives, it is understood, and it stops on the way
+  out, while comprehension and fluency do not move. The order is the claim; the
+  seconds are a rhythm, and the sequence says so on screen. The cut arcuate
+  fasciculus is drawn in front of the cortex, because a bundle under the surface
+  is a cut nobody can see.
+- Review fixes, each with the guard that was missing: the reading is reached
+  through the scene's own loader, so a production build no longer carries a
+  withheld model inside the application chunk; the cut corpus callosum and
+  fornix are drawn where they can be seen, as the arcuate already was; the
+  travelling signal goes dark where it stops rather than for the whole journey;
+  and the closing frame of the sequence no longer prints its emphasis marks.
+- **Not a lesion localiser**, and it says so on the screen: one normal specimen,
+  whole named structures, no imaging, no course over time, and no statement
+  about anybody. Medical review is not yet recorded.
+- A read-out row whose value is a phrase now wraps instead of widening the
+  panel, which is what had pushed it off the side of a phone.
+
 ### Every vessel in the product was drawn inside out
 
 - **Tubes were wound the wrong way, and had no ends.** All 42 of them, plus the

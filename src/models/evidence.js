@@ -3449,8 +3449,168 @@ export const BREAST_LESION_EVIDENCE = defineEvidence('breast-lesion', [
   },
 ]);
 
+/** @see src/models/higherBrainFunction.js, docs/model-evidence/higher-brain-function.md */
+export const HIGHER_BRAIN_FUNCTION_EVIDENCE = defineEvidence('higher-brain-function', [
+  {
+    id: 'repetition-has-a-route-of-its-own',
+    claim:
+      'Repetition of a heard word can fail while comprehension of the same word and the fluency of spontaneous speech are preserved, so the pathway carrying it is separable from the ones carrying the other two.',
+    confidence: CONFIDENCE.SUPPORTED,
+    source:
+      'The classical connectionist account of the aphasias — Wernicke and Lichtheim, and Geschwind\u2019s disconnection syndromes — as given in standard neurology and neuroanatomy texts.',
+    validation: 'physiology: repetition can fail while comprehension and fluency do not',
+    layer: LAYER.EXTERNAL,
+  },
+  {
+    id: 'anterior-and-posterior-dissociate',
+    claim:
+      'A lesion of the dominant inferior frontal gyrus takes fluency with comprehension preserved; a lesion of the dominant posterior superior temporal region takes comprehension with fluency preserved.',
+    confidence: CONFIDENCE.SUPPORTED,
+    source: 'The standard clinical descriptions of Broca and Wernicke aphasia.',
+    validation: 'physiology: an anterior lesion takes fluency and a posterior one takes comprehension',
+    layer: LAYER.EXTERNAL,
+  },
+  {
+    id: 'outside-the-perisylvian-zone-repetition-survives',
+    claim:
+      'Lesions that spare the perisylvian language cortex but separate it from the rest of the hemisphere leave repetition intact while taking initiation or meaning, which is what distinguishes the transcortical aphasias from the perisylvian ones.',
+    confidence: CONFIDENCE.SUPPORTED,
+    source: 'The standard clinical descriptions of the transcortical aphasias and their watershed territories.',
+    validation: 'physiology: a lesion outside the perisylvian zone leaves repetition intact',
+    layer: LAYER.EXTERNAL,
+  },
+  {
+    id: 'language-is-left-in-the-right-handed',
+    claim:
+      'In a right-handed person, language and the formulas for skilled movement are, in the great majority of cases, in the left hemisphere.',
+    confidence: CONFIDENCE.SUPPORTED,
+    source:
+      'Standard accounts of hemispheric dominance, which put left-hemisphere language at roughly nineteen in twenty right-handers. The model takes the representative case and refuses any other handedness.',
+    validation: 'physiology: language and praxis sit in one hemisphere in a right-handed brain',
+    layer: LAYER.EXTERNAL,
+  },
+  {
+    id: 'spatial-attention-is-not-in-the-language-hemisphere',
+    claim:
+      'Spatial attention is not lateralised with language: hemispatial neglect follows lesions of the non-dominant parietal lobe, and the same lesion on the dominant side produces aphasic and apraxic deficits instead of neglect.',
+    confidence: CONFIDENCE.SUPPORTED,
+    source: 'Standard clinical descriptions of hemispatial neglect and of the right parietal attention system.',
+    validation:
+      'physiology: spatial attention is not in the language hemisphere, so one parietal lobe is not the mirror of the other',
+    layer: LAYER.EXTERNAL,
+  },
+  {
+    id: 'a-new-memory-needs-one-medial-temporal-lobe',
+    claim:
+      'Forming new episodic memories requires medial temporal structures on at least one side: unilateral damage does not produce an amnesic syndrome, and bilateral damage does.',
+    confidence: CONFIDENCE.SUPPORTED,
+    source: 'Standard accounts of the amnesic syndrome and of the hippocampal\u2013fornix\u2013mamillary\u2013anterior thalamic circuit.',
+    validation: 'physiology: a new memory needs a medial temporal lobe on one side or the other',
+    layer: LAYER.EXTERNAL,
+  },
+  {
+    id: 'reading-and-writing-dissociate',
+    claim:
+      'Reading can be lost while writing is preserved, when the visual route into the language hemisphere is interrupted rather than the language cortex itself; a lesion of the angular gyrus takes both together instead.',
+    confidence: CONFIDENCE.SUPPORTED,
+    source: 'D\u00e9jerine\u2019s account of alexia without agraphia, as given in standard texts, and the standard description of angular gyrus lesions.',
+    validation: 'physiology: reading needs the visual route into language and writing does not',
+    layer: LAYER.EXTERNAL,
+  },
+  {
+    id: 'the-callosum-carries-the-other-hand',
+    claim:
+      'Skilled movement of the non-dominant hand depends on the corpus callosum, so a callosal lesion can leave one hand apraxic while the other is not.',
+    confidence: CONFIDENCE.SUPPORTED,
+    source: 'Standard descriptions of callosal disconnection and sympathetic (left-hand) apraxia.',
+    validation: 'physiology: the callosum carries the left hand, so cutting it spares the right',
+    layer: LAYER.EXTERNAL,
+  },
+  {
+    id: 'naming-needs-the-word-form',
+    claim:
+      'Producing a word means retrieving its sound form before it can be planned, so naming fails when the posterior temporal store or the route out of it is damaged \u2014 not only when the frontal end is.',
+    confidence: CONFIDENCE.SUPPORTED,
+    source:
+      'The classical account of word production in the Wernicke\u2013Lichtheim scheme, and the clinical descriptions of Wernicke and conduction aphasia, both of which include prominent naming failure.',
+    validation: 'physiology: naming needs the word\u2019s sound form, so it fails wherever that is cut off',
+    layer: LAYER.EXTERNAL,
+  },
+  {
+    id: 'frontal-subcortical-circuits-share-a-signature',
+    claim:
+      'The prefrontal cortex, the striatum, the pallidum and the mediodorsal thalamus form closed circuits, and a lesion anywhere along one produces the behavioural picture of a lesion of the cortex it starts from \u2014 which is why a small deep infarct can present as a frontal syndrome.',
+    confidence: CONFIDENCE.SUPPORTED,
+    source:
+      'The frontal\u2013subcortical circuits as described by Alexander, DeLong and Strick and taken up in the clinical literature on caudate and thalamic infarcts.',
+    validation: 'physiology: a frontal\u2013subcortical circuit reads the same wherever it is cut',
+    layer: LAYER.EXTERNAL,
+  },
+  {
+    id: 'three-prefrontal-patterns',
+    claim:
+      'Dorsolateral, orbitofrontal and medial frontal damage take different things: the ability to change tack, the ability to hold a response back, and the drive to start at all.',
+    confidence: CONFIDENCE.SUPPORTED,
+    source: 'The standard clinical description of the three prefrontal syndromes.',
+    validation: 'physiology: the three prefrontal patterns come apart',
+    layer: LAYER.EXTERNAL,
+  },
+  {
+    id: 'the-prefrontal-patterns-are-not-this-separate-in-people',
+    claim:
+      'The model produces the three prefrontal patterns as three separable circuits, each with its own behaviour.',
+    confidence: CONFIDENCE.UNCERTAIN,
+    source:
+      'The circuits are anatomically distinct, but the syndromes named after them overlap heavily in practice: real lesions rarely respect one circuit, and apathy, disinhibition and dysexecutive features commonly appear together.',
+    note:
+      'Known weakness, and the direction this part of the model is most likely to mislead in: it will show a cleaner dissociation than a person presents with. The circuits are the claim; the tidiness of the three pictures is not.',
+    layer: LAYER.EXTERNAL,
+  },
+  {
+    id: 'the-gerstmann-cluster-is-not-settled',
+    claim:
+      'The model produces agraphia, acalculia, finger agnosia and left\u2013right disorientation together from one dominant angular gyrus, as the classical teaching has it.',
+    confidence: CONFIDENCE.UNCERTAIN,
+    source:
+      'The classical localisation of the Gerstmann tetrad to the dominant angular gyrus, which later work has repeatedly questioned: the four rarely occur in isolation and may reflect damage to underlying white matter rather than one cortical area.',
+    note:
+      'Known weakness. This is the model\u2019s least secure claim and the direction it is most likely to be wrong in: the tetrad is drawn from one gyrus because that is what the classical account says, not because this model has evidence that the four dissociate together.',
+    layer: LAYER.EXTERNAL,
+  },
+  {
+    id: 'transmission-is-a-product-of-steps',
+    claim:
+      'How well a task gets through is computed as the product of the integrity of every node and connection along its route, and a task takes the best of its routes.',
+    confidence: CONFIDENCE.ILLUSTRATIVE,
+    source:
+      'Invented arithmetic. No source gives a transmission for a cortical route; the product was chosen because a chain is no better than its worst link.',
+    note:
+      'Illustrative. The number is not a measurement of anything and has no unit. What the model claims is the ordering it produces \u2014 more damage transmits less, and damage on one route does not touch another \u2014 never the value.',
+  },
+  {
+    id: 'the-three-step-thresholds',
+    claim: 'Where a transmission stops being called intact and starts being called impaired, and then lost.',
+    confidence: CONFIDENCE.CALIBRATION,
+    source:
+      'A calibration this repository chose so that a half-taken lesion reads as impaired rather than as lost, and a structure completely gone reads as lost.',
+    note:
+      'Calibration. Two cut points on a dimensionless scale, chosen so the three steps are reachable. No output of this model is a score, a severity scale or a test result.',
+  },
+  {
+    id: 'one-mesh-per-named-structure',
+    claim:
+      'A lesion is declared as named structures of the atlas, whole or as a stated share of one, because a named mesh is the smallest thing the atlas can show.',
+    confidence: CONFIDENCE.APPROXIMATION,
+    source:
+      'The distributed atlas: the corpus callosum is one mesh with no splenium, body or genu, and the precentral gyrus is one mesh with no somatotopy.',
+    note:
+      'An approximation of the substrate, not of the medicine. A posterior callosal lesion is drawn as the whole commissure and a precentral lesion takes the mouth and the hand together, which is why some real dissociations cannot appear here.',
+  },
+]);
+
 export const EVIDENCE_REGISTRIES = [
   CIRCULATION_EVIDENCE,
+  HIGHER_BRAIN_FUNCTION_EVIDENCE,
   COPD_EVIDENCE,
   ASTHMA_EVIDENCE,
   PORTAL_EVIDENCE,

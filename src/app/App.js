@@ -1,7 +1,7 @@
 import * as THREE from 'three';
 import { Viewer } from './Viewer.js';
 import { loadScene, sceneById, systemsWithScenes, resolveSceneId } from './sceneRegistry.js';
-import { SCENES } from '../catalog/index.js';
+import { SCENES, structureFunctionScene } from '../catalog/index.js';
 import { RELEASED_SCENES } from '../catalog/release.js';
 import { betaUnlocked, sceneOpen } from './releaseGate.js';
 import { structureOf } from './router.js';
@@ -861,6 +861,26 @@ export async function createApp({ stage, ui, onRetryModel = null }) {
   // key and the selection card — composed into a layout where the summary
   // cannot be scrolled away and exactly one region scrolls. Nothing is built
   // twice: each element is created once here and handed over.
+  /**
+   * Whether this screen may show what a touched structure is *for*.
+   *
+   * Three things have to hold, and none of them is a name written here. There
+   * has to be a scene that can answer (the catalogue declares it); the release
+   * has to open that scene, because its medical review is what makes the
+   * reading publishable; and it has to be about the organ on screen, since a
+   * model of the brain has nothing to say about a heart valve.
+   */
+  const functionModelScene = structureFunctionScene();
+  const offersStructureFunctions = Boolean(
+    functionModelScene && sceneOpen(functionModelScene) && functionModelScene.organ === entry?.organ
+  );
+  /**
+   * Late-bound on purpose: the reading is loaded through the scene's own
+   * loader, so that a production build — where that loader is replaced with a
+   * rejecting thunk — never pulls a withheld model into the application shell.
+   * Nothing in `src/app/` imports a medical model, and this is why.
+   */
+  let readStructureFunction = null;
   const anatomyInfo = scene.getAnatomySelection
     ? createAnatomyInfoPanel(scene, {
         onPreferredView: applyInspectionView,
@@ -871,8 +891,29 @@ export async function createApp({ stage, ui, onRetryModel = null }) {
         // the panel: this panel serves every anatomy scene, and a literal was
         // only ever right for one of them.
         attribution: attributionForScene(entry?.id ?? entry?.slug ?? meta.id),
+        // What a touched structure is *for* comes from a different model, with
+        // its own card, its own profile and its own review — still pending. So
+        // it is shown exactly where that model may be shown: wherever its own
+        // scene is open. In a production build that is nowhere, and the
+        // published atlas is the atlas, unchanged.
+        //
+        // Which scene that is comes from the catalogue, not from a name written
+        // here: a surface naming a withheld scene is a second release decision.
+        // See `src/app/anatomyFunctionLink.js`.
+        functionNote: offersStructureFunctions ? ((selection) => readStructureFunction?.(selection) ?? null) : null,
       })
     : null;
+
+  if (offersStructureFunctions) {
+    functionModelScene.load()
+      .then((module) => {
+        readStructureFunction = module.functionNoteForSelection ?? null;
+        anatomyInfo?.refresh?.();
+      })
+      // A build that strips the scene rejects here, which is the arrangement
+      // working rather than a failure: the section simply never fills in.
+      .catch(() => {});
+  }
 
   // The part tree and the card are two readings of one selection, not two
   // states: both bind to `onAnatomySelection`, and neither holds an opinion the
