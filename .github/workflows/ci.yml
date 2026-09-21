@@ -56,7 +56,7 @@ jobs:
   # page as a trap. Two of those are this check's. So, for this one check: yes.
   #
   # Chromium only, and `verify:ui` only. `verify:auth`, `verify:anatomy`,
-  # `verify:disease` and `verify:patient`, and Firefox and WebKit, stay at
+  # the full disease matrix and `verify:patient`, and Firefox and WebKit, stay at
   # candidate time in `final-browser-validation.yml`. F-112 records where that
   # line is drawn and what would move it.
   #

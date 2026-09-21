@@ -1657,6 +1657,11 @@ stub Supabase 設定でのビルドを必要とするので、通常ビルドで
 - **完了の定義**: この項目は「4 本と 2 エンジンをどうするか」を持ち続けます。
   動かすときは、同じように**方針テストを書き換えてから**動かす
 
+- **2026-09-21 / F-173**: PR #146 の実 composer の描画サイズに未測定が残ったため、
+  既存 Chromium / preview build を再利用する **COPD 1 本・DPR 2** だけを PR CI へ追加。
+  全病態マトリクスと他エンジンは引き続き candidate 検証。`tests/viewports.test.js` が
+  この 1 本に範囲を固定する。ローカル Chromium が起動できなくても未測定を緑にしない。
+
 ### F-15 プレビューの e2e を CI に — P2（`#42`）
 
 CI の viewport matrix（`scripts/check-viewports.mjs`）は `#/organs` の
