@@ -68,6 +68,14 @@ the palate above and the floor below, and the tonsil behind the arch.
 
 ## 6. Presentation choices
 
+- **The scene opens in Natural** (2026-09-21). It used to open in **Regions**,
+  because that mode is first in the list and the list is ordered by what the
+  scene is for. A reader said the heart on the landing page did not look like
+  an organ, and the default changed everywhere but the brain. Regions is one
+  press away and nothing about it changed. **This card did not move when the
+  others did**: its source list omitted the base class every one of these
+  scenes is built on, so the digest could not see a change to shared
+  behaviour. The list is corrected.
 - **The scene opens on the view a mouth is looked at from**: from in front, into
   an open one. Every other view is a step from there.
 - **The slider fades the jaw and the tongue**, which is what the floor and the

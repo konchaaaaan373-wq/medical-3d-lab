@@ -56,6 +56,14 @@ shape of any bone is claimed.
 
 ## 6. Presentation choices
 
+- **The scene opens in Natural** (2026-09-21). It used to open in **Regions**,
+  because that mode is first in the list and the list is ordered by what the
+  scene is for. A reader said the heart on the landing page did not look like
+  an organ, and the default changed everywhere but the brain. Regions is one
+  press away and nothing about it changed. **This card did not move when the
+  others did**: its source list omitted the base class every one of these
+  scenes is built on, so the digest could not see a change to shared
+  behaviour. The list is corrected.
 - **The slider fades the limbs**, which leaves the column and the two girdles
   standing on it — the contrast the scene is about. Nothing is detached from
   anything.

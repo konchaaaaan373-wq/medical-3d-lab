@@ -287,7 +287,8 @@ export const BETA_PUBLICATION_DECISIONS = Object.freeze([
     sceneId: 'lung-anatomy',
     decidedAt: '2026-09-21',
     decidedBy: Object.freeze({
-      name: "Repository owner's decision of 2026-09-16; implemented by Claude Opus 5",
+      name:
+        "Repository owner's decision of 2026-09-16 for what this scene names; re-pinned 2026-09-21 by Claude Code (AI engineering agent) after the scene's opening colour mode changed, at the owner's direction",
       role: 'engineering',
     }),
     record: 'docs/beta-publication/lung-anatomy.md',
@@ -343,7 +344,8 @@ export const BETA_PUBLICATION_DECISIONS = Object.freeze([
     sceneId: 'liver-anatomy',
     decidedAt: '2026-09-21',
     decidedBy: Object.freeze({
-      name: "Repository owner's decision of 2026-09-16; implemented by Claude Opus 5",
+      name:
+        "Repository owner's decision of 2026-09-16 for what this scene names; re-pinned 2026-09-21 by Claude Code (AI engineering agent) after the scene's opening colour mode changed, at the owner's direction",
       role: 'engineering',
     }),
     record: 'docs/beta-publication/liver-anatomy.md',
@@ -393,7 +395,8 @@ export const BETA_PUBLICATION_DECISIONS = Object.freeze([
     sceneId: 'heart-anatomy',
     decidedAt: '2026-09-21',
     decidedBy: Object.freeze({
-      name: "Repository owner's approval of 2026-09-15; implemented by Claude Opus 5",
+      name:
+        "Repository owner's approval of 2026-09-15 for what this scene names; re-pinned 2026-09-21 by Claude Code (AI engineering agent) after the scene's opening colour mode changed, at the owner's direction",
       role: 'engineering',
     }),
     record: 'docs/beta-publication/heart-anatomy.md',
@@ -410,7 +413,7 @@ export const BETA_PUBLICATION_DECISIONS = Object.freeze([
       'hubmap-vh-m-heart': '46d375e36d8181c161b70e1f0b8f0d778364f0a8414eebce4e4fda1cea73eb3d',
       'hubmap-vh-m-blood-vasculature': 'a95ff0825431953d8fff210cf29d9e65aeed5da55f623717ab613864a9435502',
     }),
-    sceneRevision: Object.freeze({ cardRevision: 25, modelDigest: '0eb0c8d37019feeb' }),
+    sceneRevision: Object.freeze({ cardRevision: 26, modelDigest: '20ae31ab7bafd24f' }),
     scope: Object.freeze({
       // The authored tour in `SCENE_POINTS`, not whatever a run measured: four
       // named parts at four recorded points, crossing both adopted files.

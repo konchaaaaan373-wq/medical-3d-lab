@@ -477,11 +477,26 @@ test('heart: colour is identity and never physiology', () => {
   const rightSide = [heartColor('VH_M_heart_right_ventricle', 'parts'), heartColor('VH_M_right_cardiac_atrium', 'parts')];
   assert.equal(new Set([...leftSide, ...rightSide]).size, 4);
 
-  // Switching modes recolours without changing what is selected.
-  built.selectStructure('VH_M_tricuspid_valve');
-  built.setAnatomyColorMode('natural');
-  assert.equal(built.getAnatomySelection().id, 'VH_M_tricuspid_valve');
+  // The scene opens in the colours a heart has. Asserted, because the default
+  // is a product decision and not an accident of which mode is first in the
+  // list — and because the two lines below stopped testing anything the day it
+  // changed: they switched to `natural` from `natural`, which is a no-op that
+  // `setAnatomyColorMode` reports as `false`.
   assert.equal(built.getAnatomyColorMode(), 'natural');
+
+  // Switching modes recolours without changing what is selected. To the mode
+  // it is *not* in, and the switch is asserted to have happened.
+  built.selectStructure('VH_M_tricuspid_valve');
+  assert.equal(built.setAnatomyColorMode('parts'), true, 'switching to parts did nothing');
+  assert.equal(built.getAnatomySelection().id, 'VH_M_tricuspid_valve');
+  assert.equal(built.getAnatomyColorMode(), 'parts');
+
+  // And the legend follows, or it describes a screen nobody is looking at.
+  assert.notDeepEqual(
+    built.getAnatomyLegendPalette('natural'),
+    built.getAnatomyLegendPalette('parts'),
+    'the legend returns the same swatches for both modes',
+  );
   built.dispose();
 });
 

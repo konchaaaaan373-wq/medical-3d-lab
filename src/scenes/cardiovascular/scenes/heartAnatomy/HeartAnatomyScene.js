@@ -1128,8 +1128,29 @@ export class HeartAnatomyScene {
   getInspectionModes() { return this.getAnatomyColorModes(); }
   getAnatomyColorMode() { return this.colorMode; }
   getInspectionMode() { return this.getAnatomyColorMode(); }
-  getAnatomyLegendPalette() { return { ...HEART_PALETTE }; }
-  getInspectionLegendPalette() { return this.getAnatomyLegendPalette(); }
+  /**
+   * The legend has to be the colours on screen, not one mode's colours.
+   *
+   * `HEART_PALETTE` is the middle of each Parts hue band, and this returned it
+   * whatever the reader was looking at. That was invisible while Parts was the
+   * only mode anybody started in; the moment the scene opened in Natural it
+   * became a cyan "Chambers" swatch beside a dark red heart — a legend making a
+   * claim the render does not support. Natural's swatches are asked of
+   * `heartColor` itself, for a part that is actually in each group, so the two
+   * cannot drift apart again.
+   *
+   * @param {string} [id]
+   */
+  getAnatomyLegendPalette(id = this.colorMode) {
+    if (id !== 'natural') return { ...HEART_PALETTE };
+    const palette = {};
+    for (const part of HEART_PARTS) {
+      if (part.group && !palette[part.group]) palette[part.group] = heartColor(part.id, 'natural');
+    }
+    return palette;
+  }
+
+  getInspectionLegendPalette(id = this.colorMode) { return this.getAnatomyLegendPalette(id); }
 
   setAnatomyColorMode(id) {
     if (!HEART_COLOR_MODES.some((mode) => mode.id === id) || id === this.colorMode) return false;

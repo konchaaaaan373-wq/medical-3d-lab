@@ -18,8 +18,8 @@
       "src/data/heartAnatomy.js",
       "src/scenes/cardiovascular/scenes/heartAnatomy/HeartAnatomyScene.js"
     ],
-    "cardRevision": 25,
-    "modelDigest": "0eb0c8d37019feeb",
+    "cardRevision": 26,
+    "modelDigest": "20ae31ab7bafd24f",
     "cardUpdatedAt": "2026-09-21"
   },
   {
@@ -620,85 +620,99 @@
     "sceneId": "nose-anatomy",
     "card": "docs/model-cards/nose-anatomy.md",
     "modelSources": [
-      "src/scenes/respiratory/organs/nose.js",
       "src/data/noseAnatomyScene.js",
-      "src/scenes/respiratory/scenes/noseAnatomy/NoseAnatomyScene.js"
+      "src/scenes/respiratory/organs/nose.js",
+      "src/scenes/respiratory/scenes/noseAnatomy/NoseAnatomyScene.js",
+      "src/scenes/shared/anatomy/OrganAnatomyScene.js",
+      "src/scenes/shared/anatomy/tapGesture.js"
     ],
-    "cardRevision": 4,
-    "modelDigest": "b37c7632af4ec271",
-    "cardUpdatedAt": "2026-09-11"
+    "cardRevision": 6,
+    "modelDigest": "097943caedf5ea1e",
+    "cardUpdatedAt": "2026-09-21"
   },
   {
     "sceneId": "larynx-anatomy",
     "card": "docs/model-cards/larynx-anatomy.md",
     "modelSources": [
-      "src/scenes/respiratory/organs/larynx.js",
       "src/data/larynxAnatomyScene.js",
-      "src/scenes/respiratory/scenes/larynxAnatomy/LarynxAnatomyScene.js"
+      "src/scenes/respiratory/organs/larynx.js",
+      "src/scenes/respiratory/scenes/larynxAnatomy/LarynxAnatomyScene.js",
+      "src/scenes/shared/anatomy/OrganAnatomyScene.js",
+      "src/scenes/shared/anatomy/tapGesture.js"
     ],
-    "cardRevision": 3,
-    "modelDigest": "4ccd73d3a83e0dc9",
-    "cardUpdatedAt": "2026-09-11"
+    "cardRevision": 5,
+    "modelDigest": "589b0e492b82a775",
+    "cardUpdatedAt": "2026-09-21"
   },
   {
     "sceneId": "oral-anatomy",
     "card": "docs/model-cards/oral-anatomy.md",
     "modelSources": [
-      "src/scenes/gastrointestinal/organs/oralCavity.js",
       "src/data/oralAnatomyScene.js",
-      "src/scenes/gastrointestinal/scenes/oralAnatomy/OralAnatomyScene.js"
+      "src/scenes/gastrointestinal/organs/oralCavity.js",
+      "src/scenes/gastrointestinal/scenes/oralAnatomy/OralAnatomyScene.js",
+      "src/scenes/shared/anatomy/OrganAnatomyScene.js",
+      "src/scenes/shared/anatomy/tapGesture.js"
     ],
-    "cardRevision": 4,
-    "modelDigest": "f0d1261fb7e57ae3",
-    "cardUpdatedAt": "2026-09-11"
+    "cardRevision": 6,
+    "modelDigest": "5d5cb7f493ad9062",
+    "cardUpdatedAt": "2026-09-21"
   },
   {
     "sceneId": "pelvic-floor-anatomy",
     "card": "docs/model-cards/pelvic-floor-anatomy.md",
     "modelSources": [
-      "src/scenes/musculoskeletal/organs/pelvicFloor.js",
       "src/data/pelvicFloorAnatomyScene.js",
-      "src/scenes/musculoskeletal/scenes/pelvicFloorAnatomy/PelvicFloorAnatomyScene.js"
+      "src/scenes/musculoskeletal/organs/pelvicFloor.js",
+      "src/scenes/musculoskeletal/scenes/pelvicFloorAnatomy/PelvicFloorAnatomyScene.js",
+      "src/scenes/shared/anatomy/OrganAnatomyScene.js",
+      "src/scenes/shared/anatomy/tapGesture.js"
     ],
-    "cardRevision": 3,
-    "modelDigest": "93196e0ac817d870",
-    "cardUpdatedAt": "2026-09-11"
+    "cardRevision": 5,
+    "modelDigest": "f050bccfa30b137b",
+    "cardUpdatedAt": "2026-09-21"
   },
   {
     "sceneId": "hand-anatomy",
     "card": "docs/model-cards/hand-anatomy.md",
     "modelSources": [
-      "src/scenes/musculoskeletal/organs/hand.js",
       "src/data/handAnatomyScene.js",
-      "src/scenes/musculoskeletal/scenes/handAnatomy/HandAnatomyScene.js"
+      "src/scenes/musculoskeletal/organs/hand.js",
+      "src/scenes/musculoskeletal/scenes/handAnatomy/HandAnatomyScene.js",
+      "src/scenes/shared/anatomy/OrganAnatomyScene.js",
+      "src/scenes/shared/anatomy/tapGesture.js"
     ],
-    "cardRevision": 4,
-    "modelDigest": "ccc3b4d86fa984a1",
-    "cardUpdatedAt": "2026-09-11"
+    "cardRevision": 6,
+    "modelDigest": "26ddacd4e36344ed",
+    "cardUpdatedAt": "2026-09-21"
   },
   {
     "sceneId": "foot-anatomy",
     "card": "docs/model-cards/foot-anatomy.md",
     "modelSources": [
-      "src/scenes/musculoskeletal/organs/foot.js",
       "src/data/footAnatomyScene.js",
-      "src/scenes/musculoskeletal/scenes/footAnatomy/FootAnatomyScene.js"
+      "src/scenes/musculoskeletal/organs/foot.js",
+      "src/scenes/musculoskeletal/scenes/footAnatomy/FootAnatomyScene.js",
+      "src/scenes/shared/anatomy/OrganAnatomyScene.js",
+      "src/scenes/shared/anatomy/tapGesture.js"
     ],
-    "cardRevision": 4,
-    "modelDigest": "d70ae2a019757907",
-    "cardUpdatedAt": "2026-09-11"
+    "cardRevision": 6,
+    "modelDigest": "fc300d1efe563745",
+    "cardUpdatedAt": "2026-09-21"
   },
   {
     "sceneId": "skeleton-overview",
     "card": "docs/model-cards/skeleton-overview.md",
     "modelSources": [
-      "src/scenes/musculoskeletal/organs/skeleton.js",
       "src/data/skeletonOverviewScene.js",
-      "src/scenes/musculoskeletal/scenes/skeletonOverview/SkeletonOverviewScene.js"
+      "src/scenes/musculoskeletal/organs/skeleton.js",
+      "src/scenes/musculoskeletal/scenes/skeletonOverview/SkeletonOverviewScene.js",
+      "src/scenes/shared/anatomy/OrganAnatomyScene.js",
+      "src/scenes/shared/anatomy/tapGesture.js"
     ],
-    "cardRevision": 4,
-    "modelDigest": "0443b3f8582b5981",
-    "cardUpdatedAt": "2026-09-11"
+    "cardRevision": 6,
+    "modelDigest": "a03be4b16f60148f",
+    "cardUpdatedAt": "2026-09-21"
   },
   {
     "sceneId": "lumbar-disc-herniation",

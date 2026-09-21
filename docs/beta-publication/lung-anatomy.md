@@ -9,7 +9,7 @@ clinician has judged this geometry or these labels**, and every surface says so
 | | |
 | --- | --- |
 | **Decided at** | 2026-09-21 (re-taken: the scene now opens in Natural) |
-| **Decided by** | Claude Code (AI engineering agent), re-pinning after a presentation-only change; the 2026-09-15 acceptance of what this scene names still stands |
+| **Decided by** | Claude Code (AI engineering agent), re-pinning after a presentation-only change; the 2026-09-16 acceptance of what this scene names still stands |
 | **Role** | `engineering` — software behaviour, not anatomical or clinical judgement |
 | **Assets** | none. The geometry is **procedural**, so there is no external file, no licence obligation and no hash to pin |
 | **Scene revision** | model card revision **14**, source digest `4fc91f9aa37cecc7` |
@@ -38,10 +38,10 @@ Visible Human Male meshes. **Nothing here should be read as a dimension.**
 The gate closed because the scene's sources changed, which is the mechanism
 working: a digest cannot tell a colour default from a re-labelled structure, so
 it stops and asks. **What changed is one line**: the mode the scene opens in is
-now `natural` instead of `lobes`. A reader looking at the landing page
-said the heart did not look like an organ, and it did not — `parts` puts the
-chambers in a teal band on purpose, so that the colour is never read as an
-oxygenation map.
+now `natural` instead of `lobes`. A reader looking at the landing page said the heart did not look like an
+organ; this scene changed with it, so that an organ is an organ everywhere.
+**What that costs here is real**: the lobes are what the scene exists to tell apart, and `lobes` gives each one its own hue. Natural gives the whole parenchyma one pink, so on open the five lobes are one shape. `Lobes` is one press away, and
+the reader was shown what the two modes look like before this was decided.
 
 **Nothing in "What was checked" below was re-checked, and nothing in it
 changed.** Which structures exist, which name each one carries, what a click

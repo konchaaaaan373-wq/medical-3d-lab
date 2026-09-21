@@ -266,6 +266,11 @@ the Japanese names are deliberate but unreviewed.
 
 ## 6. Presentation choices
 
+* **The legend follows the mode** (2026-09-21). It returned the Parts hue
+  bands whatever was on screen, which nobody saw while Parts was the only mode
+  anybody started in. Opening in Natural made it a cyan "Chambers" swatch
+  beside a dark red heart. Natural's swatches are now asked of the same
+  function that colours the meshes.
 * **The scene opens in Natural** (2026-09-21). It used to open in **Parts**,
   and Parts is the reason this changed: the chamber band is teal by design, so
   the heart on the landing page was a teal bulb with ochre vessels. A reader

@@ -1530,13 +1530,29 @@ try {
     if (beforeMode.en === EMPTY) {
       problems.push('nothing was selected when the recolouring check ran, so it had nothing to preserve');
     }
-    await page.locator('.inspection-choice.inspection-mode').nth(1).click();
+    // The mode that is **not** the one on screen, asked of the buttons rather
+    // than assumed to be index 1. It was index 1 until organs started opening
+    // in tissue colour — which is the second mode — and from that day this
+    // clicked the active button, `setAnatomyColorMode` returned false without
+    // doing anything, and the check passed having recoloured nothing. A guard
+    // that cannot tell "nothing changed because it held" from "nothing changed
+    // because nothing happened" is not guarding (L-09).
+    const other = page.locator('.inspection-choice.inspection-mode:not([aria-pressed="true"])').first();
+    if (!(await other.count())) {
+      problems.push('every colour-mode button reports itself active, so the recolouring check had nothing to press');
+    }
+    const modeBefore = await page.evaluate(() => document.getElementById('ui')?.dataset.inspectionMode ?? null);
+    await other.click();
     await page.waitForTimeout(600);
+    const modeAfter = await page.evaluate(() => document.getElementById('ui')?.dataset.inspectionMode ?? null);
+    if (modeBefore === modeAfter) {
+      problems.push(`pressing the other colour mode left the scene in "${modeAfter}" — nothing was recoloured`);
+    }
     const afterMode = await read();
     if (afterMode.en !== beforeMode.en) {
       problems.push(`switching colour mode changed the selection from "${beforeMode.en}" to "${afterMode.en}"`);
     }
-    // Back to Parts to see what the tree says about it.
+    // Back to the parts tab to see what the tree says about it.
     await tab('部位').click();
     await page.waitForTimeout(300);
     const stillOne = await page.locator('.anatomy-tree-leaf[aria-selected="true"]').count();
