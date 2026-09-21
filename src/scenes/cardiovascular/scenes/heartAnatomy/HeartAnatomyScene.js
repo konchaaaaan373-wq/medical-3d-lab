@@ -207,7 +207,11 @@ export class HeartAnatomyScene {
     this._pageHide = () => { this.pageLeaving = true; };
     if (typeof window !== 'undefined') window.addEventListener('pagehide', this._pageHide);
 
-    this.colorMode = 'parts';
+    // Natural, for the reason `OrganAnatomyScene` gives: `parts` puts the
+    // chambers in a teal band (deliberately, so it is never read as an
+    // oxygenation map) and that is not what a heart looks like. It is still one
+    // press away, and it is what the parts legend is drawn from.
+    this.colorMode = 'natural';
     this.activeView = VIEW_SPECS[0].id;
     this.selection = null;
     this.selectedMeshes = [];

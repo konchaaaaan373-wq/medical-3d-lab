@@ -285,7 +285,7 @@ export const DECISION_ROLES = Object.freeze(['engineering', 'anatomy-expert', 'c
 export const BETA_PUBLICATION_DECISIONS = Object.freeze([
   Object.freeze({
     sceneId: 'lung-anatomy',
-    decidedAt: '2026-09-16',
+    decidedAt: '2026-09-21',
     decidedBy: Object.freeze({
       name: "Repository owner's decision of 2026-09-16; implemented by Claude Opus 5",
       role: 'engineering',
@@ -293,7 +293,7 @@ export const BETA_PUBLICATION_DECISIONS = Object.freeze([
     record: 'docs/beta-publication/lung-anatomy.md',
     /** Procedural geometry: no external asset, so nothing to pin but the scene. */
     assetRevisions: Object.freeze({}),
-    sceneRevision: Object.freeze({ cardRevision: 13, modelDigest: '292c5a43d8b0f2b0' }),
+    sceneRevision: Object.freeze({ cardRevision: 14, modelDigest: '4fc91f9aa37cecc7' }),
     scope: Object.freeze({
       // Re-measured 2026-09-16. These four were measured against a safe-area
       // fit that approximated a perspective camera with an orthographic sum,
@@ -341,14 +341,14 @@ export const BETA_PUBLICATION_DECISIONS = Object.freeze([
   }),
   Object.freeze({
     sceneId: 'liver-anatomy',
-    decidedAt: '2026-09-16',
+    decidedAt: '2026-09-21',
     decidedBy: Object.freeze({
       name: "Repository owner's decision of 2026-09-16; implemented by Claude Opus 5",
       role: 'engineering',
     }),
     record: 'docs/beta-publication/liver-anatomy.md',
     assetRevisions: Object.freeze({}),
-    sceneRevision: Object.freeze({ cardRevision: 13, modelDigest: '34d9a1727ffda583' }),
+    sceneRevision: Object.freeze({ cardRevision: 14, modelDigest: '23d963c1a0bc641a' }),
     scope: Object.freeze({
       // Re-measured 2026-09-16, and the tour changed shape rather than just
       // moving: the safe-area fit stopped approximating a perspective camera,
@@ -391,7 +391,7 @@ export const BETA_PUBLICATION_DECISIONS = Object.freeze([
   }),
   Object.freeze({
     sceneId: 'heart-anatomy',
-    decidedAt: '2026-09-15',
+    decidedAt: '2026-09-21',
     decidedBy: Object.freeze({
       name: "Repository owner's approval of 2026-09-15; implemented by Claude Opus 5",
       role: 'engineering',
@@ -410,7 +410,7 @@ export const BETA_PUBLICATION_DECISIONS = Object.freeze([
       'hubmap-vh-m-heart': '46d375e36d8181c161b70e1f0b8f0d778364f0a8414eebce4e4fda1cea73eb3d',
       'hubmap-vh-m-blood-vasculature': 'a95ff0825431953d8fff210cf29d9e65aeed5da55f623717ab613864a9435502',
     }),
-    sceneRevision: Object.freeze({ cardRevision: 24, modelDigest: '60fa8135b9b036d2' }),
+    sceneRevision: Object.freeze({ cardRevision: 25, modelDigest: '0eb0c8d37019feeb' }),
     scope: Object.freeze({
       // The authored tour in `SCENE_POINTS`, not whatever a run measured: four
       // named parts at four recorded points, crossing both adopted files.

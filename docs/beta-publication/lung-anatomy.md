@@ -8,11 +8,11 @@ clinician has judged this geometry or these labels**, and every surface says so
 
 | | |
 | --- | --- |
-| **Decided at** | 2026-09-16 |
-| **Decided by** | Repository owner's decision of 2026-09-16; implemented by Claude Opus 5 |
+| **Decided at** | 2026-09-21 (re-taken: the scene now opens in Natural) |
+| **Decided by** | Claude Code (AI engineering agent), re-pinning after a presentation-only change; the 2026-09-15 acceptance of what this scene names still stands |
 | **Role** | `engineering` — software behaviour, not anatomical or clinical judgement |
 | **Assets** | none. The geometry is **procedural**, so there is no external file, no licence obligation and no hash to pin |
-| **Scene revision** | model card revision **12**, source digest `a3dd5027ef0dcf44` |
+| **Scene revision** | model card revision **14**, source digest `4fc91f9aa37cecc7` |
 
 The decision is pinned to that scene revision in
 [`src/catalog/release.js`](../../src/catalog/release.js). Change what a part
@@ -32,6 +32,27 @@ authored to be recognisable and correctly arranged, not reconstructed from a
 specimen or a scan. That is a weaker claim than the two scenes published before
 it — `brain-anatomy` comes from a distributed atlas and `heart-anatomy` from
 Visible Human Male meshes. **Nothing here should be read as a dimension.**
+
+## Re-taken on 2026-09-21 — the scene opens in Natural
+
+The gate closed because the scene's sources changed, which is the mechanism
+working: a digest cannot tell a colour default from a re-labelled structure, so
+it stops and asks. **What changed is one line**: the mode the scene opens in is
+now `natural` instead of `lobes`. A reader looking at the landing page
+said the heart did not look like an organ, and it did not — `parts` puts the
+chambers in a teal band on purpose, so that the colour is never read as an
+oxygenation map.
+
+**Nothing in "What was checked" below was re-checked, and nothing in it
+changed.** Which structures exist, which name each one carries, what a click
+selects, and what the legend says are all untouched; `Lobes` is still there,
+one press away, with the same palette. The claim this record makes about the
+scene is the same claim, about a scene that now opens in tissue colour.
+
+What a reader should not take from that colour: **it is not a measurement.**
+The model card's §6 holds the wording — Natural reproduces the source files'
+own materials, which is not a claim about the colour of living tissue and not a
+map of oxygenation.
 
 ## What was checked
 

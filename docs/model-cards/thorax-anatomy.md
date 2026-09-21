@@ -74,6 +74,13 @@ oesophagus lies behind the airway at every level and behind the heart.
 
 ## 6. Presentation choices
 
+- **The scene opens in Natural** (2026-09-21). It used to open in **Regions**,
+  because that mode is first in the list and the list is ordered by what the
+  scene is for. A reader looking at the landing hero said the heart did not
+  look like an organ, and they were right: colour that carries no anatomical
+  claim is still the first claim a picture makes. Regions is one press away
+  and nothing about it changed. The brain is the exception and still opens
+  colour-coded — 147 parcels cannot be told apart in tissue colour.
 - **The slider takes away the wall** — the cage first, then the spaces and the
   pleura behind them — because that is the only part of a chest that can be
   removed without moving anything. Nothing inside is moved.
