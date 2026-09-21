@@ -46,6 +46,10 @@ import { createModelControls } from '../components/ModelControls.js';
 import { createLearningPanel } from '../components/LearningPanel.js';
 import { createSceneSwitcher } from '../components/SceneSwitcher.js';
 import { createReelMode } from './ReelMode.js';
+import { videoConsentTerms, videoExportOffered, videoFileName } from './videoExport.js';
+import { extensionForMimeType, saveBlob, videoRecordingSupported } from './videoRecorder.js';
+import { createVideoConsentDialog } from '../components/VideoConsentDialog.js';
+import { VIDEO_EXPORT_COPY } from '../data/videoExport.js';
 import { createStoryMode } from './StoryMode.js';
 import { createLabelLayer } from '../components/LabelLayer.js';
 import { createAnatomyInfoPanel } from '../components/AnatomyInfoPanel.js';
@@ -1485,6 +1489,17 @@ export async function createApp({ stage, ui, onRetryModel = null }) {
   });
 
   // --- social sequence ------------------------------------------------------
+  //
+  // Whether the sequence may also be taken away as a file. Both halves are
+  // decided here, before the chrome is built: the release rule (this scene's
+  // model profile and its assets, in `videoExport.js`) and the browser's own
+  // encoder. A download button that explains afterwards why it could not write
+  // a file is worse than no download button.
+  const videoDownloadOffered =
+    Boolean(scene.getReel) &&
+    videoExportOffered(entry?.id ?? meta.id, { animated: true }) &&
+    videoRecordingSupported({ canvas: viewer.renderer.domElement });
+
   const reelMode = scene.getReel
     ? createReelMode({
         viewer,
@@ -1498,6 +1513,8 @@ export async function createApp({ stage, ui, onRetryModel = null }) {
           playback.set(value);
         },
         getLanguage: () => ui.dataset.lang ?? 'both',
+        onDownload: videoDownloadOffered ? () => requestVideoDownload() : undefined,
+        getProvenance: (language) => videoProvenance(language),
         captureState: () => captureSessionState({ playback, viewer, scene, comparing }),
         restoreState: (state) => {
           restoreSessionState(state, { playback, viewer, scene, setComparison });
@@ -1651,6 +1668,97 @@ export async function createApp({ stage, ui, onRetryModel = null }) {
         },
       })
     : null;
+
+  // --- the sequence as a file ----------------------------------------------
+  //
+  // Two questions, answered in two places and never mixed. Whether this scene
+  // may produce a file at all is a release question — the model profile and
+  // the asset manifest answer it in `videoExport.js`, and a reader pressing a
+  // button does not change the answer. What has to be agreed to before the
+  // file is written is a consent question, and it is asked every time: the
+  // agreement is about one file from one model, not a preference.
+  /** @type {ReturnType<typeof createVideoConsentDialog>|null} */
+  let videoConsent = null;
+  let videoRecording = false;
+
+  /**
+   * What the file says about itself, once it is somewhere this app is not.
+   *
+   * The scene's own disclaimer, not a second sentence written for the video:
+   * the console shows it under every frame, and a file that softened it on the
+   * way out would be claiming more than the model does.
+   */
+  function videoProvenance(language) {
+    const credits = attributionForScene(entry?.id ?? entry?.slug ?? meta.id)
+      .filter((item) => item.released && item.credit)
+      .map((item) => item.credit);
+    const home = typeof window === 'undefined'
+      ? `#/${entry?.slug ?? meta.id}`
+      : `${window.location.host}${window.location.pathname}#/${entry?.slug ?? meta.id}`;
+    const ja = language === 'ja';
+    return {
+      title: ja ? meta.titleJa : meta.title,
+      caveat: ja ? (meta.disclaimerShortJa ?? meta.disclaimerJa) : (meta.disclaimerShort ?? meta.disclaimer),
+      credit: [...credits, home].join(' · '),
+    };
+  }
+
+  function requestVideoDownload() {
+    if (videoConsent || videoRecording) return;
+    const terms = videoConsentTerms(entry?.id ?? meta.id);
+    videoConsent = createVideoConsentDialog({
+      terms,
+      subject: {
+        title: meta.title,
+        titleJa: meta.titleJa,
+        caveat: meta.disclaimerShort ?? meta.disclaimer,
+        caveatJa: meta.disclaimerShortJa ?? meta.disclaimerJa,
+      },
+      onAgree: () => {
+        videoConsent = null;
+        void runVideoDownload(terms);
+      },
+      onCancel: () => {
+        videoConsent = null;
+      },
+    });
+    videoConsent.open(ui);
+  }
+
+  async function runVideoDownload(terms) {
+    if (!reelMode) return;
+    const copy = VIDEO_EXPORT_COPY;
+    const label = (text, busy) => reelMode.setDownloadLabel(text, { busy });
+    videoRecording = true;
+    label(copy.recording, true);
+    try {
+      const { blob, mimeType, formatId, complete } = await reelMode.recordVideo({
+        onProgress: (fraction) =>
+          label({ en: `${copy.recording.en} ${Math.round(fraction * 100)}%`, ja: `${copy.recording.ja} ${Math.round(fraction * 100)}%` }, true),
+      });
+      // A sequence the reader walked out of is a partial file. Offering it as
+      // a finished one is how a clip that stops mid-argument gets posted.
+      if (!complete || !blob?.size) {
+        label(copy.failedShort, false);
+        return;
+      }
+      saveBlob(
+        blob,
+        videoFileName({ slug: terms.slug, formatId, extension: extensionForMimeType(mimeType) })
+      );
+      // The SNS layer's only measurable outcome: a file the reader chose to keep.
+      emitAppEvent('reel:export', { format: 'video', preset: formatId });
+      label(copy.saved, false);
+    } catch (error) {
+      console.warn('[video] the recording did not finish', error);
+      label(copy.failedShort, false);
+    } finally {
+      videoRecording = false;
+      setTimeout(() => {
+        if (!videoRecording) reelMode?.setDownloadLabel(copy.download, { busy: false });
+      }, 4000);
+    }
+  }
 
   sequenceOwnsCamera = () => Boolean(storyMode?.active || reelMode?.active);
 
