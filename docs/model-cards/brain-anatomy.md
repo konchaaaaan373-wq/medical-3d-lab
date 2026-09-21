@@ -171,7 +171,19 @@ must tell apart, not the hues themselves, so the red limbic lobe and the green
 parietal lobe are here with a lightness difference against what they border.
 The cost is measured: a saturated red lowers the dichromacy floor by about
 1 ΔE, because red, orange and brown share the one chromatic axis those readers
-have and can then be separated only by lightness. **Structures inside one
+have and can then be separated only by lightness.
+
+**The map is designed in CIE LCh, and that is what makes it one set.** The
+five large cortical lobes are specified at a single perceptual chroma, the
+supporting families step down from it, and the two neutrals sit lowest; the
+lightness alternates across every boundary a reader traces. Designed in HSL
+the same numbers had produced perceptual chroma anywhere from 39 to 101,
+which is why the map read as a pile of unrelated colours. Where sRGB cannot
+reach a tier's chroma — the blue-cyan corner, so the occipital lobe and the
+insula — the chroma is pulled in at fixed hue and lightness rather than
+clipped, and `tests/brain-anatomy.test.js` holds both the chroma consistency
+and that pulling-in behaviour. Natural-anatomy mode stays in HSL: it is a
+narrow band of hand-picked tissue tones, not a categorical system. **Structures inside one
 family are separated by lightness and saturation, which dichromacy compresses,
 and are not claimed to be distinguishable by colour for those readers** — the
 panel names what is selected, and neither the parts tree nor the layer slider
@@ -706,6 +718,40 @@ at all, which is recorded as L-53 in `docs/verification-lessons.md` and is why
 Colour still aids identification and grouping and does not show real tissue
 colour, functional localisation, vascular territory, exact boundaries or
 positional accuracy (§6).
+
+Sources in scope: `src/data/brainAnatomy.js`,
+`src/scenes/nervous/scenes/brainAnatomy/BrainAnatomyScene.js`.
+
+**Revision 29 → 30 (2026-09-21) — the colour map is redesigned in a
+perceptual space.** A presentation change only: no geometry, no atlas ids, no
+labels, no hierarchy, no copy and no claim about anatomy changed, and
+natural-anatomy mode is untouched. The map had been specified in HSL, where
+"saturation" is not colourfulness and "lightness" is not brightness. Measured
+in CIE terms, twelve families whose HSL saturations sat between 52 and 80 had
+perceptual chroma between 39 and 101 — the temporal lobe at 101, nearly
+outside sRGB, the insula at 39 — so the set read as unrelated colours rather
+than one system, which is what a reader reported. The map is now specified in
+LCh: one chroma per tier (the five large cortical lobes all at 62, supporting
+families at 48/40/36, neutrals at 26/14/9) and a lightness rhythm that
+alternates across every boundary a reader traces. `lchToHex` resolves
+out-of-gamut by pulling the chroma in at fixed hue and lightness, so a band
+may ask for more than the display can give; the occipital lobe reaches 52 and
+the insula 41 for that reason and no other.
+
+What it cost and what it kept, measured member to member: every touching pair
+is ΔE 34.3 apart (34.2 before), the worst pair among the eight surface
+families under simulated dichromacy is ΔE 4.0 (3.8 before), and all 147
+structures stay distinct with the closest pair at ΔE 4.07 (4.57 before). On
+the lit surface the central sulcus is ΔE 50.0 in normal vision and 29.7 under
+deuteranopia, against 49.4 / 32.9. So the numbers are a wash and the gain is
+the design: the palette now has a stated structure a later change can be
+checked against, which two new guards do — chroma consistency across the
+cortical lobes, and that running out of gamut costs chroma and not hue. A
+third mutation for the latter (clipping the channels instead) turns the test
+red. Every colour-map shade changed again (147/147). Colour still aids
+identification and grouping and does not show real tissue colour, functional
+localisation, vascular territory, exact boundaries or positional accuracy
+(§6).
 
 Sources in scope: `src/data/brainAnatomy.js`,
 `src/scenes/nervous/scenes/brainAnatomy/BrainAnatomyScene.js`.

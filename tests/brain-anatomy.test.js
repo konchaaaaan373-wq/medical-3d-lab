@@ -10,6 +10,7 @@ import {
   brainColor,
   brainColorKey,
   brainStructureInfo,
+  lchToHex,
 } from '../src/data/brainAnatomy.js';
 
 test('brain anatomy adopts individually named atlas meshes instead of proxy lobes', () => {
@@ -473,6 +474,61 @@ test('each large anatomical unit reads as one colour family', () => {
 
   for (const lobe of CORTICAL_LOBES) {
     assert.ok(byFamily.get(lobe)?.length, `${lobe} has structures to be a family of`);
+  }
+});
+
+test('the colour map reads as one set, not twelve separate choices', () => {
+  // What made the palette look like a pile rather than a system was chroma,
+  // not hue: designed in HSL, the twelve families came out anywhere between
+  // perceptual chroma 39 and 101. The lobes are now specified at one chroma
+  // per tier, and this is the check that they still arrive there — a family
+  // quietly moved to a different colourfulness is exactly the drift nobody
+  // notices in a diff and everybody notices on screen.
+  //
+  // The insula is excluded and the occipital lobe is given room: both sit in
+  // the cyan-blue corner where sRGB runs out before the tier's chroma is
+  // reached, which is the display's limit rather than a design decision.
+  const chromaOf = (hex) => {
+    const [, a, b] = hexToLab(hex);
+    return Math.hypot(a, b);
+  };
+  const lobes = ['frontal', 'parietal', 'temporal', 'limbic'];
+  const chromas = lobes.map((key) => chromaOf(BRAIN_PALETTE[key]));
+  const spread = Math.max(...chromas) - Math.min(...chromas);
+  assert.ok(
+    spread <= 8,
+    `the cortical lobes are meant to share one chroma but span ${spread.toFixed(0)} (${lobes
+      .map((key, at) => `${key} ${chromas[at].toFixed(0)}`)
+      .join(', ')})`
+  );
+  const occipital = chromaOf(BRAIN_PALETTE.occipital);
+  assert.ok(
+    occipital >= Math.min(...chromas) - 14,
+    `the occipital lobe falls ${(Math.min(...chromas) - occipital).toFixed(0)} below the tier, further than the gamut explains`
+  );
+
+});
+
+test('an unreachable chroma comes back as the most the display can give, at the same hue', () => {
+  // The design asks for one chroma per tier and lets sRGB say what it can
+  // afford. That is only safe if running out of gamut costs chroma and
+  // nothing else: a conversion that clipped the channels instead would keep
+  // the number and silently change the hue, which is the kind of drift that
+  // shows up as one lobe looking wrong and no test failing.
+  for (const [lightness, hue] of [[55, 300], [70, 145], [40, 25], [80, 220], [62, 85]]) {
+    const reachable = hexToLab(lchToHex(lightness, 200, hue));
+    const asked = hexToLab(lchToHex(lightness, 20, hue));
+    const angle = (lab) => ((Math.atan2(lab[2], lab[1]) * 180) / Math.PI + 360) % 360;
+    const drift = Math.abs(((angle(reachable) - angle(asked) + 540) % 360) - 180);
+    assert.ok(drift <= 2, `L${lightness} h${hue}: the hue moved ${drift.toFixed(1)}° when the chroma was pulled in`);
+    assert.ok(
+      Math.abs(reachable[0] - lightness) <= 1.5,
+      `L${lightness} h${hue}: the lightness moved to ${reachable[0].toFixed(1)}`
+    );
+    assert.ok(
+      Math.hypot(reachable[1], reachable[2]) > Math.hypot(asked[1], asked[2]),
+      `L${lightness} h${hue}: asking for more chroma gave less`
+    );
   }
 });
 

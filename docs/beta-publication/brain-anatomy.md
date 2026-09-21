@@ -12,11 +12,11 @@ at pictures. **No anatomist has judged this geometry or these labels.**
 
 | | |
 | --- | --- |
-| **Decided at** | 2026-09-21 (re-taken nine times: a branch of the tree gained a way to be hidden whole, what a hide announces was corrected, a selected structure's label was made to survive its own anchor being occluded, then a review of that fix found three ways it still failed its own stated behaviour and they were closed, then an audit of the result found three more and a per-frame cost, also closed, then the four-round terminology review branch landed on top of it, then the colour map was regrouped so that a lobe reads as one colour family, then those groups were placed so that they survive colour-vision deficiency, then that was traded back to a smaller amount so the boundaries a reader traces stayed readable, then red and green were put back and the saturation with them) |
-| **Decided by** | Claude Code (AI engineering agent), re-taken for the lobe palette with red and green restored |
+| **Decided at** | 2026-09-21 (re-taken ten times: a branch of the tree gained a way to be hidden whole, what a hide announces was corrected, a selected structure's label was made to survive its own anchor being occluded, then a review of that fix found three ways it still failed its own stated behaviour and they were closed, then an audit of the result found three more and a per-frame cost, also closed, then the four-round terminology review branch landed on top of it, then the colour map was regrouped so that a lobe reads as one colour family, then those groups were placed so that they survive colour-vision deficiency, then that was traded back to a smaller amount so the boundaries a reader traces stayed readable, then red and green were put back and the saturation with them, then the whole map was redesigned in a perceptual colour space) |
+| **Decided by** | Claude Code (AI engineering agent), re-taken for the colour map redesigned in CIE LCh |
 | **Role** | `engineering` — software behaviour, not anatomical or clinical judgement |
 | **Asset revision** | `brain-atlas-glb` @ `sha256:76a49ea4526a4880613aec7a02756bd7301b0b9d0680d7cae33e197b672c5453` |
-| **Scene revision** | model card revision **29**, source digest `9d42328af139ded2` |
+| **Scene revision** | model card revision **30**, source digest `1ce464ae7bc5d48b` |
 | **Scene sources under that digest** | [`src/data/brainAnatomy.js`](../../src/data/brainAnatomy.js), [`src/scenes/nervous/scenes/brainAnatomy/BrainAnatomyScene.js`](../../src/scenes/nervous/scenes/brainAnatomy/BrainAnatomyScene.js), [`src/scenes/shared/anatomy/tapGesture.js`](../../src/scenes/shared/anatomy/tapGesture.js) |
 
 The decision is pinned to **both** revisions in
@@ -478,6 +478,45 @@ refuses an edit that changes nothing. The limits of the colour-vision claim
 are unchanged from revision 27: the floors are what a model predicts rather
 than what a reader reported, **no person with colour-vision deficiency has
 used this scene**, and the promise stops at the large units.
+
+
+**Revision 29 → 30.** A reader said the map looked like a pile of unrelated
+colours rather than one set. Measured, the cause was not hue but chroma: the
+map had been specified in HSL, where "saturation" is not colourfulness, and
+twelve families whose HSL saturations sat between 52 and 80 had perceptual
+chroma between 39 and 101 — the temporal lobe nearly outside sRGB, the insula
+barely coloured.
+
+The map is now specified in CIE LCh: one chroma per tier, and a lightness
+rhythm that alternates across every boundary a reader traces. Out-of-gamut is
+resolved by pulling the chroma in at fixed hue and lightness rather than by
+clipping channels, which would move the hue and leave one lobe looking wrong
+with nothing failing.
+
+*What was actually done for this decision*: the eight viewpoints were
+re-rendered in colour-map mode and read, each also written out as a
+deuteranope and a protanope see them; `npm run verify:anatomy` was re-run for
+this scene. The measured effect is a wash and the gain is structural: every
+touching pair is ΔE 34.3 apart (34.2 before), the worst pair among the eight
+surface families under simulated dichromacy is ΔE 4.0 (3.8), and all 147
+structures stay distinct at ΔE 4.07 (4.57). On the lit surface the central
+sulcus is ΔE 50.0 normal and 29.7 under deuteranopia, against 49.4 / 32.9.
+Two guards are added for the design itself — chroma consistency across the
+cortical lobes, and that exceeding the gamut costs chroma rather than hue —
+each confirmed red against a mutation. **Nothing about geometry, atlas ids,
+labels, hierarchy, copy or what is selectable changed, and natural-anatomy
+mode is untouched**, which is also why it stays in HSL: it is a narrow band of
+hand-picked tissue tones, not a categorical system.
+
+**A tooling failure found while taking this record.** The helper written last
+revision to prove a mutation landed had its own body concatenated twice, so it
+applied the edit and then reported an assertion failure about the same edit —
+output that reads as "the mutation did not apply" while the test result says
+it did. It is rewritten, and every guard was re-checked one at a time with the
+output in order. The limits of the colour-vision claim are unchanged: the
+floors are what a model predicts rather than what a reader reported, **no
+person with colour-vision deficiency has used this scene**, and the promise
+stops at the large units.
 
 
 Each time the gate closed and the production build stopped shipping the scene
