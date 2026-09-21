@@ -220,6 +220,55 @@ export function videoFileName({ slug, formatId = 'reel', extension = 'webm', dat
   return `${safe(slug)}_${safe(formatId)}_${stamp}.${safe(extension)}`;
 }
 
+/**
+ * How long a frame may take, in milliseconds, for the declared size to be worth
+ * asking for. 45 ms is about 22 frames a second — below that a fifteen-second
+ * clip reads as a slideshow, and a smaller file that moves is worth more than a
+ * larger one that does not.
+ */
+export const RECORDING_FRAME_BUDGET_MS = 45;
+
+/**
+ * Which pixel size to record at.
+ *
+ * The frame shapes are declared in pixels (1080×1920 and the rest) because
+ * that is what the places these files are posted expect, and the canvas on
+ * screen is whatever the window gave it — 506×900 on a laptop. Recording at
+ * the declared size is therefore the right default *and* it is three or four
+ * times the pixels to draw: measured on a software rasteriser, holding the
+ * canvas at 1080×1920 took the sequence from a moving picture to **2.4 frames
+ * a second**, which is not a video of anything.
+ *
+ * So the machine is asked. `frameMs` is measured at the declared size, with
+ * the scene already running, and a machine that cannot keep up records at its
+ * own canvas size instead — the file is smaller than the platform wants and it
+ * moves, which is the right way round.
+ *
+ * @param {{ declared: {width: number, height: number},
+ *           canvas: {width: number, height: number},
+ *           frameMs: number, budgetMs?: number }} options
+ * @returns {{ width: number, height: number, declared: boolean, reason: string }}
+ */
+export function recordingSize({ declared, canvas, frameMs, budgetMs = RECORDING_FRAME_BUDGET_MS }) {
+  const even = (size) => ({
+    width: Math.max(2, Math.floor(size.width / 2) * 2),
+    height: Math.max(2, Math.floor(size.height / 2) * 2),
+  });
+  // A canvas at least as big as the declared size is already there: nothing to
+  // gain by asking for less, and nothing to measure.
+  if (canvas.width >= declared.width && canvas.height >= declared.height) {
+    return { ...even(canvas), declared: false, reason: 'the canvas is already at least this large' };
+  }
+  if (!Number.isFinite(frameMs) || frameMs <= budgetMs) {
+    return { ...even(declared), declared: true, reason: `${Math.round(frameMs)}ms a frame at the declared size` };
+  }
+  return {
+    ...even(canvas),
+    declared: false,
+    reason: `${Math.round(frameMs)}ms a frame at the declared size is slower than ${budgetMs}ms`,
+  };
+}
+
 function findScene(sceneRef, scenes) {
   return scenes.find((entry) => entry.id === sceneRef || entry.slug === sceneRef) ?? null;
 }

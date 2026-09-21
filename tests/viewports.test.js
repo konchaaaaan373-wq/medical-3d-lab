@@ -358,13 +358,19 @@ test('the viewport check supports every engine and the explicit final workflow d
     'the other two engines stay at candidate time — three engines per push is a different decision'
   );
   assert.match(ciSteps, /npm run verify:ui/, 'and it is the viewport matrix that runs');
-  for (const other of ['verify:auth', 'verify:anatomy', 'verify:disease', 'verify:patient']) {
+  for (const other of ['verify:auth', 'verify:anatomy', 'verify:patient']) {
     assert.doesNotMatch(
       ciSteps,
       new RegExp(`npm run ${other}`),
       `${other} stays at candidate time; F-112 holds what would move it`
     );
   }
+
+  // F-173 is one narrow export regression on the browser/preview build already
+  // installed above. The full disease matrix still belongs to candidate time.
+  const diseaseSteps = ciSteps.split('\n').filter((line) => /run: npm run verify:disease/.test(line));
+  assert.equal(diseaseSteps.length, 1);
+  assert.match(diseaseSteps[0], /--dist dist-preview --dpr 2 disease-video-dpr2 copd$/);
 
   // The fast job stays fast. A failing unit test has to be reportable without
   // waiting for a browser to download, which is why this is a second job and

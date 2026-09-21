@@ -2,8 +2,10 @@ import * as THREE from 'three';
 import { Timeline } from '../utils/Timeline.js';
 import { createReelOverlay } from '../components/ReelOverlay.js';
 import { createReelChrome } from '../components/ReelChrome.js';
-import { paintReelFrame } from './reelFramePainter.js';
-import { createCanvasRecorder } from './videoRecorder.js';
+// The painter and the recorder are loaded when a recording starts, not when a
+// scene does: they are only ever used by the export, and a build that cannot
+// export should not carry them (F-172).
+import { recordingSize } from './videoExport.js';
 import { distanceToFit } from './framing.js';
 import { fovForAspect } from './Viewer.js';
 
@@ -17,6 +19,14 @@ export const REEL_FORMATS = [
 
 /** Frames per second asked of the recorder. Social video is 30; the sequence is authored for it. */
 const RECORDING_FPS = 30;
+
+/**
+ * How many frames are drawn at the declared size before deciding to keep it.
+ *
+ * Three: enough to average out one slow frame, short enough that a machine
+ * which cannot draw it wastes under a second finding out.
+ */
+const RECORDING_PROBE_FRAMES = 3;
 
 /**
  * How long the final frame is held in the file after the sequence ends.
@@ -71,6 +81,8 @@ export function createReelMode({
   const overlay = createReelOverlay();
   let formatId = 'reel';
   let active = false;
+  // Identity of one visit; an exit followed by re-entry is a different request owner.
+  let sessionId = 0;
   let metrics = null;
   /** The most recent overlay description, for the exported frame. */
   let lastFrame = null;
@@ -222,6 +234,7 @@ export function createReelMode({
   function enter() {
     if (active) return;
     active = true;
+    sessionId += 1;
     // Taken before anything is touched, so leaving is exact no matter how many
     // times the viewer comes and goes.
     sessionSnapshot = captureState?.() ?? null;
@@ -252,6 +265,7 @@ export function createReelMode({
   function exit() {
     if (!active) return;
     active = false;
+    sessionId += 1;
     timeline.stop();
 
     ui.classList.remove('is-reel');
@@ -301,8 +315,25 @@ export function createReelMode({
    * @returns {Promise<{ blob: Blob, mimeType: string, formatId: string, complete: boolean }>}
    */
   async function recordVideo({ onProgress = () => {}, MediaRecorderCtor } = {}) {
+    // Read before the first `await`. The two chunks below are fetched from the
+    // network on the first export, and Exit stays deliberately enabled while
+    // they are — so a reader on a slow connection can agree, wait, change
+    // their mind and leave, all before this function has anything to record.
+    // Without this, `!active` below reads that departure as "not in the
+    // sequence yet", re-enters the sequence they just left, and records it.
+    const startedActive = active;
+    const startedSession = sessionId;
+    const [{ paintReelFrame }, { createCanvasRecorder }] = await Promise.all([
+      import('./reelFramePainter.js'),
+      import('./videoRecorder.js'),
+    ]);
+    if (startedActive && (!active || sessionId !== startedSession)) {
+      return { blob: null, mimeType: '', formatId, complete: false, width: 0, height: 0, sizeReason: 'left while loading' };
+    }
+    let recordingSession = startedSession;
     if (!active) {
       enter();
+      recordingSession = sessionId;
       // Entering sets the format, and `setFormat` defers `viewer.resize()` to
       // the next frame — so the canvas is still the *interactive* one for a
       // tick after `enter()` returns. Measuring it then wrote a file in the
@@ -311,16 +342,54 @@ export function createReelMode({
       await nextFrame();
       await nextFrame();
     }
+    const cancelled = () => ({ blob: null, mimeType: '', formatId, complete: false, width: 0, height: 0, sizeReason: 'left before recording' });
+    const sameVisit = () => active && sessionId === recordingSession;
+    if (!sameVisit()) return cancelled();
     // The shape the file is: read once, here. `setFormat` can still be called
     // while this runs (the chrome disables its chips, and a keyboard or a
     // script is not the chrome), and a file named after the format the reader
     // ended on would be named after a shape its frames are not.
     const recordedFormat = formatId;
+    const shape = REEL_FORMATS.find((entry) => entry.id === recordedFormat) ?? REEL_FORMATS[0];
+
     const source = viewer.renderer.domElement;
+    const onScreen = { width: source.width, height: source.height };
+
+    // Record at the size the format declares, not at the size the window
+    // happens to give the canvas — if this machine can draw it. The element's
+    // CSS box does not change while the buffer is held, so nothing on screen
+    // moves; what does change is how much there is to draw, and a rasteriser
+    // that cannot keep up turns the sequence into a slideshow. So it is
+    // measured, here, at the size in question.
+    let release = viewer.captureSize?.({ width: shape.width, height: shape.height }) ?? null;
+    let size = { width: onScreen.width, height: onScreen.height, declared: false, reason: 'no buffer control' };
+    if (release) {
+      const started = performance.now();
+      for (let i = 0; i < RECORDING_PROBE_FRAMES; i += 1) await nextFrame();
+      size = recordingSize({
+        declared: { width: shape.width, height: shape.height },
+        canvas: onScreen,
+        frameMs: (performance.now() - started) / RECORDING_PROBE_FRAMES,
+      });
+      if (!size.declared) {
+        release();
+        release = null;
+        await nextFrame();
+      }
+    }
+
+    // The sizing probe awaits frames too: loading is not the only point at
+    // which the reader can leave, including leaving and entering a new visit.
+    if (!sameVisit()) {
+      release?.();
+      if (release) viewer.resize();
+      return cancelled();
+    }
+
     // Even dimensions: the H.264 encoders behind `video/mp4` reject odd ones,
     // and a canvas sized by CSS is odd about half the time.
-    const width = Math.max(2, Math.floor(source.width / 2) * 2);
-    const height = Math.max(2, Math.floor(source.height / 2) * 2);
+    const width = size.width;
+    const height = size.height;
 
     const target = document.createElement('canvas');
     target.width = width;
@@ -350,11 +419,15 @@ export function createReelMode({
       restart();
       paint();
       recorder.start();
-      const complete = await sequenceEnd(onProgress);
+      const complete = await sequenceEnd(onProgress, recordingSession);
       const blob = await recorder.stop();
-      return { blob, mimeType: recorder.mimeType, formatId: recordedFormat, complete };
+      return { blob, mimeType: recorder.mimeType, formatId: recordedFormat, complete: complete && sameVisit(), width, height, sizeReason: size.reason };
     } finally {
       detach?.();
+      release?.();
+      // Back to the window's own size, and to the pixel ratio the performance
+      // budget had chosen.
+      if (release) viewer.resize();
     }
   }
 
@@ -370,7 +443,8 @@ export function createReelMode({
   /** One animation frame, as a promise. */
   const nextFrame = () => new Promise((resolve) => requestAnimationFrame(() => resolve()));
 
-  function sequenceEnd(onProgress) {
+  function sequenceEnd(onProgress, recordingSession) {
+    const sameVisit = () => active && sessionId === recordingSession;
     const duration = reel.durationSeconds;
     return new Promise((resolve) => {
       let settled = false;
@@ -382,10 +456,10 @@ export function createReelMode({
       // A backgrounded tab stops calling `requestAnimationFrame` altogether.
       // Without this the promise would never settle and the recorder would run
       // until the page was closed.
-      const guard = setTimeout(() => finish(timeline.elapsed >= duration), (duration + 20) * 1000);
+      const guard = setTimeout(() => finish(sameVisit() && timeline.elapsed >= duration), (duration + 20) * 1000);
       const step = () => {
         if (settled) return;
-        if (!active) {
+        if (!sameVisit()) {
           clearTimeout(guard);
           finish(false);
           return;
@@ -394,7 +468,7 @@ export function createReelMode({
         if (timeline.elapsed >= duration) {
           setTimeout(() => {
             clearTimeout(guard);
-            finish(true);
+            finish(sameVisit());
           }, RECORDING_TAIL_MS);
           return;
         }
@@ -412,6 +486,9 @@ export function createReelMode({
   return {
     get active() {
       return active;
+    },
+    get sessionId() {
+      return sessionId;
     },
     get elapsed() {
       return timeline.elapsed;

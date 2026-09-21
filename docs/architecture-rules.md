@@ -96,6 +96,20 @@ constructor の値は resolver が合成する **base** であって、出荷さ
 片方が動く前提なら `clone()` で切る。
 `tests/brain-anatomy-selection-label.test.js` が reanchor 後のキャッシュを固定します。
 
+**3 例目（2026-09-21、書き出しの pixel ratio）**: `EffectComposer` は
+**pixel ratio の写しを自分で持ちます**——constructor で renderer から読んだきり、
+`setPixelRatio()` を呼ばない限り動きません。動画書き出しは宣言どおりの画素数で
+録るために `renderer.setPixelRatio(1)` してから `composer.setSize(1080, 1920)` を
+呼んでいましたが、composer 側は写しを掛けるので、2× の画面では
+**passes が 2160×3840 を描いていました**。絵は正しく見えます（最後の pass が
+canvas に合わせて縮めるので）。壊れたのは**その隣で測っていた探針**で、
+4 倍の画素を計時して「この機械は宣言サイズを保てない」と報告していました。
+レビューで指摘され、実測ではなく読解で見つかっています。
+**同じ量を 2 つのオブジェクトが持っているなら、片方だけに書くのは上書きと同じ**です。
+`tests/viewer-performance.test.js` が、保持中は両方が 1 であること、
+解放時は両方が**その時点の** frame budget の値に戻ること（録画中に tier が落ちても
+古い比率を戻さないこと）を固定します。
+
 ---
 
 ## Rule 4 — Physiology vs presentation

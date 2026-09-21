@@ -13,6 +13,8 @@ import {
   videoExportOffered,
   videoExportProblems,
   videoFileName,
+  recordingSize,
+  RECORDING_FRAME_BUDGET_MS,
 } from '../src/app/videoExport.js';
 import {
   PROHIBITED_USE_COPY,
@@ -297,6 +299,62 @@ test('the prohibited-use sentence lists the uses rather than their ids', () => {
   assert.match(ja, /診断、治療の選択/);
   assert.ok(!en.includes('{uses}') && !ja.includes('{uses}'), 'the placeholder should be filled');
   assert.ok(!en.includes('treatment-selection'), 'an id is not a sentence');
+});
+
+// --- how big the file is ----------------------------------------------------
+
+test('the declared pixel size is used when the machine can draw it', () => {
+  const declared = { width: 1080, height: 1920 };
+  const canvas = { width: 506, height: 900 };
+  const fast = recordingSize({ declared, canvas, frameMs: 9 });
+  assert.deepEqual({ width: fast.width, height: fast.height }, declared);
+  assert.equal(fast.declared, true);
+});
+
+test('a machine that cannot draw it records its own canvas instead', () => {
+  // Measured: holding the canvas at 1080×1920 on a software rasteriser took
+  // the sequence to 2.4 frames a second. A smaller file that moves is worth
+  // more than a larger one that does not.
+  const declared = { width: 1080, height: 1920 };
+  const canvas = { width: 507, height: 901 };
+  const slow = recordingSize({ declared, canvas, frameMs: 420 });
+  assert.equal(slow.declared, false);
+  // Even, because the encoders behind `video/mp4` reject odd dimensions.
+  assert.deepEqual({ width: slow.width, height: slow.height }, { width: 506, height: 900 });
+  assert.match(slow.reason, /420ms/);
+});
+
+test('the threshold is a frame rate, not a guess', () => {
+  const declared = { width: 1080, height: 1920 };
+  const canvas = { width: 506, height: 900 };
+  assert.equal(recordingSize({ declared, canvas, frameMs: RECORDING_FRAME_BUDGET_MS }).declared, true);
+  assert.equal(recordingSize({ declared, canvas, frameMs: RECORDING_FRAME_BUDGET_MS + 1 }).declared, false);
+  // Roughly 22 frames a second: below that a fifteen-second clip is a slideshow.
+  assert.ok(RECORDING_FRAME_BUDGET_MS >= 30 && RECORDING_FRAME_BUDGET_MS <= 60, 'the budget should be a video frame rate');
+});
+
+test('a canvas already bigger than the declared size is left alone', () => {
+  // A large monitor gives the sequence more pixels than the format asks for.
+  // Shrinking to the declared size would throw them away and measure nothing.
+  const size = recordingSize({
+    declared: { width: 1080, height: 1920 },
+    canvas: { width: 1200, height: 2133 },
+    frameMs: 9,
+  });
+  assert.deepEqual({ width: size.width, height: size.height }, { width: 1200, height: 2132 });
+  assert.equal(size.declared, false);
+});
+
+test('an unmeasurable frame time keeps the declared size', () => {
+  // `performance.now()` differences can come back as NaN in a stubbed
+  // environment; refusing the declared size because a measurement failed would
+  // make every such machine export small files for no reason.
+  const size = recordingSize({
+    declared: { width: 1080, height: 1920 },
+    canvas: { width: 506, height: 900 },
+    frameMs: Number.NaN,
+  });
+  assert.equal(size.declared, true);
 });
 
 // --- the file ---------------------------------------------------------------
@@ -1189,4 +1247,22 @@ test('the catalogue and the manifest agree about what is public', () => {
   for (const model of PUBLIC_MODELS) {
     assert.ok(PUBLIC_SCENES.some((entry) => entry.id === model.sceneId), `${model.sceneId} is published but not in PUBLIC_SCENES`);
   }
+});
+
+test('recording: leaving while the recorder chunks load cancels rather than re-entering', () => {
+  // The painter and the recorder are fetched on the first export, which on a
+  // slow connection is an asynchronous window the reader can walk out of —
+  // Exit stays enabled on purpose. The check that follows the imports asks
+  // "are we in the sequence?", and a reader who has just left answers no, so
+  // it used to put them back in and record the thing they had cancelled.
+  const source = readFileSync(new URL('../src/app/ReelMode.js', import.meta.url), 'utf8');
+  const body = source.slice(source.indexOf('async function recordVideo('));
+  const imports = body.indexOf('await Promise.all([');
+  const captured = body.indexOf('const startedActive = active;');
+  assert.ok(captured >= 0, 'recordVideo must read whether it was already in the sequence');
+  assert.ok(captured < imports, 'and read it before the first await, or it is reading the answer afterwards');
+  const abort = body.indexOf('if (startedActive && (!active || sessionId !== startedSession))');
+  assert.ok(abort > imports, 'the departure has to be checked after the chunks resolve');
+  assert.ok(abort < body.indexOf('enter();'), 'and before anything re-enters the sequence');
+  assert.match(body.slice(abort, body.indexOf('enter();')), /return \{[^}]*complete: false/, 'an abandoned export returns an unfinished result, never a blob');
 });
