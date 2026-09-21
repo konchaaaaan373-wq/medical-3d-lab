@@ -20,6 +20,8 @@
  *   /s/<slug>/       reachable, each page's canonical is its own address
  *   /social/site.png reachable and an image — a link preview that 404s is
  *                    invisible until somebody shares a link
+ *   the build stamp  which build answered: production, and optionally the
+ *                    exact commit with `--expect-commit <sha>`
  *
  * With `--redirects-from`, the old origin must still lead here: links shared
  * before the move outlive the domain they were shared from.
@@ -36,9 +38,12 @@ import { scenePageUrl } from './site-metadata.js';
 const args = process.argv.slice(2);
 const positional = [];
 let redirectsFrom = '';
+let expectCommit = '';
 for (let i = 0; i < args.length; i += 1) {
   if (args[i] === '--redirects-from') redirectsFrom = args[(i += 1)] ?? '';
   else if (args[i].startsWith('--redirects-from=')) redirectsFrom = args[i].slice('--redirects-from='.length);
+  else if (args[i] === '--expect-commit') expectCommit = args[(i += 1)] ?? '';
+  else if (args[i].startsWith('--expect-commit=')) expectCommit = args[i].slice('--expect-commit='.length);
   else positional.push(args[i]);
 }
 
@@ -165,7 +170,74 @@ if (redirectsFrom) {
   }
 }
 
+/**
+ * Which build is actually being served.
+ *
+ * Everything above proves the deployed pages name the right host. None of it
+ * says *which build* answered, and that is the question that cost two rounds
+ * of "this is broken" / "that is fixed" about the same screen: the reporter
+ * was on a deploy preview of a pull request merged before the fix, and no
+ * request anybody made could have told them so (L-51). The build stamps its
+ * own identity into every page (`vite.config.js`), so one request settles it.
+ *
+ * Reported always, asserted only when a commit is named — `--expect-commit
+ * <sha>` after a deploy answers "did the thing I merged actually go out?"
+ * without a browser and without guessing from timestamps.
+ */
+const stamp = (html, name) => html.match(new RegExp(`name="${name}" content="([^"]*)"`))?.[1] ?? '';
+const home = await get('/');
+const served = home.ok
+  ? {
+      context: stamp(home.body ?? '', 'build-context'),
+      commit: stamp(home.body ?? '', 'build-commit'),
+      review: stamp(home.body ?? '', 'build-review'),
+    }
+  : null;
+
+// An origin that did not answer has already been reported above, by the check
+// that asked it for a page. Reporting it a second time as "carries no build
+// stamp" would send whoever reads this after a stale deploy instead of after
+// the outage that is actually in front of them.
+if (!served) {
+  console.log('  build   not asked — the origin did not answer');
+} else if (!served.context) {
+  problems.push(
+    'the served page carries no build-context meta tag — either this origin is running a build ' +
+      'from before the build stamped itself, or it is not this site at all',
+  );
+} else if (served.context !== 'production') {
+  problems.push(
+    `the served build says it is "${served.context}"` +
+      (served.review ? ` (PR #${served.review})` : '') +
+      ' — a published origin must serve a production build',
+  );
+}
+
+if (expectCommit && served) {
+  // A build with no commit in it cannot answer "did what I merged go out?",
+  // and answering "yes" by saying nothing is the failure mode this flag exists
+  // to remove. Silence is a problem here, not a pass.
+  if (!served.commit) {
+    problems.push(
+      `asked for commit ${expectCommit.slice(0, 7)}, but the served build names no commit at all — ` +
+        'nothing here can confirm the deploy landed',
+    );
+  } else if (!served.commit.startsWith(expectCommit.slice(0, 7))) {
+    problems.push(
+      `the served build is ${served.commit.slice(0, 7)}, not the expected ${expectCommit.slice(0, 7)} — ` +
+        'the deploy has not landed yet, or it failed',
+    );
+  }
+}
+
 console.log(`Deployed site — ${origin}`);
+if (served) {
+  console.log(
+    `  build   ${served.context || 'unstamped'}` +
+      (served.commit ? ` · ${served.commit.slice(0, 7)}` : '') +
+      (served.review ? ` · PR #${served.review}` : ''),
+  );
+}
 for (const [label, status] of checked) console.log(`  ${String(status).padEnd(14)} ${label}`);
 
 if (problems.length) {

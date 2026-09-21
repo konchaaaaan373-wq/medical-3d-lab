@@ -170,6 +170,22 @@ const metaTag = (attr, name, content) =>
  *
  * @param {{title:string, description:string, canonical?:string, image?:string, type?:string}} page
  */
+/**
+ * Which build produced this page.
+ *
+ * Here, in the tags *every* emitter shares, rather than in a
+ * `transformIndexHtml` hook — that hook only ever sees `index.html`, and the
+ * crawlable `/s/<slug>/` pages are written by `generateBundle`, so the first
+ * version of this stamped one page out of five while its own comment said
+ * "every page". Netlify sets these on each build; a local build sets none of
+ * them and says `local`, which is not production either.
+ */
+const buildStampTags = () => [
+  metaTag('name', 'build-context', process.env.CONTEXT || 'local'),
+  metaTag('name', 'build-commit', process.env.COMMIT_REF || ''),
+  metaTag('name', 'build-review', process.env.REVIEW_ID || ''),
+];
+
 export function headTags({ title, description, canonical = '', image = '', type = 'website' }) {
   return [
     `    <title>${escapeHtml(title)}</title>`,
@@ -187,6 +203,7 @@ export function headTags({ title, description, canonical = '', image = '', type 
     metaTag('name', 'twitter:title', title),
     metaTag('name', 'twitter:description', description),
     metaTag('name', 'twitter:image', image),
+    ...buildStampTags(),
   ].filter(Boolean);
 }
 
