@@ -185,8 +185,9 @@ at fixed hue and lightness rather than clipped, and
 or as colourful as its hue and lightness permit, whichever is less. The
 frontal lobe is red, which makes the central sulcus a red-against-green
 boundary — the one pair dichromacy cannot separate by hue at all — so the
-value step across it is sized for those readers rather than for the eye.
-Natural-anatomy mode stays in HSL: it is a narrow band of hand-picked tissue
+value step across it is sized for those readers rather than for the eye, and
+how deep the green may go is decided by where that step stops working for a
+protanope rather than by taste. Natural-anatomy mode stays in HSL: it is a narrow band of hand-picked tissue
 tones, not a categorical system. **Structures inside one
 family are separated by lightness and saturation, which dichromacy compresses,
 and are not claimed to be distinguishable by colour for those readers** — the
@@ -791,6 +792,38 @@ less, which is the invariant that was meant all along. Colour still aids
 identification and grouping and does not show real tissue colour, functional
 localisation, vascular territory, exact boundaries or positional accuracy
 (§6).
+
+Sources in scope: `src/data/brainAnatomy.js`,
+`src/scenes/nervous/scenes/brainAnatomy/BrainAnatomyScene.js`.
+
+**Revision 31 → 32 (2026-09-21) — the parietal lobe's green is deepened to
+where the central sulcus allows.** A presentation change only: no geometry, no
+atlas ids, no labels, no hierarchy, no copy and no claim about anatomy
+changed, and natural-anatomy mode is untouched. The parietal lobe was already
+green but sat at L\* 74, which reads as mint rather than as green. It moves to
+L\* 61 and the frontal red moves with it, from L\* 55 to 50, to keep the pair
+apart.
+
+**How deep the green could go was not a matter of taste.** The central sulcus
+is a red-against-green boundary, the one pair dichromacy cannot separate by
+hue, so it is held by the lightness step between the two — and the step is
+what deepening the green spends. Measured across the range, the floors hold at
+L\* 61 and break below it: at L\* 58 the two lobes come within ΔE 3.5 under
+simulated protanopia and at L\* 52 within 1.1, against a floor of 3. L\* 61 is
+therefore the limit, and it is recorded as a limit rather than a preference.
+
+What it cost and what it bought, on the lit surface: the central sulcus is
+ΔE 79.0 in normal vision, up from 72.7, and 21.8 under protanopia, down from
+26.1 — the narrower lightness step is spent where a trichromat gains and a
+dichromat loses, both still far above anything the guards require. Member to
+member, every touching pair is at least ΔE 31.4 apart, the worst pair among
+the eight surface families under simulated dichromacy is ΔE 4.2, and all 147
+structures stay distinct at ΔE 4.17. Every colour-map shade changed again
+(147/147). The mutation that now proves the colour-vision guard is the one
+this change was measured against: darkening the parietal lobe to L\* 52 fails
+protanopia alone, at ΔE 1.1. Colour still aids identification and grouping and
+does not show real tissue colour, functional localisation, vascular territory,
+exact boundaries or positional accuracy (§6).
 
 Sources in scope: `src/data/brainAnatomy.js`,
 `src/scenes/nervous/scenes/brainAnatomy/BrainAnatomyScene.js`.

@@ -62,8 +62,8 @@ const DETAIL_COLOR_FAMILY = {
   // sulcus is a red-against-green boundary, which is the one pair a
   // protanope and a deuteranope cannot separate by hue at all, so the value
   // step across it is sized for them rather than for the eye.
-  frontal: { hue: 42, hueSpan: 12, chroma: 62, chromaSpan: 30, lightness: 55, lightnessSpan: 30, seed: 'frontal-v67335' },
-  parietal: { hue: 151, hueSpan: 12, chroma: 62, chromaSpan: 20, lightness: 74, lightnessSpan: 20, seed: 'parietal-v54167' },
+  frontal: { hue: 42, hueSpan: 12, chroma: 62, chromaSpan: 30, lightness: 50, lightnessSpan: 30, seed: 'frontal-v67335' },
+  parietal: { hue: 151, hueSpan: 12, chroma: 62, chromaSpan: 20, lightness: 61, lightnessSpan: 22, seed: 'parietal-v54167' },
   temporal: { hue: 311, hueSpan: 12, chroma: 62, chromaSpan: 26, lightness: 44, lightnessSpan: 26, seed: 'temporal-v60699' },
   occipital: { hue: 267, hueSpan: 10, chroma: 62, chromaSpan: 20, lightness: 64, lightnessSpan: 20, seed: 'occipital-v172674' },
   // The cingulate sits on the cool side because the warm sector is full: a

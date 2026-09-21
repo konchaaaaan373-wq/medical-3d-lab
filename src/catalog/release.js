@@ -465,14 +465,14 @@ export const BETA_PUBLICATION_DECISIONS = Object.freeze([
     decidedAt: '2026-09-19',
     /** Who, and in what capacity. A role is a claim, and it is checked. */
     decidedBy: Object.freeze({
-      name: 'Claude Code (AI engineering agent), re-taken for the red frontal lobe and the hues it moved',
+      name: 'Claude Code (AI engineering agent), re-taken for a deeper green parietal lobe and the red it is read against',
       role: 'engineering',
     }),
     record: 'docs/beta-publication/brain-anatomy.md',
     assetRevisions: Object.freeze({
       'brain-atlas-glb': '76a49ea4526a4880613aec7a02756bd7301b0b9d0680d7cae33e197b672c5453',
     }),
-    sceneRevision: Object.freeze({ cardRevision: 31, modelDigest: 'accd38748047d63d' }),
+    sceneRevision: Object.freeze({ cardRevision: 32, modelDigest: '012b9177f024ca10' }),
     /** What was actually exercised. Not a plan — a list of what was done. */
     scope: Object.freeze({
       // Re-measured on 2026-09-15 and corrected. The first two of the four
@@ -504,6 +504,7 @@ export const BETA_PUBLICATION_DECISIONS = Object.freeze([
         'for the 2026-09-21 restoration of red and green: the eight viewpoints re-rendered again with their dichromacy simulations, after a reader reported that the map had lost its colour',
         'for the 2026-09-21 LCh redesign: the eight viewpoints re-rendered once more with their dichromacy simulations, after a reader reported that the set did not read as one palette',
         'for the 2026-09-21 red frontal lobe: the eight viewpoints re-rendered again with their dichromacy simulations, the central sulcus being a red-against-green boundary and therefore carried by lightness',
+        'for the 2026-09-21 deeper green: the eight viewpoints re-rendered once more, after a reader read the parietal lobe as mint rather than green; how far the green could be taken was decided by where the central sulcus collapses under simulated protanopia',
       ]),
       interactions: Object.freeze([
         'click pins a structure and the panel names it in both languages',
