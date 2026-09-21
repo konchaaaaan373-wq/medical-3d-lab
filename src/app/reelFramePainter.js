@@ -41,6 +41,18 @@ const INK_FAINT = TOKENS['ink-faint'];
 const CARD_INK = ['#7fe8f5', '#ff8a9c'];
 const CARD_LABEL_INK = [INK_DIM, '#ffb0bc'];
 const SCRIM = 'rgba(4, 6, 12, 0.72)';
+/**
+ * The backing the card row gets where the frame is too short to clear the model.
+ *
+ * Three stops, fading out at the foot: a flat band ends in a hard horizontal
+ * seam across the subject, which is worse than the overlap it fixes. The same
+ * stops are in `reel.css`, and `tests/video-export.test.js` compares them.
+ */
+export const CARD_BACKDROP_STOPS = Object.freeze([
+  [0, 'rgba(4, 6, 12, 0.78)'],
+  [0.55, 'rgba(4, 6, 12, 0.62)'],
+  [1, 'rgba(4, 6, 12, 0)'],
+]);
 const FOOTER_BACKGROUND = 'rgba(4, 6, 12, 0.86)';
 
 const FONT_STACK = '"Helvetica Neue", Helvetica, Arial, "Hiragino Sans", "Noto Sans JP", sans-serif';
@@ -70,10 +82,10 @@ const LAYOUT = Object.freeze({
  * `tests/video-export.test.js` reads `reel.css` and holds this table to them.
  */
 const FORMAT_LAYOUT = Object.freeze({
-  reel: { cardsTop: 0.1, cardFigure: 9, hook: 9.5, takeHome: 5, takeHomeBottom: 0.2, caption: 3.5, bottomBand: 0.16, markerTop: 0.3, badgeTop: 0.64 },
-  portrait: { cardsTop: 0.1, cardFigure: 7.5, hook: 8, takeHome: 4.2, takeHomeBottom: 0.17, caption: 3, bottomBand: 0.16, markerTop: 0.3, badgeTop: 0.64 },
-  square: { cardsTop: 0.1, cardFigure: 6.5, hook: 7, takeHome: 3.8, takeHomeBottom: 0.2, caption: 2.6, bottomBand: 0.16, markerTop: 0.3, badgeTop: 0.7 },
-  wide: { cardsTop: 0.06, cardFigure: 6, hook: 6.5, takeHome: 3.4, takeHomeBottom: 0.2, caption: 2.6, bottomBand: 0.08, markerTop: 0.24, badgeTop: 0.7 },
+  reel: { cardsTop: 0.1, cardFigure: 9, hook: 9.5, takeHome: 5, takeHomeBottom: 0.2, caption: 3.5, bottomBand: 0.16, markerTop: 0.3, badgeTop: 0.64, cardBackdrop: false },
+  portrait: { cardsTop: 0.1, cardFigure: 7.5, hook: 8, takeHome: 4.2, takeHomeBottom: 0.17, caption: 3, bottomBand: 0.16, markerTop: 0.3, badgeTop: 0.64, cardBackdrop: false },
+  square: { cardsTop: 0.1, cardFigure: 6.5, hook: 7, takeHome: 3.8, takeHomeBottom: 0.2, caption: 2.6, bottomBand: 0.16, markerTop: 0.3, badgeTop: 0.7, cardBackdrop: true },
+  wide: { cardsTop: 0.06, cardFigure: 6, hook: 6.5, takeHome: 3.4, takeHomeBottom: 0.2, caption: 2.6, bottomBand: 0.08, markerTop: 0.24, badgeTop: 0.7, cardBackdrop: true },
 });
 
 /** The per-format table, for the test that holds it to the stylesheet. */
@@ -196,6 +208,41 @@ export function paintReelFrame(ctx, { frame = {}, width, height, provenance, for
   if (items.length) {
     const columnWidth = innerWidth / items.length;
     const opacity = cards.opacity ?? 0;
+
+    // A short frame has no empty band for the figures, so at 16:9 and 1:1 they
+    // are read over the model — with the same backing the marker and the
+    // callout already use (`reel.css`, and F-163 for why not moving them).
+    // Measured before anything is drawn, because it has to go underneath.
+    if (shape.cardBackdrop && opacity > 0.01) {
+      const rowHeight = Math.max(
+        ...items.map((item) =>
+          stackHeight(ctx, unit, columnWidth, [
+            { text: item.label, size: 3.4, weight: 700 },
+            { text: (item.rows ?? []).join('\n'), size: 2.3, gap: 0.4 },
+          ]) + shape.cardFigure * unit * 1.1
+        )
+      );
+      const padX = unit * 0.9;
+      const padTop = unit * 0.7;
+      // Room under the text for the fade to happen in, as the rule's bottom
+      // padding gives it on screen.
+      const padBottom = unit * 2.2;
+      const top = height * shape.cardsTop - padTop;
+      const bandHeight = rowHeight + padTop + padBottom;
+      ctx.save();
+      ctx.globalAlpha = Math.min(1, opacity);
+      const gradient = ctx.createLinearGradient?.(0, top, 0, top + bandHeight);
+      if (gradient) {
+        for (const [offset, colour] of CARD_BACKDROP_STOPS) gradient.addColorStop(offset, colour);
+        ctx.fillStyle = gradient;
+      } else {
+        // A context that cannot make a gradient still gets the backing.
+        ctx.fillStyle = CARD_BACKDROP_STOPS[1][1];
+      }
+      ctx.fillRect(side - padX, top, innerWidth + padX * 2, bandHeight);
+      ctx.restore();
+    }
+
     items.forEach((item, index) => {
       const x = side + columnWidth * (index + 0.5);
       const common = { x, maxWidth: columnWidth, anchor: 'top', opacity };
@@ -373,6 +420,25 @@ function measureProvenance(ctx, { width, unit, provenance }) {
 }
 
 const font = (part, unit) => `${part.weight ?? 400} ${part.size * unit}px ${FONT_STACK}`;
+
+/**
+ * How tall a stack of text parts is, without drawing it.
+ *
+ * The card backdrop has to go *under* the card, so its height is needed before
+ * a single glyph has been painted. Same wrapping and the same line heights the
+ * block uses, because a backdrop measured another way is a backdrop that fits
+ * in the test and not on the screen.
+ */
+function stackHeight(ctx, unit, maxWidth, parts) {
+  let total = 0;
+  for (const part of parts) {
+    if (part?.text == null || part.text === '') continue;
+    ctx.font = font(part, unit);
+    const lines = wrapLines(ctx, String(part.text), maxWidth);
+    total += (part.gap ?? 0) * unit + lines.length * part.size * unit * (part.lineHeight ?? 1.25);
+  }
+  return total;
+}
 
 /**
  * Greedy wrapping that works in both languages.

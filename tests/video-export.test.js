@@ -21,7 +21,7 @@ import {
   VIDEO_EXPORT_COPY,
   clauseSentence,
 } from '../src/data/videoExport.js';
-import { FORMAT_LAYOUT_TABLE, paintReelFrame, wrapLines } from '../src/app/reelFramePainter.js';
+import { CARD_BACKDROP_STOPS, FORMAT_LAYOUT_TABLE, paintReelFrame, wrapLines } from '../src/app/reelFramePainter.js';
 // `ReelMode` pulls in `three`, which a `node --test` run loads happily —
 // `tests/reel.test.js` already imports it for the same list. The formats are
 // declared once and checked once.
@@ -48,6 +48,24 @@ import { FakeElement, findByClass, installFakeDocument } from './helpers/fake-do
  * `three` — so `animated: true` stands in for that answer, exactly as the app
  * passes `Boolean(scene.getReel)`.
  */
+
+const REEL_CSS = readFileSync(new URL('../src/styles/reel.css', import.meta.url), 'utf8');
+
+/**
+ * What one exact selector declares, last wins.
+ *
+ * `rulesNaming` deliberately refuses descendant selectors, and every
+ * format override is one (`.reel-frame[data-format='wide'] .reel-cards`), so
+ * these are matched by the whole selector string instead of by class.
+ */
+function cssValue(selector, property) {
+  const rules = [...rulesOf(REEL_CSS)].filter((rule) => rule.names.map((name) => name.trim()).includes(selector));
+  for (const rule of rules.reverse()) {
+    const found = declaration(rule.body, property);
+    if (found) return found;
+  }
+  return null;
+}
 
 const ANIMATED_SCENES = ['copd-hyperinflation', 'asthma-heterogeneity', 'heart-failure', 'portal-hypertension', 'hepatorenal-syndrome'];
 
@@ -395,7 +413,7 @@ test('a recorder that fails rejects rather than writing an empty file', async ()
 
 /** Records what was painted, in the order it was painted. */
 function fakeContext() {
-  const calls = { text: [], rects: [], fonts: [] };
+  const calls = { text: [], rects: [], fonts: [], gradients: [] };
   return {
     calls,
     globalAlpha: 1,
@@ -407,6 +425,14 @@ function fakeContext() {
     restore() {},
     fillRect(x, y, width, height) {
       calls.rects.push({ x, y, width, height, fillStyle: this.fillStyle });
+    },
+    // Enough of a gradient to record what was asked for: the card backing
+    // fades at its foot, and the stops are the thing that has to match the
+    // stylesheet.
+    createLinearGradient(x0, y0, x1, y1) {
+      const gradient = { x0, y0, x1, y1, stops: [], addColorStop(offset, colour) { this.stops.push([offset, colour]); } };
+      calls.gradients.push(gradient);
+      return gradient;
     },
     fillText(text, x, y) {
       calls.text.push({ text, x, y, alpha: this.globalAlpha, font: this.font });
@@ -545,15 +571,7 @@ test('the painter lays out each format the way the stylesheet does', () => {
   // card figures across the middle of the model in a 16:9 export: the reader
   // saw one layout and the file carried another. Measured by reading the
   // stylesheet, so the table cannot drift away from it either.
-  const css = readFileSync(new URL('../src/styles/reel.css', import.meta.url), 'utf8');
-  const valueOf = (selector, property) => {
-    const rules = [...rulesOf(css)].filter((rule) => rule.names.map((name) => name.trim()).includes(selector));
-    for (const rule of rules.reverse()) {
-      const found = declaration(rule.body, property);
-      if (found) return found;
-    }
-    return null;
-  };
+  const valueOf = cssValue;
   const em = (value) => (value === null ? null : Number.parseFloat(value));
   const fraction = (value) => (value === null ? null : Number.parseFloat(value) / 100);
   const forFormat = (format, selector, property, read) => {
@@ -631,6 +649,57 @@ test('the painted frame uses its own format\'s sizes, not the default ones', () 
     assert.ok(
       Math.abs(size - table.takeHome * unit) < 0.01,
       `${format.id}: the take-home is ${size}px, the format asks for ${table.takeHome * unit}px`
+    );
+  }
+});
+
+test('a short frame backs the figures, and only where the stylesheet does', () => {
+  // At 16:9 and 1:1 the comparison fills the frame, so the figures are read
+  // over the model. Moving them has nowhere to go and pulling the camera back
+  // shrinks the subject to make room for its own caption (F-163), so they get
+  // the backing the marker already uses — in the app and in the file, from one
+  // decision rather than two.
+  for (const format of REEL_FORMATS) {
+    const declared = cssValue(`.reel-frame[data-format='${format.id}'] .reel-cards`, 'background');
+    const table = FORMAT_LAYOUT_TABLE[format.id];
+    assert.equal(
+      table.cardBackdrop,
+      declared !== null,
+      `${format.id}: the painter ${table.cardBackdrop ? 'backs' : 'does not back'} the cards and the stylesheet ${declared ? 'does' : 'does not'}`
+    );
+    if (declared) {
+      // Same stops, in the same order, on both surfaces: the reader sees one
+      // of them and the file carries the other.
+      const stops = [...declared.matchAll(/(rgba?\([^)]*\))\s*([\d.]+)%/g)].map(([, colour, offset]) => [
+        Number(offset) / 100,
+        colour,
+      ]);
+      assert.deepEqual(stops, CARD_BACKDROP_STOPS.map(([offset, colour]) => [offset, colour]),
+        `${format.id}: the stylesheet fades the card backing differently from the painter`);
+    }
+
+    const ctx = fakeContext();
+    paintReelFrame(ctx, { frame: FRAME, width: format.width, height: format.height, provenance: PROVENANCE, format: format.id });
+    const gradient = ctx.calls.gradients[0] ?? null;
+    const backdrop = ctx.calls.rects.find((rect) => rect.fillStyle === gradient);
+    assert.equal(Boolean(backdrop), table.cardBackdrop, `${format.id}: the painted backdrop does not match the table`);
+    if (!backdrop) continue;
+    assert.deepEqual(gradient.stops, CARD_BACKDROP_STOPS.map(([offset, colour]) => [offset, colour]));
+    // The fade runs down the band, not across it.
+    assert.equal(gradient.x0, gradient.x1);
+    assert.ok(gradient.y1 > gradient.y0);
+
+    // It has to be under the figures it backs, and cover them.
+    const figure = ctx.calls.text.find((call) => call.text === '3.1');
+    assert.ok(backdrop.y <= figure.y, `${format.id}: the backdrop starts below the figure it backs`);
+    // The bottom of the last line, not its top: a backdrop measured without the
+    // small rows under the figure still clears their *top* edge, and covers
+    // none of them.
+    const rows = ctx.calls.text.filter((call) => call.text.startsWith('EELV'));
+    const lowest = Math.max(...rows.map((call) => call.y + Number(/([\d.]+)px/.exec(call.font)[1]) * 1.25));
+    assert.ok(
+      backdrop.y + backdrop.height >= lowest,
+      `${format.id}: the backdrop ends at ${Math.round(backdrop.y + backdrop.height)} and the card runs to ${Math.round(lowest)}`
     );
   }
 });

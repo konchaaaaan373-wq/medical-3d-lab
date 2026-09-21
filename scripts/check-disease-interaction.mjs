@@ -47,19 +47,41 @@
  * these are the same scenes, in the same session, and a second browser check
  * costs four cores and ten minutes of somebody's afternoon.
  *
- * Options: the scene slugs to drive, as arguments, after an optional output
- * directory for the screenshots.
+ * Options:
+ *   --engine <name>  chromium (default), firefox or webkit
+ *   the scene slugs to drive, as arguments, after an optional output directory
+ *   for the screenshots.
  */
 import { mkdirSync, readFileSync, statSync, writeFileSync } from 'node:fs';
 import { join, resolve } from 'node:path';
-import { chromium } from 'playwright';
+import * as playwright from 'playwright';
 import { chromiumExecutable } from './lib/browser.mjs';
 import { serveDist } from './lib/serve-dist.mjs';
 import { videoExportOffered } from '../src/app/videoExport.js';
 import { VIDEO_MIME_CANDIDATES } from '../src/app/videoRecorder.js';
 
+/**
+ * `--engine chromium|firefox|webkit`, stripped before the positional
+ * arguments are read.
+ *
+ * The export is the reason this exists. `MediaRecorder` over
+ * `canvas.captureStream()` is a browser feature, and "it works" was measured
+ * on exactly one engine until this flag (F-161). The other two cannot be
+ * downloaded in every environment, so the default stays Chromium and the
+ * matrix lives in `final-browser-validation.yml`, where the runner can fetch
+ * them.
+ */
+const argv = process.argv.slice(2);
+const engineAt = argv.indexOf('--engine');
+const engineName = engineAt >= 0 ? argv[engineAt + 1] : 'chromium';
+if (engineAt >= 0) argv.splice(engineAt, 2);
+if (!['chromium', 'firefox', 'webkit'].includes(engineName)) {
+  console.error(`Unknown --engine "${engineName}". Choose one of: chromium, firefox, webkit.`);
+  process.exit(1);
+}
+
 const distDir = resolve('dist');
-const outDir = process.argv[2] ?? '/tmp/disease-shots';
+const outDir = argv[0] ?? '/tmp/disease-shots';
 mkdirSync(outDir, { recursive: true });
 
 // One static server, shared with every other browser check. This file used to
@@ -68,9 +90,15 @@ mkdirSync(outDir, { recursive: true });
 const { base: origin, close: closeServer } = await serveDist(distDir);
 const base = origin.replace(/\/$/, '');
 
-const SLUGS = process.argv.slice(3);
-// Same resolver as every other browser check; `CHROMIUM_PATH` still wins.
-const browser = await chromium.launch({ executablePath: chromiumExecutable(chromium) });
+const SLUGS = argv.slice(1);
+const engine = playwright[engineName];
+// The fallback resolver is Chromium's alone — it exists for images that ship a
+// Chromium under `PLAYWRIGHT_BROWSERS_PATH`. Firefox and WebKit are launched
+// the way Playwright wants to launch them.
+const browser = await engine.launch(
+  engineName === 'chromium' ? { executablePath: chromiumExecutable(engine) } : {}
+);
+if (engineName !== 'chromium') console.log(`engine: ${engineName}`);
 const page = await browser.newPage({ viewport: { width: 1440, height: 900 } });
 
 const state = () =>
@@ -103,6 +131,23 @@ const setSlider = async (value) => {
 const report = [];
 for (const slug of SLUGS) {
   await page.goto(`${base}?preview=1#/${slug}`, { waitUntil: 'networkidle' });
+  // And refuse the locked page rather than timing out on a canvas that is not
+  // coming. `?preview=1` unlocks a build made with `VITE_ALLOW_PREVIEW=1` and
+  // nothing else; against a production build every disease scene answers with
+  // "to be updated", and the run used to die 30 seconds later saying only that
+  // it could not find a canvas. `capture-phone-states.mjs` refuses the same
+  // surface for the same reason.
+  if (await page.locator('.locked-copy').count()) {
+    console.error(
+      `\nThe build does not open ${slug}: it answered with the "to be updated" page.\n\n`
+        + '  VITE_ALLOW_PREVIEW=1 npm run build\n'
+        + `  npm run verify:disease -- ${outDir} ${SLUGS.join(' ')}\n\n`
+        + 'A production build cannot be unlocked by a query parameter — the scene is not in it.'
+    );
+    await browser.close();
+    closeServer();
+    process.exit(1);
+  }
   await page.waitForSelector('canvas');
   await page.waitForTimeout(2600);
   const consent = page.locator('button', { hasText: '許可しない' });

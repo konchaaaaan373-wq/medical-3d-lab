@@ -333,6 +333,30 @@
   top: 6%;
 }
 
+/*
+ * A short frame has no empty band for the figures, so they are read over the
+ * model instead of beside it.
+ *
+ * At 16:9 and 1:1 the comparison fills the frame — measured, not assumed: a
+ * 16:9 recording of heart failure has both ventricles spanning nearly the whole
+ * height, and the same is true on screen (F-163). Moving the cards has nowhere
+ * to go and pulling the camera back shrinks the subject to make room for its
+ * own caption. So the cards get the backing the marker and the callout already
+ * use, and stay where the reader expects them.
+ *
+ * `paintReelFrame` mirrors this for the exported frame; the colour and the
+ * formats it applies to are checked against this rule in
+ * `tests/video-export.test.js`.
+ */
+.reel-frame[data-format='wide'] .reel-cards,
+.reel-frame[data-format='square'] .reel-cards {
+  /* Faded at the foot rather than cut off there. A flat band ends in a hard
+     horizontal seam across the subject — measured, on both surfaces, and worse
+     than the overlap it fixes. The hook's scrim fades for the same reason. */
+  background: linear-gradient(to bottom, rgba(4, 6, 12, 0.78) 0%, rgba(4, 6, 12, 0.62) 55%, rgba(4, 6, 12, 0) 100%);
+  padding: 0.7em 0.9em 2.2em;
+}
+
 .reel-frame[data-format='wide'] .reel-card-ef {
   font-size: 6em;
 }
