@@ -54,7 +54,8 @@ export function createBuildMarker() {
         : 'このページは公開中のサイトのビルドではありません。',
     );
   };
-  paint();
+  // `onLanguageChange` paints once itself before subscribing — calling it here
+  // as well built the same line twice on every mount.
   onLanguageChange(paint);
   return marker;
 }

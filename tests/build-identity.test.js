@@ -25,6 +25,7 @@ const MARKER = read('src/components/BuildMarker.js');
 const MAIN = read('src/main.js');
 const BASE = read('src/styles/base.css');
 const VITE = read('vite.config.js');
+const METADATA = read('scripts/site-metadata.js');
 
 const ruleFor = (css, selectors) =>
   [...rulesOf(css)].filter((rule) => rule.selectors === selectors).at(-1);
@@ -43,13 +44,26 @@ test('an unstamped build is not production', () => {
 test('the build states its identity where a request can read it, not only a browser', () => {
   // A meta tag, so `curl`, CI or `verify:live` can answer "which build is
   // served here?" without running the page. The three names are the contract.
+  //
+  // In `headTags`, which every emitter shares — **not** in a
+  // `transformIndexHtml` hook, which only ever sees `index.html` while the
+  // four crawlable `/s/<slug>/` pages are written by `generateBundle`. The
+  // first version stamped one page in five and said "every page" in its own
+  // comment.
   for (const name of ['build-context', 'build-commit', 'build-review']) {
-    assert.ok(VITE.includes(`name="${name}"`), `the build does not stamp ${name} into the HTML`);
+    assert.ok(METADATA.includes(`'${name}'`), `the shared head tags do not stamp ${name}`);
   }
+  assert.match(
+    METADATA,
+    /\.\.\.buildStampTags\(\)/,
+    'the stamp is defined but never added to the tags every page gets',
+  );
   // From the environment the deploy runs in, not from configuration somebody
-  // has to remember to set.
+  // has to remember to set. `vite.config.js` carries the same three into the
+  // bundle, for the on-screen marker.
   for (const variable of ['CONTEXT', 'COMMIT_REF', 'REVIEW_ID']) {
-    assert.ok(VITE.includes(`process.env.${variable}`), `the build ignores ${variable}`);
+    assert.ok(METADATA.includes(`process.env.${variable}`), `the head tags ignore ${variable}`);
+    assert.ok(VITE.includes(`process.env.${variable}`), `the bundle ignores ${variable}`);
   }
 });
 
@@ -85,12 +99,30 @@ test('a scripted capture still gets a clean frame', () => {
   assert.ok(rule, 'nothing clears the marker for a scripted capture');
   assert.equal(declaration(rule.body, 'display'), 'none');
 
-  // And the class has to reach it. `is-capture` on `#ui` cannot: the marker is
-  // deliberately not inside `#ui`.
-  const capture = read('scripts/capture-anatomy-views.mjs');
+  // And the class has to reach it, from **every** script that captures.
+  // `is-capture` on `#ui` cannot: the marker is deliberately not inside `#ui`.
+  // Checking one script left the other free to grow the marker in every frame
+  // it takes, with `npm test` still green.
+  for (const script of ['scripts/capture-anatomy-views.mjs', 'scripts/capture-phone-states.mjs']) {
+    assert.match(
+      read(script),
+      /document\.body\.classList\.(toggle|add)\('is-capture'/,
+      `${script} never puts is-capture where it can reach the build marker`,
+    );
+  }
+});
+
+test('the marker does not sit on the controls it shares a screen with', () => {
+  // Measured, then fixed: at 390×844 the fixed chip landed inside the console
+  // (704–832) and covered the clinical-use line. There is no free corner while
+  // the controls are shown — the navigation holds the top, the console holds
+  // the bottom — so the layout gives it room instead.
+  const rule = ruleFor(BASE, 'body.has-build-marker .console');
+  assert.ok(rule, 'nothing makes room for the marker, so it overlaps the console');
+  assert.match(declaration(rule.body, 'margin-bottom') ?? '', /^\d+px$/);
   assert.match(
-    capture,
-    /document\.body\.classList\.toggle\('is-capture'/,
-    'the capture script sets the class only where it cannot reach the marker',
+    MAIN,
+    /classList\.add\('has-build-marker'\)/,
+    'the class the layout reacts to is never set',
   );
 });

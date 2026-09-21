@@ -186,12 +186,21 @@ if (redirectsFrom) {
  */
 const stamp = (html, name) => html.match(new RegExp(`name="${name}" content="([^"]*)"`))?.[1] ?? '';
 const home = await get('/');
-const served = {
-  context: stamp(home.body ?? '', 'build-context'),
-  commit: stamp(home.body ?? '', 'build-commit'),
-  review: stamp(home.body ?? '', 'build-review'),
-};
-if (!served.context) {
+const served = home.ok
+  ? {
+      context: stamp(home.body ?? '', 'build-context'),
+      commit: stamp(home.body ?? '', 'build-commit'),
+      review: stamp(home.body ?? '', 'build-review'),
+    }
+  : null;
+
+// An origin that did not answer has already been reported above, by the check
+// that asked it for a page. Reporting it a second time as "carries no build
+// stamp" would send whoever reads this after a stale deploy instead of after
+// the outage that is actually in front of them.
+if (!served) {
+  console.log('  build   not asked — the origin did not answer');
+} else if (!served.context) {
   problems.push(
     'the served page carries no build-context meta tag — either this origin is running a build ' +
       'from before the build stamped itself, or it is not this site at all',
@@ -200,22 +209,35 @@ if (!served.context) {
   problems.push(
     `the served build says it is "${served.context}"` +
       (served.review ? ` (PR #${served.review})` : '') +
-      ` — a published origin must serve a production build`,
-  );
-}
-if (expectCommit && served.commit && !served.commit.startsWith(expectCommit.slice(0, 7))) {
-  problems.push(
-    `the served build is ${served.commit.slice(0, 7)}, not the expected ${expectCommit.slice(0, 7)} — ` +
-      'the deploy has not landed yet, or it failed',
+      ' — a published origin must serve a production build',
   );
 }
 
+if (expectCommit && served) {
+  // A build with no commit in it cannot answer "did what I merged go out?",
+  // and answering "yes" by saying nothing is the failure mode this flag exists
+  // to remove. Silence is a problem here, not a pass.
+  if (!served.commit) {
+    problems.push(
+      `asked for commit ${expectCommit.slice(0, 7)}, but the served build names no commit at all — ` +
+        'nothing here can confirm the deploy landed',
+    );
+  } else if (!served.commit.startsWith(expectCommit.slice(0, 7))) {
+    problems.push(
+      `the served build is ${served.commit.slice(0, 7)}, not the expected ${expectCommit.slice(0, 7)} — ` +
+        'the deploy has not landed yet, or it failed',
+    );
+  }
+}
+
 console.log(`Deployed site — ${origin}`);
-console.log(
-  `  build   ${served.context || 'unstamped'}` +
-    (served.commit ? ` · ${served.commit.slice(0, 7)}` : '') +
-    (served.review ? ` · PR #${served.review}` : ''),
-);
+if (served) {
+  console.log(
+    `  build   ${served.context || 'unstamped'}` +
+      (served.commit ? ` · ${served.commit.slice(0, 7)}` : '') +
+      (served.review ? ` · PR #${served.review}` : ''),
+  );
+}
 for (const [label, status] of checked) console.log(`  ${String(status).padEnd(14)} ${label}`);
 
 if (problems.length) {

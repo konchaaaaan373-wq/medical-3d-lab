@@ -228,6 +228,23 @@ body.is-capture .build-marker {
   display: none;
 }
 
+/*
+ * Room for it, rather than a corner nobody else wanted.
+ *
+ * There isn't one: measured at 390×844 and 1280×800, the navigation holds the
+ * top edge and the console reaches the bottom, so a fixed chip in any corner
+ * lands on something while the controls are shown. `pointer-events: none`
+ * means it steals no clicks — and means `verify:ui`'s occlusion test cannot
+ * see it either, so nothing would have caught this but looking.
+ *
+ * Only builds that carry the marker pay this, so the published site's layout
+ * is untouched; a preview is a few pixels shorter in the console than
+ * production, which is the cheaper of the two ways to be wrong.
+ */
+body.has-build-marker .console {
+  margin-bottom: 34px;
+}
+
 #ui.is-hidden .label-layer {
   opacity: 0.85;
 }

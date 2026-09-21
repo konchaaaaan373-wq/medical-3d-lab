@@ -107,7 +107,15 @@ async function boot() {
   // appended to `document.body` rather than to `#ui` so that hiding the
   // controls cannot take it — the screenshot people send is the hidden one.
   const buildMarker = createBuildMarker();
-  if (buildMarker) document.body.append(buildMarker);
+  if (buildMarker) {
+    // The class, not the element, is what the layout reacts to: the marker is
+    // `position: fixed` and would otherwise sit **on top of** the control
+    // console, which reaches the bottom of the viewport on every surface that
+    // has one (measured: the panel covered the clinical-use line at 390×844).
+    // `base.css` uses this to give the console the marker's height back.
+    document.body.classList.add('has-build-marker');
+    document.body.append(buildMarker);
+  }
 
   const shownHash = window.location.hash;
   const leaveOnRouteChange = () => installDeparture({

@@ -21,19 +21,22 @@
  */
 
 /* global __BUILD_CONTEXT__, __BUILD_COMMIT__, __BUILD_REVIEW__ */
-const read = (value, fallback = '') => {
-  try {
-    return typeof value === 'string' && value ? value : fallback;
-  } catch {
-    // Not replaced at all — a bundler other than this one, or a test importing
-    // the module directly. `local` is the honest answer to "which deploy?".
-    return fallback;
-  }
-};
 
-export const BUILD_CONTEXT = read(typeof __BUILD_CONTEXT__ === 'undefined' ? '' : __BUILD_CONTEXT__, 'local');
-export const BUILD_COMMIT = read(typeof __BUILD_COMMIT__ === 'undefined' ? '' : __BUILD_COMMIT__, '');
-export const BUILD_REVIEW = read(typeof __BUILD_REVIEW__ === 'undefined' ? '' : __BUILD_REVIEW__, '');
+/**
+ * The `typeof` guard is the whole protection, and it is enough.
+ *
+ * Vite replaces these three identifiers at build time; nothing replaces them
+ * under `node --test`, where the module is imported directly, and a bare
+ * reference to an undeclared identifier throws. `typeof` on one does not — it
+ * answers `'undefined'` — so the fallback is reached without anything to
+ * catch. (An earlier version wrapped this in `try`/`catch` and explained in a
+ * comment what the `catch` protected against; nothing could ever reach it.)
+ */
+const stamped = (value, fallback = '') => (typeof value === 'string' && value ? value : fallback);
+
+export const BUILD_CONTEXT = stamped(typeof __BUILD_CONTEXT__ === 'undefined' ? '' : __BUILD_CONTEXT__, 'local');
+export const BUILD_COMMIT = stamped(typeof __BUILD_COMMIT__ === 'undefined' ? '' : __BUILD_COMMIT__);
+export const BUILD_REVIEW = stamped(typeof __BUILD_REVIEW__ === 'undefined' ? '' : __BUILD_REVIEW__);
 
 /** The published site, and nothing else. */
 export const isProductionBuild = () => BUILD_CONTEXT === 'production';
