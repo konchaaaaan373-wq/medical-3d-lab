@@ -53,13 +53,22 @@ export function anatomyStatusText(status) {
  *   `heading` renders the name and breadcrumb here as well; the anatomy panel
  *   turns it off because its summary already carries them.
  *
+ *   `functionNote` is an optional reading of what the selected structure is
+ *   for, supplied by the caller rather than looked up here: this panel serves
+ *   every anatomy scene, only one of them has a function model behind it, and
+ *   whether that model may be shown at all is a release decision the
+ *   application owns. Given none, the section does not exist.
+ *
  *   `attribution` is who to credit for the geometry, resolved from the asset
  *   records by `attributionForScene`. It used to be a literal link to one
  *   repository, which was right for the brain and wrong for every other scene
  *   this panel serves — the heart atlas rests on a HuBMAP CCF release and was
  *   crediting the Brain Project.
  */
-export function createAnatomyInfoPanel(scene, { onPreferredView, heading = true, attribution = [] } = {}) {
+export function createAnatomyInfoPanel(
+  scene,
+  { onPreferredView, heading = true, attribution = [], functionNote = null } = {}
+) {
   const swatch = el('span', { class: 'anatomy-selection-swatch', 'aria-hidden': 'true' });
   const titleEn = el('strong', { class: 'anatomy-name lang-en', text: 'Select a structure' });
   const titleJa = el('strong', { class: 'anatomy-name lang-ja', text: '部位を選択してください' });
@@ -80,6 +89,21 @@ export function createAnatomyInfoPanel(scene, { onPreferredView, heading = true,
   noteEn.hidden = true;
   noteJa.hidden = true;
 
+  // What the structure is for, when the caller has a model that can say.
+  const functionTitleEn = el('strong', { class: 'anatomy-function-title lang-en', text: '' });
+  const functionTitleJa = el('strong', { class: 'anatomy-function-title lang-ja', text: '' });
+  const carriesEn = el('p', { class: 'anatomy-function-line lang-en', text: '' });
+  const carriesJa = el('p', { class: 'anatomy-function-line lang-ja', text: '' });
+  const ifLostEn = el('p', { class: 'anatomy-function-lost lang-en', text: '' });
+  const ifLostJa = el('p', { class: 'anatomy-function-lost lang-ja', text: '' });
+  const functionSourceEn = el('p', { class: 'anatomy-function-source lang-en', text: '' });
+  const functionSourceJa = el('p', { class: 'anatomy-function-source lang-ja', text: '' });
+  const functionSection = el('section', { class: 'anatomy-function' }, [
+    functionTitleEn, functionTitleJa, carriesEn, carriesJa,
+    ifLostEn, ifLostJa, functionSourceEn, functionSourceJa,
+  ]);
+  functionSection.hidden = true;
+
   const element = el('section', { class: 'panel anatomy-info', role: 'status', 'aria-live': 'polite' }, [
     heading
       ? el('div', { class: 'anatomy-heading-row' }, [
@@ -91,6 +115,7 @@ export function createAnatomyInfoPanel(scene, { onPreferredView, heading = true,
     bodyJa,
     noteEn,
     noteJa,
+    functionNote ? functionSection : null,
     el('div', { class: 'anatomy-footer' }, [
       countEn,
       countJa,
@@ -106,7 +131,23 @@ export function createAnatomyInfoPanel(scene, { onPreferredView, heading = true,
     ]),
   ]);
 
+  const renderFunction = (selection) => {
+    if (!functionNote) return;
+    const note = selection ? functionNote(selection) : null;
+    functionSection.hidden = !note;
+    if (!note) return;
+    functionTitleEn.textContent = note.title;
+    functionTitleJa.textContent = note.titleJa;
+    carriesEn.textContent = note.carries.text;
+    carriesJa.textContent = note.carries.textJa;
+    ifLostEn.textContent = note.ifLost.text;
+    ifLostJa.textContent = note.ifLost.textJa;
+    functionSourceEn.textContent = note.source.text;
+    functionSourceJa.textContent = note.source.textJa;
+  };
+
   const update = (selection) => {
+    renderFunction(selection);
     if (!selection) {
       titleEn.textContent = 'Select a structure';
       titleJa.textContent = '部位を選択してください';
@@ -157,6 +198,17 @@ export function createAnatomyInfoPanel(scene, { onPreferredView, heading = true,
   const unsubscribeStatus = scene.onAnatomyStatus?.(updateStatus);
   return {
     element,
+    /**
+     * Draw the current selection again.
+     *
+     * The one caller is the application, after the structure-function reading
+     * has finished loading: the panel was built before it arrived, and a
+     * reader who had already picked something would otherwise be looking at a
+     * card that stays empty until they pick something else.
+     */
+    refresh() {
+      renderSelection();
+    },
     dispose() {
       unsubscribeSelection?.();
       unsubscribeHover?.();

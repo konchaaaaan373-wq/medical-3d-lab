@@ -663,7 +663,7 @@ pair of colour families. Most of those pairs are never on screen together, and
 the budget they took came out of the ones that are: the central sulcus — the
 frontal-to-parietal boundary — fell to ΔE 18.7, from 23.5 in revision 26 and
 25.8 before that, and a reader reported it as unreadable. Every guard was
-green while that happened, which is recorded as L-52 in
+green while that happened, which is recorded as L-65 in
 `docs/verification-lessons.md`.
 
 The objective and the constraint are now the other way round. What is
@@ -718,7 +718,7 @@ touching-boundary floor rises from 22 to 28. The all-label audit improves to
 changed again (147/147). Of the three mutations that prove the guards,
 one is the defect reported against revision 27 and one fails the
 colour-vision assertion alone. Two of them had been silently failing to apply
-at all, which is recorded as L-53 in `docs/verification-lessons.md` and is why
+at all, which is recorded as L-64 in `docs/verification-lessons.md` and is why
 `scripts/mutate-colour-family.py` now refuses an edit that changes nothing.
 Colour still aids identification and grouping and does not show real tissue
 colour, functional localisation, vascular territory, exact boundaries or

@@ -84,7 +84,25 @@ export class OrganAnatomyScene {
     this.isolationListeners = new Set();
     this.visibilityListeners = new Set();
 
-    this.colorMode = this.constructor.colorModes?.[0]?.id ?? 'regions';
+    /**
+     * An organ opens in the colours an organ has.
+     *
+     * Every scene here offers two: a categorical one that tells parts apart by
+     * hue, and `natural`. The categorical one used to be the default because it
+     * is first in the list — and the list is ordered by what the scene is *for*,
+     * not by what a reader should meet first. So the heart opened as teal
+     * chambers with orange vessels, and a reader looking at the landing hero
+     * said it did not look like an organ. They were right: colour that carries
+     * no anatomical claim is still the first claim a picture makes.
+     *
+     * The brain keeps its own default (`BrainAnatomyScene`), because 147
+     * parcels cannot be told apart in tissue colour and being able to point at
+     * one is the whole product there.
+     */
+    this.colorMode =
+      this.constructor.colorModes?.find((mode) => mode.id === 'natural')?.id ??
+      this.constructor.colorModes?.[0]?.id ??
+      'regions';
     this.activeView = this.constructor.views?.[0]?.id ?? null;
     this.hiddenTags = new Set();
     this.section = null;

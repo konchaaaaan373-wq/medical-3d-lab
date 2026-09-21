@@ -108,6 +108,16 @@ export const RESERVED_ROUTE_SLUGS = Object.freeze([
  */
 export const DEFAULT_SCENE_ID = 'brain-anatomy';
 
+/**
+ * The scene whose model can say what a named structure is for, or null.
+ *
+ * One scene declares `providesStructureFunctions`, and the anatomy surfaces ask
+ * for it by that capability rather than by name — so the decision of whether
+ * that reading may be shown stays where every other release decision is.
+ */
+export const structureFunctionScene = () =>
+  SCENES.find((scene) => scene.providesStructureFunctions === true) ?? null;
+
 /** @param {string} id */
 export const sceneById = (id) => SCENES.find((scene) => scene.id === id) ?? null;
 /** @param {string} slug */

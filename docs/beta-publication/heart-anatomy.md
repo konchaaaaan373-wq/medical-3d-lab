@@ -8,11 +8,11 @@ clinician has judged this geometry or these labels**, and every surface says so
 
 | | |
 | --- | --- |
-| **Decided at** | 2026-09-15 |
-| **Decided by** | Repository owner's approval of 2026-09-15; implemented by Claude Opus 5 |
+| **Decided at** | 2026-09-21 (re-taken: the scene now opens in Natural) |
+| **Decided by** | Claude Code (AI engineering agent), re-pinning after a presentation-only change; the 2026-09-15 acceptance of what this scene names still stands |
 | **Role** | `engineering` — software behaviour, not anatomical or clinical judgement |
 | **Asset revisions** | `hubmap-vh-m-heart` @ `sha256:46d375e36d8181c161b70e1f0b8f0d778364f0a8414eebce4e4fda1cea73eb3d`<br>`hubmap-vh-m-blood-vasculature` @ `sha256:a95ff0825431953d8fff210cf29d9e65aeed5da55f623717ab613864a9435502` |
-| **Scene revision** | model card revision **23**, source digest `93a0f4f6cc4d2606` |
+| **Scene revision** | model card revision **26**, source digest `20ae31ab7bafd24f` |
 | **Scene sources under that digest** | [`src/data/heartAnatomy.js`](../../src/data/heartAnatomy.js), [`src/scenes/cardiovascular/scenes/heartAnatomy/HeartAnatomyScene.js`](../../src/scenes/cardiovascular/scenes/heartAnatomy/HeartAnatomyScene.js) |
 | **Adoption decision** | [`../decisions/HEART-ASSET-ADOPTION.md`](../decisions/HEART-ASSET-ADOPTION.md) |
 
@@ -37,6 +37,27 @@ by exactly what was removed.
 That is the one thing this record most wants a later reader to know: a claim was
 not smuggled in with a repair. `npm run assets:repair:verify` rebuilds the exact
 hashes above from the pinned sources and reports the validator clean.
+
+## Re-taken on 2026-09-21 — the scene opens in Natural
+
+The gate closed because the scene's sources changed, which is the mechanism
+working: a digest cannot tell a colour default from a re-labelled structure, so
+it stops and asks. **What changed is one line**: the mode the scene opens in is
+now `natural` instead of `parts`. A reader looking at the landing page
+said the heart did not look like an organ, and it did not — `parts` puts the
+chambers in a teal band on purpose, so that the colour is never read as an
+oxygenation map.
+
+**Nothing in "What was checked" below was re-checked, and nothing in it
+changed.** Which structures exist, which name each one carries, what a click
+selects, and what the legend says are all untouched; `Parts` is still there,
+one press away, with the same palette. The claim this record makes about the
+scene is the same claim, about a scene that now opens in tissue colour.
+
+What a reader should not take from that colour: **it is not a measurement.**
+The model card's §6 holds the wording — Natural reproduces the source files'
+own materials, which is not a claim about the colour of living tissue and not a
+map of oxygenation.
 
 ## What was checked
 

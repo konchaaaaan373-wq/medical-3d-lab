@@ -1,7 +1,7 @@
 import * as THREE from 'three';
 import { Viewer } from './Viewer.js';
 import { loadScene, sceneById, systemsWithScenes, resolveSceneId } from './sceneRegistry.js';
-import { SCENES } from '../catalog/index.js';
+import { SCENES, structureFunctionScene } from '../catalog/index.js';
 import { RELEASED_SCENES } from '../catalog/release.js';
 import { betaUnlocked, sceneOpen } from './releaseGate.js';
 import { structureOf } from './router.js';
@@ -46,6 +46,10 @@ import { createModelControls } from '../components/ModelControls.js';
 import { createLearningPanel } from '../components/LearningPanel.js';
 import { createSceneSwitcher } from '../components/SceneSwitcher.js';
 import { createReelMode } from './ReelMode.js';
+import { videoConsentTerms, videoExportOffered, videoFileName } from './videoExport.js';
+import { extensionForMimeType, saveBlob, videoRecordingSupported } from './videoRecorder.js';
+import { createVideoConsentDialog } from '../components/VideoConsentDialog.js';
+import { VIDEO_EXPORT_COPY } from '../data/videoExport.js';
 import { createStoryMode } from './StoryMode.js';
 import { createLabelLayer } from '../components/LabelLayer.js';
 import { createAnatomyInfoPanel } from '../components/AnatomyInfoPanel.js';
@@ -586,6 +590,16 @@ export async function createApp({ stage, ui, onRetryModel = null }) {
   const playback = new Playback({ duration: 26 });
 
   const legend = createLegend(meta);
+  // `createLegend` paints from `meta.palette`, which is one mode's colours
+  // written into the scene's static metadata, and `applyInspectionMode` only
+  // repaints it when the reader *changes* mode. A scene that opens in any other
+  // mode therefore showed a legend for a screen nobody was looking at — which
+  // is what happened the day organs started opening in tissue colour. Ask the
+  // scene what it opened in, once, here.
+  {
+    const opening = scene.getInspectionMode?.();
+    if (opening) legend.setPalette(scene.getInspectionLegendPalette?.(opening));
+  }
   const stageReadout = createStageReadout({ meta, onSeek: (value) => seek(value) });
   const labels = createLabelLayer({ viewer, annotations: scene.getAnnotations() });
   const sceneInspectionViews = scene.getInspectionViews?.() ?? scene.getAnatomyViews?.();
@@ -861,6 +875,26 @@ export async function createApp({ stage, ui, onRetryModel = null }) {
   // key and the selection card — composed into a layout where the summary
   // cannot be scrolled away and exactly one region scrolls. Nothing is built
   // twice: each element is created once here and handed over.
+  /**
+   * Whether this screen may show what a touched structure is *for*.
+   *
+   * Three things have to hold, and none of them is a name written here. There
+   * has to be a scene that can answer (the catalogue declares it); the release
+   * has to open that scene, because its medical review is what makes the
+   * reading publishable; and it has to be about the organ on screen, since a
+   * model of the brain has nothing to say about a heart valve.
+   */
+  const functionModelScene = structureFunctionScene();
+  const offersStructureFunctions = Boolean(
+    functionModelScene && sceneOpen(functionModelScene) && functionModelScene.organ === entry?.organ
+  );
+  /**
+   * Late-bound on purpose: the reading is loaded through the scene's own
+   * loader, so that a production build — where that loader is replaced with a
+   * rejecting thunk — never pulls a withheld model into the application shell.
+   * Nothing in `src/app/` imports a medical model, and this is why.
+   */
+  let readStructureFunction = null;
   const anatomyInfo = scene.getAnatomySelection
     ? createAnatomyInfoPanel(scene, {
         onPreferredView: applyInspectionView,
@@ -871,8 +905,29 @@ export async function createApp({ stage, ui, onRetryModel = null }) {
         // the panel: this panel serves every anatomy scene, and a literal was
         // only ever right for one of them.
         attribution: attributionForScene(entry?.id ?? entry?.slug ?? meta.id),
+        // What a touched structure is *for* comes from a different model, with
+        // its own card, its own profile and its own review — still pending. So
+        // it is shown exactly where that model may be shown: wherever its own
+        // scene is open. In a production build that is nowhere, and the
+        // published atlas is the atlas, unchanged.
+        //
+        // Which scene that is comes from the catalogue, not from a name written
+        // here: a surface naming a withheld scene is a second release decision.
+        // See `src/app/anatomyFunctionLink.js`.
+        functionNote: offersStructureFunctions ? ((selection) => readStructureFunction?.(selection) ?? null) : null,
       })
     : null;
+
+  if (offersStructureFunctions) {
+    functionModelScene.load()
+      .then((module) => {
+        readStructureFunction = module.functionNoteForSelection ?? null;
+        anatomyInfo?.refresh?.();
+      })
+      // A build that strips the scene rejects here, which is the arrangement
+      // working rather than a failure: the section simply never fills in.
+      .catch(() => {});
+  }
 
   // The part tree and the card are two readings of one selection, not two
   // states: both bind to `onAnatomySelection`, and neither holds an opinion the
@@ -1444,6 +1499,17 @@ export async function createApp({ stage, ui, onRetryModel = null }) {
   });
 
   // --- social sequence ------------------------------------------------------
+  //
+  // Whether the sequence may also be taken away as a file. Both halves are
+  // decided here, before the chrome is built: the release rule (this scene's
+  // model profile and its assets, in `videoExport.js`) and the browser's own
+  // encoder. A download button that explains afterwards why it could not write
+  // a file is worse than no download button.
+  const videoDownloadOffered =
+    Boolean(scene.getReel) &&
+    videoExportOffered(entry?.id ?? meta.id, { animated: true }) &&
+    videoRecordingSupported({ canvas: viewer.renderer.domElement });
+
   const reelMode = scene.getReel
     ? createReelMode({
         viewer,
@@ -1457,6 +1523,8 @@ export async function createApp({ stage, ui, onRetryModel = null }) {
           playback.set(value);
         },
         getLanguage: () => ui.dataset.lang ?? 'both',
+        onDownload: videoDownloadOffered ? () => requestVideoDownload() : undefined,
+        getProvenance: (language) => videoProvenance(language),
         captureState: () => captureSessionState({ playback, viewer, scene, comparing }),
         restoreState: (state) => {
           restoreSessionState(state, { playback, viewer, scene, setComparison });
@@ -1610,6 +1678,97 @@ export async function createApp({ stage, ui, onRetryModel = null }) {
         },
       })
     : null;
+
+  // --- the sequence as a file ----------------------------------------------
+  //
+  // Two questions, answered in two places and never mixed. Whether this scene
+  // may produce a file at all is a release question — the model profile and
+  // the asset manifest answer it in `videoExport.js`, and a reader pressing a
+  // button does not change the answer. What has to be agreed to before the
+  // file is written is a consent question, and it is asked every time: the
+  // agreement is about one file from one model, not a preference.
+  /** @type {ReturnType<typeof createVideoConsentDialog>|null} */
+  let videoConsent = null;
+  let videoRecording = false;
+
+  /**
+   * What the file says about itself, once it is somewhere this app is not.
+   *
+   * The scene's own disclaimer, not a second sentence written for the video:
+   * the console shows it under every frame, and a file that softened it on the
+   * way out would be claiming more than the model does.
+   */
+  function videoProvenance(language) {
+    const credits = attributionForScene(entry?.id ?? entry?.slug ?? meta.id)
+      .filter((item) => item.released && item.credit)
+      .map((item) => item.credit);
+    const home = typeof window === 'undefined'
+      ? `#/${entry?.slug ?? meta.id}`
+      : `${window.location.host}${window.location.pathname}#/${entry?.slug ?? meta.id}`;
+    const ja = language === 'ja';
+    return {
+      title: ja ? meta.titleJa : meta.title,
+      caveat: ja ? (meta.disclaimerShortJa ?? meta.disclaimerJa) : (meta.disclaimerShort ?? meta.disclaimer),
+      credit: [...credits, home].join(' · '),
+    };
+  }
+
+  function requestVideoDownload() {
+    if (videoConsent || videoRecording) return;
+    const terms = videoConsentTerms(entry?.id ?? meta.id);
+    videoConsent = createVideoConsentDialog({
+      terms,
+      subject: {
+        title: meta.title,
+        titleJa: meta.titleJa,
+        caveat: meta.disclaimerShort ?? meta.disclaimer,
+        caveatJa: meta.disclaimerShortJa ?? meta.disclaimerJa,
+      },
+      onAgree: () => {
+        videoConsent = null;
+        void runVideoDownload(terms);
+      },
+      onCancel: () => {
+        videoConsent = null;
+      },
+    });
+    videoConsent.open(ui);
+  }
+
+  async function runVideoDownload(terms) {
+    if (!reelMode) return;
+    const copy = VIDEO_EXPORT_COPY;
+    const label = (text, busy) => reelMode.setDownloadLabel(text, { busy });
+    videoRecording = true;
+    label(copy.recording, true);
+    try {
+      const { blob, mimeType, formatId, complete } = await reelMode.recordVideo({
+        onProgress: (fraction) =>
+          label({ en: `${copy.recording.en} ${Math.round(fraction * 100)}%`, ja: `${copy.recording.ja} ${Math.round(fraction * 100)}%` }, true),
+      });
+      // A sequence the reader walked out of is a partial file. Offering it as
+      // a finished one is how a clip that stops mid-argument gets posted.
+      if (!complete || !blob?.size) {
+        label(copy.failedShort, false);
+        return;
+      }
+      saveBlob(
+        blob,
+        videoFileName({ slug: terms.slug, formatId, extension: extensionForMimeType(mimeType) })
+      );
+      // The SNS layer's only measurable outcome: a file the reader chose to keep.
+      emitAppEvent('reel:export', { format: 'video', preset: formatId });
+      label(copy.saved, false);
+    } catch (error) {
+      console.warn('[video] the recording did not finish', error);
+      label(copy.failedShort, false);
+    } finally {
+      videoRecording = false;
+      setTimeout(() => {
+        if (!videoRecording) reelMode?.setDownloadLabel(copy.download, { busy: false });
+      }, 4000);
+    }
+  }
 
   sequenceOwnsCamera = () => Boolean(storyMode?.active || reelMode?.active);
 

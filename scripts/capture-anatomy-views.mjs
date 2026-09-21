@@ -277,6 +277,12 @@ try {
       const ui = document.getElementById('ui');
       ui?.classList.toggle('is-hidden', hide);
       ui?.classList.toggle('is-capture', hide);
+      // On `<body>` as well, because the build marker lives outside `#ui` —
+      // it has to survive hiding the controls (that is the screenshot people
+      // send), so a rule scoped to `#ui` cannot reach it. A local build is not
+      // production, so without this every captured frame would carry the
+      // "not the live site" line.
+      document.body.classList.toggle('is-capture', hide);
     }, hidden);
   const hideUi = () => setUi(true);
 

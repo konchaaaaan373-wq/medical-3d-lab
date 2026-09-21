@@ -398,7 +398,7 @@ families; most of those pairs are never on screen together, and what it spent
 came out of the pairs that are. The central sulcus — the frontal-to-parietal
 boundary — fell to ΔE 18.7, from 23.5 in revision 26 and 25.8 before that, and
 a reader reported that the parietal lobe's edge could no longer be traced.
-**Every guard was green while that happened**, which is recorded as L-52 in
+**Every guard was green while that happened**, which is recorded as L-65 in
 `docs/verification-lessons.md`.
 
 The objective and the constraint are swapped. What is maximised is the worst
@@ -472,7 +472,7 @@ and natural-anatomy mode is untouched.** Earlier colour-map screenshots under
 **A verification failure found while taking this record.** Two of the
 mutations used to prove the new guards had been silently failing to apply — a
 string replace one character off the file — so an assertion that does fire was
-nearly recorded as dead. It is written up as L-53 in
+nearly recorded as dead. It is written up as L-64 in
 `docs/verification-lessons.md`, and `scripts/mutate-colour-family.py` now
 refuses an edit that changes nothing. The limits of the colour-vision claim
 are unchanged from revision 27: the floors are what a model predicts rather

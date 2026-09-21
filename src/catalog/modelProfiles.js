@@ -212,6 +212,25 @@ export const MODEL_PROFILES = Object.freeze([
       'The review registry forbids diagnosis, lesion localisation, operative planning and navigation.',
   },
   {
+    profileId: 'higher-brain-function-route-network',
+    schemaVersion: 1,
+    geometryBasis: GEOMETRY_BASIS.REFERENCE_ATLAS,
+    mechanismLevel: MECHANISM_LEVEL.MECHANISTIC,
+    personalization: PERSONALIZATION.REPRESENTATIVE,
+    intendedUses: [INTENDED_USE.GENERAL_EDUCATION, INTENDED_USE.MEDICAL_EDUCATION],
+    prohibitedUses: [...CORE_PROHIBITED_USES, PROHIBITED_USE.PROGNOSIS, PROHIBITED_USE.PROCEDURE_PLANNING],
+    assets: ['brain-atlas-glb'],
+    validationRecords: [],
+    basis:
+      'The same atlas as the brain anatomy scene, carrying a causal model on top of it: each clinical task is declared '
+      + 'as a route through named structures, and which tasks survive a lesion is solved from those routes rather than '
+      + 'looked up — internal consistency is tested, and the syndrome names are readings of the solved pattern. '
+      + 'Mechanistic and no further: the transmission it computes is a dimensionless ordering with two chosen '
+      + 'thresholds, no parameter is calibrated to a dataset, and there is no time course, recovery or plasticity in it. '
+      + 'A representative right-handed brain and one normal specimen, so lesion localisation, procedure planning and '
+      + 'any statement about what will recover are prohibited.',
+  },
+  {
     profileId: 'lung-anatomy-procedural-atlas',
     schemaVersion: 1,
     geometryBasis: GEOMETRY_BASIS.PROCEDURAL,

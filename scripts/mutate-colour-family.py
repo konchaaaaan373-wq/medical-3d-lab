@@ -5,7 +5,7 @@
 Step 2 of the self-improvement loop is "break it" and step 3 is "watch it go
 red". A string replace that silently matches nothing skips both while looking
 like step 3 passed, which is how a live guard was nearly recorded as dead
-(docs/verification-lessons.md L-53). So this edits the line by regex and
+(docs/verification-lessons.md L-64). So this edits the line by regex and
 asserts that the line changed before writing anything.
 """
 import re

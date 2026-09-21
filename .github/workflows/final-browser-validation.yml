@@ -85,6 +85,65 @@ jobs:
   # The hero names what a reader picks, and how they pick it is not one thing.
   # On a phone the model is turned by swiping across it and a structure is named
   # by tapping it; with a keyboard there is no pointer at all. A press that goes
+  # Can the reader's browser actually write the file?
+  #
+  # The video export is `MediaRecorder` over `canvas.captureStream()`, and that
+  # is the one part of this feature no unit test can answer: a test can check
+  # which container was asked for and which frames were composited, and not
+  # whether the engine encoded anything. Until this job it had been measured on
+  # Chromium and nowhere else (F-161), because the other two engines cannot be
+  # downloaded in every environment — here they can.
+  #
+  # One scene per engine. What is being measured is the engine, not the scene;
+  # the five scenes are covered on Chromium by `scene-drive-validation.yml`.
+  # A failure here is not necessarily a defect: where an engine has no usable
+  # container the product does not offer the download at all, and the check
+  # says so rather than failing. What it catches is the download being offered
+  # and then not producing a file that engine can play back.
+  video-export-matrix:
+    name: video export (${{ matrix.engine }})
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    strategy:
+      fail-fast: false
+      matrix:
+        engine: [chromium, firefox, webkit]
+    steps:
+      - name: Validate candidate identity
+        env:
+          COMMIT_SHA: ${{ inputs.commit_sha }}
+          PR_NUMBER: ${{ inputs.pr_number }}
+        run: |
+          [[ "${COMMIT_SHA}" =~ ^[0-9a-f]{40}$ ]]
+          [[ "${PR_NUMBER}" =~ ^[0-9]+$ ]]
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.commit_sha }}
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      # Preview grants, because the scenes with a sequence are not published —
+      # and into `dist`, which is the directory the check resolves.
+      - name: Build with preview grants and a stub account configuration
+        env:
+          VITE_ALLOW_PREVIEW: '1'
+          VITE_SUPABASE_URL: https://stub.invalid
+          VITE_SUPABASE_PUBLISHABLE_KEY: stub-publishable-key
+        run: npm run build
+      - run: npm i --no-save playwright@1.62.1
+      - run: npx playwright install --with-deps ${{ matrix.engine }}
+      - name: Consent, record, and play the file back
+        run: npm run verify:disease -- --engine ${{ matrix.engine }} disease-video-${{ matrix.engine }} copd
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: disease-video-${{ matrix.engine }}-attempt-${{ github.run_attempt }}
+          path: disease-video-${{ matrix.engine }}/
+          if-no-files-found: ignore
+          retention-days: 3
+
   # out and comes back — how a model is turned and turned back — ends where it
   # started, which is how a rotate once came to pin a structure nobody chose.
   # None of that is reachable from `node --test`, and the viewport matrix above
