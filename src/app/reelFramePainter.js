@@ -152,6 +152,12 @@ export function paintReelFrame(ctx, { frame = {}, width, height, provenance, for
   };
 
   const centreX = width / 2;
+  // Measured before anything bottom-anchored is placed. The footer's height
+  // depends on how the model's own caveat wraps, so it is not a constant this
+  // file can assume — and both blocks that grow upward from the bottom have to
+  // clear it. The caption was clamped first; the take-home was not, and a long
+  // Japanese caveat at 16:9 put the concluding sentence under the opaque band.
+  const footerTop = provenanceTop(ctx, { width, height, unit, provenance });
   const title = frame.title ?? {};
   const titleOpacity = title.opacity ?? 0;
   const variant = title.variant ?? 'hook';
@@ -283,14 +289,34 @@ export function paintReelFrame(ctx, { frame = {}, width, height, provenance, for
     opacity: badge.opacity ?? 0,
   });
 
+  // --- the bottom of the frame, measured before anything is placed in it --
+  //
+  // Three things grow upward from the foot — the footer, the caption band and
+  // the take-home — and each one's room depends on the one below it. Clamping
+  // the take-home to the footer alone put it on the same line as the note:
+  // both had been given the same ceiling. So the stack is measured from the
+  // bottom up, once, and each block is placed above the one under it.
+  const caption = frame.caption ?? {};
+  const note = frame.note ?? {};
+  const bottomAt = Math.min(height * (1 - shape.bottomBand), footerTop - unit);
+  const noteVisible = (note.opacity ?? 0) > 0.01;
+  const captionVisible = (caption.opacity ?? 0) > 0.01;
+  const noteHeight = noteVisible ? stackHeight(ctx, unit, innerWidth, [{ text: note.text, size: 2.1 }]) : 0;
+  const captionAt = bottomAt - (noteVisible ? unit * 3.5 : 0);
+  const captionHeight = captionVisible
+    ? stackHeight(ctx, unit, innerWidth, [{ text: caption.text, size: shape.caption, weight: 600, lineHeight: 1.35 }])
+    : 0;
+  const bandTop = Math.min(captionVisible ? captionAt - captionHeight : Infinity, noteVisible ? bottomAt - noteHeight : Infinity);
+  const takeHomeCeiling = Number.isFinite(bandTop) ? bandTop - unit : footerTop - unit;
+
   // --- headline --------------------------------------------------------
   const subtitle = frame.subtitle ?? {};
   const centre =
     variant === 'hook'
-      ? { at: LAYOUT.hookAt, anchor: 'middle' }
+      ? { at: height * LAYOUT.hookAt, anchor: 'middle' }
       : variant === 'take-home'
-        ? { at: 1 - shape.takeHomeBottom, anchor: 'bottom' }
-        : { at: LAYOUT.centreAt, anchor: 'middle' };
+        ? { at: Math.min(height * (1 - shape.takeHomeBottom), takeHomeCeiling), anchor: 'bottom' }
+        : { at: height * LAYOUT.centreAt, anchor: 'middle' };
   block(
     [
       {
@@ -303,23 +329,19 @@ export function paintReelFrame(ctx, { frame = {}, width, height, provenance, for
       // only while it is up; a faded subtitle must not hold the block's height.
       { text: (subtitle.opacity ?? 0) > 0.01 ? subtitle.text : '', size: 3.4, weight: 500, colour: INK_DIM, gap: 1.6 },
     ],
-    { x: centreX, at: height * centre.at, anchor: centre.anchor, opacity: titleOpacity }
+    { x: centreX, at: centre.at, anchor: centre.anchor, opacity: titleOpacity }
   );
 
   // --- bottom band -----------------------------------------------------
   //
-  // Placed against the footer rather than against the frame. The footer is
-  // sized in width units and this band was placed as a fraction of the height,
-  // so the two are independent — and at 16:9 they overlapped: the opaque band
-  // was painted last, over the note. The note is the line that says "not a
-  // diagnosis", so it is the worst line in the frame to lose.
-  const footerTop = provenanceTop(ctx, { width, height, unit, provenance });
-  const bottomAt = Math.min(height * (1 - shape.bottomBand), footerTop - unit);
-  const caption = frame.caption ?? {};
-  const note = frame.note ?? {};
+  // Placed against the footer rather than against the frame (measured above).
+  // The footer is sized in width units and this band was placed as a fraction
+  // of the height, so the two were independent — and at 16:9 they overlapped:
+  // the opaque band was painted last, over the note. The note is the line that
+  // says "not a diagnosis", so it is the worst line in the frame to lose.
   block([{ text: caption.text, size: shape.caption, weight: 600, lineHeight: 1.35 }], {
     x: centreX,
-    at: bottomAt - ((note.opacity ?? 0) > 0.01 ? unit * 3.5 : 0),
+    at: captionAt,
     anchor: 'bottom',
     opacity: caption.opacity ?? 0,
   });

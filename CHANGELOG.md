@@ -42,6 +42,9 @@ person: Safari, Firefox, touch and a screen reader.
 - **The sequence's four frame shapes each export as themselves.** A 16:9 file
   used to carry the 9:16 layout — bigger figures, in different places, than the
   ones on screen.
+- **The sequence's controls go quiet while it records.** Changing the frame
+  shape part-way through stretched the rest of the take into the old one and
+  named the file after a shape it was not.
 
 ### Higher cortical function, as the route a lesion cut
 

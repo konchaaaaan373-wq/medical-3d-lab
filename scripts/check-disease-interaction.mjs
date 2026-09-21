@@ -322,6 +322,24 @@ for (const slug of SLUGS) {
 await browser.close();
 closeServer();
 
+// And fail when something failed.
+//
+// Every other browser check in this repository ends this way; this one printed
+// `PROBLEMS: …` and exited 0, so a run that found a scene whose Reset did not
+// reset — or, since the export landed, one that produced no file, an empty
+// container or a frame that would not decode — was green in CI. A check that
+// cannot go red is not a check (L-09), and this one had been unable to since
+// it was written.
+const failed = report.filter((entry) => entry.problems.length);
+if (failed.length) {
+  console.error(`\n${failed.reduce((total, entry) => total + entry.problems.length, 0)} problem(s) across ${failed.length} scene(s):`);
+  for (const entry of failed) {
+    for (const problem of entry.problems) console.error(`  - ${entry.slug}: ${problem}`);
+  }
+  process.exit(1);
+}
+console.log(`\n  ok    ${report.length} scene(s) drove baseline → disease → reset, and every export that was offered produced a file this browser can play`);
+
 /**
  * What the first bytes say the file is, against what its name claims.
  *

@@ -311,6 +311,11 @@ export function createReelMode({
       await nextFrame();
       await nextFrame();
     }
+    // The shape the file is: read once, here. `setFormat` can still be called
+    // while this runs (the chrome disables its chips, and a keyboard or a
+    // script is not the chrome), and a file named after the format the reader
+    // ended on would be named after a shape its frames are not.
+    const recordedFormat = formatId;
     const source = viewer.renderer.domElement;
     // Even dimensions: the H.264 encoders behind `video/mp4` reject odd ones,
     // and a canvas sized by CSS is odd about half the time.
@@ -325,7 +330,7 @@ export function createReelMode({
     const provenance = getProvenance?.(resolveLanguage()) ?? null;
     const paint = () => {
       ctx.drawImage(source, 0, 0, width, height);
-      paintReelFrame(ctx, { frame: lastFrame ?? {}, width, height, provenance, format: formatId });
+      paintReelFrame(ctx, { frame: lastFrame ?? {}, width, height, provenance, format: recordedFormat });
     };
 
     // Registered last, and released in a `finally`: a recorder that refuses to
@@ -347,7 +352,7 @@ export function createReelMode({
       recorder.start();
       const complete = await sequenceEnd(onProgress);
       const blob = await recorder.stop();
-      return { blob, mimeType: recorder.mimeType, formatId, complete };
+      return { blob, mimeType: recorder.mimeType, formatId: recordedFormat, complete };
     } finally {
       detach?.();
     }
