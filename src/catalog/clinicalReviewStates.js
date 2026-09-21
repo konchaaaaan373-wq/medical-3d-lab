@@ -46,6 +46,7 @@ export const CLINICAL_REVIEW_STATES = Object.freeze({
   'heart-anatomy': 'pending',
   'heart-failure': 'legacy-unversioned',
   'hepatorenal-syndrome': 'pending',
+  'higher-brain-function': 'pending',
   'hip-anatomy': 'pending',
   'hip-osteoarthritis': 'pending',
   'intestine-anatomy': 'pending',

@@ -42,7 +42,14 @@ export function createMetricsPanel() {
           const reference = el('span', { class: 'metric-reference' });
           const unit = el('span', { class: 'metric-unit', text: metric.unit });
           const change = el('span', { class: 'metric-change', 'aria-hidden': 'true' });
-          const node = el('div', { class: `metric${metric.emphasis ? ' is-key' : ''}` }, [
+          // A qualitative row carries words, and `.metric-figure` holds numbers
+          // on one line — right for "1.24", wrong for 「超皮質性感覚失語」, which
+          // could only widen the panel until it left the side of a phone. The
+          // class says which kind of value this is; the stylesheet decides what
+          // that means.
+          const node = el('div', {
+            class: `metric${metric.emphasis ? ' is-key' : ''}${bilingual ? ' is-qualitative' : ''}`,
+          }, [
             el('span', { class: 'metric-label' }, [
               el('span', { class: 'lang-en', text: metric.label }),
               el('span', { class: 'lang-ja', text: metric.labelJa }),

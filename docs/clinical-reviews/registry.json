@@ -1712,5 +1712,35 @@
       "No prolapse, incontinence, obstruction, fibroid, enlargement, tumour or fracture is represented in any form, and nothing here is anyone’s pelvis.",
       "The scene must not be used for any examination, for diagnosis, treatment or dose selection, prognosis, or for planning or performing any puncture, catheter, incision or operation."
     ]
+  },
+  {
+    "sceneId": "higher-brain-function",
+    "reviewStatus": "pending",
+    "reviewerRole": "no completed clinical sign-off recorded",
+    "reviewedAt": null,
+    "reviewedCommit": null,
+    "scope": [
+      "a route model of the higher cortical functions on the specimen brain atlas: which named structures each clinical task passes through in a representative right-handed brain, which tasks a declared lesion leaves carrying, and what the surviving pattern is called"
+    ],
+    "sources": [
+      "docs/model-cards/higher-brain-function.md",
+      "docs/model-evidence/higher-brain-function.md",
+      "tests/higher-brain-function-model.test.js",
+      "tests/higher-brain-function-anatomy.test.js",
+      "tests/higher-brain-function-scene.test.js"
+    ],
+    "unresolvedLimitations": [
+      "Independent medical review of the network, the lesion sites, the syndrome readings, the copy and the Japanese terminology is not yet recorded.",
+      "THIS IS NOT A LESION LOCALISER. The atlas is one normal specimen, the lesions are whole named structures drawn on it, and no part of it is anybody's imaging. It must not be used to localise a lesion, to plan a procedure, or to say what will recover.",
+      "Only right-handedness is modelled. Left-handedness is not the mirror image of it and the model refuses to answer for it rather than flipping the brain.",
+      "No quality of speech is derived: no paraphasia, agrammatism, prosody, dysarthria or perseveration. The model says whether a route carries, never what comes out of it.",
+      "No course over time: no oedema, penumbra, diaschisis, recovery or rehabilitation. How far a lesion has been taken is an input, never a prediction.",
+      "Executive function, behaviour and social cognition are deliberately absent, because this model localises by route and those are not localised that way.",
+      "The transmission it computes is dimensionless and its intact/impaired/lost thresholds are chosen, not measured. No output is a score, a severity scale or a test result.",
+      "The atlas has no splenium and no somatotopy: the corpus callosum is one mesh and the precentral gyrus is one mesh, so a posterior callosal lesion is drawn as the whole commissure and a precentral lesion takes the mouth and the hand together.",
+      "Reading and visual naming share one visual route here, so the model cannot show pure alexia sparing object naming.",
+      "The tract meshes this scene draws have never been reviewed by an anatomist or rendered for visual review in this repository; no scene had drawn them before.",
+      "The scene must not be used for diagnosis, treatment or dose selection, or prognosis."
+    ]
   }
 ]

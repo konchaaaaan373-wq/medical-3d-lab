@@ -465,6 +465,46 @@
   font-size: 9.5px;
   line-height: 1.42;
 }
+/* What a touched structure is for, when a function model is on screen to say.
+   Set apart from the atlas's own description above it, because it is a
+   different model's reading and a reader has to be able to tell. */
+.anatomy-function {
+  margin: 10px 0 0;
+  padding: 8px 9px;
+  border-left: 2px solid var(--accent);
+  border-radius: 0 6px 6px 0;
+  background: rgba(99, 214, 255, 0.07);
+}
+
+/* At the floor, not below it, although the panel around it is smaller: the
+   type-floor ratchet rejects new small type, and a reading a clinician is
+   meant to act on is the last place to argue for an exception. */
+.anatomy-function-title {
+  display: block;
+  color: var(--ink);
+  font-size: 12px;
+  letter-spacing: .04em;
+}
+
+.anatomy-function-line,
+.anatomy-function-lost {
+  margin: 5px 0 0;
+  color: var(--ink-dim);
+  font-size: 12px;
+  line-height: 1.45;
+}
+
+.anatomy-function-lost {
+  color: var(--ink);
+}
+
+.anatomy-function-source {
+  margin: 6px 0 0;
+  color: var(--ink-faint);
+  font-size: 12px;
+  line-height: 1.4;
+}
+
 .anatomy-mode-control {
   margin-top: 10px;
 }
@@ -1038,6 +1078,21 @@
   font-size: 13px;
   font-weight: 600;
   color: var(--ink);
+}
+
+/* A row whose value is a phrase rather than a figure. Numbers must not break
+   across lines; words must, or a long one pushes the whole panel off the side
+   of a phone. */
+.metric.is-qualitative {
+  align-items: flex-start;
+}
+
+.metric.is-qualitative .metric-figure {
+  white-space: normal;
+  overflow-wrap: anywhere;
+  text-align: right;
+  justify-content: flex-end;
+  min-width: 0;
 }
 
 .metric-unit {
