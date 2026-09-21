@@ -12,11 +12,11 @@ at pictures. **No anatomist has judged this geometry or these labels.**
 
 | | |
 | --- | --- |
-| **Decided at** | 2026-09-21 (re-taken ten times: a branch of the tree gained a way to be hidden whole, what a hide announces was corrected, a selected structure's label was made to survive its own anchor being occluded, then a review of that fix found three ways it still failed its own stated behaviour and they were closed, then an audit of the result found three more and a per-frame cost, also closed, then the four-round terminology review branch landed on top of it, then the colour map was regrouped so that a lobe reads as one colour family, then those groups were placed so that they survive colour-vision deficiency, then that was traded back to a smaller amount so the boundaries a reader traces stayed readable, then red and green were put back and the saturation with them, then the whole map was redesigned in a perceptual colour space) |
-| **Decided by** | Claude Code (AI engineering agent), re-taken for the colour map redesigned in CIE LCh |
+| **Decided at** | 2026-09-21 (re-taken eleven times: a branch of the tree gained a way to be hidden whole, what a hide announces was corrected, a selected structure's label was made to survive its own anchor being occluded, then a review of that fix found three ways it still failed its own stated behaviour and they were closed, then an audit of the result found three more and a per-frame cost, also closed, then the four-round terminology review branch landed on top of it, then the colour map was regrouped so that a lobe reads as one colour family, then those groups were placed so that they survive colour-vision deficiency, then that was traded back to a smaller amount so the boundaries a reader traces stayed readable, then red and green were put back and the saturation with them, then the whole map was redesigned in a perceptual colour space, then the frontal lobe was made red and two families moved to make room) |
+| **Decided by** | Claude Code (AI engineering agent), re-taken for the red frontal lobe and the hues it moved |
 | **Role** | `engineering` — software behaviour, not anatomical or clinical judgement |
 | **Asset revision** | `brain-atlas-glb` @ `sha256:76a49ea4526a4880613aec7a02756bd7301b0b9d0680d7cae33e197b672c5453` |
-| **Scene revision** | model card revision **30**, source digest `1ce464ae7bc5d48b` |
+| **Scene revision** | model card revision **31**, source digest `accd38748047d63d` |
 | **Scene sources under that digest** | [`src/data/brainAnatomy.js`](../../src/data/brainAnatomy.js), [`src/scenes/nervous/scenes/brainAnatomy/BrainAnatomyScene.js`](../../src/scenes/nervous/scenes/brainAnatomy/BrainAnatomyScene.js), [`src/scenes/shared/anatomy/tapGesture.js`](../../src/scenes/shared/anatomy/tapGesture.js) |
 
 The decision is pinned to **both** revisions in
@@ -517,6 +517,40 @@ output in order. The limits of the colour-vision claim are unchanged: the
 floors are what a model predicts rather than what a reader reported, **no
 person with colour-vision deficiency has used this scene**, and the promise
 stops at the large units.
+
+
+**Revision 30 → 31.** The frontal lobe is red at the reader's request. Two
+families move with it: the cingulate, which had the red, goes to teal on the
+cool side, and the insula takes the amber the frontal lobe vacated. The warm
+sector cannot hold three families, because beside a red frontal lobe a third
+warm one could be told apart only by lightness.
+
+**This makes the central sulcus a red-against-green boundary, the one pair
+dichromacy cannot separate by hue at all**, so it is carried by a value step
+instead: the frontal lobe at L* 55 against the parietal lobe at 74. Measured
+on the lit surface that boundary is ΔE 72.7 in normal vision, against 50.0
+before — the strongest it has been — and 26.1 under protanopia against 21.2.
+The temporal-to-occipital boundary gives some back, ΔE 60.0 normal and 36.4
+under deuteranopia against 64.4 and 45.1.
+
+*What was actually done for this decision*: the eight viewpoints were
+re-rendered in colour-map mode and read, each also written out as a
+deuteranope and a protanope see them; `npm run verify:anatomy` was re-run for
+this scene. Member to member: every touching pair is at least ΔE 28 apart,
+the worst pair among the eight surface families under simulated dichromacy is
+ΔE 4.2, and all 147 structures stay distinct at ΔE 4.17. The chroma guard is
+rewritten to ask each lobe for the set's chroma or the most its hue and
+lightness allow in sRGB, whichever is less — the previous form compared the
+lobes against each other, which is a demand on the display rather than on the
+palette. Five mutations were run against the guards, each confirmed red, and
+one of them fails the colour-vision assertion alone. **Nothing about
+geometry, atlas ids, labels, hierarchy, copy or what is selectable changed,
+and natural-anatomy mode is untouched.**
+
+The limits of the colour-vision claim are unchanged: the floors are what a
+model predicts rather than what a reader reported, **no person with
+colour-vision deficiency has used this scene**, and the promise stops at the
+large units.
 
 
 Each time the gate closed and the production build stopped shipping the scene

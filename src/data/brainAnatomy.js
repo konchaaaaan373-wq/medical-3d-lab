@@ -21,11 +21,12 @@
  *
  * The design, in the order the decisions were made:
  *
- *  1. **One chroma per tier.** The five large cortical lobes all sit at
- *     C 62, the supporting families lower, the two neutrals lowest. This is
- *     what makes them look like one set. The insula and the occipital lobe
- *     land below their tier because the sRGB gamut runs out in the cyan-blue
- *     corner, not because they were designed differently.
+ *  1. **One chroma per tier.** The large cortical lobes ask for C 62, the
+ *     supporting families lower, the two neutrals lowest. This is what makes
+ *     them look like one set. Where a family lands below its tier — the
+ *     occipital lobe, the cingulate, the insula — it is because sRGB runs out
+ *     at that hue and lightness, not because it was designed differently, and
+ *     the test asks for the gamut limit rather than the tier there.
  *  2. **A lightness rhythm that alternates across every boundary a reader
  *     traces.** Gold 66, green 50, violet 45, blue 67: the central sulcus and
  *     the lateral sulcus each have a value step as well as a hue step, and so
@@ -57,23 +58,29 @@
  * another family — so both are searched together against all four visions.
  */
 const DETAIL_COLOR_FAMILY = {
-  frontal: { hue: 80, hueSpan: 12, chroma: 62, chromaSpan: 30, lightness: 66, lightnessSpan: 30, seed: 'frontal-v73905' },
-  parietal: { hue: 143, hueSpan: 12, chroma: 62, chromaSpan: 20, lightness: 50, lightnessSpan: 20, seed: 'parietal-v166614' },
-  // Darker than the occipital lobe it borders by more than the eye needs:
-  // the gap is sized for a protanope, who sees this violet at much lower
-  // luminance than a trichromat does.
-  temporal: { hue: 303, hueSpan: 12, chroma: 62, chromaSpan: 26, lightness: 45, lightnessSpan: 26, seed: 'temporal-v34018' },
-  occipital: { hue: 262, hueSpan: 10, chroma: 62, chromaSpan: 20, lightness: 67, lightnessSpan: 20, seed: 'occipital-v20172' },
-  limbic: { hue: 33, hueSpan: 10, chroma: 62, chromaSpan: 18, lightness: 58, lightnessSpan: 18, seed: 'limbic-v151317' },
-  insula: { hue: 193, hueSpan: 8, chroma: 54, chromaSpan: 10, lightness: 70, lightnessSpan: 8, seed: 'insula-v139535' },
+  // Red, at a lightness well below the parietal lobe it borders. The central
+  // sulcus is a red-against-green boundary, which is the one pair a
+  // protanope and a deuteranope cannot separate by hue at all, so the value
+  // step across it is sized for them rather than for the eye.
+  frontal: { hue: 42, hueSpan: 12, chroma: 62, chromaSpan: 30, lightness: 55, lightnessSpan: 30, seed: 'frontal-v67335' },
+  parietal: { hue: 151, hueSpan: 12, chroma: 62, chromaSpan: 20, lightness: 74, lightnessSpan: 20, seed: 'parietal-v54167' },
+  temporal: { hue: 311, hueSpan: 12, chroma: 62, chromaSpan: 26, lightness: 44, lightnessSpan: 26, seed: 'temporal-v60699' },
+  occipital: { hue: 267, hueSpan: 10, chroma: 62, chromaSpan: 20, lightness: 64, lightnessSpan: 20, seed: 'occipital-v172674' },
+  // The cingulate sits on the cool side because the warm sector is full: a
+  // third warm family beside the red frontal lobe and the amber insula
+  // could only be told from them by lightness. Teal cannot reach the
+  // cortical chroma — sRGB runs out at about 36 here — and the test knows
+  // to ask for the gamut limit rather than the tier.
+  limbic: { hue: 192, hueSpan: 10, chroma: 54, chromaSpan: 18, lightness: 58, lightnessSpan: 18, seed: 'limbic-v192227' },
+  insula: { hue: 84, hueSpan: 8, chroma: 62, chromaSpan: 10, lightness: 70, lightnessSpan: 8, seed: 'insula-v167007' },
   // Cortex the atlas does not place in a lobe. Chroma 9 says so — it is the
   // one cortical family deliberately left almost colourless.
-  telencephalon: { hue: 265, hueSpan: 16, chroma: 9, chromaSpan: 14, lightness: 62, lightnessSpan: 32, seed: 'telencephalon-v185703' },
-  deep: { hue: 153, hueSpan: 20, chroma: 40, chromaSpan: 38, lightness: 65, lightnessSpan: 46, seed: 'deep-v36608' },
-  whiteMatter: { hue: 98, hueSpan: 10, chroma: 14, chromaSpan: 14, lightness: 86, lightnessSpan: 18, seed: 'whiteMatter-v161236' },
-  ventricles: { hue: 221, hueSpan: 10, chroma: 36, chromaSpan: 14, lightness: 72, lightnessSpan: 16, seed: 'ventricles-v48312' },
-  cerebellum: { hue: 344, hueSpan: 12, chroma: 48, chromaSpan: 30, lightness: 62, lightnessSpan: 32, seed: 'cerebellum-v102390' },
-  brainstem: { hue: 46, hueSpan: 12, chroma: 26, chromaSpan: 26, lightness: 29, lightnessSpan: 34, seed: 'brainstem-v38124' },
+  telencephalon: { hue: 258, hueSpan: 16, chroma: 9, chromaSpan: 14, lightness: 62, lightnessSpan: 32, seed: 'telencephalon-v94451' },
+  deep: { hue: 152, hueSpan: 20, chroma: 40, chromaSpan: 38, lightness: 64, lightnessSpan: 46, seed: 'deep-v88341' },
+  whiteMatter: { hue: 102, hueSpan: 10, chroma: 14, chromaSpan: 14, lightness: 86, lightnessSpan: 18, seed: 'whiteMatter-v26772' },
+  ventricles: { hue: 217, hueSpan: 10, chroma: 36, chromaSpan: 14, lightness: 73, lightnessSpan: 16, seed: 'ventricles-v161965' },
+  cerebellum: { hue: 355, hueSpan: 12, chroma: 48, chromaSpan: 30, lightness: 63, lightnessSpan: 32, seed: 'cerebellum-v55244' },
+  brainstem: { hue: 57, hueSpan: 12, chroma: 26, chromaSpan: 26, lightness: 30, lightnessSpan: 34, seed: 'brainstem-v8834' },
 };
 
 /**

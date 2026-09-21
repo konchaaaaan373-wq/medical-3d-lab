@@ -174,16 +174,20 @@ The cost is measured: a saturated red lowers the dichromacy floor by about
 have and can then be separated only by lightness.
 
 **The map is designed in CIE LCh, and that is what makes it one set.** The
-five large cortical lobes are specified at a single perceptual chroma, the
-supporting families step down from it, and the two neutrals sit lowest; the
-lightness alternates across every boundary a reader traces. Designed in HSL
-the same numbers had produced perceptual chroma anywhere from 39 to 101,
-which is why the map read as a pile of unrelated colours. Where sRGB cannot
-reach a tier's chroma — the blue-cyan corner, so the occipital lobe and the
-insula — the chroma is pulled in at fixed hue and lightness rather than
-clipped, and `tests/brain-anatomy.test.js` holds both the chroma consistency
-and that pulling-in behaviour. Natural-anatomy mode stays in HSL: it is a
-narrow band of hand-picked tissue tones, not a categorical system. **Structures inside one
+cortical lobes are specified at a single perceptual chroma, the supporting
+families step down from it, and the two neutrals sit lowest; the lightness
+alternates across every boundary a reader traces. Designed in HSL the same
+numbers had produced perceptual chroma anywhere from 39 to 101, which is why
+the map read as a pile of unrelated colours. Where sRGB cannot reach that
+chroma — teal tops out near 36 where red reaches 62 — the chroma is pulled in
+at fixed hue and lightness rather than clipped, and
+`tests/brain-anatomy.test.js` requires each lobe to be as colourful as the set
+or as colourful as its hue and lightness permit, whichever is less. The
+frontal lobe is red, which makes the central sulcus a red-against-green
+boundary — the one pair dichromacy cannot separate by hue at all — so the
+value step across it is sized for those readers rather than for the eye.
+Natural-anatomy mode stays in HSL: it is a narrow band of hand-picked tissue
+tones, not a categorical system. **Structures inside one
 family are separated by lightness and saturation, which dichromacy compresses,
 and are not claimed to be distinguishable by colour for those readers** — the
 panel names what is selected, and neither the parts tree nor the layer slider
@@ -749,6 +753,41 @@ checked against, which two new guards do — chroma consistency across the
 cortical lobes, and that running out of gamut costs chroma and not hue. A
 third mutation for the latter (clipping the channels instead) turns the test
 red. Every colour-map shade changed again (147/147). Colour still aids
+identification and grouping and does not show real tissue colour, functional
+localisation, vascular territory, exact boundaries or positional accuracy
+(§6).
+
+Sources in scope: `src/data/brainAnatomy.js`,
+`src/scenes/nervous/scenes/brainAnatomy/BrainAnatomyScene.js`.
+
+**Revision 30 → 31 (2026-09-21) — the frontal lobe is red.** A presentation
+change only: no geometry, no atlas ids, no labels, no hierarchy, no copy and
+no claim about anatomy changed, and natural-anatomy mode is untouched. The
+frontal lobe moves from gold to red at the reader's request, and two families
+move with it because the warm sector cannot hold three. The cingulate, which
+had the red, moves to teal on the cool side — beside a red frontal lobe and an
+amber insula it could otherwise have been told from them only by lightness —
+and the insula takes the amber.
+
+The consequence worth recording is that **the central sulcus becomes a
+red-against-green boundary, which is the one pair a protanope and a
+deuteranope cannot separate by hue at all.** It is therefore carried by a
+value step: the frontal lobe sits at L\* 55 and the parietal lobe at 74.
+Measured on the lit surface, that boundary is ΔE 72.7 in normal vision
+against 50.0 before — the strongest it has been — and 26.1 under protanopia
+against 21.2, so the pair a dichromat finds hardest came out ahead as well.
+Member to member, every touching pair is at least ΔE 28 apart, the worst pair
+among the eight surface families under simulated dichromacy is ΔE 4.2, and
+all 147 structures stay distinct with the closest at ΔE 4.17. The
+temporal-to-occipital boundary gives some back: ΔE 60.0 normal and 36.4 under
+deuteranopia, against 64.4 and 45.1. Every colour-map shade changed again
+(147/147).
+
+The chroma guard is rewritten while here. It had compared the lobes against
+each other, which is a demand on the display rather than on the palette —
+teal cannot be as colourful as red in sRGB. It now asks each lobe for the
+set's chroma *or* the most its own hue and lightness allow, whichever is
+less, which is the invariant that was meant all along. Colour still aids
 identification and grouping and does not show real tissue colour, functional
 localisation, vascular territory, exact boundaries or positional accuracy
 (§6).

@@ -480,33 +480,34 @@ test('each large anatomical unit reads as one colour family', () => {
 test('the colour map reads as one set, not twelve separate choices', () => {
   // What made the palette look like a pile rather than a system was chroma,
   // not hue: designed in HSL, the twelve families came out anywhere between
-  // perceptual chroma 39 and 101. The lobes are now specified at one chroma
-  // per tier, and this is the check that they still arrive there — a family
-  // quietly moved to a different colourfulness is exactly the drift nobody
-  // notices in a diff and everybody notices on screen.
+  // perceptual chroma 39 and 101. The lobes now ask for one chroma, and this
+  // is the check that they still arrive there — a family quietly moved to a
+  // different colourfulness is the drift nobody notices in a diff and
+  // everybody notices on screen.
   //
-  // The insula is excluded and the occipital lobe is given room: both sit in
-  // the cyan-blue corner where sRGB runs out before the tier's chroma is
-  // reached, which is the display's limit rather than a design decision.
-  const chromaOf = (hex) => {
-    const [, a, b] = hexToLab(hex);
-    return Math.hypot(a, b);
+  // Some hues cannot be that colourful in sRGB at all: teal tops out near 36
+  // where red reaches 62. So the rule is not "every lobe is equally
+  // colourful", which would be a demand on the display rather than on the
+  // palette. It is **every lobe is as colourful as the set, or as colourful
+  // as its hue and lightness permit** — the display's limit is an excuse, and
+  // nothing else is.
+  const perceptual = (hex) => {
+    const [lightness, a, b] = hexToLab(hex);
+    return { lightness, chroma: Math.hypot(a, b), hue: ((Math.atan2(b, a) * 180) / Math.PI + 360) % 360 };
   };
-  const lobes = ['frontal', 'parietal', 'temporal', 'limbic'];
-  const chromas = lobes.map((key) => chromaOf(BRAIN_PALETTE[key]));
-  const spread = Math.max(...chromas) - Math.min(...chromas);
-  assert.ok(
-    spread <= 8,
-    `the cortical lobes are meant to share one chroma but span ${spread.toFixed(0)} (${lobes
-      .map((key, at) => `${key} ${chromas[at].toFixed(0)}`)
-      .join(', ')})`
-  );
-  const occipital = chromaOf(BRAIN_PALETTE.occipital);
-  assert.ok(
-    occipital >= Math.min(...chromas) - 14,
-    `the occipital lobe falls ${(Math.min(...chromas) - occipital).toFixed(0)} below the tier, further than the gamut explains`
-  );
-
+  const lobes = CORTICAL_LOBES.map((key) => ({ key, ...perceptual(BRAIN_PALETTE[key]) }));
+  const level = Math.max(...lobes.map((lobe) => lobe.chroma));
+  for (const lobe of lobes) {
+    // What sRGB can give at this lobe's own lightness and hue: ask for far
+    // more than any gamut holds and see what comes back.
+    const ceiling = perceptual(lchToHex(lobe.lightness, 200, lobe.hue)).chroma;
+    const owed = Math.min(level, ceiling);
+    assert.ok(
+      lobe.chroma >= owed - 1.5,
+      `${lobe.key} is at chroma ${lobe.chroma.toFixed(0)} where ${owed.toFixed(0)} was available `
+      + `(the set sits at ${level.toFixed(0)}, and sRGB allows ${ceiling.toFixed(0)} at L${lobe.lightness.toFixed(0)} h${lobe.hue.toFixed(0)})`
+    );
+  }
 });
 
 test('an unreachable chroma comes back as the most the display can give, at the same hue', () => {
