@@ -127,6 +127,18 @@ export const SCENE_MANIFEST = [
     descriptionJa:
       '右利きの脳。各課題は名前の付いた構造を通る 1 本の経路で、病変が残した経路の組み合わせが症候になります。',
     tags: ['localisation', 'language', 'disconnection', 'attention'],
+    /**
+     * This scene's model can also answer a question the *anatomy* scenes get
+     * asked: a reader touches a structure and wants to know what it is for.
+     *
+     * Declared here rather than hard-coded in the surface that shows it. A
+     * surface naming a scene id is a second release decision made by whoever
+     * was editing that file (`tests/public-manifest.test.js`), and this one is
+     * a release decision: the reading may be shown exactly where this scene is
+     * open, which in a production build is nowhere until its medical review is
+     * recorded.
+     */
+    providesStructureFunctions: true,
     load: () => import('../scenes/nervous/scenes/higherBrainFunction/index.js'),
   },
   {

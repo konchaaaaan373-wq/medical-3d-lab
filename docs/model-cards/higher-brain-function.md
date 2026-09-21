@@ -142,6 +142,21 @@ severity scale or a test result.
 - Nothing moves, resizes or deforms any anatomy. A lesion is a colour, not a
   hole.
 
+## 9.5 Where else this model is read
+
+A reader touching a structure in an **anatomy** scene is asked a question this
+model can answer: *what is this for?* The answer shown there is produced the
+same way as everything else here — that one structure destroyed, the model
+solved — so the two surfaces cannot drift apart, and it carries the same
+sentence about what it is not.
+
+It is shown **only where this scene is open**. The anatomy scene it appears on
+is published; this model's medical review is not recorded yet, so in a
+production build the section does not exist. The scene that owns the reading is
+declared in the catalogue (`providesStructureFunctions`) rather than named in
+the surface that shows it. See `src/app/anatomyFunctionLink.js` and
+`docs/follow-ups.md` F-166.
+
 ## 10. Known failure modes
 
 - **The atlas has no splenium**: the corpus callosum is one mesh, so a posterior

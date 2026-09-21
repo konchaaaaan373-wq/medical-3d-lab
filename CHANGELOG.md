@@ -38,6 +38,12 @@ person: Safari, Firefox, touch and a screen reader.
   striatum → pallidum → thalamus → back to the same cortex. Cut one anywhere and
   the behaviour goes: a caudate infarct reads as a frontal syndrome, and a
   capsular lesion takes all three while the frontal cortex is untouched.
+- **Touch a structure in an anatomy scene and it says what that structure is
+  for**: which tasks run through it, and what is lost if it alone is destroyed —
+  solved from the same model, not a list kept beside it. One hippocampus carries
+  memory and takes none of it away when it goes, and the panel says both. It
+  appears only where the function model itself is released, so the published
+  atlas is unchanged until that model has been reviewed.
 - **Not a lesion localiser**, and it says so on the screen: one normal specimen,
   whole named structures, no imaging, no course over time, and no statement
   about anybody. Medical review is not yet recorded.

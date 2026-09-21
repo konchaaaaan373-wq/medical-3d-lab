@@ -1,7 +1,7 @@
 import * as THREE from 'three';
 import { Viewer } from './Viewer.js';
 import { loadScene, sceneById, systemsWithScenes, resolveSceneId } from './sceneRegistry.js';
-import { SCENES } from '../catalog/index.js';
+import { SCENES, structureFunctionScene } from '../catalog/index.js';
 import { RELEASED_SCENES } from '../catalog/release.js';
 import { betaUnlocked, sceneOpen } from './releaseGate.js';
 import { structureOf } from './router.js';
@@ -49,6 +49,7 @@ import { createReelMode } from './ReelMode.js';
 import { createStoryMode } from './StoryMode.js';
 import { createLabelLayer } from '../components/LabelLayer.js';
 import { createAnatomyInfoPanel } from '../components/AnatomyInfoPanel.js';
+import { functionNoteForSelection } from './anatomyFunctionLink.js';
 import { attributionForScene } from '../catalog/attribution.js';
 import { createAnatomyTreePanel } from '../components/AnatomyTreePanel.js';
 import { createAnatomyPanel } from '../components/AnatomyPanel.js';
@@ -861,6 +862,7 @@ export async function createApp({ stage, ui, onRetryModel = null }) {
   // key and the selection card — composed into a layout where the summary
   // cannot be scrolled away and exactly one region scrolls. Nothing is built
   // twice: each element is created once here and handed over.
+  const functionModelScene = structureFunctionScene();
   const anatomyInfo = scene.getAnatomySelection
     ? createAnatomyInfoPanel(scene, {
         onPreferredView: applyInspectionView,
@@ -871,6 +873,16 @@ export async function createApp({ stage, ui, onRetryModel = null }) {
         // the panel: this panel serves every anatomy scene, and a literal was
         // only ever right for one of them.
         attribution: attributionForScene(entry?.id ?? entry?.slug ?? meta.id),
+        // What a touched structure is *for* comes from a different model, with
+        // its own card, its own profile and its own review — still pending. So
+        // it is shown exactly where that model may be shown: wherever its own
+        // scene is open. In a production build that is nowhere, and the
+        // published atlas is the atlas, unchanged.
+        //
+        // Which scene that is comes from the catalogue, not from a name written
+        // here: a surface naming a withheld scene is a second release decision.
+        // See `src/app/anatomyFunctionLink.js`.
+        functionNote: functionModelScene && sceneOpen(functionModelScene) ? functionNoteForSelection : null,
       })
     : null;
 

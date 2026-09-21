@@ -905,6 +905,83 @@ for (const node of FUNCTION_NODES) {
   }
 }
 
+/**
+ * The mesh that stands for "white matter that is not a named bundle".
+ *
+ * A lesion of a named bundle interrupts what runs inside it. This one is not a
+ * bundle — it is the whole hemisphere's white matter, and every short
+ * connection in the model is anchored in it for want of anywhere better — so
+ * asking what a lesion of *it* would interrupt would answer "everything", which
+ * is true of a hemispherectomy and useless as a reading of a structure.
+ */
+export const BULK_WHITE_MATTER = 'White matter of telencephalon';
+
+/**
+ * What one named structure of the atlas does, and what is lost without it.
+ *
+ * This is the question a reader asks by touching a gyrus: *what is this for?*
+ * The answer is not a lookup table — there is no per-structure list of
+ * functions anywhere in this model. It is produced by **destroying that one
+ * structure and solving**, so it says exactly what the rest of the model says
+ * and cannot drift away from it. A structure no route uses answers with
+ * nothing, which is the honest answer for most of the atlas.
+ *
+ * @param {string} label the atlas label (`bx_label`)
+ * @param {'left'|'right'|'median'} side the atlas side (`bx_side`)
+ * @param {{handedness?: string}} [options]
+ * @returns {{
+ *   label: string, side: string, dominance: object,
+ *   nodes: {id:string,label:string,labelJa:string}[],
+ *   connections: {id:string,label:string,labelJa:string}[],
+ *   tasks: {id:string,label:string,labelJa:string}[],
+ *   ifLost: {lost:string[], impaired:string[], syndromes:{id:string,label:string,labelJa:string}[]},
+ *   carries: boolean
+ * }}
+ */
+export function functionsOfStructure(label, side, { handedness = HANDEDNESS.RIGHT } = {}) {
+  const dominance = dominanceFor(handedness);
+  const matches = (structure) => structure.label === label && resolveSide(structure.side, dominance) === side;
+
+  const nodes = FUNCTION_NODES.filter((node) => node.structures.some(matches))
+    .map((node) => ({ id: node.id, label: node.label, labelJa: node.labelJa }));
+  // A named bundle carries connections; the bulk white matter does not (above).
+  const connections = label === BULK_WHITE_MATTER
+    ? []
+    : FUNCTION_EDGES.filter((edge) => edge.within.some(matches))
+      .map((edge) => ({ id: edge.id, label: edge.label, labelJa: edge.labelJa }));
+
+  const nodeIds = new Set(nodes.map((node) => node.id));
+  const connectionIds = new Set(connections.map((connection) => connection.id));
+  const tasks = FUNCTION_TASKS.filter((task) => task.routes.some((route) => route.some((nodeId, index) => {
+    if (nodeIds.has(nodeId)) return true;
+    if (index === 0) return false;
+    const edge = edgeBetween(route[index - 1], nodeId);
+    return edge ? connectionIds.has(edge.id) : false;
+  }))).map((task) => ({ id: task.id, label: task.label, labelJa: task.labelJa }));
+
+  // The reading: this one structure gone, and the model solved for it.
+  const solved = solveHigherBrainFunction({
+    handedness,
+    lesions: [{ id: `structure:${label}|${side}`, structures: [{ label, side }], connections: [...connectionIds] }],
+  });
+  const statusOf = (id) => solved.tasks.find((task) => task.id === id)?.status;
+
+  return {
+    label,
+    side,
+    dominance,
+    nodes,
+    connections,
+    tasks,
+    carries: tasks.length > 0,
+    ifLost: {
+      lost: solved.tasks.filter((task) => task.status === FUNCTION_STATUS.LOST).map((task) => task.id),
+      impaired: solved.tasks.filter((task) => task.status === FUNCTION_STATUS.IMPAIRED).map((task) => task.id),
+      syndromes: solved.syndromes,
+    },
+  };
+}
+
 /** @param {string} id */
 export function lesionSiteById(id) {
   return LESION_SITES.find((site) => site.id === id) ?? null;
@@ -959,7 +1036,12 @@ export function solveHigherBrainFunction({
     if (!lesion) continue;
     const severity = clamp01(lesion.severity ?? 1) * reach;
     for (const structure of lesion.structures ?? []) {
-      const key = structureKey(structure.label, resolveSide(structure.side, dominance));
+      // A lesion may name a side the way the network does (`dominant`) or the
+      // way the atlas does (`left`). The second is what a reader's tap gives.
+      const side = structure.side === 'left' || structure.side === 'right' || structure.side === 'median'
+        ? structure.side
+        : resolveSide(structure.side, dominance);
+      const key = structureKey(structure.label, side);
       const damage = severity * clamp01(structure.share ?? 1);
       structureDamage.set(key, Math.max(structureDamage.get(key) ?? 0, damage));
     }
