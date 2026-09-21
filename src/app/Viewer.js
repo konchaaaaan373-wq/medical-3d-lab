@@ -383,7 +383,6 @@ export class Viewer {
   captureSize({ width, height }) {
     const previous = {
       size: this.renderer.getSize(new THREE.Vector2()),
-      pixelRatio: this.renderer.getPixelRatio(),
       aspect: this.camera.aspect,
       fov: this.camera.fov,
     };
@@ -392,7 +391,17 @@ export class Viewer {
     return () => {
       if (!this.heldSize) return;
       this.heldSize = null;
-      this.renderer.setPixelRatio(previous.pixelRatio);
+      // The budget is asked again rather than restoring the ratio the viewer
+      // happened to have when the recording started. A fifteen-second
+      // recording at an exact size is expensive enough to move the frame
+      // budget while it runs, and `resize()` below does not recompute the
+      // ratio unless the device class changes — so putting the old one back
+      // would leave the interactive scene at a quality the monitor has since
+      // decided this machine cannot hold, for the rest of the session, while
+      // reporting the reduced tier.
+      const ratio = this._budgetedPixelRatio();
+      this.renderer.setPixelRatio(ratio);
+      this.composer.setPixelRatio?.(ratio);
       this.renderer.setSize(previous.size.x, previous.size.y, false);
       this.composer.setSize(previous.size.x, previous.size.y);
       this.bloomPass?.setSize(previous.size.x, previous.size.y);
@@ -405,9 +414,16 @@ export class Viewer {
 
   _applyHeldSize() {
     const { width, height } = this.heldSize;
-    // Pixel ratio 1: `setSize` multiplies by it, and the size asked for here is
-    // the size the file has to be.
+    // Pixel ratio 1 on the renderer *and* on the composer: both multiply by
+    // their own copy, and the size asked for here is the size the file has to
+    // be. The composer's copy is fixed at construction from whatever the
+    // renderer's ratio was then, so setting only the renderer's leaves the
+    // passes drawing 2160×3840 for a 1080×1920 export on a 2× display — four
+    // times the pixels, and four times the pixels is also what the probe in
+    // `recordVideo` would be timing, which is how a machine that could
+    // sustain the declared size gets told it cannot.
     this.renderer.setPixelRatio(1);
+    this.composer.setPixelRatio?.(1);
     this.renderer.setSize(width, height, false);
     this.composer.setSize(width, height);
     this.bloomPass?.setSize(width, height);

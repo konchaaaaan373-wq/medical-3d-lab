@@ -1248,3 +1248,21 @@ test('the catalogue and the manifest agree about what is public', () => {
     assert.ok(PUBLIC_SCENES.some((entry) => entry.id === model.sceneId), `${model.sceneId} is published but not in PUBLIC_SCENES`);
   }
 });
+
+test('recording: leaving while the recorder chunks load cancels rather than re-entering', () => {
+  // The painter and the recorder are fetched on the first export, which on a
+  // slow connection is an asynchronous window the reader can walk out of —
+  // Exit stays enabled on purpose. The check that follows the imports asks
+  // "are we in the sequence?", and a reader who has just left answers no, so
+  // it used to put them back in and record the thing they had cancelled.
+  const source = readFileSync(new URL('../src/app/ReelMode.js', import.meta.url), 'utf8');
+  const body = source.slice(source.indexOf('async function recordVideo('));
+  const imports = body.indexOf('await Promise.all([');
+  const captured = body.indexOf('const startedActive = active;');
+  assert.ok(captured >= 0, 'recordVideo must read whether it was already in the sequence');
+  assert.ok(captured < imports, 'and read it before the first await, or it is reading the answer afterwards');
+  const abort = body.indexOf('if (startedActive && !active)');
+  assert.ok(abort > imports, 'the departure has to be checked after the chunks resolve');
+  assert.ok(abort < body.indexOf('enter();'), 'and before anything re-enters the sequence');
+  assert.match(body.slice(abort, body.indexOf('enter();')), /return \{[^}]*complete: false/, 'an abandoned export returns an unfinished result, never a blob');
+});

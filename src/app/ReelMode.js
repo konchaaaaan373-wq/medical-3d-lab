@@ -311,10 +311,20 @@ export function createReelMode({
    * @returns {Promise<{ blob: Blob, mimeType: string, formatId: string, complete: boolean }>}
    */
   async function recordVideo({ onProgress = () => {}, MediaRecorderCtor } = {}) {
+    // Read before the first `await`. The two chunks below are fetched from the
+    // network on the first export, and Exit stays deliberately enabled while
+    // they are — so a reader on a slow connection can agree, wait, change
+    // their mind and leave, all before this function has anything to record.
+    // Without this, `!active` below reads that departure as "not in the
+    // sequence yet", re-enters the sequence they just left, and records it.
+    const startedActive = active;
     const [{ paintReelFrame }, { createCanvasRecorder }] = await Promise.all([
       import('./reelFramePainter.js'),
       import('./videoRecorder.js'),
     ]);
+    if (startedActive && !active) {
+      return { blob: null, mimeType: '', formatId, complete: false, width: 0, height: 0, sizeReason: 'left while loading' };
+    }
     if (!active) {
       enter();
       // Entering sets the format, and `setFormat` defers `viewer.resize()` to

@@ -428,6 +428,24 @@ if (failed.length) {
   }
   process.exit(1);
 }
+// A run that drove nothing is not a pass.
+//
+// Found by running this file against an ordinary `npm run build`: disease
+// scenes are withheld from a production build, so every slug resolved to a
+// locked page, the loop skipped all of them, and the line below printed
+// `ok    0 scene(s)` and exited 0. "Nothing failed" and "nothing happened"
+// are the same sentence to a CI log (L-49, L-61).
+if (report.length === 0) {
+  console.error(
+    `\n  no scene was driven, so nothing here was measured.`
+      + ` Disease scenes are not in a production build: rebuild with`
+      + ` \`VITE_ALLOW_PREVIEW=1 npm run build\`, and check that the slugs given exist.`
+  );
+  await browser.close();
+  closeServer();
+  process.exit(1);
+}
+
 // What was measured, not only that nothing failed.
 //
 // `webkit` was green on a run where it recorded nothing at all: the engine
@@ -435,6 +453,11 @@ if (failed.length) {
 // "every export that was offered produced a file" is true of none of them.
 // A count is the difference between a green that measured something and a
 // green that measured the absence of something.
+//
+// The exit above is what makes the encoder a defensible explanation below:
+// with no scene driven, "no export was offered" says nothing about the engine,
+// and this line said it anyway — a cause reported without being established
+// (L-15).
 console.log(
   `\n  ok    ${report.length} scene(s) drove baseline → disease → reset; `
     + `${exportsRecorded} export(s) recorded and played back`

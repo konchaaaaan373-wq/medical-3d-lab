@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 
 import { PERFORMANCE_BUDGETS, pixelRatioFor } from '../src/app/performanceBudget.js';
+import { Viewer } from '../src/app/Viewer.js';
 
 const source = readFileSync(new URL('../src/app/Viewer.js', import.meta.url), 'utf8');
 
@@ -78,4 +79,91 @@ test('viewer: quality transitions are observable rather than console-only', () =
 test('viewer: applying a tier cannot recurse through resize', () => {
   const sync = source.slice(source.indexOf('_syncDeviceClass()'), source.indexOf('start()'));
   assert.ok(!/this\.resize\(\)/.test(sync), '_syncDeviceClass runs inside resize and must not call it');
+});
+
+/**
+ * A viewer with fake plumbing, so the held-size path can be *run* rather than
+ * read. Everything `captureSize` touches is here and nothing else is: the real
+ * constructor needs a WebGL context, which `node --test` does not have.
+ */
+function stubViewer({ devicePixelRatio = 2, tier = 'high', deviceClass = 'desktop' } = {}) {
+  const calls = { renderer: [], composer: [] };
+  const viewer = Object.create(Viewer.prototype);
+  viewer.deviceClass = deviceClass;
+  viewer.frameBudget = { tier };
+  viewer.resizeHandlers = new Set();
+  viewer.camera = { aspect: 16 / 9, fov: 42, updateProjectionMatrix() {} };
+  viewer.renderer = {
+    _ratio: pixelRatioFor({ devicePixelRatio, deviceClass, tier }),
+    _size: { x: 800, y: 450 },
+    getPixelRatio() {
+      return this._ratio;
+    },
+    setPixelRatio(value) {
+      this._ratio = value;
+      calls.renderer.push(value);
+    },
+    getSize(target) {
+      target.x = this._size.x;
+      target.y = this._size.y;
+      return target;
+    },
+    setSize(width, height) {
+      this._size = { x: width, y: height };
+    },
+  };
+  viewer.composer = {
+    size: null,
+    setSize(width, height) {
+      this.size = { width, height };
+    },
+    setPixelRatio(value) {
+      calls.composer.push(value);
+    },
+  };
+  return { viewer, calls };
+}
+
+test('viewer: a held capture holds the composer at 1x too, not only the renderer', () => {
+  // The composer keeps its own pixel ratio, taken from the renderer when it was
+  // constructed. Holding only the renderer's at 1 left a 1080x1920 export
+  // rendering its passes at 2160x3840 on a 2x display — and the probe that
+  // decides whether this machine can sustain the declared size was timing that
+  // larger number, so it could reject a size the device could actually draw.
+  const previous = globalThis.window;
+  globalThis.window = { devicePixelRatio: 2, innerWidth: 1440 };
+  try {
+    const { viewer, calls } = stubViewer({ devicePixelRatio: 2 });
+    viewer.captureSize({ width: 1080, height: 1920 });
+    assert.deepEqual(calls.renderer, [1]);
+    assert.deepEqual(calls.composer, [1], 'the composer was left at its construction ratio');
+    assert.deepEqual(viewer.composer.size, { width: 1080, height: 1920 });
+  } finally {
+    globalThis.window = previous;
+  }
+});
+
+test('viewer: releasing a capture asks the budget again rather than restoring a stale ratio', () => {
+  // A fifteen-second recording is long enough for the frame-budget monitor to
+  // drop a tier while it runs. Restoring the ratio the viewer had *before* the
+  // recording put the interactive scene back at a quality the monitor had
+  // already decided this machine could not hold — and nothing recomputes it
+  // afterwards, so it stayed there for the rest of the session.
+  const previous = globalThis.window;
+  globalThis.window = { devicePixelRatio: 2, innerWidth: 1440 };
+  try {
+    const { viewer, calls } = stubViewer({ devicePixelRatio: 2, tier: 'high' });
+    const before = viewer.renderer.getPixelRatio();
+    const release = viewer.captureSize({ width: 1080, height: 1920 });
+    // What a slow recording does to the monitor.
+    viewer.frameBudget = { tier: 'low' };
+    release();
+    const budgeted = pixelRatioFor({ devicePixelRatio: 2, deviceClass: 'desktop', tier: 'low' });
+    assert.notEqual(budgeted, before, 'the fixture must actually change tiers, or this proves nothing');
+    assert.equal(viewer.renderer.getPixelRatio(), budgeted);
+    assert.equal(calls.composer.at(-1), budgeted, 'the composer was left behind at the capture ratio');
+    assert.deepEqual(viewer.composer.size, { width: 800, height: 450 });
+  } finally {
+    globalThis.window = previous;
+  }
 });
