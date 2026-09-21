@@ -73,6 +73,13 @@ What is not held: any individual airway or vessel dimension.
 
 ## 6. Presentation choices
 
+- **The scene opens in Natural** (2026-09-21). It used to open in **Lobes**,
+  because that mode is first in the list and the list is ordered by what the
+  scene is for. A reader looking at the landing hero said the heart did not
+  look like an organ, and they were right: colour that carries no anatomical
+  claim is still the first claim a picture makes. Lobes is one press away and
+  nothing about it changed. The brain is the exception and still opens in
+  colour — 147 parcels cannot be told apart in tissue colour.
 - **The scene says what frame shape it needs.** Both lungs together fill the
   frame's width at an aspect of 0.72, so a narrow window pulls the camera back
   rather than cropping them.

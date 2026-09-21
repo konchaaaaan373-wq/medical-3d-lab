@@ -590,6 +590,16 @@ export async function createApp({ stage, ui, onRetryModel = null }) {
   const playback = new Playback({ duration: 26 });
 
   const legend = createLegend(meta);
+  // `createLegend` paints from `meta.palette`, which is one mode's colours
+  // written into the scene's static metadata, and `applyInspectionMode` only
+  // repaints it when the reader *changes* mode. A scene that opens in any other
+  // mode therefore showed a legend for a screen nobody was looking at — which
+  // is what happened the day organs started opening in tissue colour. Ask the
+  // scene what it opened in, once, here.
+  {
+    const opening = scene.getInspectionMode?.();
+    if (opening) legend.setPalette(scene.getInspectionLegendPalette?.(opening));
+  }
   const stageReadout = createStageReadout({ meta, onSeek: (value) => seek(value) });
   const labels = createLabelLayer({ viewer, annotations: scene.getAnnotations() });
   const sceneInspectionViews = scene.getInspectionViews?.() ?? scene.getAnatomyViews?.();

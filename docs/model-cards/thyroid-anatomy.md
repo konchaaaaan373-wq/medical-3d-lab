@@ -62,6 +62,13 @@ No dimension here is a measurement.
 
 ## 6. Presentation choices
 
+- **The scene opens in Natural** (2026-09-21). It used to open in **Regions**,
+  because that mode is first in the list and the list is ordered by what the
+  scene is for. A reader looking at the landing hero said the heart did not
+  look like an organ, and they were right: colour that carries no anatomical
+  claim is still the first claim a picture makes. Regions is one press away
+  and nothing about it changed. The brain is the exception and still opens
+  colour-coded — 147 parcels cannot be told apart in tissue colour.
 - **The gland fades, the structures behind it appear.** Nothing is moved and
   nothing is removed; the gland is still there at the far end of the slider.
 - **A "Posterior" viewpoint exists** because the parathyroids and the nerves
