@@ -362,32 +362,6 @@ ARIA の `page` は「一連のページの中の、現在のページ」です�
   コメントに 1 行）か、フッタを `true` に変える。どちらでも
   `tests/scene-switcher-current-route.test.js` が値まで固定する
 
-### F-173 書き出しの探針を、2× の画面で一度も走らせていない — P3（2026-09-21）
-
-動画書き出しは、宣言した画素数（9:16 なら 1080×1920）で 3 フレーム測り、
-1 フレーム 45 ms を超える機械では canvas 自身の大きさに落とします。
-その探針が `EffectComposer` の pixel ratio を 1 に落とさないまま測っていた欠陥を
-2026-09-21 のレビューで直しました（composer は自分の写しを持つので、
-2× の画面では 1080×1920 の要求が 2160×3840 の描画になっていた）。
-
-- **確かめていないこと**: 直ったことを、**実際に 2× の画面で見ていません**。
-  この環境の headless Chromium は `deviceScaleFactor: 1` で、software GL では
-  どちらにせよ宣言サイズが落とされます（実測 506×900）。つまり
-  `verify:disease` は、この欠陥があってもなくても同じ行を出します
-- **いま言えること**: `tests/viewer-performance.test.js` が、保持中は renderer と
-  composer の両方が 1 であること、解放時は両方がその時点の frame budget の値に
-  戻ることを**偽の composer を相手に**固定しています。ミューテーションで赤を確認済み
-- **やるべきこと**: `check-disease-interaction.mjs` に `--dpr` を足して
-  `deviceScaleFactor: 2` で 1 本走らせ、選ばれた大きさが変わるかを見る。
-  変わらないなら、この項目は「2× の機械でも同じ判断になる」という記録として閉じる
-- **完了の定義**: 2× で走らせた出力（選ばれた大きさと fps）がこの台帳に 1 行残ること
-- **PR #146 再監査（2026-09-21）**: `--dpr` / `--dist` と実 composer の
-  renderTarget1/2 の寸法検査を追加。CI の既存 preview build で DPR 2 の COPD を
-  録画・復号する。DPR > 1 では WebGL2 不可・録画 0 本も失敗にする。
-  ローカルの Chromium / headless shell は起動時 SIGSEGV のため計測できず、
-  **CI の実測結果を確認するまでは未解決**。
-
-
 
 ---
 
@@ -3703,6 +3677,26 @@ landmark ビルダー（`buildKidney({ parts: false })`）の `dispose()` を呼
 ---
 
 ## Resolved
+
+### F-173 DPR 2 の書き出し探針を実ブラウザで検証 — Resolved（2026-09-21、PR #146）
+
+- **問題**: composer の pixel ratio 修正は偽の renderer/composer でしか検証されておらず、
+  DPR 1 の計測では内部の過剰描画の有無を区別できなかった。
+- **実測**: commit `522e37c`、[CI run 35626709290](https://github.com/konchaaaaan373-wq/medical-3d-lab/actions/runs/35626709290)、
+  Chromium `deviceScaleFactor: 2`、COPD 1 本。
+  探針の要求 **1080×1920** に対して renderer ratio **1**、実 composer の
+  renderTarget1/2 は **両方1080×1920**。性能判定後の MP4 は **1012×1800、
+  85 frames、5.5 fps、15.5秒、908 kB**（直前の画面描画9.3 fps）。
+  `1 export(s) recorded and played back` を確認。DPR 1 の既存記録506×900から
+  fallback の画素数は変わったが、宣言サイズを常に採用するという意味ではない。
+- **ガード**: `scripts/check-disease-interaction.mjs --dpr 2` が実ターゲットの寸法と
+  録画・復号を検査。DPR > 1 では WebGL2 不可・録画0本も失敗。
+  既存の Chromium / preview build を使うCOPD 1本をPR CIに追加（F-112）。
+  `tests/viewer-performance.test.js` は保持中のratioと解放時の現行budgetを検証する。
+- **範囲**: GitHub runnerのソフトウェア描画・DPRエミュレーションでの実測。
+  iPhone実機、Safariの録画対応、全機種で30 fpsという保証ではない。
+  ローカルのChromiumは起動時SIGSEGVのため、実測の根拠は上記CIとそのartifact。
+
 
 - **F-167 動画にできるのは「シーケンスを持つシーン」だけ** — 決定（2026-09-21）。
   **シーケンスを持つシーンだけに出す**で確定します。15 秒を誰も構成していない
