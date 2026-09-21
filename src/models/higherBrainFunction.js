@@ -261,6 +261,15 @@ export const FUNCTION_NODES = Object.freeze([
     ]),
   },
   {
+    id: 'thalamic-language-gating',
+    label: 'Thalamic gating of word production',
+    labelJa: '視床による語産出のゲーティング（前腹側核・視床枕）',
+    substrate: NODE_SUBSTRATE.COMPOSITE,
+    structures: Object.freeze([dominant('Ventral anterior nucleus'), dominant('Pulvinar')]),
+    note: 'On the production routes only. Repeating a heard word does not pass through it, which is what a thalamic lesion looks like.',
+    noteJa: '産出の経路にのみ置いています。聞いた語の復唱はここを通りません——視床病変の像がまさにそれです。',
+  },
+  {
     id: 'ventral-visual-form',
     label: 'Ventral visual form (fusiform gyrus)',
     labelJa: '腹側視覚路の形態表現（外側後頭側頭回＝紡錘状回）',
@@ -500,11 +509,6 @@ export const FUNCTION_EDGES = Object.freeze([
     within: Object.freeze([dominant('Middle longitudinal fasciculus')]),
   },
   {
-    id: 'semantic-to-integration', from: 'lexical-semantic', to: 'cross-modal-integration',
-    label: 'Meaning to cross-modal integration', labelJa: '意味 → 角回',
-    within: Object.freeze([dominant('Middle longitudinal fasciculus')]),
-  },
-  {
     id: 'integration-to-premotor', from: 'cross-modal-integration', to: 'premotor-dominant',
     label: 'Cross-modal integration to premotor cortex', labelJa: '角回 → 運動前野',
     within: Object.freeze([dominant('Superior longitudinal fasciculus II')]),
@@ -578,6 +582,21 @@ export const FUNCTION_EDGES = Object.freeze([
     within: Object.freeze([...bilateral('Anterior thalamic radiation')]),
   },
   {
+    id: 'semantic-to-thalamus', from: 'lexical-semantic', to: 'thalamic-language-gating',
+    label: 'Meaning to the thalamus', labelJa: '意味 → 視床',
+    within: Object.freeze([dominant('Anterior thalamic radiation')]),
+  },
+  {
+    id: 'thalamus-to-semantic', from: 'thalamic-language-gating', to: 'lexical-semantic',
+    label: 'Thalamus back to the lexicon', labelJa: '視床 → 語彙（環の閉じ）',
+    within: Object.freeze([dominant('Anterior thalamic radiation')]),
+  },
+  {
+    id: 'output-to-integration', from: 'phonological-output', to: 'cross-modal-integration',
+    label: 'Phonological encoding to letters', labelJa: '音韻の符号化 → 文字への変換',
+    within: Object.freeze([dominant('Superior longitudinal fasciculus II')]),
+  },
+  {
     id: 'fornix-outflow', from: 'medial-temporal-memory', to: 'limbic-memory-relay',
     label: 'Hippocampal outflow', labelJa: '海馬からの出力（脳弓）',
     within: Object.freeze([...bilateral('Fornix')]),
@@ -619,7 +638,8 @@ export const FUNCTION_TASKS = Object.freeze([
     id: 'propositional-speech',
     label: 'Saying something with content', labelJa: '内容のある自発話',
     routes: Object.freeze([
-      Object.freeze(['lexical-semantic', 'speech-initiation', 'phonological-output', 'speech-motor']),
+      Object.freeze(['lexical-semantic', 'thalamic-language-gating', 'lexical-semantic',
+        'speech-initiation', 'phonological-output', 'speech-motor']),
     ]),
   },
   {
@@ -627,8 +647,10 @@ export const FUNCTION_TASKS = Object.freeze([
     label: 'Naming what is seen', labelJa: '呼称',
     routes: Object.freeze([
       Object.freeze(['visual-input-dominant', 'ventral-visual-form', 'lexical-semantic',
+        'thalamic-language-gating', 'lexical-semantic',
         'phonological-analysis', 'phonological-output', 'speech-motor']),
       Object.freeze(['visual-input-nondominant', 'ventral-visual-form', 'lexical-semantic',
+        'thalamic-language-gating', 'lexical-semantic',
         'phonological-analysis', 'phonological-output', 'speech-motor']),
     ]),
   },
@@ -643,8 +665,15 @@ export const FUNCTION_TASKS = Object.freeze([
   {
     id: 'writing',
     label: 'Writing', labelJa: '書字',
+    // Writing is a language task before it is a hand task. Routed straight
+    // from meaning to the letters, this model had writing intact in both Broca
+    // and Wernicke aphasia, where agraphia is in fact the rule: written
+    // language draws on the same word forms and the same phonological encoding
+    // that speech does. What it does *not* draw on is the mouth, and that is
+    // what separates an aphasia from a disorder of speech alone.
     routes: Object.freeze([
-      Object.freeze(['lexical-semantic', 'cross-modal-integration', 'premotor-dominant', 'hand-motor-dominant']),
+      Object.freeze(['lexical-semantic', 'phonological-analysis', 'phonological-output',
+        'cross-modal-integration', 'premotor-dominant', 'hand-motor-dominant']),
     ]),
   },
   {
@@ -795,6 +824,44 @@ export const LESION_SITES = Object.freeze([
       dominant('Angular gyrus'),
       { ...dominant('Temporal pole'), share: 0.3 },
     ]),
+    connections: Object.freeze([]),
+  },
+  {
+    id: 'dominant-watershed-both',
+    label: 'Both dominant watersheds at once', labelJa: '優位半球 前後の分水嶺（同時）',
+    usualCause: 'Global hypoperfusion — cardiac arrest, or a critical carotid stenosis',
+    usualCauseJa: '全脳性の低灌流（心停止、頸動脈の高度狭窄）',
+    structures: Object.freeze([
+      dominant('Superior frontal gyrus'),
+      dominant('Cingulate gyrus and sulcus (Middle anterior part)'),
+      dominant('Middle temporal gyrus'),
+      dominant('Angular gyrus'),
+      { ...dominant('Temporal pole'), share: 0.3 },
+    ]),
+    connections: Object.freeze([]),
+  },
+  {
+    id: 'bilateral-auditory-cortex',
+    label: 'Both auditory cortices', labelJa: '両側 横側頭回（Heschl 回）',
+    usualCause: 'Two temporal infarcts, usually years apart',
+    usualCauseJa: '両側側頭葉の梗塞（多くは時期を隔てて 2 回）',
+    structures: Object.freeze([...bilateral('Transverse temporal gyri')]),
+    connections: Object.freeze([]),
+  },
+  {
+    id: 'dominant-insula',
+    label: 'Dominant insula', labelJa: '優位半球 島皮質',
+    usualCause: 'Insular branch of the middle cerebral artery (M2)',
+    usualCauseJa: '中大脳動脈 島枝（M2）の梗塞',
+    structures: Object.freeze([dominant('Insula (Subcentral gyrus and ant. and post. sulci)')]),
+    connections: Object.freeze([]),
+  },
+  {
+    id: 'dominant-thalamus',
+    label: 'Dominant anterior thalamus', labelJa: '優位半球 視床（前腹側核・視床枕）',
+    usualCause: 'Thalamoperforating artery infarct, or a thalamic haemorrhage',
+    usualCauseJa: '視床穿通枝の梗塞、視床出血',
+    structures: Object.freeze([dominant('Ventral anterior nucleus'), dominant('Pulvinar')]),
     connections: Object.freeze([]),
   },
   {
@@ -1156,7 +1223,39 @@ function classifySyndromes(tasks) {
   const nonfluent = bad('speech-fluency');
   const naming = bad('naming');
 
-  const aphasia = (() => {
+  /**
+   * Aphasia is supramodal, and that is what tells it from its mimics.
+   *
+   * Two patterns look like an aphasia on one modality and are not one. A
+   * person who cannot understand speech but reads normally has lost the way
+   * into language from one sense, not language itself; a person whose speech
+   * will not come out but who writes normally has lost the way out through one
+   * channel. Naming either of them after an aphasia would teach the single most
+   * useful bedside question backwards — **is the other modality affected too?**
+   */
+  const wordDeafness = comprehension && !bad('reading') && !nonfluent && !bad('writing');
+  // Repetition is the discriminator on the output side, and leaving it out got
+  // transcortical motor aphasia filed as a disorder of articulation. Somebody
+  // who cannot start a sentence but can repeat a long one has an output channel
+  // that works: the trouble is upstream of it, and that is an aphasia. When the
+  // channel itself is gone, repeating fails for the same reason speaking does.
+  const speechOutputOnly = nonfluent && repetition
+    && !bad('writing') && !comprehension && !bad('reading');
+  if (wordDeafness) {
+    syndromes.push({
+      id: 'pure-word-deafness', label: 'Pure word deafness', labelJa: '純粋語聾',
+      because: ['auditory-comprehension', 'reading', 'writing'],
+    });
+  }
+  if (speechOutputOnly) {
+    syndromes.push({
+      id: 'speech-output-disorder', label: 'A disorder of speech output, not of language',
+      labelJa: '発語の障害（言語そのものの障害ではない）',
+      because: ['speech-fluency', 'writing', 'auditory-comprehension'],
+    });
+  }
+
+  const aphasia = (wordDeafness || speechOutputOnly) ? null : (() => {
     if (comprehension && repetition && nonfluent) return ['global-aphasia', 'Global aphasia', '全失語'];
     if (comprehension && repetition) return ['wernicke-aphasia', 'Wernicke aphasia', 'Wernicke 失語'];
     if (comprehension && nonfluent) return ['mixed-transcortical-aphasia', 'Mixed transcortical aphasia', '混合型超皮質性失語'];

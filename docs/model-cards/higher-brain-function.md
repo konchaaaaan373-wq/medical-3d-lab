@@ -43,6 +43,15 @@ not, because repetition is the one task whose route uses it; the name is then a
 reading of that pattern, produced by the same function that would produce a
 different name from a different pattern.
 
+Because the names are readings rather than entries, the classical aphasias come
+out of the anatomy rather than being listed: the eight — Broca, Wernicke,
+conduction, global, the three transcortical patterns and anomic — are each the
+pattern a different declared lesion leaves behind. So are the three pictures
+that are **not** aphasias: pure word deafness, a disorder of speech output, and
+alexia without agraphia. Telling those from the aphasias is the supramodal test
+— whether the same language is lost on the page and in the hand, or only in one
+channel — and the model applies it before it uses the word.
+
 ## 3. What it is not
 
 **It is not a lesion localiser, and must never be used as one.** The atlas is
@@ -130,6 +139,12 @@ severity scale or a test result.
   between two gyri. These tract meshes are in the distributed atlas and **no
   scene in this repository had ever drawn them**.
 - The signal travels the route and **stops at the step that stopped it**.
+- **The route itself is lit as far as the signal got, and neutral beyond it.**
+  That was a small halted marker until a rendered frame showed it does not
+  read — the marker is the colour of the line it sits on — so a front lesion
+  and a back lesion gave two pictures a viewer cannot tell apart. The dim part
+  is **not damaged**: those steps are intact and were never reached, which is
+  why it is neutral rather than the lesion colour.
 - **The run repeats as an examination**: the task is asked at the end it enters
   by, carried, and either answered or not. **The order is the claim and the
   seconds are a rhythm** — nothing in this model is a latency, a conduction time
@@ -164,20 +179,29 @@ It is shown **only where this scene is open**. The anatomy scene it appears on
 is published; this model's medical review is not recorded yet, so in a
 production build the section does not exist. The scene that owns the reading is
 declared in the catalogue (`providesStructureFunctions`) rather than named in
-the surface that shows it. See `src/app/anatomyFunctionLink.js` and
+the surface that shows it. The reading itself lives inside the scene's own folder
+(`src/scenes/nervous/scenes/higherBrainFunction/structureFunctions.js`) and is
+loaded with the scene, so a withheld model cannot reach a published bundle. See
 `docs/follow-ups.md` F-166.
 
 ## 9.6 The fifteen-second sequence
 
-One subject: a word asked twice, either side of a single cut bundle. It opens on
-an intact brain, the arcuate fasciculus is taken over two seconds, and the same
-word is asked again — it arrives, it is understood, and it stops on the way out,
-while comprehension and fluency do not move. The name comes last.
+One word, asked four times of the same brain: once with nothing in the way, then
+with the front cut, the back cut, and the bundle between them cut. Each run is a
+whole examination — asked, carried, answered or not — and the four are given the
+same length, so the only thing that differs between them is **how far the word
+got**. The name of each is the place it stopped, and the closing frame says so.
 
-It is chosen because it is the one finding here a still picture cannot carry.
-Every row the overlay prints is read from the scene's own read-out each frame,
-and the scene is driven by absolute sequence time (`renderAtSeconds`), so the
-same second renders identically on any machine and at any frame rate.
+The sequence shows three aphasias rather than one because conduction aphasia on
+its own is the least useful of the three: a reader who has not watched the other
+two has nothing to compare it against, and the name stays a name. The lesions,
+the stopping places and every row on screen are read from the solved state each
+frame; the storyboard holds only times and camera distance. The scene is driven
+by absolute sequence time (`renderAtSeconds`), so the same second renders
+identically on any machine and at any frame rate.
+
+**The seconds are a rhythm, not a latency.** The model has no time in it, and
+the overlay says that for the whole fifteen seconds.
 
 ## 10. Known failure modes
 
@@ -189,10 +213,21 @@ same second renders identically on any machine and at any frame rate.
   pure alexia sparing object naming — a real and well-described dissociation.
 - **Transcortical motor aphasia keeps naming here**, where in a person naming is
   variably impaired.
-- **No declared site produces an isolated naming failure**, so the anomic
-  aphasia the classifier can read is not reachable from any of them: every step
-  of naming is shared with another task. A test holds that, so the sentence
-  cannot quietly stop being true.
+- **Writing is lost wherever the language routes are**, including conduction
+  aphasia, where in a person writing is variably affected and is often better
+  than repetition. The model routes writing through the phonological stages
+  because the alternative — writing intact in Broca and Wernicke aphasia — was
+  further from what those patients do. It states the dissociation and overstates
+  its completeness.
+- **The aphasia of a striatocapsular lesion is not here.** The model has no
+  declared site for it, because what it would produce — output affected,
+  comprehension kept — is not distinguishable in this model from a lesion of the
+  way out through the mouth, and naming it aphasia or not would be a coin toss.
+  Leaving it out is the honest option, not an oversight.
+- **The route drawn through the thalamus is one account of thalamic aphasia and
+  not the settled one.** The dissociation it produces — naming gone, repetition
+  kept — is what is described; why it happens is disputed. The dossier marks it
+  `uncertain`.
 - **The three prefrontal pictures come apart more cleanly here than in a
   person.** The circuits are anatomically separate; the syndromes named after
   them overlap heavily, and real lesions rarely respect one circuit.
@@ -210,6 +245,13 @@ same second renders identically on any machine and at any frame rate.
 **A lesion drawn on this brain reads as a lesion seen on a scan.** It is neither
 an image nor a segmentation of one. Whole named structures of one normal
 specimen, coloured.
+
+**Every picture with a language row in it reads as an aphasia.** Two of the
+declared sites produce one that is not: both auditory cortices gone is pure word
+deafness, and a dominant insular lesion is a disorder of speech output. The
+model applies the supramodal test — is the same language lost on the page and in
+the hand, and not only in one channel — and refuses the name in those two cases.
+A reader watching one row will not see that distinction.
 
 **Naming failing reads as aphasia.** When the lesion is at the visual end, the
 name was never reached. The model reads *where* a route broke before it calls

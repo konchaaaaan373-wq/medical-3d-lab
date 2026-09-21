@@ -5,18 +5,20 @@ import * as THREE from 'three';
 
 import HigherBrainFunctionScene from '../src/scenes/nervous/scenes/higherBrainFunction/index.js';
 import {
-  REEL_CUES, REEL_DURATION, cameraAt, extentAt, overlayAt,
+  REEL_CUES, REEL_DURATION, REEL_SEGMENTS, cameraAt, extentAt, overlayAt, runTimeAt, segmentAt,
 } from '../src/scenes/nervous/scenes/higherBrainFunction/reelStoryboard.js';
 import { REEL_COPY } from '../src/data/higherBrainFunction.js';
+import { lesionSiteById } from '../src/models/higherBrainFunction.js';
 
 /**
  * The fifteen-second sequence has to agree with the scene it is a video of.
  *
- * The subject is conduction aphasia, which is the one finding here a still
- * picture cannot carry: the word arrives, is understood, and stops on the way
- * out. So what these check is that the sequence really shows that — the run
- * getting through before the cut and not after it — and that every word on
- * screen is read from the solved state rather than written into the storyboard.
+ * The subject is one claim — *the name is where it stopped* — and it is only a
+ * claim if the four runs really stop in four different places. So what these
+ * check is that each beat cuts its own bundle, that the word gets a different
+ * distance in each, that the rows which stay intact differ between them, and
+ * that every word on screen is read from the solved state rather than written
+ * into the storyboard.
  */
 
 function fixtureAtlas() {
@@ -47,6 +49,12 @@ const build = () => {
   return scene;
 };
 
+/** The middle of a beat, where its lesion is fully arrived and the run is mid-flight. */
+const midOf = (id) => {
+  const segment = REEL_SEGMENTS.find((candidate) => candidate.id === id);
+  return (segment.at + segment.until) / 2;
+};
+
 test('the cues tile the whole sequence with no gap and no overlap', () => {
   assert.equal(REEL_CUES[0].at, 0);
   assert.equal(REEL_CUES.at(-1).until, REEL_DURATION);
@@ -55,16 +63,25 @@ test('the cues tile the whole sequence with no gap and no overlap', () => {
   }
 });
 
-test('the lesion arrives once, never retreats, and the camera is a pure function of time', () => {
-  let previous = -Infinity;
-  for (let t = 0; t <= REEL_DURATION; t += 0.05) {
-    const extent = extentAt(t);
-    assert.ok(extent >= 0 && extent <= 1, `extent ${extent} out of range at ${t}`);
-    assert.ok(extent >= previous - 1e-9, `the lesion went backwards at ${t}`);
-    previous = extent;
+test('each beat opens on the brain it is about to cut, and the camera is a pure function of time', () => {
+  // Not one lesion growing across the fifteen seconds: four separate runs. So
+  // the thing that must hold is per beat — the cut arrives *inside* its own
+  // beat, after the viewer has been shown where it is.
+  for (const segment of REEL_SEGMENTS) {
+    if (!segment.lesion) {
+      for (let t = segment.at; t < segment.until; t += 0.1) {
+        assert.equal(extentAt(t), 0, `the intact beat stays intact at ${t}`);
+      }
+      continue;
+    }
+    if (segment.at !== REEL_SEGMENTS.find((s) => s.lesion === segment.lesion).at) continue;
+    assert.equal(extentAt(segment.at), 0, `${segment.id} opens before its cut`);
+    assert.ok(extentAt(segment.at + 0.3) > 0 && extentAt(segment.at + 0.3) < 1, `${segment.id} arrives, rather than appearing`);
+    for (let t = segment.at + 0.6; t < segment.until; t += 0.1) {
+      assert.ok(extentAt(t) > 1 - 1e-9, `${segment.id} holds its cut at ${t}`);
+    }
   }
-  assert.equal(extentAt(0), 0, 'it opens on an intact brain');
-  assert.equal(extentAt(REEL_DURATION), 1);
+  assert.equal(extentAt(REEL_DURATION), 1, 'the closing frame still shows the last lesion');
 
   const base = { distance: 6, targetX: 0, targetY: -0.35, targetZ: 0 };
   for (let t = 0; t <= REEL_DURATION; t += 0.37) {
@@ -72,48 +89,114 @@ test('the lesion arrives once, never retreats, and the camera is a pure function
   }
 });
 
-test('the sequence shows the word getting through, and then not', () => {
+test('every beat plays one whole run of the examination, at the same pace', () => {
+  // The lesions are compared by *where* the word stopped, which only reads as a
+  // comparison if each of them is asked the same question from the beginning.
+  // A run that is a slice of one long sweep would show the back cut mid-word.
+  const cycle = HigherBrainFunctionScene.CYCLE_SECONDS;
+  for (const segment of REEL_SEGMENTS) {
+    assert.equal(runTimeAt(segment.at, cycle), 0, `${segment.id} starts its run at the beginning`);
+    const last = runTimeAt(segment.until - 1e-6, cycle);
+    assert.ok(last > cycle * 0.99, `${segment.id} gets to the end of its run (${last})`);
+    let previous = -Infinity;
+    for (let t = segment.at; t < segment.until; t += 0.05) {
+      const now = runTimeAt(t, cycle);
+      assert.ok(now >= previous - 1e-9, `${segment.id} ran backwards at ${t}`);
+      assert.ok(now <= cycle, `${segment.id} ran past its own run at ${t}`);
+      previous = now;
+    }
+  }
+});
+
+test('the four runs stop in four different places', () => {
   const scene = build();
   const reel = scene.getReel();
 
-  // Before the cut: the run reaches the end and an answer comes back.
-  reel.driveAt(2.0);
+  // Nothing in the way: the word goes all the way through and an answer returns.
+  reel.driveAt(midOf('intact'));
   assert.equal(scene.tracedTask().status, 'intact');
   assert.equal(scene.answerStrength(), 1);
   assert.equal(scene.blockedFraction(), 1, 'nothing stops it yet');
 
-  // After it: the run stops at the cut bundle, and nothing answers.
-  reel.driveAt(8.0);
-  assert.equal(scene.tracedTask().status, 'lost');
-  assert.equal(scene.tracedTask().blockedAt.id, 'dorsal-phonological');
-  assert.ok(scene.blockedFraction() < 1);
-  assert.equal(scene.answerStrength(), 0);
-
-  // And the two the sequence claims are untouched really are, at every instant.
-  for (let t = 0; t <= REEL_DURATION; t += 0.5) {
+  // Then the same word, three times, against three cuts. What is being claimed
+  // is that the stopping place moves — so it is the set of them that is checked,
+  // not three separate facts that could all be the same one.
+  const stops = new Map();
+  for (const id of ['broca', 'wernicke', 'conduction']) {
+    const t = midOf(id);
     reel.driveAt(t);
-    const rows = reel.readMetrics();
-    assert.equal(rows['auditory-comprehension'].ja, '保たれる', `comprehension at ${t}`);
-    assert.equal(rows['speech-fluency'].ja, '保たれる', `fluency at ${t}`);
+    assert.equal(scene.controls.lesion, segmentAt(t).lesion, `${id} cuts its own site`);
+    assert.equal(scene.tracedTask().status, 'lost', `the word does not arrive in ${id}`);
+    assert.equal(scene.answerStrength(), 0);
+    assert.ok(scene.blockedFraction() < 1, `${id} stops short of the end`);
+    stops.set(id, { at: scene.tracedTask().blockedAt.id, reach: scene.blockedFraction() });
   }
+  assert.equal(stops.get('broca').at, 'phonological-output');
+  assert.equal(stops.get('wernicke').at, 'phonological-analysis');
+  assert.equal(stops.get('conduction').at, 'dorsal-phonological');
+  assert.equal(new Set([...stops.values()].map((stop) => stop.at)).size, 3, 'three cuts, three places');
+
+  // And the word visibly gets further in one than in another: the back cut
+  // stops it before the front cut does.
+  assert.ok(
+    stops.get('wernicke').reach < stops.get('broca').reach,
+    'the word reaches further against the front cut than against the back one'
+  );
+  scene.dispose();
+});
+
+test('what survives each cut differs, so the rows are read and not printed', () => {
+  const scene = build();
+  const reel = scene.getReel();
+  const rowsAt = (id) => {
+    reel.driveAt(midOf(id));
+    const rows = reel.readMetrics();
+    return {
+      comprehension: rows['auditory-comprehension'].ja,
+      fluency: rows['speech-fluency'].ja,
+      repetition: rows.repetition.ja,
+    };
+  };
+
+  assert.deepEqual(rowsAt('intact'), { comprehension: '保たれる', fluency: '保たれる', repetition: '保たれる' });
+  // Understood and never spoken.
+  assert.deepEqual(rowsAt('broca'), { comprehension: '保たれる', fluency: '消失', repetition: '消失' });
+  // Heard, never understood, and speech still flows.
+  assert.deepEqual(rowsAt('wernicke'), { comprehension: '消失', fluency: '保たれる', repetition: '消失' });
+  // Both of those intact, and still not repeatable — the finding of the reel.
+  assert.deepEqual(rowsAt('conduction'), { comprehension: '保たれる', fluency: '保たれる', repetition: '消失' });
   scene.dispose();
 });
 
 test('every word on screen is the solved state, not a sentence written into the storyboard', () => {
   const scene = build();
   const reel = scene.getReel();
-  reel.driveAt(9.0);
-  const frame = overlayAt(9.0, { language: 'ja', metrics: reel.readMetrics() });
-  const rows = frame.cards.items.flatMap((item) => item.rows).join(' / ');
-  assert.match(rows, /復唱: 消失/);
-  assert.match(rows, /聴覚的理解: 保たれる/);
-  assert.match(rows, /流暢性: 保たれる/);
+  const cardsAt = (id) => {
+    const t = midOf(id);
+    reel.driveAt(t);
+    const frame = overlayAt(t, { language: 'ja', metrics: reel.readMetrics() });
+    return frame.cards.items;
+  };
 
-  // The same instant, before the cut, says the opposite about the same row —
-  // so the card is reading something rather than printing a constant.
-  reel.driveAt(1.0);
-  const early = overlayAt(1.0, { language: 'ja', metrics: reel.readMetrics() });
-  assert.match(early.cards.items[0].rows.join(''), /復唱: 保たれる/);
+  const conduction = cardsAt('conduction');
+  assert.equal(conduction[0].label, lesionSiteById('dominant-arcuate').labelJa, 'the card names the cut it is showing');
+  assert.match(conduction.flatMap((item) => item.rows).join(' / '), /復唱: 消失/);
+  assert.match(conduction.flatMap((item) => item.rows).join(' / '), /聴覚的理解: 保たれる/);
+  assert.match(conduction.flatMap((item) => item.rows).join(' / '), /流暢性: 保たれる/);
+
+  // A different beat of the same sequence says the opposite about the same two
+  // rows, so the card is reading something rather than printing a constant.
+  const wernicke = cardsAt('wernicke');
+  assert.equal(wernicke[0].label, lesionSiteById('dominant-posterior-superior-temporal').labelJa);
+  assert.match(wernicke.flatMap((item) => item.rows).join(' / '), /聴覚的理解: 消失/);
+
+  const broca = cardsAt('broca');
+  assert.match(broca.flatMap((item) => item.rows).join(' / '), /流暢性: 消失/);
+
+  // And the opening beat, which cuts nothing, does not name a lesion at all.
+  const intact = cardsAt('intact');
+  assert.equal(intact[0].label, REEL_COPY.cards.task.labelJa);
+  assert.match(intact.flatMap((item) => item.rows).join(' / '), /復唱: 保たれる/);
   scene.dispose();
 });
 
@@ -132,9 +215,22 @@ test('the sequence takes the reader to the name last, and says what the seconds 
   assert.equal(ending.title.text, REEL_COPY.takeHome.titleJa);
   assert.equal(ending.title.variant, 'take-home');
 
-  // The name arrives after the finding, never before it.
+  // The name arrives after all three cuts, never before them.
   for (const t of [1, 4, 7, 10, 12]) {
     assert.notEqual(overlayAt(t, { language: 'ja', metrics }).title.text, REEL_COPY.takeHome.titleJa, `at ${t}s`);
+  }
+
+  // Each beat says what it is cutting while it is on screen, and one beat's
+  // caption never runs under another's.
+  for (const segment of REEL_SEGMENTS) {
+    const middle = (segment.at + segment.until) / 2;
+    const frame = overlayAt(middle, { language: 'ja', metrics });
+    if (!segment.copy) {
+      assert.equal(frame.caption.opacity, 0, 'the closing beat carries no caption');
+      continue;
+    }
+    assert.equal(frame.caption.text, REEL_COPY.segments[segment.copy].captionJa, `caption of ${segment.id}`);
+    assert.ok(frame.caption.opacity > 0, `the caption of ${segment.id} is up`);
   }
 
   // And the disclaimer that keeps the rhythm from reading as a latency is on
@@ -152,13 +248,15 @@ test('the sequence drives the scene from a reset, and a replay gives the same fr
   // A sequence starts after the controls are reset, so it must set its own.
   scene.resetModelControls();
   scene.setModelControl('task', 'reading');
-  reel.driveAt(6.0);
+  reel.driveAt(5.0);
   assert.equal(scene.controls.task, 'repetition', 'the sequence asks for its own task');
-  assert.equal(scene.controls.lesion, 'dominant-arcuate');
+  assert.equal(scene.controls.lesion, 'dominant-inferior-frontal');
 
   const first = scene.pulse.position.clone();
+  // Away, through two other lesions, and back to the same second.
   reel.driveAt(0.5);
-  reel.driveAt(6.0);
+  reel.driveAt(11.0);
+  reel.driveAt(5.0);
   assert.ok(scene.pulse.position.distanceTo(first) < 1e-9, 'the same second renders the same');
   scene.dispose();
 });

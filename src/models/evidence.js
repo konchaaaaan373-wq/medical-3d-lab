@@ -3537,6 +3537,56 @@ export const HIGHER_BRAIN_FUNCTION_EVIDENCE = defineEvidence('higher-brain-funct
     layer: LAYER.EXTERNAL,
   },
   {
+    id: 'aphasia-is-supramodal',
+    claim:
+      'A language disorder shows itself in every modality at once, so a deficit confined to hearing speech, or confined to producing it, is not an aphasia: pure word deafness leaves reading and writing, and a lesion of the dominant insula leaves the same sentence writable.',
+    confidence: CONFIDENCE.SUPPORTED,
+    source:
+      'The standard definition of aphasia as a supramodal disorder of language, and the classical descriptions of pure word deafness and of apraxia of speech after dominant insular damage.',
+    validation: 'physiology: aphasia is supramodal, which is what tells it from its mimics',
+    layer: LAYER.EXTERNAL,
+  },
+  {
+    id: 'writing-fails-with-the-language',
+    claim:
+      'Writing runs through the same lexical and phonological stages as speech rather than straight from meaning to the hand, so agraphia accompanies the perisylvian aphasias and survives a lesion of the way out through the mouth.',
+    confidence: CONFIDENCE.SUPPORTED,
+    source:
+      'The standard clinical observation that the aphasias are accompanied by agraphia, and the phonological route of the dual-route accounts of writing.',
+    validation: 'physiology: writing fails with the language, not with the hand',
+    layer: LAYER.EXTERNAL,
+  },
+  {
+    id: 'the-repetition-question-separates-output-from-language',
+    claim:
+      'On the output side the discriminating question is repetition: a person who cannot start a sentence but can repeat a long one has a working channel and a language disorder, while one who can write what will not come out of the mouth has the opposite.',
+    confidence: CONFIDENCE.SUPPORTED,
+    source:
+      'The standard bedside classification of the aphasias, in which repetition separates the transcortical from the perisylvian syndromes and writing separates aphasia from apraxia of speech.',
+    validation: 'physiology: aphasia is supramodal, which is what tells it from its mimics',
+    layer: LAYER.EXTERNAL,
+  },
+  {
+    id: 'a-thalamic-lesion-can-produce-an-aphasia',
+    claim:
+      'A lesion of the dominant thalamus produces fluent speech with words missing and repetition preserved, which the model builds by making word production, and not repetition, pass through the anterior and pulvinar nuclei.',
+    confidence: CONFIDENCE.UNCERTAIN,
+    source:
+      'The clinical descriptions of thalamic aphasia after dominant anterior and paramedian infarcts, in which the syndrome is agreed and the mechanism is not \u2014 gating of cortical language areas, a lexical role for the thalamus itself, and cortical diaschisis are all proposed.',
+    note:
+      'Known weakness. The dissociation shown \u2014 naming gone, repetition kept \u2014 is what is described; the route drawn through the thalamus is one of several accounts of why, and the model should not be read as evidence for that account. Thalamic aphasia also commonly recovers, and nothing here shows time.',
+    layer: LAYER.EXTERNAL,
+  },
+  {
+    id: 'the-perisylvian-zone-is-an-island',
+    claim:
+      'The watershed territories surround the perisylvian language cortex without entering it, so losing both at once takes comprehension and spontaneous speech while repetition survives.',
+    confidence: CONFIDENCE.SUPPORTED,
+    source: 'The standard description of mixed transcortical aphasia and of the border-zone territories it follows.',
+    validation: 'physiology: losing both watersheds at once spares repetition and nothing else',
+    layer: LAYER.EXTERNAL,
+  },
+  {
     id: 'frontal-subcortical-circuits-share-a-signature',
     claim:
       'The prefrontal cortex, the striatum, the pallidum and the mediodorsal thalamus form closed circuits, and a lesion anywhere along one produces the behavioural picture of a lesion of the cortex it starts from \u2014 which is why a small deep infarct can present as a frontal syndrome.',

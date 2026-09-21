@@ -59,6 +59,17 @@ export class Timeline {
     this.onFrame(this.elapsed, cueId);
   }
 
+  /**
+   * Start the clock again from where it was left, rather than from the start.
+   *
+   * `start()` is "play this from the beginning"; this is the other half of
+   * `stop()`, so a caller that holds the sequence still to look at one frame
+   * can hand it back without losing the place.
+   */
+  resume() {
+    this.running = true;
+  }
+
   /** @param {number} dt seconds since the previous frame */
   tick(dt) {
     if (!this.running) return;

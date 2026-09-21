@@ -427,6 +427,31 @@ export function createReelMode({
     setDownloadLabel: (label, state) => chrome.setDownloadLabel(label, state),
     toggle: () => (active ? exit() : enter()),
     /**
+     * Hold the sequence at one second, and render exactly that frame.
+     *
+     * The clock is **stopped** first, which is the whole point: the render
+     * loop calls `tick()` on every frame, so a sequence merely seeked to a
+     * second would have left it again before anything could look at it. A
+     * frame asked for by second stays that frame until `play()`.
+     *
+     * This is what lets a fifteen-second sequence be shot as stills — the same
+     * second, the same picture, on any machine — rather than recorded and
+     * scrubbed.
+     *
+     * @param {number} t seconds
+     */
+    seek: (t) => {
+      timeline.stop();
+      timeline.seek(t);
+    },
+
+    /** Let the clock run again from wherever `seek` left it. */
+    play: () => {
+      lastTimestamp = null;
+      timeline.resume();
+    },
+
+    /**
      * Advance the sequence.
      *
      * With no argument it advances on the wall clock, which is what playback

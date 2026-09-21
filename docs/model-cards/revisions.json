@@ -836,8 +836,8 @@
     "modelSources": [
       "src/models/higherBrainFunction.js"
     ],
-    "cardRevision": 1,
-    "modelDigest": "7f810397a9925074",
+    "cardRevision": 2,
+    "modelDigest": "ffe81992e47b712d",
     "cardUpdatedAt": "2026-09-21"
   }
 ]

@@ -73,14 +73,32 @@ person: Safari, Firefox, touch and a screen reader.
   memory and takes none of it away when it goes, and the panel says both. It
   appears only where the function model itself is released, so the published
   atlas is unchanged until that model has been reviewed.
+- **The classical aphasias come out of the anatomy, and so do the three
+  pictures that are not aphasias.** Broca, Wernicke, conduction, global, the
+  three transcortical patterns and anomic are each the pattern a different
+  declared lesion leaves behind. Beside them: pure word deafness, a disorder of
+  speech output, and alexia without agraphia — none of which the model will call
+  an aphasia, because it applies the supramodal test first. Is the same language
+  lost on the page and in the hand, or only in one channel? A dominant insular
+  lesion leaves the sentence writable; both auditory cortices gone leaves it
+  readable. On the output side the question is repetition: somebody who cannot
+  start a sentence but can repeat a long one has a working channel and an
+  aphasia. Writing now runs through the language routes rather than straight
+  from meaning to the hand, so agraphia accompanies the aphasias as it does in
+  people. A dominant thalamic lesion gives fluent speech with the words missing
+  and repetition intact — the one picture that made anomic aphasia reachable,
+  and the one whose mechanism the evidence dossier marks `uncertain`.
 - **It plays.** A run of the examination repeats on screen — the task is asked
   at the end it enters by, carried along its route, and either answered or not —
-  and there is a fifteen-second sequence built on it: a word asked twice, either
-  side of one cut bundle. It arrives, it is understood, and it stops on the way
-  out, while comprehension and fluency do not move. The order is the claim; the
-  seconds are a rhythm, and the sequence says so on screen. The cut arcuate
-  fasciculus is drawn in front of the cortex, because a bundle under the surface
-  is a cut nobody can see.
+  and there is a fifteen-second sequence built on it: **one word, asked four
+  times of the same brain.** Once with nothing in the way, then with the front
+  cut, the back cut, and the bundle between them cut. Every run is the same
+  question at the same pace, so the only thing that differs is how far the word
+  got — and **the route itself is lit as far as it got**, which is what the
+  three names are names of. The order is the claim; the seconds are a rhythm,
+  and the sequence says so on screen. The cut arcuate fasciculus is drawn in
+  front of the cortex, because a bundle under the surface is a cut nobody can
+  see.
 - Review fixes, each with the guard that was missing: the reading is reached
   through the scene's own loader, so a production build no longer carries a
   withheld model inside the application chunk; the cut corpus callosum and
@@ -92,6 +110,20 @@ person: Safari, Firefox, touch and a screen reader.
   about anybody. Medical review is not yet recorded.
 - A read-out row whose value is a phrase now wraps instead of widening the
   panel, which is what had pushed it off the side of a phone.
+
+### Two things a rendered frame said that no test did
+
+- **Every scene's fifteen-second video was carrying the application's
+  navigation across the top of the frame.** The sequence's clean mode named the
+  three pieces of interface that existed when it was written; the global
+  navigation was moved beside one of them later and was never named, so a
+  breadcrumb and a sign-in button sat in the picture. It is now the other way
+  round — everything is hidden and the video's own parts are named back in — so
+  interface added in future cannot walk into a frame.
+- **Reels can be rendered as stills now** (`npm run shots:reel`), at any second
+  of any scene's sequence, which is how both of these were found. A sequence's
+  tests measure the state at a second; only a picture says whether a viewer can
+  see it.
 
 ### Every vessel in the product was drawn inside out
 

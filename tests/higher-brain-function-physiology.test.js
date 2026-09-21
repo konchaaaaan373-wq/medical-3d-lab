@@ -301,3 +301,86 @@ test('physiology: a frontal syndrome can arrive with the frontal cortex untouche
     assert.equal(statusOf(state, id), FUNCTION_STATUS.INTACT, `${id} is untouched`);
   }
 });
+
+test('physiology: aphasia is supramodal, which is what tells it from its mimics', () => {
+  // Two pictures look like an aphasia on one modality and are not one. Getting
+  // this wrong is getting the most useful bedside question backwards.
+
+  // Both auditory cortices gone: speech cannot be understood or repeated, and
+  // the same words on a page can be. Language is intact; the way in from one
+  // sense is not.
+  const deaf = withLesion('bilateral-auditory-cortex');
+  assert.equal(statusOf(deaf, 'auditory-comprehension'), FUNCTION_STATUS.LOST);
+  assert.equal(statusOf(deaf, 'repetition'), FUNCTION_STATUS.LOST);
+  assert.equal(statusOf(deaf, 'reading'), FUNCTION_STATUS.INTACT, 'reading carries the same words');
+  assert.equal(statusOf(deaf, 'writing'), FUNCTION_STATUS.INTACT);
+  assert.equal(statusOf(deaf, 'speech-fluency'), FUNCTION_STATUS.INTACT);
+  assert.ok(syndromeIds(deaf).includes('pure-word-deafness'));
+  assert.ok(!syndromeIds(deaf).some((id) => id.endsWith('aphasia')), 'and it is not called an aphasia');
+
+  // The insula: speech will not come out, and the same sentences can be
+  // written. The way out through one channel is gone, not the language.
+  const output = withLesion('dominant-insula');
+  assert.equal(affected(output, 'speech-fluency'), true);
+  assert.equal(affected(output, 'repetition'), true, 'the channel repeating would use is the one that is gone');
+  assert.equal(statusOf(output, 'writing'), FUNCTION_STATUS.INTACT);
+  assert.equal(statusOf(output, 'auditory-comprehension'), FUNCTION_STATUS.INTACT);
+  assert.ok(syndromeIds(output).includes('speech-output-disorder'));
+  assert.ok(!syndromeIds(output).some((id) => id.endsWith('aphasia')));
+
+  // The discriminator on the output side is repetition. Someone who cannot
+  // start a sentence but can repeat a long one has a working channel and an
+  // aphasia — and this is the case that got filed as articulation until the
+  // test was added.
+  const transcortical = withLesion('dominant-anterior-watershed');
+  assert.equal(affected(transcortical, 'speech-fluency'), true);
+  assert.equal(affected(transcortical, 'repetition'), false);
+  assert.equal(statusOf(transcortical, 'writing'), FUNCTION_STATUS.INTACT);
+  assert.ok(syndromeIds(transcortical).includes('transcortical-motor-aphasia'));
+  assert.ok(!syndromeIds(transcortical).includes('speech-output-disorder'));
+});
+
+test('physiology: writing fails with the language, not with the hand', () => {
+  // Agraphia accompanies aphasia. Routed straight from meaning to the letters,
+  // this model had writing intact in both Broca and Wernicke aphasia, which is
+  // the opposite of what those patients do.
+  for (const id of ['dominant-inferior-frontal', 'dominant-posterior-superior-temporal', 'dominant-perisylvian']) {
+    assert.equal(affected(withLesion(id), 'writing'), true, `${id} takes writing with the language`);
+  }
+  // And it still does not run through the mouth: that dissociation is the
+  // whole of the supramodal test above.
+  assert.equal(statusOf(withLesion('dominant-insula'), 'writing'), FUNCTION_STATUS.INTACT);
+  // Nor through vision, which is what leaves alexia without agraphia standing.
+  assert.equal(statusOf(withLesion('dominant-occipital-and-callosum'), 'writing'), FUNCTION_STATUS.INTACT);
+});
+
+test('physiology: a thalamic lesion takes word production and leaves repetition alone', () => {
+  // The picture that made the anomic branch reachable: fluent, with words
+  // missing, and able to repeat a sentence it could not have produced. The
+  // mechanism is contested — the evidence registry files it as uncertain — but
+  // the dissociation it is built to produce is the one that is described.
+  const state = withLesion('dominant-thalamus');
+  assert.equal(statusOf(state, 'naming'), FUNCTION_STATUS.LOST);
+  assert.equal(affected(state, 'propositional-speech'), true);
+  assert.equal(statusOf(state, 'repetition'), FUNCTION_STATUS.INTACT, 'repetition does not pass through the thalamus');
+  assert.equal(statusOf(state, 'auditory-comprehension'), FUNCTION_STATUS.INTACT);
+  assert.equal(statusOf(state, 'speech-fluency'), FUNCTION_STATUS.INTACT, 'the output machinery is untouched');
+  assert.deepEqual(syndromeIds(state), ['anomic-aphasia']);
+
+  // Cortex nowhere near it is undamaged, which is the teaching point: this is
+  // an aphasia from a lesion outside the language cortex.
+  for (const id of ['phonological-analysis', 'phonological-output', 'lexical-semantic']) {
+    assert.equal(state.nodes.find((node) => node.id === id).integrity, 1, `${id} is intact`);
+  }
+});
+
+test('physiology: losing both watersheds at once spares repetition and nothing else', () => {
+  // The rarest of the eight, and the one that shows the perisylvian zone is an
+  // island: everything around it is gone and the word still goes in one ear and
+  // out of the mouth.
+  const state = withLesion('dominant-watershed-both');
+  assert.equal(affected(state, 'auditory-comprehension'), true);
+  assert.equal(affected(state, 'speech-fluency'), true);
+  assert.equal(statusOf(state, 'repetition'), FUNCTION_STATUS.INTACT);
+  assert.ok(syndromeIds(state).includes('mixed-transcortical-aphasia'));
+});

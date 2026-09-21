@@ -13,7 +13,7 @@ import {
   ATLAS_CATEGORIES, brainAtlasMetadata, loadBrainAtlas, placeBrainAtlas,
 } from '../../organs/brainAtlasSource.js';
 import {
-  REEL_CUES, REEL_DURATION, REEL_LESION, REEL_TASK, cameraAt, extentAt, overlayAt,
+  REEL_CUES, REEL_DURATION, REEL_TASK, cameraAt, extentAt, overlayAt, runTimeAt, segmentAt,
 } from './reelStoryboard.js';
 import { brainStructureInfo } from '../../../../data/brainAnatomy.js';
 import { disposeObject } from '../../../../utils/dispose.js';
@@ -544,6 +544,7 @@ export class HigherBrainFunctionScene {
 
   _disposeRouteLine() {
     this.routeShape = null;
+    this.routePaintedReach = null;
     if (!this.routeLine) return;
     this.routeGroup?.remove(this.routeLine);
     this.routeLine.geometry.dispose();
@@ -587,9 +588,21 @@ export class HigherBrainFunctionScene {
       return;
     }
     const curve = new THREE.CatmullRomCurve3(points.map((point) => point.position));
-    const geometry = new THREE.TubeGeometry(curve, Math.max(24, points.length * 12), 0.022, 8, false);
+    const tubularSegments = Math.max(24, points.length * 12);
+    const radialSegments = 8;
+    const geometry = new THREE.TubeGeometry(curve, tubularSegments, 0.022, radialSegments, false);
+    // The line carries its own colour, so *how far the word got* can be read
+    // off the route itself rather than from where one small marker happens to
+    // be at the instant a reader looks. See `_paintRouteReach`.
+    geometry.setAttribute(
+      'color',
+      new THREE.BufferAttribute(new Float32Array(geometry.attributes.position.count * 3), 3)
+    );
+    this.routeRings = tubularSegments + 1;
+    this.routeRingWidth = radialSegments + 1;
+    this.routePaintedReach = null;
     const material = new THREE.MeshBasicMaterial({
-      color: PALETTE.carrying, transparent: true, opacity: 0.55, depthTest: false,
+      color: 0xffffff, vertexColors: true, transparent: true, opacity: 0.55, depthTest: false,
     });
     this.routeLine = new THREE.Mesh(geometry, material);
     this.routeLine.renderOrder = 28;
@@ -662,6 +675,43 @@ export class HigherBrainFunctionScene {
     return 0;
   }
 
+  /**
+   * Light the route as far as the signal gets, and leave the rest dim.
+   *
+   * The claim this scene's sequence makes is that the aphasias differ by
+   * *where the word stopped*. That was drawn as a small marker halted at the
+   * failing step — and a rendered frame showed it does not read: the marker is
+   * the same colour as the line it sits on and a few pixels across, so a front
+   * lesion and a back lesion produced two pictures a viewer cannot tell apart
+   * (`docs/follow-ups.md` F-167). The stopping place is a property of the whole
+   * route, so the whole route says it.
+   *
+   * The dim part is **neutral, not the lesion colour**. Those steps are intact;
+   * they were never reached. Painting them as damaged would be a different
+   * claim, and a false one — the same mistake the marker's own colour rule
+   * already guards against.
+   *
+   * @param {number} reach 0–1 along the route
+   */
+  _paintRouteReach(reach) {
+    if (!this.routeLine || !this.routeRings) return;
+    if (this.routePaintedReach !== null && Math.abs(this.routePaintedReach - reach) < 1e-4) return;
+    this.routePaintedReach = reach;
+    const colours = this.routeLine.geometry.attributes.color;
+    const lit = new THREE.Color(PALETTE.carrying);
+    const dim = new THREE.Color(PALETTE.unreached);
+    for (let ring = 0; ring < this.routeRings; ring += 1) {
+      // The tube's vertices run ring by ring along the curve, so a ring's
+      // index is its position along the route.
+      const along = this.routeRings > 1 ? ring / (this.routeRings - 1) : 0;
+      const colour = along <= reach ? lit : dim;
+      for (let around = 0; around < this.routeRingWidth; around += 1) {
+        colours.setXYZ(ring * this.routeRingWidth + around, colour.r, colour.g, colour.b);
+      }
+    }
+    colours.needsUpdate = true;
+  }
+
   _applyCycle() {
     const points = this.routePositions ?? [];
     if (!this.pulse || points.length === 0) return;
@@ -699,6 +749,7 @@ export class HigherBrainFunctionScene {
       : Math.max(reach, 0.02) * (phase.id === 'travelling' ? phase.through : 1);
     this.pulse.visible = true;
     this.pulse.position.copy(this.routeCurve.getPoint(clamp(travelled)));
+    this._paintRouteReach(reach);
     // Dark only where it stops. Colouring the whole traverse said the signal
     // was already failing at steps the model has carrying perfectly well.
     this.pulseMaterial.color.set(
@@ -790,7 +841,8 @@ export class HigherBrainFunctionScene {
   }
 
   /**
-   * The fifteen-second sequence: one word asked twice, either side of a cut.
+   * The fifteen-second sequence: one word asked of the same brain four times,
+   * with the lesion moved between them.
    *
    * The scene is driven by **absolute sequence time** rather than played, so a
    * recording is reproducible — see `renderAtSeconds`. The rows the overlay
@@ -821,10 +873,13 @@ export class HigherBrainFunctionScene {
        * reader had been looking at.
        */
       driveAt(t, target = scene) {
-        if (target.controls.lesion !== REEL_LESION) target.setModelControl('lesion', REEL_LESION);
+        const lesion = segmentAt(t).lesion;
+        // An intact beat leaves whichever lesion is selected in place and takes
+        // its extent to zero: one state, and the slider is the one that owns it.
+        if (lesion && target.controls.lesion !== lesion) target.setModelControl('lesion', lesion);
         if (target.controls.task !== REEL_TASK) target.setModelControl('task', REEL_TASK);
         target.setProgress(extentAt(t));
-        target.renderAtSeconds(t);
+        target.renderAtSeconds(runTimeAt(t, HigherBrainFunctionScene.CYCLE_SECONDS));
       },
 
       /** The three rows this sequence is about, from the solved state. */

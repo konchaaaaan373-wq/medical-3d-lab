@@ -25,6 +25,10 @@ export const PALETTE = {
   lesion: '#e3483f',
   carrying: '#ffe9a8',
   blocked: '#7b3f3a',
+  // The part of a route the word never got to. Dim and neutral on purpose:
+  // those steps are not damaged, they were simply never reached, and painting
+  // them in the lesion colour would say the opposite.
+  unreached: '#4a4a52',
 };
 
 export const LEGEND = [
@@ -429,6 +433,15 @@ export const VISUAL_MAPPING = [
     encodingJa: '経路上を進むマーカー（破綻した段階で停止）',
   },
   {
+    id: 'route-reach',
+    shows: 'How far along the route the task got before it stopped',
+    showsJa: '課題が経路のどこまで進んで止まったか',
+    encoding:
+      'The route itself, lit as far as the signal reaches and dim beyond it. The dim part is **not damaged** — it is the part the word never got to, which is why it is neutral rather than the lesion colour.',
+    encodingJa:
+      '経路そのものの明暗（信号が届くところまで明るく、その先は暗い）。**暗い部分は損傷ではありません**——語が到達しなかった部分なので、病変の色ではなく中立色です。',
+  },
+  {
     id: 'examination-cycle',
     shows: 'That the task is asked, carried, and answered — in that order',
     showsJa: '課題が「求められ・運ばれ・答えが返る」という順序',
@@ -480,38 +493,45 @@ export const VISUAL_MAPPING = [
  */
 export const REEL_COPY = {
   hook: {
-    title: 'Hears you. Speaks fluently. Cannot repeat a word.',
-    titleJa: '聞こえている。流暢に話せる。なのに復唱できない。',
-    subtitle: 'The same word, asked twice — before and after one bundle is cut',
-    subtitleJa: '同じ語を 2 回。線維束を 1 本切る前と、切ったあとで',
+    title: 'One word. Three lesions. Three places it stops.',
+    titleJa: '同じ 1 語。3 か所の病変。3 つの止まり方。',
+    subtitle: 'Repeat after me — asked of the same brain four times over',
+    subtitleJa: '「私のあとに続けて言ってください」——同じ脳に 4 回',
   },
   cards: {
     task: { label: 'Asked to repeat', labelJa: '復唱を求める' },
-    spared: { label: 'Untouched', labelJa: '保たれているもの' },
+    spared: { label: 'And the rest', labelJa: 'ほかの課題' },
   },
   badge: {
     label: 'One representative right-handed brain',
     labelJa: '代表的な右利きの脳 1 例',
   },
-  lesion: {
-    caption: 'The arcuate fasciculus — fibres only. The cortex at both ends is intact.',
-    captionJa: '弓状束——線維だけ。両端の皮質は無傷です。',
-  },
-  blocked: {
-    caption: 'The word arrives, is understood, and stops on the way to the mouth',
-    captionJa: '語は届き、理解され、口へ向かう途中で止まります',
-  },
-  spared: {
-    caption: 'Understanding and fluency never used that bundle',
-    captionJa: '理解と流暢性は、その束を通っていません',
+  /** One caption per lesion, naming where the word got to. */
+  segments: {
+    intact: {
+      caption: 'Nothing in the way: it goes in, and it comes out',
+      captionJa: '何も邪魔していません。入って、出てきます',
+    },
+    broca: {
+      caption: 'Cut at the front: understood, and never spoken',
+      captionJa: '前で切れる：理解はされ、声にならない',
+    },
+    wernicke: {
+      caption: 'Cut at the back: heard, never understood — and speech still flows',
+      captionJa: '後ろで切れる：聞こえても意味にならない。それでも発話は流暢です',
+    },
+    conduction: {
+      caption: 'Cut in between: understood, spoken fluently, and not repeatable',
+      captionJa: 'あいだで切れる：理解でき、流暢に話せ、それでも復唱できません',
+    },
   },
   takeHome: {
-    title: 'Conduction aphasia',
-    titleJa: '伝導失語',
-    subtitle: 'Not a smaller Broca’s. A different route, cut.',
+    title: 'The name is where it stopped',
+    titleJa: '名前は「どこで止まったか」',
+    subtitle: 'Broca, Wernicke, conduction — one route, cut in three places',
     // No emphasis marks: the overlay writes these as text, so a `**` reaches
     // the closing frame of the video as two asterisks.
-    subtitleJa: '「軽い Broca 失語」ではありません。切れたのは、別の経路です。',
+    subtitleJa: 'Broca・Wernicke・伝導——1 本の経路を、3 か所で切っただけ',
   },
   note: {
     text: 'Educational model. The order is the claim; the seconds are a rhythm, not a latency.',

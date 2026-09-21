@@ -26,6 +26,7 @@
     "verify:hero-input": "node scripts/check-hero-input.mjs",
     "shots:anatomy": "node scripts/capture-anatomy-views.mjs",
     "shots:phone": "node scripts/capture-phone-states.mjs",
+    "shots:reel": "node scripts/capture-reel-frames.mjs",
     "assets:dev": "node scripts/fetch-dev-assets.mjs",
     "assets:measure": "node scripts/measure-candidate-surfaces.mjs",
     "assets:validate": "node scripts/validate-candidate-gltf.mjs",

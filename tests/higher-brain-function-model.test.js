@@ -375,20 +375,39 @@ test('model: every task is on the read-out, and every traceable one has a route 
   scene.dispose();
 });
 
-test('model: no declared site produces an isolated naming failure', () => {
-  // Every step of naming is shared with another task now that the word's sound
-  // form is retrieved on the way — so the classifier's anomic branch, which is
-  // the right reading of a naming-only failure, is not reachable from any of
-  // the declared sites. The model card says so; this is what would notice if a
-  // route change made it reachable and the card stopped being true.
+test('model: every name the classifier can reach is reachable from a declared lesion', () => {
+  // This used to be the opposite test. Every step of naming was shared with
+  // another task, so the anomic branch — the right reading of a naming-only
+  // failure — could not be produced by any site, and both the test and the
+  // model card recorded that as a fact about the model. It was a fact about
+  // the *routes*, and the thalamic route closed it: a thalamic lesion takes
+  // word production while leaving repetition and comprehension alone.
+  //
+  // A test that pins a limitation goes red when the limitation is fixed, which
+  // is backwards. So this one pins the property instead — a branch nothing can
+  // reach is a claim nobody checks — and reads the list of names out of the
+  // classifier rather than repeating it here, so adding a name without a lesion
+  // that produces it fails without anybody remembering to come back.
+  const source = readFileSync(new URL('../src/models/higherBrainFunction.js', import.meta.url), 'utf8');
+  const classifier = source.slice(source.indexOf('function classifySyndromes'), source.indexOf('function solveRoute'));
+  const declared = new Set([
+    ...classifier.matchAll(/id: '([a-z][a-z-]+)'/g),
+    // The aphasias are returned as [id, label, labelJa] before being pushed.
+    ...classifier.matchAll(/\['([a-z][a-z-]+)', '[A-Z]/g),
+  ].map((match) => match[1]));
+  assert.ok(declared.size >= 15, `the classifier's names were found (${declared.size})`);
+  assert.ok(declared.has('anomic-aphasia') && declared.has('pure-word-deafness'), 'and they are the right ones');
+
+  const reachable = new Map();
   for (const site of LESION_SITES) {
     for (const extent of [0.4, 0.7, 1]) {
-      const state = solveHigherBrainFunction({ lesions: [site], extent });
-      assert.ok(
-        !state.syndromes.some((syndrome) => syndrome.id === 'anomic-aphasia'),
-        `${site.id} at ${extent} does not read as anomic aphasia`
-      );
+      for (const syndrome of solveHigherBrainFunction({ lesions: [site], extent }).syndromes) {
+        if (!reachable.has(syndrome.id)) reachable.set(syndrome.id, `${site.id}@${extent}`);
+      }
     }
+  }
+  for (const id of declared) {
+    assert.ok(reachable.has(id), `${id} is produced by a declared lesion site`);
   }
 });
 
@@ -615,4 +634,55 @@ test('model: a second atlas rebuilds the route rather than keeping the first one
     'and it is drawn through the atlas that is on screen now'
   );
   scene.dispose();
+});
+
+test('scene: the route is lit as far as the word got, and neutral past it', () => {
+  // Rendered frames of the sequence showed the finding it exists to make —
+  // that the aphasias differ by *where* the word stopped — was not on screen:
+  // the halted marker is a few pixels of the same colour as the line it sits
+  // on, so a front lesion and a back lesion looked alike. The route carries it
+  // now, and this is what keeps it carrying it.
+  const litRings = (scene) => {
+    const colours = scene.routeLine.geometry.attributes.color;
+    const carrying = new THREE.Color(PALETTE.carrying);
+    let lit = 0;
+    for (let ring = 0; ring < scene.routeRings; ring += 1) {
+      const at = ring * scene.routeRingWidth;
+      if (Math.abs(colours.getX(at) - carrying.r) < 1e-3
+        && Math.abs(colours.getZ(at) - carrying.b) < 1e-3) lit += 1;
+    }
+    return { lit, of: scene.routeRings };
+  };
+
+  const intact = buildScene({ lesion: 'dominant-arcuate', task: 'repetition' }, 0);
+  intact.renderAtSeconds(2.0);
+  const whole = litRings(intact);
+  assert.equal(whole.lit, whole.of, 'nothing in the way: the whole line is lit');
+  intact.dispose();
+
+  // The same task, the same route, cut in two different places. What must
+  // differ is how much of the line is lit — and it must differ in the
+  // direction the anatomy says, with the posterior cut stopping it sooner.
+  const front = buildScene({ lesion: 'dominant-inferior-frontal', task: 'repetition' });
+  front.renderAtSeconds(2.0);
+  const behind = buildScene({ lesion: 'dominant-posterior-superior-temporal', task: 'repetition' });
+  behind.renderAtSeconds(2.0);
+
+  const frontLit = litRings(front);
+  const behindLit = litRings(behind);
+  assert.ok(frontLit.lit < frontLit.of, 'a cut route is not lit to the end');
+  assert.ok(behindLit.lit < frontLit.lit, 'the back cut stops the word sooner than the front one');
+  // And a difference a viewer could actually see, not two rings apart.
+  assert.ok(
+    (frontLit.lit - behindLit.lit) / frontLit.of > 0.1,
+    `the two stopping places are a tenth of the line apart at least (${behindLit.lit}/${frontLit.lit} of ${frontLit.of})`
+  );
+  // Past the stop the line is neutral, never the lesion colour: those steps
+  // are intact and were simply never reached.
+  const lesion = new THREE.Color(PALETTE.lesion);
+  const colours = behind.routeLine.geometry.attributes.color;
+  const last = (behind.routeRings - 1) * behind.routeRingWidth;
+  assert.ok(Math.abs(colours.getX(last) - lesion.r) > 0.2, 'the unreached part is not painted as damaged');
+  front.dispose();
+  behind.dispose();
 });

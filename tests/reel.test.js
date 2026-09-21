@@ -226,3 +226,27 @@ test('timeline helpers behave', () => {
   assert.equal(sampleTrack(track, 2), 20);
   assert.equal(sampleTrack(track, 0.5), 15);
 });
+
+test('a held frame stays held, and handing the clock back does not lose the place', () => {
+  // The render loop ticks the sequence on every frame. Anything that wants to
+  // *look* at one second — a still, a screenshot, a person paused on a caption
+  // — needs the clock stopped, or the frame is gone before it is read.
+  const frames = [];
+  const timeline = new Timeline({
+    duration: 15,
+    cues: [{ id: 'a', at: 0, until: 8 }, { id: 'b', at: 8, until: 15 }],
+    onFrame: (t) => frames.push(t),
+  });
+  timeline.start();
+  timeline.stop();
+  timeline.seek(6.4);
+  assert.equal(timeline.elapsed, 6.4);
+  // The loop keeps calling tick. A stopped clock must ignore it.
+  for (let i = 0; i < 10; i += 1) timeline.tick(0.5);
+  assert.equal(timeline.elapsed, 6.4, 'the held frame stayed held');
+  assert.equal(frames.at(-1), 6.4, 'and nothing was rendered past it');
+
+  timeline.resume();
+  timeline.tick(0.5);
+  assert.equal(timeline.elapsed, 6.9, 'it goes on from where it was left, not from zero');
+});

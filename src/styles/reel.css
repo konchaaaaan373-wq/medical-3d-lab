@@ -18,11 +18,31 @@
   box-shadow: 0 0 0 1px rgba(140, 175, 225, 0.14);
 }
 
-/* Clean mode: nothing but the video and the out-of-frame controls. */
-#ui.is-reel > .top-bar,
-#ui.is-reel > .console,
-#ui.is-reel > .label-layer {
+/*
+ * Clean mode: nothing but the video and the out-of-frame controls.
+ *
+ * Default-deny, and deliberately so. This used to name the three pieces of
+ * chrome that existed when it was written — `.top-bar`, `.console`,
+ * `.label-layer`. The global navigation was later moved out of `.top-left` to
+ * sit *beside* the top bar, which made it a child of `#ui` that nothing here
+ * named, and from then on **every scene's video carried a breadcrumb and a
+ * sign-in button across the top of the frame**. No test saw it; it was found by
+ * looking at a rendered frame.
+ *
+ * A list of what to hide has to be edited by whoever adds chrome, and they have
+ * no reason to think about a video. A list of what to *keep* is edited by
+ * whoever adds something to the video, which is this file's own business.
+ */
+#ui.is-reel > * {
   display: none;
+}
+
+#ui.is-reel > .reel-frame {
+  display: block;
+}
+
+#ui.is-reel > .reel-chrome {
+  display: flex;
 }
 
 .reel-frame {

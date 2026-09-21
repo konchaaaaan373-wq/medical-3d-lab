@@ -173,3 +173,37 @@ test('nobody hand-rolls the rule tokenizer a fourth time', () => {
   }
   assert.deepEqual(offenders, [], 'use rulesOf() from scripts/lib/css.mjs instead');
 });
+
+test('the video frame hides the application by default, not by a list of names', () => {
+  // The chrome that leaked into every scene's video: clean mode named the
+  // three pieces that existed when it was written, and the global navigation
+  // was later moved to sit beside one of them. It became a child of `#ui` that
+  // the rule did not name, so a breadcrumb and a sign-in button rode across
+  // the top of the frame for as long as it took somebody to look at a rendered
+  // one (`docs/verification-lessons.md` L-56).
+  //
+  // A list of what to hide is maintained by whoever adds chrome, who has no
+  // reason to think about a video. This pins the inversion: everything is
+  // hidden, and the video's own parts are named back in.
+  const css = read('src/styles/reel.css');
+  const hidden = [...rulesOf(css)].filter((rule) => declaration(rule.body, 'display') === 'none');
+  assert.ok(
+    hidden.some((rule) => /^#ui\.is-reel\s*>\s*\*$/.test(rule.selectors.trim())),
+    'clean mode hides every direct child of #ui, whatever it is called'
+  );
+
+  // And what is named back in is only the video's own furniture. A rule that
+  // let a piece of application chrome back would be a rule naming something
+  // that is not part of the frame.
+  const shown = [...rulesOf(css)]
+    .filter((rule) => /#ui\.is-reel\s*>/.test(rule.selectors))
+    .filter((rule) => {
+      const display = declaration(rule.body, 'display');
+      return display !== null && display !== 'none';
+    })
+    .map((rule) => rule.selectors.trim());
+  assert.ok(shown.length, 'the frame and its controls are shown again');
+  for (const selector of shown) {
+    assert.match(selector, /^#ui\.is-reel\s*>\s*\.reel-[a-z-]+$/, `${selector} is part of the video`);
+  }
+});
