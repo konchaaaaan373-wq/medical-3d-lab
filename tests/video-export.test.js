@@ -34,6 +34,7 @@ import {
   videoRecordingSupported,
 } from '../src/app/videoRecorder.js';
 import { createVideoConsentDialog } from '../src/components/VideoConsentDialog.js';
+import { createReelChrome } from '../src/components/ReelChrome.js';
 import { PUBLIC_SCENES, SCENES } from '../src/catalog/index.js';
 import { PROHIBITED_USE } from '../src/catalog/modelProfiles.js';
 import { PUBLIC_MODELS } from '../src/catalog/publicManifest.js';
@@ -715,12 +716,24 @@ test('a short frame backs the figures, and only where the stylesheet does', () =
   }
 });
 
-test('no format paints the caption under the footer', () => {
-  // The footer is sized in width units; the caption band was placed as a
-  // fraction of the height. Independent of each other, they collided at 16:9 —
-  // and the footer is drawn last and opaque, so what disappeared was the note
-  // that reads "not a diagnosis". Checked at every shape the sequence offers,
-  // because 9:16 alone would never have shown it.
+test('no format paints the caption or the take-home under the footer', () => {
+  // The footer is sized in width units; the bottom-anchored blocks were placed
+  // as a fraction of the height. Independent of each other, they collided at
+  // 16:9 — and the footer is drawn last and opaque, so what disappeared was the
+  // note that reads "not a diagnosis". Checked at every shape the sequence
+  // offers, because 9:16 alone would never have shown it.
+  //
+  // With a caveat long enough to wrap, too. The first version of this test used
+  // a one-line fixture, which is what let the same collision survive on the
+  // take-home after it had been fixed on the caption: a review found it, at
+  // 1920×1080, on the scene whose caveat is longest (L-60).
+  const LONG = {
+    title: '門脈圧亢進症',
+    caveat:
+      '概念的なネットワークモデルです。HVPG ではなく門脈圧較差で、腹水は扱いません。'
+      + '診断には使用できません。数値は代表的な範囲に較正したモデルの出力です。',
+    credit: 'medical-3d-lab · #/portal-hypertension',
+  };
   for (const format of REEL_FORMATS) {
     const ctx = fakeContext();
     const note = 'conceptual model · not a diagnosis';
@@ -732,7 +745,7 @@ test('no format paints the caption under the footer', () => {
       },
       width: format.width,
       height: format.height,
-      provenance: PROVENANCE,
+      provenance: LONG,
     });
     const band = ctx.calls.rects[ctx.calls.rects.length - 1];
     assert.equal(band.width, format.width, `${format.label}: the last rectangle should be the footer band`);
@@ -743,8 +756,57 @@ test('no format paints the caption under the footer', () => {
       painted.y + size <= band.y,
       `${format.label}: the note is painted at ${Math.round(painted.y)} and the opaque footer starts at ${Math.round(band.y)}`
     );
-    const headline = ctx.calls.text.find((call) => call.text.includes('Emptying'));
-    assert.ok(headline.y + size <= band.y, `${format.label}: the take-home runs into the footer`);
+    // The take-home is the sentence the file ends on, and it grows upward from
+    // its own anchor — so it needs the same clamp, measured with its own size.
+    const headline = ctx.calls.text.find((call) => 'Emptying is the problem'.startsWith(call.text.trim()) && call.text.length > 2);
+    assert.ok(headline, `${format.label}: the take-home was not painted`);
+    const headlineSize = Number(/([\d.]+)px/.exec(headline.font)[1]);
+    assert.ok(
+      headline.y + headlineSize <= band.y,
+      `${format.label}: the take-home is painted at ${Math.round(headline.y)} and the opaque footer starts at ${Math.round(band.y)}`
+    );
+    // And above the caption band, not on the same line as it. Clamping both to
+    // the footer gave them the same ceiling, which read as two sentences
+    // printed on top of each other — measured in a 16:9 recording of portal
+    // hypertension, where the take-home sat across the note.
+    assert.ok(
+      headline.y + headlineSize <= painted.y,
+      `${format.label}: the take-home runs to ${Math.round(headline.y + headlineSize)} and the note starts at ${Math.round(painted.y)}`
+    );
+    const captionLine = ctx.calls.text.find(
+      (call) => call.text.length > 2 && 'Each breath starts before the last one finished'.startsWith(call.text.trim())
+    );
+    assert.ok(captionLine, `${format.label}: the caption was not painted`);
+    assert.ok(
+      headline.y + headlineSize <= captionLine.y,
+      `${format.label}: the take-home overlaps the caption`
+    );
+
+    // The state the recording was actually in when the overlap was seen: the
+    // caption has faded and the note has not, so the note alone decides how
+    // much room is left. A ceiling computed from the caption's height only is
+    // right whenever both are up, and wrong exactly here.
+    const noteOnly = fakeContext();
+    paintReelFrame(noteOnly, {
+      frame: {
+        caption: { text: 'Each breath starts before the last one finished', opacity: 0 },
+        note: { text: note, opacity: 1 },
+        title: { text: 'Emptying is the problem', opacity: 1, variant: 'take-home' },
+      },
+      width: format.width,
+      height: format.height,
+      provenance: LONG,
+      format: format.id,
+    });
+    const aloneNote = noteOnly.calls.text.find((call) => call.text === note);
+    const aloneHead = noteOnly.calls.text.find(
+      (call) => call.text.length > 2 && 'Emptying is the problem'.startsWith(call.text.trim())
+    );
+    const aloneSize = Number(/([\d.]+)px/.exec(aloneHead.font)[1]);
+    assert.ok(
+      aloneHead.y + aloneSize <= aloneNote.y,
+      `${format.label}: with the caption faded, the take-home runs to ${Math.round(aloneHead.y + aloneSize)} and the note starts at ${Math.round(aloneNote.y)}`
+    );
   }
 });
 
@@ -799,6 +861,44 @@ test('Japanese wraps by character and English by word', () => {
   assert.ok(japanese.length > 1, 'a Japanese sentence has no spaces to break on');
   assert.ok(japanese.every((line) => line.length <= 11), japanese.join(' | '));
   assert.equal(japanese.join(''), '呼気が時間内に終わらないまま次の吸気が始まります');
+});
+
+// --- the controls inside the sequence ---------------------------------------
+
+test('the whole control row goes quiet while a recording runs', () => {
+  // A recording composites into a canvas sized when it began, so changing the
+  // format part-way stretches the rest of the frames into the old shape — and
+  // the chip that changed it is the one the file would have been named after.
+  // Restart would put the sequence back to zero in the middle of the take.
+  const restore = installFakeDocument();
+  try {
+    const formats = REEL_FORMATS.map((format) => ({ ...format }));
+    const chrome = createReelChrome({
+      formats,
+      currentFormatId: 'reel',
+      onFormat: () => {},
+      onRestart: () => {},
+      onExit: () => {},
+      onDownload: () => {},
+    });
+    const chips = findByClass(chrome.element, 'reel-chip');
+    const exitChip = chips.find((chip) => chip.classList.contains('is-exit'));
+    const quietable = chips.filter((chip) => chip !== exitChip && !chip.classList.contains('is-download'));
+    assert.equal(quietable.length, formats.length + 1, 'every format chip and the restart chip');
+
+    chrome.setDownloadLabel({ en: 'Recording…', ja: '録画中…' }, { busy: true });
+    for (const chip of quietable) {
+      assert.equal(chip.disabled, true, 'a control stayed live during the recording');
+      assert.equal(chip.attributes.get('aria-disabled'), 'true');
+    }
+    // Leaving is always available: a reader is never trapped in a recording.
+    assert.notEqual(exitChip.disabled, true);
+
+    chrome.setDownloadLabel({ en: 'Download video', ja: '動画を保存' }, { busy: false });
+    for (const chip of quietable) assert.equal(chip.disabled, false, 'a control stayed disabled after the recording');
+  } finally {
+    restore();
+  }
 });
 
 // --- the consent screen -----------------------------------------------------
