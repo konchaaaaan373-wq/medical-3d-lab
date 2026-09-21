@@ -67,6 +67,7 @@ CLAUDE.md が禁じる「中身のない網羅」の、インフラ版です。
 | 静的サーバ（range・traversal ガード・mount） | `scripts/lib/serve-dist.mjs` |
 | Chromium の実行ファイル解決 | `scripts/lib/browser.mjs` |
 | 端末状態の撮影 | `npm run shots:phone` / `npm run shots:anatomy` |
+| 15 秒シーケンスの任意の秒を静止画で見る | `npm run shots:reel` |
 
 **一度きりの調査で終わらせない。** 使い捨てで測って捨てると、次の人が同じものを
 また書きます。測って意味のあったものは、上のどれかに足してください。

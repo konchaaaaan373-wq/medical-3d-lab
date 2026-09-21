@@ -45,6 +45,17 @@
   display: flex;
 }
 
+/*
+ * The consent question the export asks. It is opened *into* `#ui` while the
+ * sequence is running, so it is one of the things clean mode would otherwise
+ * take away — and a dialog nobody can see is a file handed out without an
+ * answer. Anything else added here has to be part of the video or part of
+ * asking about it; `tests/css-reading.test.js` holds the list.
+ */
+#ui.is-reel > .video-consent {
+  display: block;
+}
+
 .reel-frame {
   position: fixed;
   left: 50%;

@@ -180,7 +180,7 @@ test('the video frame hides the application by default, not by a list of names',
   // was later moved to sit beside one of them. It became a child of `#ui` that
   // the rule did not name, so a breadcrumb and a sign-in button rode across
   // the top of the frame for as long as it took somebody to look at a rendered
-  // one (`docs/verification-lessons.md` L-56).
+  // one (`docs/verification-lessons.md` L-60).
   //
   // A list of what to hide is maintained by whoever adds chrome, who has no
   // reason to think about a video. This pins the inversion: everything is
@@ -192,18 +192,20 @@ test('the video frame hides the application by default, not by a list of names',
     'clean mode hides every direct child of #ui, whatever it is called'
   );
 
-  // And what is named back in is only the video's own furniture. A rule that
-  // let a piece of application chrome back would be a rule naming something
-  // that is not part of the frame.
+  // And what is named back in is exactly this, which is the list's whole value:
+  // adding to it means editing this test, by somebody who is thinking about
+  // what belongs in a video. Application chrome cannot arrive by accident.
+  const allowed = [
+    '#ui.is-reel > .reel-frame', // the picture and its captions
+    '#ui.is-reel > .reel-chrome', // out-of-frame controls: format, restart, exit, save
+    '#ui.is-reel > .video-consent', // what the export asks before it hands out a file
+  ];
   const shown = [...rulesOf(css)]
     .filter((rule) => /#ui\.is-reel\s*>/.test(rule.selectors))
     .filter((rule) => {
       const display = declaration(rule.body, 'display');
       return display !== null && display !== 'none';
     })
-    .map((rule) => rule.selectors.trim());
-  assert.ok(shown.length, 'the frame and its controls are shown again');
-  for (const selector of shown) {
-    assert.match(selector, /^#ui\.is-reel\s*>\s*\.reel-[a-z-]+$/, `${selector} is part of the video`);
-  }
+    .map((rule) => rule.selectors.trim().replace(/\s+/g, ' '));
+  assert.deepEqual(shown.sort(), [...allowed].sort());
 });
