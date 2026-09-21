@@ -2,8 +2,10 @@ import * as THREE from 'three';
 import { Timeline } from '../utils/Timeline.js';
 import { createReelOverlay } from '../components/ReelOverlay.js';
 import { createReelChrome } from '../components/ReelChrome.js';
-import { paintReelFrame } from './reelFramePainter.js';
-import { createCanvasRecorder } from './videoRecorder.js';
+// The painter and the recorder are loaded when a recording starts, not when a
+// scene does: they are only ever used by the export, and a build that cannot
+// export should not carry them (F-172).
+import { recordingSize } from './videoExport.js';
 import { distanceToFit } from './framing.js';
 import { fovForAspect } from './Viewer.js';
 
@@ -17,6 +19,14 @@ export const REEL_FORMATS = [
 
 /** Frames per second asked of the recorder. Social video is 30; the sequence is authored for it. */
 const RECORDING_FPS = 30;
+
+/**
+ * How many frames are drawn at the declared size before deciding to keep it.
+ *
+ * Three: enough to average out one slow frame, short enough that a machine
+ * which cannot draw it wastes under a second finding out.
+ */
+const RECORDING_PROBE_FRAMES = 3;
 
 /**
  * How long the final frame is held in the file after the sequence ends.
@@ -301,6 +311,10 @@ export function createReelMode({
    * @returns {Promise<{ blob: Blob, mimeType: string, formatId: string, complete: boolean }>}
    */
   async function recordVideo({ onProgress = () => {}, MediaRecorderCtor } = {}) {
+    const [{ paintReelFrame }, { createCanvasRecorder }] = await Promise.all([
+      import('./reelFramePainter.js'),
+      import('./videoRecorder.js'),
+    ]);
     if (!active) {
       enter();
       // Entering sets the format, and `setFormat` defers `viewer.resize()` to
@@ -316,11 +330,38 @@ export function createReelMode({
     // script is not the chrome), and a file named after the format the reader
     // ended on would be named after a shape its frames are not.
     const recordedFormat = formatId;
+    const shape = REEL_FORMATS.find((entry) => entry.id === recordedFormat) ?? REEL_FORMATS[0];
+
     const source = viewer.renderer.domElement;
+    const onScreen = { width: source.width, height: source.height };
+
+    // Record at the size the format declares, not at the size the window
+    // happens to give the canvas — if this machine can draw it. The element's
+    // CSS box does not change while the buffer is held, so nothing on screen
+    // moves; what does change is how much there is to draw, and a rasteriser
+    // that cannot keep up turns the sequence into a slideshow. So it is
+    // measured, here, at the size in question.
+    let release = viewer.captureSize?.({ width: shape.width, height: shape.height }) ?? null;
+    let size = { width: onScreen.width, height: onScreen.height, declared: false, reason: 'no buffer control' };
+    if (release) {
+      const started = performance.now();
+      for (let i = 0; i < RECORDING_PROBE_FRAMES; i += 1) await nextFrame();
+      size = recordingSize({
+        declared: { width: shape.width, height: shape.height },
+        canvas: onScreen,
+        frameMs: (performance.now() - started) / RECORDING_PROBE_FRAMES,
+      });
+      if (!size.declared) {
+        release();
+        release = null;
+        await nextFrame();
+      }
+    }
+
     // Even dimensions: the H.264 encoders behind `video/mp4` reject odd ones,
     // and a canvas sized by CSS is odd about half the time.
-    const width = Math.max(2, Math.floor(source.width / 2) * 2);
-    const height = Math.max(2, Math.floor(source.height / 2) * 2);
+    const width = size.width;
+    const height = size.height;
 
     const target = document.createElement('canvas');
     target.width = width;
@@ -352,9 +393,13 @@ export function createReelMode({
       recorder.start();
       const complete = await sequenceEnd(onProgress);
       const blob = await recorder.stop();
-      return { blob, mimeType: recorder.mimeType, formatId: recordedFormat, complete };
+      return { blob, mimeType: recorder.mimeType, formatId: recordedFormat, complete, width, height, sizeReason: size.reason };
     } finally {
       detach?.();
+      release?.();
+      // Back to the window's own size, and to the pixel ratio the performance
+      // budget had chosen.
+      if (release) viewer.resize();
     }
   }
 

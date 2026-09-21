@@ -47,8 +47,12 @@ import { createLearningPanel } from '../components/LearningPanel.js';
 import { createSceneSwitcher } from '../components/SceneSwitcher.js';
 import { createReelMode } from './ReelMode.js';
 import { videoConsentTerms, videoExportOffered, videoFileName } from './videoExport.js';
-import { extensionForMimeType, saveBlob, videoRecordingSupported } from './videoRecorder.js';
-import { createVideoConsentDialog } from '../components/VideoConsentDialog.js';
+// The *question* — can this browser record a canvas — is asked on every scene
+// load, so it is static and tiny. The machinery that answers it (the recorder,
+// the frame painter, the consent screen) loads when somebody presses the
+// button: a production build publishes anatomy, anatomy cannot export, and
+// nobody who visits it should pay for the code that would have.
+import { extensionForMimeType, videoRecordingSupported } from './videoSupport.js';
 import { VIDEO_EXPORT_COPY } from '../data/videoExport.js';
 import { createStoryMode } from './StoryMode.js';
 import { createLabelLayer } from '../components/LabelLayer.js';
@@ -1513,7 +1517,7 @@ export async function createApp({ stage, ui, onRetryModel = null }) {
           playback.set(value);
         },
         getLanguage: () => ui.dataset.lang ?? 'both',
-        onDownload: videoDownloadOffered ? () => requestVideoDownload() : undefined,
+        onDownload: videoDownloadOffered ? () => void requestVideoDownload() : undefined,
         getProvenance: (language) => videoProvenance(language),
         captureState: () => captureSessionState({ playback, viewer, scene, comparing }),
         restoreState: (state) => {
@@ -1703,9 +1707,12 @@ export async function createApp({ stage, ui, onRetryModel = null }) {
     };
   }
 
-  function requestVideoDownload() {
+  async function requestVideoDownload() {
     if (videoConsent || videoRecording) return;
     const terms = videoConsentTerms(entry?.id ?? meta.id);
+    const { createVideoConsentDialog } = await import('../components/VideoConsentDialog.js');
+    // A second press while the first was still loading would build two.
+    if (videoConsent || videoRecording) return;
     videoConsent = createVideoConsentDialog({
       terms,
       subject: {
@@ -1742,6 +1749,7 @@ export async function createApp({ stage, ui, onRetryModel = null }) {
         label(copy.failedShort, false);
         return;
       }
+      const { saveBlob } = await import('./videoRecorder.js');
       saveBlob(
         blob,
         videoFileName({ slug: terms.slug, formatId, extension: extensionForMimeType(mimeType) })

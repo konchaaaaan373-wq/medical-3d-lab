@@ -32,6 +32,8 @@ export class Viewer {
     this.clock = new THREE.Clock();
     this.frameHandlers = new Set();
     this.afterFrameHandlers = new Set();
+    /** A drawing-buffer size held for a recording, or null. */
+    this.heldSize = null;
     this.resizeHandlers = new Set();
     this.running = false;
     this.qualityHandlers = new Set();
@@ -155,6 +157,12 @@ export class Viewer {
   }
 
   resize() {
+    // A held buffer wins: something is being recorded at an exact size, and
+    // the window moving is not a reason to change the file.
+    if (this.heldSize) {
+      this._applyHeldSize();
+      return;
+    }
     const width = this.container.clientWidth || window.innerWidth;
     const height = this.container.clientHeight || window.innerHeight;
     this._syncDeviceClass();
@@ -351,6 +359,62 @@ export class Viewer {
     this._notifyResize();
     this.composer.render();
     return url;
+  }
+
+  /**
+   * Hold the drawing buffer at an exact pixel size until the returned function
+   * is called.
+   *
+   * `snapshot` does this for one frame when it is handed a size, which is what
+   * a PNG needs. A recording needs it for fifteen seconds: the export captured
+   * the canvas at whatever size the browser window gave it — 506×900 on a
+   * laptop — and call the result a 9:16 export. The frame shapes the sequence
+   * offers are declared in pixels (1080×1920 and the rest), so a file that
+   * claims one should be that many pixels.
+   *
+   * `updateStyle: false`, so the element keeps its CSS box and nothing on
+   * screen moves; only the buffer behind it changes. `resize()` re-applies the
+   * held size rather than overwriting it, because a window resize during a
+   * recording must not change what is being recorded.
+   *
+   * @param {{ width: number, height: number }} size
+   * @returns {() => void} release, restoring the size the viewer had
+   */
+  captureSize({ width, height }) {
+    const previous = {
+      size: this.renderer.getSize(new THREE.Vector2()),
+      pixelRatio: this.renderer.getPixelRatio(),
+      aspect: this.camera.aspect,
+      fov: this.camera.fov,
+    };
+    this.heldSize = { width, height };
+    this._applyHeldSize();
+    return () => {
+      if (!this.heldSize) return;
+      this.heldSize = null;
+      this.renderer.setPixelRatio(previous.pixelRatio);
+      this.renderer.setSize(previous.size.x, previous.size.y, false);
+      this.composer.setSize(previous.size.x, previous.size.y);
+      this.bloomPass?.setSize(previous.size.x, previous.size.y);
+      this.camera.aspect = previous.aspect;
+      this.camera.fov = previous.fov;
+      this.camera.updateProjectionMatrix();
+      this._notifyResize();
+    };
+  }
+
+  _applyHeldSize() {
+    const { width, height } = this.heldSize;
+    // Pixel ratio 1: `setSize` multiplies by it, and the size asked for here is
+    // the size the file has to be.
+    this.renderer.setPixelRatio(1);
+    this.renderer.setSize(width, height, false);
+    this.composer.setSize(width, height);
+    this.bloomPass?.setSize(width, height);
+    this.camera.aspect = width / height;
+    this.camera.fov = fovForAspect(this.camera.aspect);
+    this.camera.updateProjectionMatrix();
+    this._notifyResize();
   }
 
   dispose() {

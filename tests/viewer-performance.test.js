@@ -11,9 +11,20 @@ const source = readFileSync(new URL('../src/app/Viewer.js', import.meta.url), 'u
  *
  * `snapshot()` deliberately renders off-screen at an exact pixel size for the
  * social presets, so its own `setPixelRatio` calls are an export concern rather
- * than a frame-budget one and must not be read as policy.
+ * than a frame-budget one and must not be read as policy. `captureSize()` holds
+ * the same exact size for the length of a video recording and is therefore the
+ * same kind of thing — which is why both live below this line, and why putting
+ * one of them above it fails here rather than passing quietly.
  */
 const animationPath = source.slice(0, source.indexOf('snapshot(size)'));
+
+test('viewer: the export block holds every exact-size manipulation', () => {
+  // The boundary above is a position in a file, so it only means something
+  // while the methods that belong below it are below it.
+  const exportBlock = source.slice(source.indexOf('snapshot(size)'));
+  assert.match(exportBlock, /captureSize\(\{ width, height \}\)/);
+  assert.match(exportBlock, /_applyHeldSize\(\)/);
+});
 
 test('viewer: normal animation never preserves every WebGL drawing buffer', () => {
   assert.match(source, /preserveDrawingBuffer:\s*false/);
