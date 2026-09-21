@@ -58,6 +58,13 @@ pedicles.
 
 ## 6. Presentation choices
 
+- **The scene opens in Natural** (2026-09-21). It used to open in **Regions**,
+  because that mode is first in the list and the list is ordered by what the
+  scene is for. A reader looking at the landing hero said the heart did not
+  look like an organ, and they were right: colour that carries no anatomical
+  claim is still the first claim a picture makes. Regions is one press away
+  and nothing about it changed. The brain is the exception and still opens
+  colour-coded — 147 parcels cannot be told apart in tissue colour.
 - **The detailed level stays in the column, in its place, at the same scale.**
   Enlarging it or lifting it out would make the scene easier to read and would
   also make it a diagram of two things rather than a model of one, so the way to

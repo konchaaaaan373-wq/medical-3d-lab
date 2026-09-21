@@ -225,13 +225,17 @@ export function createLandingOrganHero({
   let announced = '';
 
   const STRUCTURE_HINT = Object.freeze({
+    // Not "a coloured structure": organs other than the brain now open in
+    // tissue colour, so there is nothing colour-coded to aim at and the
+    // instruction would be describing a different screen than the one in front
+    // of the reader. What they do is the same either way — press a part.
     coarse: Object.freeze([
-      'Tap a coloured structure to see its anatomical name.',
-      '色分けされた部位をタップすると、解剖学的な名称が表示されます。',
+      'Tap a structure to see its anatomical name.',
+      '部位をタップすると、解剖学的な名称が表示されます。',
     ]),
     fine: Object.freeze([
-      'Click a coloured structure to see its anatomical name.',
-      '色分けされた部位をクリックすると、解剖学的な名称が表示されます。',
+      'Click a structure to see its anatomical name.',
+      '部位をクリックすると、解剖学的な名称が表示されます。',
     ]),
   });
 

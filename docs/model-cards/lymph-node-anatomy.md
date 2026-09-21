@@ -55,6 +55,13 @@ arrives there; and the medulla reaches towards the way out.
 
 ## 6. Presentation choices
 
+- **The scene opens in Natural** (2026-09-21). It used to open in **Regions**,
+  because that mode is first in the list and the list is ordered by what the
+  scene is for. A reader looking at the landing hero said the heart did not
+  look like an organ, and they were right: colour that carries no anatomical
+  claim is still the first claim a picture makes. Regions is one press away
+  and nothing about it changed. The brain is the exception and still opens
+  colour-coded — 147 parcels cannot be told apart in tissue colour.
 - **The slider fades the capsule, then the cortex**, so the inside is reached
   without the node being opened.
 - **A section view exists** because a node is drawn cut in half everywhere

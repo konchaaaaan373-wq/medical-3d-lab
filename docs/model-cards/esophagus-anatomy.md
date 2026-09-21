@@ -56,6 +56,13 @@ No dimension here is a measurement.
 
 ## 6. Presentation choices
 
+- **The scene opens in Natural** (2026-09-21). It used to open in **Regions**,
+  because that mode is first in the list and the list is ordered by what the
+  scene is for. A reader looking at the landing hero said the heart did not
+  look like an organ, and they were right: colour that carries no anatomical
+  claim is still the first claim a picture makes. Regions is one press away
+  and nothing about it changed. The brain is the exception and still opens
+  colour-coded — 147 parcels cannot be told apart in tissue colour.
 - **The rings are placed at the profile's minima**, not at three numbers typed
   beside it — a ring placed by hand would drift the moment the profile changed.
 - **Two close-up viewpoints exist**, at the crossing and at the hiatus, because
