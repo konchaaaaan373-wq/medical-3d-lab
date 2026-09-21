@@ -410,6 +410,38 @@
   ありません。逆向き（能力を得たのに集合へ入っていない、集合を空にして
   静かに note へ戻す）も同じ 1 か所で見ます。
 
+### L-54 「公開していないシーンのコードは入りません」を、ファイル名でしか見ていなかった
+
+- **症状**: 解剖シーンに「触れた部位の機能」を出すため、App から
+  `src/models/higherBrainFunction.js` を **static import** しました。結果、
+  **production ビルドの App チャンクに未公開シーンのモデルが丸ごと入り**、
+  `grep 'Arcuate fasciculus' dist/assets/App-*.js` が当たる状態に
+  （118 kB → 152.6 kB）。CLAUDE.md が約束している
+  「非公開シーンのコードはそもそもバンドルに入りません」が**嘘になっていました**。
+- **どう見つかったか**: `/code-review` が両リビジョンをビルドして**チャンクを
+  grep した**こと。`npm test` も `npm run verify:site` も `npm run budget` も
+  **全部緑**でした。
+- **なぜ既存のガードが見えなかったか**（ここが教訓の本体）:
+  - `scripts/check-site-output.js` は、非公開シーンの**チャンク名**
+    （`assets/<sceneDir>-*.js`）が出ていないかを見ます。**中身は見ません。**
+    App に inline されたコードはファイル名を持たないので、素通りします
+  - `tests/eager-entry-graph.test.js` は `main.js` からの static グラフを歩きますが、
+    **App.js は dynamic import なのでそこで止まります**。App 以降は誰も見ていませんでした
+  - `npm run budget` の予算は `code (JS + CSS) 700 kB` に対し 605 kB。
+    **34 kB 増えても緑**です
+  - つまり 3 つのガードが、**それぞれ別の理由で同じ穴を通しました**
+- **いま何が捕まえるか**: `tests/anatomy-function-link.test.js` の
+  `no always-loaded layer imports a medical model or a scene`。
+  `src/app` `src/components` `src/catalog` `src/access` の static import を読み、
+  `../models/` と `../scenes/` への参照を落とします。モデルはシーンの
+  ローダ越しに到達する、が規則で、**ビルドプラグインが剥がせるのはその経路だけ**
+  だからです。違反を戻すミューテーションで赤を確認。
+- **一般形**: **「X は出荷されない」というガードは、X の*識別子*ではなく
+  *中身*で確かめられるか自問する。** ファイル名・チャンク名・ルートのような
+  「名前」でしか見ていないガードは、**名前を持たない形で同じものが入ってきた瞬間に
+  無力**になります。そして予算のような総量の指標は、**穴が予算より小さい限り
+  永遠に緑**です。
+
 ### L-53 同じガードを 2 回書いて、2 回とも**測る量を間違えた**
 
 - **症状**: 高次脳機能シーンは「課題の信号は、モデルが切れたと言う段階で止まる」と

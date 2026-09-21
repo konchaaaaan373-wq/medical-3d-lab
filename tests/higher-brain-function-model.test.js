@@ -540,3 +540,79 @@ test('model: the bundle a route runs inside is drawn where a reader can see it',
   assert.equal(unused.visible, false);
   scene.dispose();
 });
+
+test('model: every structure a route runs through is visible, whatever the atlas files it as', () => {
+  // The first version of this keyed on the atlas category `tracts`, which
+  // covered the arcuate fasciculus and missed the two commissural structures
+  // the model leans on hardest: the corpus callosum and the fornix are filed as
+  // `white_matter`. Cutting the callosum still stopped the marker at something
+  // nobody could see, which is the defect the lift exists to fix.
+  const callosal = buildScene({ lesion: 'corpus-callosum', task: 'praxis-left-hand' }, 1);
+  const callosum = callosal.meshesByStructure.get('Corpus callosum|median')[0];
+  assert.equal(callosum.visible, true);
+  assert.equal(callosum.material.depthTest, false, 'the cut commissure is in front of the cortex');
+
+  const memory = buildScene({ lesion: 'bilateral-medial-temporal', task: 'episodic-memory-formation' }, 1);
+  const fornix = memory.meshesByStructure.get('Fornix|left')[0];
+  assert.equal(fornix.material.depthTest, false, 'the fornix the route runs through is in front');
+
+  // And the one structure that must never be lifted, however many routes are
+  // anchored in it: it is the whole hemisphere's white matter, and drawing it
+  // in front puts an opaque block over the brain.
+  for (const scene of [callosal, memory]) {
+    for (const side of ['left', 'right']) {
+      const bulk = scene.meshesByStructure.get(`White matter of telencephalon|${side}`)?.[0];
+      assert.equal(bulk.material.depthTest, true, `${side} bulk white matter stays where it is`);
+    }
+  }
+  callosal.dispose();
+  memory.dispose();
+});
+
+test('model: the signal goes dark where it stops, not for the whole journey', () => {
+  const cycle = HigherBrainFunctionScene.CYCLE_SECONDS;
+  const cut = buildScene({ lesion: 'dominant-arcuate', task: 'repetition' }, 1);
+  const carrying = new THREE.Color(PALETTE.carrying).getHex();
+  const blocked = new THREE.Color(PALETTE.blocked).getHex();
+
+  cut.renderAtSeconds(cycle * 0.4);
+  assert.equal(cut.cyclePhase().id, 'travelling');
+  assert.equal(cut.pulseMaterial.color.getHex(), carrying, 'the steps before the cut are carrying');
+
+  cut.renderAtSeconds(cycle * 0.92);
+  assert.equal(cut.cyclePhase().id, 'answered');
+  assert.equal(cut.pulseMaterial.color.getHex(), blocked, 'and it piles up dark against the cut');
+
+  // A route with nothing in its way never goes dark at all.
+  const clear = buildScene({ task: 'repetition' }, 0);
+  for (const at of [0.05, 0.4, 0.92]) {
+    clear.renderAtSeconds(cycle * at);
+    assert.equal(clear.pulseMaterial.color.getHex(), carrying, `still carrying at ${at}`);
+  }
+  cut.dispose();
+  clear.dispose();
+});
+
+test('model: a second atlas rebuilds the route rather than keeping the first one’s', () => {
+  // The shape cache keys on which steps the route takes, and a re-attached
+  // atlas takes the same steps in different places. Kept, the tube stayed
+  // where the old brain had been while the markers moved to the new one.
+  const scene = buildScene({ lesion: 'dominant-arcuate', task: 'repetition' }, 1);
+  const before = scene.routeCurve.getPoint(0.5).clone();
+
+  // One structure moved, not all of them: `placeBrainAtlas` re-centres and
+  // re-scales whatever it is handed, so shifting the whole atlas is cancelled
+  // out and a test doing that measures nothing at all.
+  const moved = ATLAS.clone(true);
+  for (const mesh of moved.children) {
+    if (mesh.userData.bx_label === 'Arcuate fasciculus') mesh.position.y += 2.5;
+  }
+  scene.attachAtlas(moved);
+
+  assert.ok(scene.routeCurve, 'there is a route again');
+  assert.ok(
+    scene.routeCurve.getPoint(0.5).distanceTo(before) > 0.5,
+    'and it is drawn through the atlas that is on screen now'
+  );
+  scene.dispose();
+});

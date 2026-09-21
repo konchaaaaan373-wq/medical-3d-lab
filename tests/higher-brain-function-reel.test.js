@@ -162,3 +162,19 @@ test('the sequence drives the scene from a reset, and a replay gives the same fr
   assert.ok(scene.pulse.position.distanceTo(first) < 1e-9, 'the same second renders the same');
   scene.dispose();
 });
+
+test('nothing in the sequence’s words is written as markdown', () => {
+  // The overlay assigns `textContent`, so an emphasis mark reaches the screen
+  // as two asterisks. It did, on the closing frame — the one frame of the
+  // fifteen that a viewer is most likely to screenshot.
+  const walk = (value, path) => {
+    if (typeof value === 'string') {
+      assert.doesNotMatch(value, /\*\*|__/, `${path} is rendered as plain text`);
+      return;
+    }
+    if (value && typeof value === 'object') {
+      for (const [key, child] of Object.entries(value)) walk(child, `${path}.${key}`);
+    }
+  };
+  walk(REEL_COPY, 'REEL_COPY');
+});

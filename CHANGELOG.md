@@ -52,6 +52,12 @@ person: Safari, Firefox, touch and a screen reader.
   seconds are a rhythm, and the sequence says so on screen. The cut arcuate
   fasciculus is drawn in front of the cortex, because a bundle under the surface
   is a cut nobody can see.
+- Review fixes, each with the guard that was missing: the reading is reached
+  through the scene's own loader, so a production build no longer carries a
+  withheld model inside the application chunk; the cut corpus callosum and
+  fornix are drawn where they can be seen, as the arcuate already was; the
+  travelling signal goes dark where it stops rather than for the whole journey;
+  and the closing frame of the sequence no longer prints its emphasis marks.
 - **Not a lesion localiser**, and it says so on the screen: one normal specimen,
   whole named structures, no imaging, no course over time, and no statement
   about anybody. Medical review is not yet recorded.

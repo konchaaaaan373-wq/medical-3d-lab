@@ -198,6 +198,17 @@ export function createAnatomyInfoPanel(
   const unsubscribeStatus = scene.onAnatomyStatus?.(updateStatus);
   return {
     element,
+    /**
+     * Draw the current selection again.
+     *
+     * The one caller is the application, after the structure-function reading
+     * has finished loading: the panel was built before it arrived, and a
+     * reader who had already picked something would otherwise be looking at a
+     * card that stays empty until they pick something else.
+     */
+    refresh() {
+      renderSelection();
+    },
     dispose() {
       unsubscribeSelection?.();
       unsubscribeHover?.();

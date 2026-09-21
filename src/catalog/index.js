@@ -108,7 +108,6 @@ export const RESERVED_ROUTE_SLUGS = Object.freeze([
  */
 export const DEFAULT_SCENE_ID = 'brain-anatomy';
 
-/** @param {string} id */
 /**
  * The scene whose model can say what a named structure is for, or null.
  *
@@ -119,6 +118,7 @@ export const DEFAULT_SCENE_ID = 'brain-anatomy';
 export const structureFunctionScene = () =>
   SCENES.find((scene) => scene.providesStructureFunctions === true) ?? null;
 
+/** @param {string} id */
 export const sceneById = (id) => SCENES.find((scene) => scene.id === id) ?? null;
 /** @param {string} slug */
 export const sceneBySlug = (slug) => SCENES.find((scene) => scene.slug === slug) ?? null;

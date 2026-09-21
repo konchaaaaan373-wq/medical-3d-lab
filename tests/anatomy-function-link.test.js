@@ -1,8 +1,8 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { readFileSync } from 'node:fs';
+import { readFileSync, readdirSync } from 'node:fs';
 
-import { functionNoteForSelection } from '../src/app/anatomyFunctionLink.js';
+import { functionNoteForSelection } from '../src/scenes/nervous/scenes/higherBrainFunction/structureFunctions.js';
 import { createAnatomyInfoPanel } from '../src/components/AnatomyInfoPanel.js';
 import { functionsOfStructure } from '../src/models/higherBrainFunction.js';
 import { SCENES, structureFunctionScene } from '../src/catalog/index.js';
@@ -142,8 +142,8 @@ test('the application shows it only where the function model itself is open', ()
   const app = readFileSync(new URL('../src/app/App.js', import.meta.url), 'utf8');
   assert.match(
     app,
-    /functionNote:\s*functionModelScene\s*&&\s*sceneOpen\(functionModelScene\)\s*\?\s*functionNoteForSelection\s*:\s*null/,
-    'the function note is gated on that scene being open'
+    /functionModelScene && sceneOpen\(functionModelScene\) && functionModelScene\.organ === entry\?\.organ/,
+    'the reading is gated on that scene being open, and on it being about this organ'
   );
 
   // And which scene that is comes from the catalogue. A surface naming a
@@ -157,5 +157,39 @@ test('the application shows it only where the function model itself is open', ()
     SCENES.filter((scene) => scene.providesStructureFunctions === true).length,
     1,
     'exactly one, or the gate is ambiguous'
+  );
+});
+
+test('no always-loaded layer imports a medical model or a scene', () => {
+  // The rule this exists to hold, and the one commit that broke it: the reading
+  // was imported straight into `src/app/`, which is the application shell and
+  // is loaded on every visit. A production build therefore shipped a scene the
+  // release does not open — the App chunk grew by 34 kB and `Arcuate
+  // fasciculus` could be grepped out of a *published* build, because
+  // `scripts/scene-loaders-plugin.js` can only strip what is reached through a
+  // scene's own loader.
+  //
+  // `tests/eager-entry-graph.test.js` could not see it: it walks the static
+  // graph from `main.js`, and App.js is loaded dynamically. So the rule is
+  // stated here instead, over the shell's own files.
+  // The shell, the components and the catalogue: three layers that are on
+  // screen whatever the reader opened, and none of them is a place a model
+  // belongs. A scene reaches its own model; these reach a scene's loader.
+  const offenders = [];
+  for (const layer of ['app', 'components', 'catalog', 'access']) {
+    const dir = new URL(`../src/${layer}/`, import.meta.url);
+    for (const name of readdirSync(dir)) {
+      if (!name.endsWith('.js')) continue;
+      const code = readFileSync(new URL(name, dir), 'utf8').replace(/\/\*[\s\S]*?\*\//g, '');
+      for (const match of code.matchAll(/(?:^|[\s;}])(?:import|export)\s(?:[^'"();]*?\sfrom\s)?['"]([^'"]+)['"]/g)) {
+        const specifier = match[1];
+        if (/\.\.\/(models|scenes)\//.test(specifier)) offenders.push(`src/${layer}/${name} → ${specifier}`);
+      }
+    }
+  }
+  assert.deepEqual(
+    offenders,
+    [],
+    'the shell must reach a model through the catalogue loader, not by importing it'
   );
 });

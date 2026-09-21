@@ -6,7 +6,7 @@ import {
   PROGRESS_LABEL, RANGE, RELATED, STAGES, STRUCTURE_NAMES_JA, TASK_PROBES, TASK_READOUT_LABELS, TRACEABLE_TASKS, VISUAL_MAPPING,
 } from '../../../../data/higherBrainFunction.js';
 import {
-  FUNCTION_STATUS, FUNCTION_TASKS, LESION_SITES,
+  BULK_WHITE_MATTER, FUNCTION_STATUS, FUNCTION_TASKS, LESION_SITES,
   lesionSiteById, solveHigherBrainFunction,
 } from '../../../../models/higherBrainFunction.js';
 import {
@@ -244,8 +244,12 @@ export class HigherBrainFunctionScene {
     if (!model?.isObject3D) throw new TypeError('the brain atlas must contain a THREE.Object3D scene');
 
     // Adopting a second atlas has to let go of the first, or its meshes and
-    // their materials stay on the GPU with nothing pointing at them.
+    // their materials stay on the GPU with nothing pointing at them — and the
+    // route line has to be rebuilt rather than kept, because the shape cache
+    // keys on which steps the route takes and those are the same steps in a
+    // different place.
     for (const child of [...this.atlasRoot.children]) disposeObject(child);
+    this._disposeRouteLine();
     this.atlasRoot.clear();
     this.meshesByStructure.clear();
     this.centroids.clear();
@@ -447,16 +451,21 @@ export class HigherBrainFunctionScene {
         // with depth testing off the gyrus simply painted over the structure
         // this was meant to reveal.
         //
-        // A tract the route runs inside is lifted whether or not the route goes
-        // deep, and that is not a special case: it is the same treatment the
-        // route line itself gets. The arcuate fasciculus is the model's
-        // signature claim — cut it and repetition alone fails — and it sits
-        // under the cortex, so a sequence about cutting it was showing a signal
-        // stopping at nothing a viewer could see.
-        const liftedToFront = onRoute && (
-          (routeRunsDeep && HigherBrainFunctionScene.DEEP_CATEGORIES.has(mesh.userData.bx_cat))
-          || isTract
-        );
+        // Everything else the route runs through and the cortex hides is
+        // lifted, whether or not the route goes deep — the same treatment the
+        // route line itself gets. Keying this on the atlas category `tracts`
+        // covered the arcuate fasciculus and missed the two commissural
+        // structures the model leans on hardest: the corpus callosum and the
+        // fornix are filed as `white_matter`, so cutting the callosum still
+        // stopped the marker at something nobody could see.
+        //
+        // The bulk white matter is the one exception, and it is not a
+        // borderline case: it is the whole hemisphere's white matter, most
+        // connections are anchored in it for want of a named bundle, and
+        // drawing it in front would put an opaque block over the brain.
+        const liftedToFront = onRoute && !isCortex
+          && mesh.userData.bx_label !== BULK_WHITE_MATTER
+          && (routeRunsDeep || !HigherBrainFunctionScene.DEEP_CATEGORIES.has(mesh.userData.bx_cat));
         // A tract is drawn when this task runs through it or when the lesion
         // has taken it. The other fifty are anatomy this scene is not about.
         mesh.visible = !isTract || onRoute || hurt > 0;
@@ -690,7 +699,11 @@ export class HigherBrainFunctionScene {
       : Math.max(reach, 0.02) * (phase.id === 'travelling' ? phase.through : 1);
     this.pulse.visible = true;
     this.pulse.position.copy(this.routeCurve.getPoint(clamp(travelled)));
-    this.pulseMaterial.color.set(reach < 1 && !asking ? PALETTE.blocked : PALETTE.carrying);
+    // Dark only where it stops. Colouring the whole traverse said the signal
+    // was already failing at steps the model has carrying perfectly well.
+    this.pulseMaterial.color.set(
+      reach < 1 && phase.id === 'answered' ? PALETTE.blocked : PALETTE.carrying
+    );
   }
 
   update(dt) {

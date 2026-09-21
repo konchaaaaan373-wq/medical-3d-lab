@@ -135,8 +135,9 @@ severity scale or a test result.
   seconds are a rhythm** — nothing in this model is a latency, a conduction time
   or a reaction time, and the sequence says so on screen. The answer at the far
   end is the task's own status: full, faint, or absent.
-- **A tract the route runs inside is drawn in front of the cortex**, in its own
-  place. Cutting the arcuate fasciculus is this model's signature claim and the
+- **Whatever a route runs through that the cortex hides is drawn in front of
+  it**, in its own place — tracts, commissures and deep grey alike, with the
+  bulk telencephalic white matter the one stated exception. Cutting the arcuate fasciculus is this model's signature claim and the
   bundle sits under the surface, so drawn the ordinary way the picture showed a
   signal stopping at nothing a reader could see.
 - The route is drawn in front of the brain rather than inside it, because most

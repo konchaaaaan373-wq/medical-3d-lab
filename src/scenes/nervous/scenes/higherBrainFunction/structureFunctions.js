@@ -1,13 +1,13 @@
 import {
   FUNCTION_TASKS,
   functionsOfStructure,
-} from '../models/higherBrainFunction.js';
-import { TASK_READOUT_LABELS } from '../data/higherBrainFunction.js';
+} from '../../../../models/higherBrainFunction.js';
+import { TASK_READOUT_LABELS } from '../../../../data/higherBrainFunction.js';
 
 /**
  * What a structure a reader has just touched is for, in words a panel can show.
  *
- * ## Why this is a separate module and not part of either side
+ * ## Why this is a separate module, and why it lives here
  *
  * It joins two things that must not be joined in place. On one side is the
  * **anatomy scene**, which owns which mesh is which named structure and is a
@@ -16,6 +16,16 @@ import { TASK_READOUT_LABELS } from '../data/higherBrainFunction.js';
  * the scene the beta publishes. On the other side is the **higher cortical
  * function model**, which may not know what it is for. So the join lives here,
  * where neither has to move.
+ *
+ * It sits inside this scene's folder, and that is a delivery decision rather
+ * than a tidiness one. `src/app/` is the application shell, and nothing in it
+ * imports a medical model: the shell is loaded on every visit, so a static
+ * import from there would put this model — a scene the release does not open —
+ * into the bundle of a production build. It did, for one commit: the App chunk
+ * grew by 34 kB and `Arcuate fasciculus` could be grepped out of a *published*
+ * build. Reached through the scene's own loader instead, it is stripped by
+ * `scripts/scene-loaders-plugin.js` with the rest of the scene.
+ * `tests/anatomy-function-link.test.js` holds the shell to that.
  *
  * ## It is a reading, and it says whose reading it is
  *

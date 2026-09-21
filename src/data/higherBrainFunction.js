@@ -509,7 +509,9 @@ export const REEL_COPY = {
     title: 'Conduction aphasia',
     titleJa: '伝導失語',
     subtitle: 'Not a smaller Broca’s. A different route, cut.',
-    subtitleJa: '「軽い Broca 失語」ではありません。**別の経路**が切れたのです。',
+    // No emphasis marks: the overlay writes these as text, so a `**` reaches
+    // the closing frame of the video as two asterisks.
+    subtitleJa: '「軽い Broca 失語」ではありません。切れたのは、別の経路です。',
   },
   note: {
     text: 'Educational model. The order is the claim; the seconds are a rhythm, not a latency.',
