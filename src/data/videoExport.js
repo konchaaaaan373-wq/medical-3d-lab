@@ -30,14 +30,10 @@ export const VIDEO_EXPORT_COPY = Object.freeze({
   saved: { en: 'Saved', ja: '保存しました' },
   download: { en: 'Download video', ja: '動画を保存' },
   failedShort: { en: 'Not saved', ja: '保存できません' },
-  failed: {
-    en: 'The recording did not finish, and no file was written.',
-    ja: '録画が最後まで進まず、ファイルは書き出されていません。',
-  },
-  unsupported: {
-    en: 'This browser cannot record the canvas, so no file can be written here. Chrome, Edge and Firefox can.',
-    ja: 'このブラウザはキャンバスの録画に対応していないため、ここではファイルを書き出せません。Chrome・Edge・Firefox では保存できます。',
-  },
+  // Which version of the clauses above is on screen. Shown because the terms
+  // carry a version; a version nobody sees and nothing stores would be a field
+  // that only looks like a record.
+  version: { en: 'Terms of', ja: '条件' },
   termsLink: { en: 'Terms of use', ja: '利用規約' },
 });
 

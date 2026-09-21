@@ -33,6 +33,13 @@ person: Safari, Firefox, touch and a screen reader.
   second agreement, because the two models forbid different things.
 - **Anatomy is not affected.** An atlas makes no mechanism claim and has no
   motion to export, so the published models offer no download at all.
+- **Leaving the sequence now actually leaves it.** Its caption layer and its
+  control row were added on the first entry and never removed, so exiting left
+  the last frame's numbers, a caption and a row of controls drawn over the
+  interactive scene. Both come off the page with the sequence.
+- **The sequence's four frame shapes each export as themselves.** A 16:9 file
+  used to carry the 9:16 layout — bigger figures, in different places, than the
+  ones on screen.
 
 ### Every vessel in the product was drawn inside out
 

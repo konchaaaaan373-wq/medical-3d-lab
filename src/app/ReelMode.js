@@ -258,6 +258,17 @@ export function createReelMode({
     stage.classList.remove('is-reel');
     stage.style.removeProperty('--reel-aspect');
 
+    // And take the sequence's own furniture off the page.
+    //
+    // It was appended on the first `enter()` and never removed, so leaving the
+    // sequence left its caption layer drawn over the interactive scene — cards
+    // quoting the last frame's numbers, a caption, and a row of controls
+    // sitting on top of the console. Nothing in CSS hid them: `is-reel` hides
+    // the *application's* chrome, not the reel's. `enter()` already re-appends
+    // whatever is not connected, which is the shape this was written for.
+    overlay.element.remove?.();
+    chrome.element.remove?.();
+
     // Undo the sequence's own scene changes first, then hand the rest of the
     // session back to the app.
     reel.onExit?.(scene);
@@ -290,7 +301,16 @@ export function createReelMode({
    * @returns {Promise<{ blob: Blob, mimeType: string, formatId: string, complete: boolean }>}
    */
   async function recordVideo({ onProgress = () => {}, MediaRecorderCtor } = {}) {
-    if (!active) enter();
+    if (!active) {
+      enter();
+      // Entering sets the format, and `setFormat` defers `viewer.resize()` to
+      // the next frame — so the canvas is still the *interactive* one for a
+      // tick after `enter()` returns. Measuring it then wrote a file in the
+      // window's proportions and called it 9:16. Two frames: one for the
+      // resize, one for the render that follows it.
+      await nextFrame();
+      await nextFrame();
+    }
     const source = viewer.renderer.domElement;
     // Even dimensions: the H.264 encoders behind `video/mp4` reject odd ones,
     // and a canvas sized by CSS is odd about half the time.
@@ -305,25 +325,32 @@ export function createReelMode({
     const provenance = getProvenance?.(resolveLanguage()) ?? null;
     const paint = () => {
       ctx.drawImage(source, 0, 0, width, height);
-      paintReelFrame(ctx, { frame: lastFrame ?? {}, width, height, provenance });
+      paintReelFrame(ctx, { frame: lastFrame ?? {}, width, height, provenance, format: formatId });
     };
 
-    const detach = viewer.onAfterFrame(paint);
-    const recorder = createCanvasRecorder({
-      canvas: target,
-      fps: RECORDING_FPS,
-      ...(MediaRecorderCtor ? { MediaRecorderCtor } : {}),
-    });
+    // Registered last, and released in a `finally`: a recorder that refuses to
+    // start, or a stop that rejects, would otherwise leave this compositing
+    // every frame for the rest of the session, into a canvas nobody reads.
+    let detach = null;
+    try {
+      const recorder = createCanvasRecorder({
+        canvas: target,
+        fps: RECORDING_FPS,
+        ...(MediaRecorderCtor ? { MediaRecorderCtor } : {}),
+      });
+      detach = viewer.onAfterFrame(paint);
 
-    // From the top, so the file is the whole sequence however long the reader
-    // had been watching when they pressed the button.
-    restart();
-    paint();
-    recorder.start();
-    const complete = await sequenceEnd(onProgress);
-    const blob = await recorder.stop();
-    detach();
-    return { blob, mimeType: recorder.mimeType, formatId, complete };
+      // From the top, so the file is the whole sequence however long the reader
+      // had been watching when they pressed the button.
+      restart();
+      paint();
+      recorder.start();
+      const complete = await sequenceEnd(onProgress);
+      const blob = await recorder.stop();
+      return { blob, mimeType: recorder.mimeType, formatId, complete };
+    } finally {
+      detach?.();
+    }
   }
 
   /**
@@ -335,6 +362,9 @@ export function createReelMode({
    * signal that the file is finished. The tail keeps the take-home frame in
    * the file rather than cutting on the instant it appears.
    */
+  /** One animation frame, as a promise. */
+  const nextFrame = () => new Promise((resolve) => requestAnimationFrame(() => resolve()));
+
   function sequenceEnd(onProgress) {
     const duration = reel.durationSeconds;
     return new Promise((resolve) => {

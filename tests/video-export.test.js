@@ -1,8 +1,8 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { readFileSync } from 'node:fs';
+import { readFileSync, readdirSync } from 'node:fs';
 
-import { declaration, rulesNaming } from '../scripts/lib/css.mjs';
+import { declaration, rulesNaming, rulesOf } from '../scripts/lib/css.mjs';
 
 import {
   VIDEO_CLAUSE,
@@ -21,7 +21,11 @@ import {
   VIDEO_EXPORT_COPY,
   clauseSentence,
 } from '../src/data/videoExport.js';
-import { paintReelFrame, wrapLines } from '../src/app/reelFramePainter.js';
+import { FORMAT_LAYOUT_TABLE, paintReelFrame, wrapLines } from '../src/app/reelFramePainter.js';
+// `ReelMode` pulls in `three`, which a `node --test` run loads happily —
+// `tests/reel.test.js` already imports it for the same list. The formats are
+// declared once and checked once.
+import { REEL_FORMATS } from '../src/app/ReelMode.js';
 import {
   VIDEO_MIME_CANDIDATES,
   createCanvasRecorder,
@@ -48,6 +52,44 @@ import { FakeElement, findByClass, installFakeDocument } from './helpers/fake-do
 const ANIMATED_SCENES = ['copd-hyperinflation', 'asthma-heterogeneity', 'heart-failure', 'portal-hypertension', 'hepatorenal-syndrome'];
 
 // --- who may export at all --------------------------------------------------
+
+test('the scenes listed here are the scenes that actually have a sequence', () => {
+  // The list above is a copy of something the scene classes own, and a copy
+  // that nothing compares is a copy that drifts: a sixth scene gaining a
+  // sequence would ship a download nothing in this file had ever checked, and
+  // one losing its sequence would leave a test passing about a scene that no
+  // longer exists. So it is compared, by reading which scene modules answer
+  // `getReel()` — which this file cannot do by importing them, because they
+  // import `three`.
+  const manifest = readFileSync(new URL('../src/catalog/scenes.js', import.meta.url), 'utf8');
+  const withSequence = [];
+  for (const scene of SCENES) {
+    const at = manifest.indexOf(`id: '${scene.id}'`);
+    if (at < 0) continue;
+    const load = /import\('([^']+)'\)/.exec(manifest.slice(at));
+    if (!load) continue;
+    const directory = new URL(`../src/catalog/${load[1]}`, import.meta.url).pathname.replace(/\/[^/]+$/, '');
+    if (sourceUnder(directory).some((file) => readFileSync(file, 'utf8').includes('getReel('))) {
+      withSequence.push(scene.id);
+    }
+  }
+  assert.deepEqual(
+    withSequence.sort(),
+    [...ANIMATED_SCENES].sort(),
+    'a scene gained or lost its 15-second sequence; this list, and the docs that name it, are out of date'
+  );
+});
+
+/** Every `.js` file under a directory, recursively. */
+function sourceUnder(directory) {
+  const out = [];
+  for (const entry of readdirSync(directory, { withFileTypes: true })) {
+    const path = `${directory}/${entry.name}`;
+    if (entry.isDirectory()) out.push(...sourceUnder(path));
+    else if (entry.name.endsWith('.js')) out.push(path);
+  }
+  return out;
+}
 
 test('an animated disease scene may be exported', () => {
   for (const id of ANIMATED_SCENES) {
@@ -104,6 +146,17 @@ test('geometry that may not be redistributed stops the file', () => {
   ];
   const problems = videoExportProblems('made-up', { animated: true, scenes, profiles, assets, candidates: [] });
   assert.ok(problems.some((problem) => /redistribution is "restricted"/.test(problem)), problems.join(' | '));
+});
+
+test('a candidate asset no record describes stops the file too', () => {
+  // The unregistered case used to be skipped, which made geometry *nothing*
+  // describes weaker evidence than geometry a record describes as unfinished.
+  const scenes = [{ id: 'made-up', slug: 'made-up', status: 'alpha', modelProfile: 'made-up-profile' }];
+  const profiles = [
+    { profileId: 'made-up-profile', mechanismLevel: 'mechanistic', prohibitedUses: [], assets: [], candidateAssets: ['nobody-knows'] },
+  ];
+  const problems = videoExportProblems('made-up', { animated: true, scenes, profiles, assets: [], candidates: [] });
+  assert.ok(problems.some((problem) => /is in no record/.test(problem)), problems.join(' | '));
 });
 
 test('an asset still under examination stops the file', () => {
@@ -485,6 +538,136 @@ test('a long caveat grows the footer instead of falling off the frame', () => {
   assert.ok(band.height > 11 * (1080 / 100), `the band did not grow (${band.height}px)`);
 });
 
+test('the painter lays out each format the way the stylesheet does', () => {
+  // The frame's shape changes ten values in `reel.css` — a 16:9 frame has far
+  // less vertical room, so the figures shrink and the bands tighten. The
+  // painter ignored all of it and drew every format as 9:16, which put the
+  // card figures across the middle of the model in a 16:9 export: the reader
+  // saw one layout and the file carried another. Measured by reading the
+  // stylesheet, so the table cannot drift away from it either.
+  const css = readFileSync(new URL('../src/styles/reel.css', import.meta.url), 'utf8');
+  const valueOf = (selector, property) => {
+    const rules = [...rulesOf(css)].filter((rule) => rule.names.map((name) => name.trim()).includes(selector));
+    for (const rule of rules.reverse()) {
+      const found = declaration(rule.body, property);
+      if (found) return found;
+    }
+    return null;
+  };
+  const em = (value) => (value === null ? null : Number.parseFloat(value));
+  const fraction = (value) => (value === null ? null : Number.parseFloat(value) / 100);
+  const forFormat = (format, selector, property, read) => {
+    const scoped = format === 'reel' ? null : read(valueOf(`.reel-frame[data-format='${format}'] ${selector}`, property));
+    return scoped ?? read(valueOf(selector, property));
+  };
+
+  for (const format of REEL_FORMATS) {
+    const table = FORMAT_LAYOUT_TABLE[format.id];
+    assert.ok(table, `${format.id} has no layout`);
+    const expected = {
+      cardFigure: forFormat(format.id, '.reel-card-ef', 'font-size', em),
+      hook: forFormat(format.id, ".reel-title[data-variant='hook']", 'font-size', em),
+      takeHome: forFormat(format.id, ".reel-title[data-variant='take-home']", 'font-size', em),
+      caption: forFormat(format.id, '.reel-caption', 'font-size', em),
+      cardsTop: forFormat(format.id, '.reel-cards', 'top', fraction),
+      markerTop: forFormat(format.id, '.reel-marker', 'top', fraction),
+      badgeTop: forFormat(format.id, '.reel-residual', 'top', fraction),
+      bottomBand: forFormat(format.id, '.reel-bottom', 'bottom', fraction),
+      takeHomeBottom: forFormat(format.id, ".reel-centre:has(.reel-title[data-variant='take-home'])", 'bottom', fraction),
+    };
+    for (const [key, value] of Object.entries(expected)) {
+      assert.ok(value !== null && Number.isFinite(value), `${format.id}: could not read ${key} from reel.css`);
+      assert.equal(table[key], value, `${format.id}: the painter uses ${table[key]} for ${key}, the stylesheet says ${value}`);
+    }
+  }
+});
+
+test('the painted frame uses its own format\'s sizes, not the default ones', () => {
+  // The table being right is half of it: the painter could hold a correct
+  // table and paint every frame at 9:16 anyway, which is what it did. This
+  // reads the sizes back out of what was painted.
+  for (const format of REEL_FORMATS) {
+    const table = FORMAT_LAYOUT_TABLE[format.id];
+    const unit = format.width / 100;
+    const ctx = fakeContext();
+    paintReelFrame(ctx, { frame: FRAME, width: format.width, height: format.height, provenance: PROVENANCE, format: format.id });
+    // A long line wraps, so what was painted is its first line rather than the
+    // whole string — the size and the position are on that call either way.
+    const call = (text) => {
+      const found = ctx.calls.text.find((entry) => entry.text.length > 2 && text.startsWith(entry.text.trim()));
+      assert.ok(found, `${format.id}: "${text}" was not painted`);
+      return found;
+    };
+    const sizeOf = (text) => Number(/([\d.]+)px/.exec(call(text).font)[1]);
+    assert.ok(
+      Math.abs(sizeOf('3.1') - table.cardFigure * unit) < 0.01,
+      `${format.id}: the card figure is ${sizeOf('3.1')}px, the format asks for ${table.cardFigure * unit}px`
+    );
+    assert.ok(
+      Math.abs(sizeOf(FRAME.title.text) - table.hook * unit) < 0.01,
+      `${format.id}: the headline is ${sizeOf(FRAME.title.text)}px, the format asks for ${table.hook * unit}px`
+    );
+    assert.ok(
+      Math.abs(sizeOf(FRAME.caption.text) - table.caption * unit) < 0.01,
+      `${format.id}: the caption is ${sizeOf(FRAME.caption.text)}px, the format asks for ${table.caption * unit}px`
+    );
+    // And the cards start where this format puts them.
+    assert.ok(
+      Math.abs(call('Normal').y - format.height * table.cardsTop) < 1,
+      `${format.id}: the cards start at ${Math.round(call('Normal').y)}, the format asks for ${Math.round(format.height * table.cardsTop)}`
+    );
+
+    // The take-home is a second frame, and a second size.
+    const takeHome = fakeContext();
+    paintReelFrame(takeHome, {
+      frame: { title: { text: 'Emptying is the problem', opacity: 1, variant: 'take-home' } },
+      width: format.width,
+      height: format.height,
+      provenance: PROVENANCE,
+      format: format.id,
+    });
+    const headline = takeHome.calls.text.find((entry) => 'Emptying is the problem'.startsWith(entry.text.trim()) && entry.text.length > 2);
+    const size = Number(/([\d.]+)px/.exec(headline.font)[1]);
+    assert.ok(
+      Math.abs(size - table.takeHome * unit) < 0.01,
+      `${format.id}: the take-home is ${size}px, the format asks for ${table.takeHome * unit}px`
+    );
+  }
+});
+
+test('no format paints the caption under the footer', () => {
+  // The footer is sized in width units; the caption band was placed as a
+  // fraction of the height. Independent of each other, they collided at 16:9 —
+  // and the footer is drawn last and opaque, so what disappeared was the note
+  // that reads "not a diagnosis". Checked at every shape the sequence offers,
+  // because 9:16 alone would never have shown it.
+  for (const format of REEL_FORMATS) {
+    const ctx = fakeContext();
+    const note = 'conceptual model · not a diagnosis';
+    paintReelFrame(ctx, {
+      frame: {
+        caption: { text: 'Each breath starts before the last one finished', opacity: 1 },
+        note: { text: note, opacity: 1 },
+        title: { text: 'Emptying is the problem', opacity: 1, variant: 'take-home' },
+      },
+      width: format.width,
+      height: format.height,
+      provenance: PROVENANCE,
+    });
+    const band = ctx.calls.rects[ctx.calls.rects.length - 1];
+    assert.equal(band.width, format.width, `${format.label}: the last rectangle should be the footer band`);
+    const painted = ctx.calls.text.find((call) => call.text === note);
+    assert.ok(painted, `${format.label}: the note was not painted at all`);
+    const size = Number(/([\d.]+)px/.exec(painted.font)[1]);
+    assert.ok(
+      painted.y + size <= band.y,
+      `${format.label}: the note is painted at ${Math.round(painted.y)} and the opaque footer starts at ${Math.round(band.y)}`
+    );
+    const headline = ctx.calls.text.find((call) => call.text.includes('Emptying'));
+    assert.ok(headline.y + size <= band.y, `${format.label}: the take-home runs into the footer`);
+  }
+});
+
 test('a faded slot is not painted', () => {
   const ctx = fakeContext();
   paintReelFrame(ctx, {
@@ -706,6 +889,87 @@ test('the screen opens at its first sentence, not at its buttons', () => {
     assert.equal(globalThis.document.activeElement, panel, 'focus belongs on the dialog, not on a control');
     assert.equal(panel.attributes.get('tabindex'), '-1', 'a dialog that takes focus has to be focusable');
     assert.equal(panel.scrollTop, 0, 'it opens at the top of the agreement');
+  } finally {
+    restore();
+  }
+});
+
+test('the version the reader is agreeing to is on the screen', () => {
+  // The terms carry a version and nothing stores the answer, so the only place
+  // that version can mean anything is in front of the reader.
+  const restore = installFakeDocument();
+  try {
+    const { dialog } = openDialog();
+    const shown = findByClass(dialog.element, 'video-consent-version')[0];
+    assert.ok(shown, 'the dialog should state which terms these are');
+    // Each language on its own: the interface shows one of them, so a version
+    // that is only in the other is a version that reader never sees.
+    for (const language of ['en', 'ja']) {
+      const span = shown.children.find((child) => child.classList.contains(`lang-${language}`));
+      assert.ok(span, `no ${language} version line`);
+      assert.ok(
+        span.textContent.includes(VIDEO_TERMS_VERSION),
+        `the ${language} line reads "${span.textContent}" and does not name ${VIDEO_TERMS_VERSION}`
+      );
+    }
+  } finally {
+    restore();
+  }
+});
+
+test('shift-Tab off the dialog itself stays inside it', () => {
+  // The dialog opens with focus on the panel. Forward, the browser reaches the
+  // first control by itself; backward, it would leave the dialog — the one
+  // direction a trap exists for, and the one the first version let through.
+  const restore = installFakeDocument();
+  try {
+    const { dialog } = openDialog();
+    const panel = findByClass(dialog.element, 'video-consent-panel')[0];
+    const link = findByClass(dialog.element, 'video-consent-terms')[0];
+    assert.equal(globalThis.document.activeElement, panel);
+    const keydown = [...globalThis.document.listeners.get('keydown')][0];
+    let prevented = 0;
+    keydown({ key: 'Tab', shiftKey: true, preventDefault: () => { prevented += 1; } });
+    assert.equal(globalThis.document.activeElement, link, 'it wraps to the last control');
+    assert.equal(prevented, 1);
+  } finally {
+    restore();
+  }
+});
+
+test('no key reaches the scene behind the open dialog', () => {
+  // The app binds Space / R / H / C / arrows on `window`; this listener is on
+  // `document`, one step below it. Without stopping propagation, Escape closed
+  // the dialog *and* exited the sequence underneath it, and every other
+  // shortcut drove a model the reader could not see.
+  const restore = installFakeDocument();
+  try {
+    const { dialog } = openDialog();
+    const keydown = [...globalThis.document.listeners.get('keydown')][0];
+    const seen = [];
+    for (const key of ['r', 'Escape']) {
+      let stopped = 0;
+      keydown({ key, preventDefault: () => {}, stopPropagation: () => { stopped += 1; } });
+      seen.push([key, stopped]);
+    }
+    assert.deepEqual(seen, [['r', 1], ['Escape', 1]], 'every key is stopped, not only the one that closes');
+    void dialog;
+  } finally {
+    restore();
+  }
+});
+
+test('the terms open beside the decision, not instead of it', () => {
+  // The route *is* the app: following `#/terms` in place tears down the scene,
+  // the sequence and the half-ticked agreement on top of it. `credentialForm`
+  // links the same document the same way.
+  const restore = installFakeDocument();
+  try {
+    const { dialog } = openDialog();
+    const link = findByClass(dialog.element, 'video-consent-terms')[0];
+    assert.equal(link.attributes.get('href'), '#/terms');
+    assert.equal(link.attributes.get('target'), '_blank');
+    assert.equal(link.attributes.get('rel'), 'noopener');
   } finally {
     restore();
   }

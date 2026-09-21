@@ -45,20 +45,39 @@ const FOOTER_BACKGROUND = 'rgba(4, 6, 12, 0.86)';
 
 const FONT_STACK = '"Helvetica Neue", Helvetica, Arial, "Hiragino Sans", "Noto Sans JP", sans-serif';
 
-/** Where each slot sits, as `reel.css` places it. Fractions are of the frame height. */
+/** What does not change with the frame's shape. Fractions are of the height. */
 const LAYOUT = Object.freeze({
+  // `.reel-cards`, `.reel-centre` and `.reel-bottom` are absolutely positioned
+  // against the frame, so `.reel-safe`'s per-format padding never reaches them
+  // and their 6.5% inset is the same in every format.
   sidePaddingUnits: 6.5,
-  cards: { at: 0.1, anchor: 'top' },
-  marker: { at: 0.3, anchor: 'middle' },
-  badge: { at: 0.64, anchor: 'top' },
-  centre: {
-    hook: { at: 0.34, anchor: 'middle' },
-    'take-home': { at: 0.8, anchor: 'bottom' },
-    default: { at: 0.5, anchor: 'middle' },
-  },
-  bottom: { at: 0.84, anchor: 'bottom' },
+  hookAt: 0.34,
+  centreAt: 0.5,
   footerHeightUnits: 11,
 });
+
+/**
+ * What the frame's shape changes.
+ *
+ * `reel.css` overrides ten values per format — a 16:9 frame has far less
+ * vertical room, so the figures shrink and the bands tighten. This file
+ * ignored all of it and painted every format as 9:16, which put the card
+ * figures across the middle of the model in a 16:9 export: the reader saw one
+ * layout and the file carried another.
+ *
+ * Kept as numbers rather than derived from the aspect ratio, because they are
+ * not derived there either: they are typographic decisions, and
+ * `tests/video-export.test.js` reads `reel.css` and holds this table to them.
+ */
+const FORMAT_LAYOUT = Object.freeze({
+  reel: { cardsTop: 0.1, cardFigure: 9, hook: 9.5, takeHome: 5, takeHomeBottom: 0.2, caption: 3.5, bottomBand: 0.16, markerTop: 0.3, badgeTop: 0.64 },
+  portrait: { cardsTop: 0.1, cardFigure: 7.5, hook: 8, takeHome: 4.2, takeHomeBottom: 0.17, caption: 3, bottomBand: 0.16, markerTop: 0.3, badgeTop: 0.64 },
+  square: { cardsTop: 0.1, cardFigure: 6.5, hook: 7, takeHome: 3.8, takeHomeBottom: 0.2, caption: 2.6, bottomBand: 0.16, markerTop: 0.3, badgeTop: 0.7 },
+  wide: { cardsTop: 0.06, cardFigure: 6, hook: 6.5, takeHome: 3.4, takeHomeBottom: 0.2, caption: 2.6, bottomBand: 0.08, markerTop: 0.24, badgeTop: 0.7 },
+});
+
+/** The per-format table, for the test that holds it to the stylesheet. */
+export const FORMAT_LAYOUT_TABLE = FORMAT_LAYOUT;
 
 /**
  * Paints one frame's text over whatever is already on the context.
@@ -71,9 +90,12 @@ const LAYOUT = Object.freeze({
  * @param {{ title: string, caveat: string, credit?: string }} [options.provenance]
  *   what the file has to carry once it is out of the app: which model this is,
  *   the sentence that bounds it, and any credit the geometry's licence asks for
+ * @param {'reel'|'portrait'|'square'|'wide'} [options.format] which shape the
+ *   frame is, because `reel.css` lays each of them out differently
  */
-export function paintReelFrame(ctx, { frame = {}, width, height, provenance }) {
+export function paintReelFrame(ctx, { frame = {}, width, height, provenance, format = 'reel' }) {
   const unit = width / 100;
+  const shape = FORMAT_LAYOUT[format] ?? FORMAT_LAYOUT.reel;
   const side = LAYOUT.sidePaddingUnits * unit;
   const innerWidth = width - side * 2;
 
@@ -179,12 +201,12 @@ export function paintReelFrame(ctx, { frame = {}, width, height, provenance }) {
       const common = { x, maxWidth: columnWidth, anchor: 'top', opacity };
       let y = block([{ text: item.label, size: 3.4, weight: 700, colour: CARD_LABEL_INK[index] ?? INK_DIM }], {
         ...common,
-        at: height * LAYOUT.cards.at,
+        at: height * shape.cardsTop,
       });
       y = inlineRow(
         [
           { text: item.headlineKey, size: 2.4, colour: INK_FAINT },
-          { text: item.headline, size: 9, weight: 700, colour: CARD_INK[index] ?? INK },
+          { text: item.headline, size: shape.cardFigure, weight: 700, colour: CARD_INK[index] ?? INK },
           { text: item.headlineUnit, size: 3, colour: INK_FAINT },
         ],
         { centre: x, top: y, opacity }
@@ -200,7 +222,7 @@ export function paintReelFrame(ctx, { frame = {}, width, height, provenance }) {
       { text: marker.text, size: 4.2, weight: 700 },
       { text: marker.sub, size: 2.1, colour: INK_FAINT },
     ],
-    { x: centreX, at: height * LAYOUT.marker.at, anchor: LAYOUT.marker.anchor, opacity: marker.opacity ?? 0 }
+    { x: centreX, at: height * shape.markerTop, anchor: 'middle', opacity: marker.opacity ?? 0 }
   );
 
   // --- badge -----------------------------------------------------------
@@ -209,17 +231,27 @@ export function paintReelFrame(ctx, { frame = {}, width, height, provenance }) {
     x: width - side,
     align: 'right',
     maxWidth: innerWidth * 0.52,
-    at: height * LAYOUT.badge.at,
-    anchor: LAYOUT.badge.anchor,
+    at: height * shape.badgeTop,
+    anchor: 'top',
     opacity: badge.opacity ?? 0,
   });
 
   // --- headline --------------------------------------------------------
   const subtitle = frame.subtitle ?? {};
-  const centre = LAYOUT.centre[variant] ?? LAYOUT.centre.default;
+  const centre =
+    variant === 'hook'
+      ? { at: LAYOUT.hookAt, anchor: 'middle' }
+      : variant === 'take-home'
+        ? { at: 1 - shape.takeHomeBottom, anchor: 'bottom' }
+        : { at: LAYOUT.centreAt, anchor: 'middle' };
   block(
     [
-      { text: title.text, size: variant === 'hook' ? 9.5 : variant === 'take-home' ? 5 : 6, weight: 700, lineHeight: 1.12 },
+      {
+        text: title.text,
+        size: variant === 'hook' ? shape.hook : variant === 'take-home' ? shape.takeHome : shape.hook * 0.63,
+        weight: 700,
+        lineHeight: 1.12,
+      },
       // The subtitle fades on its own track, so it is drawn with the headline
       // only while it is up; a faded subtitle must not hold the block's height.
       { text: (subtitle.opacity ?? 0) > 0.01 ? subtitle.text : '', size: 3.4, weight: 500, colour: INK_DIM, gap: 1.6 },
@@ -228,18 +260,26 @@ export function paintReelFrame(ctx, { frame = {}, width, height, provenance }) {
   );
 
   // --- bottom band -----------------------------------------------------
+  //
+  // Placed against the footer rather than against the frame. The footer is
+  // sized in width units and this band was placed as a fraction of the height,
+  // so the two are independent — and at 16:9 they overlapped: the opaque band
+  // was painted last, over the note. The note is the line that says "not a
+  // diagnosis", so it is the worst line in the frame to lose.
+  const footerTop = provenanceTop(ctx, { width, height, unit, provenance });
+  const bottomAt = Math.min(height * (1 - shape.bottomBand), footerTop - unit);
   const caption = frame.caption ?? {};
   const note = frame.note ?? {};
-  block([{ text: caption.text, size: 3.5, weight: 600, lineHeight: 1.35 }], {
+  block([{ text: caption.text, size: shape.caption, weight: 600, lineHeight: 1.35 }], {
     x: centreX,
-    at: height * LAYOUT.bottom.at - ((note.opacity ?? 0) > 0.01 ? unit * 3.5 : 0),
-    anchor: LAYOUT.bottom.anchor,
+    at: bottomAt - ((note.opacity ?? 0) > 0.01 ? unit * 3.5 : 0),
+    anchor: 'bottom',
     opacity: caption.opacity ?? 0,
   });
   block([{ text: note.text, size: 2.1, colour: INK_FAINT }], {
     x: centreX,
-    at: height * LAYOUT.bottom.at,
-    anchor: LAYOUT.bottom.anchor,
+    at: bottomAt,
+    anchor: 'bottom',
     opacity: note.opacity ?? 0,
   });
 
@@ -261,28 +301,9 @@ export function paintReelFrame(ctx, { frame = {}, width, height, provenance }) {
  * cropped by the file itself.
  */
 function paintProvenance(ctx, { width, height, unit, provenance }) {
-  if (!provenance) return;
-  const side = LAYOUT.sidePaddingUnits * unit;
-  const inner = width - side * 2;
-  const padding = unit * 1.4;
-  const gap = unit * 0.3;
-
-  const parts = [
-    { text: provenance.title, size: 2.4, weight: 700, colour: INK },
-    { text: provenance.caveat, size: 1.9, weight: 400, colour: INK_DIM },
-    { text: provenance.credit, size: 1.6, weight: 400, colour: INK_FAINT },
-  ].filter((part) => part.text);
-
-  let needed = padding * 2;
-  const measured = parts.map((part) => {
-    ctx.font = font(part, unit);
-    const lines = wrapLines(ctx, String(part.text), inner);
-    const lineHeight = part.size * unit * 1.25;
-    needed += lines.length * lineHeight + gap;
-    return { part, lines, lineHeight };
-  });
-
-  const bandHeight = Math.max(LAYOUT.footerHeightUnits * unit, needed);
+  const measured = measureProvenance(ctx, { width, unit, provenance });
+  if (!measured) return;
+  const { lines, bandHeight, side, padding, gap } = measured;
   const top = height - bandHeight;
   ctx.save();
   ctx.globalAlpha = 1;
@@ -295,16 +316,60 @@ function paintProvenance(ctx, { width, height, unit, provenance }) {
   ctx.textAlign = 'left';
   ctx.textBaseline = 'top';
   let y = top + padding;
-  for (const { part, lines, lineHeight } of measured) {
+  for (const { part, lines: partLines, lineHeight } of lines) {
     ctx.fillStyle = part.colour;
     ctx.font = font(part, unit);
-    for (const line of lines) {
+    for (const line of partLines) {
       ctx.fillText(line, side, y);
       y += lineHeight;
     }
     y += gap;
   }
   ctx.restore();
+}
+
+/** Where the footer's band starts, so nothing else is placed under it. */
+function provenanceTop(ctx, { width, height, unit, provenance }) {
+  const measured = measureProvenance(ctx, { width, unit, provenance });
+  return measured ? height - measured.bandHeight : height;
+}
+
+/**
+ * The footer's lines and the height they need.
+ *
+ * Measuring and painting are separate because the bottom band has to be placed
+ * against the footer before either is drawn, and measuring twice is cheaper
+ * than the one frame where they overlapped.
+ */
+function measureProvenance(ctx, { width, unit, provenance }) {
+  if (!provenance) return null;
+  const side = LAYOUT.sidePaddingUnits * unit;
+  const inner = width - side * 2;
+  const padding = unit * 1.4;
+  const gap = unit * 0.3;
+
+  const parts = [
+    { text: provenance.title, size: 2.4, weight: 700, colour: INK },
+    { text: provenance.caveat, size: 1.9, weight: 400, colour: INK_DIM },
+    { text: provenance.credit, size: 1.6, weight: 400, colour: INK_FAINT },
+  ].filter((part) => part.text);
+
+  let needed = padding * 2;
+  const lines = parts.map((part) => {
+    ctx.font = font(part, unit);
+    const wrapped = wrapLines(ctx, String(part.text), inner);
+    const lineHeight = part.size * unit * 1.25;
+    needed += wrapped.length * lineHeight + gap;
+    return { part, lines: wrapped, lineHeight };
+  });
+
+  return {
+    lines,
+    bandHeight: Math.max(LAYOUT.footerHeightUnits * unit, needed),
+    side,
+    padding,
+    gap,
+  };
 }
 
 const font = (part, unit) => `${part.weight ?? 400} ${part.size * unit}px ${FONT_STACK}`;

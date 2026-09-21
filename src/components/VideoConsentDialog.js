@@ -52,7 +52,10 @@ export function createVideoConsentDialog({ terms, subject, onAgree, onCancel = (
 
   const hint = el('p', { class: 'video-consent-hint', 'aria-live': 'polite' }, bilingual(copy.blocked.en, copy.blocked.ja));
 
-  const termsLink = el('a', { class: 'video-consent-terms', href: '#/terms' }, [
+  // A new tab, not this one: the route is the app, so following it here would
+  // tear down the scene, the sequence and the half-ticked agreement on top of
+  // it. `credentialForm` links the same document the same way.
+  const termsLink = el('a', { class: 'video-consent-terms', href: '#/terms', target: '_blank', rel: 'noopener' }, [
     ...bilingual(copy.termsLink.en, copy.termsLink.ja),
     el('span', { 'aria-hidden': 'true', text: ' →' }),
   ]);
@@ -139,6 +142,13 @@ export function createVideoConsentDialog({ terms, subject, onAgree, onCancel = (
       ]),
       hint,
       el('div', { class: 'video-consent-actions' }, [cancelButton, agreeButton]),
+      // The clauses are versioned, so the version is on screen. A version
+      // nobody is shown and nothing stores is a field that only looks like a
+      // record.
+      el('p', { class: 'video-consent-version' }, [
+        el('span', { class: 'lang-en', text: `${copy.version.en} ${terms.termsVersion}` }),
+        el('span', { class: 'lang-ja', text: `${copy.version.ja} ${terms.termsVersion}` }),
+      ]),
       termsLink,
     ]
   );
@@ -164,7 +174,11 @@ export function createVideoConsentDialog({ terms, subject, onAgree, onCancel = (
     const first = stops[0];
     const last = stops[stops.length - 1];
     const active = document.activeElement;
-    if (event.shiftKey && (active === first || !panel.contains?.(active))) {
+    // `active === panel` is the state the dialog opens in — focus is on the
+    // dialog, not on a control. Forward from there the browser reaches the
+    // first stop by itself; backward it would leave the dialog altogether,
+    // which is the one direction a trap exists to stop.
+    if (event.shiftKey && (active === first || active === panel || !panel.contains?.(active))) {
       event.preventDefault?.();
       last.focus?.();
     } else if (!event.shiftKey && (active === last || !panel.contains?.(active))) {
@@ -198,6 +212,14 @@ export function createVideoConsentDialog({ terms, subject, onAgree, onCancel = (
   let settled = false;
 
   const onKeyDown = (event) => {
+    // While this is open, all keyboard intent belongs to it.
+    //
+    // The app binds Space / R / H / C / arrows / +/- on `window`, and this
+    // listener is on `document` — one step below it in the bubble path. Without
+    // this, Escape closed the dialog *and* left the sequence underneath it, and
+    // every other shortcut drove a scene the reader could not see.
+    // `AccessManager` guards its modal the same way, for the same reason.
+    event?.stopPropagation?.();
     if (event?.key === 'Tab') {
       trapTab(event);
       return;

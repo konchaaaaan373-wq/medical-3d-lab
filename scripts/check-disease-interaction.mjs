@@ -56,6 +56,7 @@ import { chromium } from 'playwright';
 import { chromiumExecutable } from './lib/browser.mjs';
 import { serveDist } from './lib/serve-dist.mjs';
 import { videoExportOffered } from '../src/app/videoExport.js';
+import { VIDEO_MIME_CANDIDATES } from '../src/app/videoRecorder.js';
 
 const distDir = resolve('dist');
 const outDir = process.argv[2] ?? '/tmp/disease-shots';
@@ -167,7 +168,20 @@ for (const slug of SLUGS) {
   // restated: whether this scene may hand out a file is decided in one place,
   // and this check reads it instead of keeping a list that would drift.
   const animated = await page.evaluate(() => Boolean(window.__app?.reel));
-  const shouldOffer = videoExportOffered(slug, { animated });
+  // Both halves, the way the app decides it. The release rule is imported from
+  // the product; whether this engine can encode at all is asked of the engine.
+  // Without the second half, a browser with no usable container would fail
+  // here as "the rule says offered" — blaming the release rule for a gap in
+  // the browser, which is the kind of report that gets a rule changed.
+  const canEncode = await page.evaluate(
+    (types) =>
+      typeof MediaRecorder !== 'undefined' &&
+      typeof document.querySelector('canvas')?.captureStream === 'function' &&
+      types.some((type) => MediaRecorder.isTypeSupported?.(type)),
+    [...VIDEO_MIME_CANDIDATES]
+  );
+  const shouldOffer = videoExportOffered(slug, { animated }) && canEncode;
+  if (animated && !canEncode) console.log(`  ${slug}: this browser cannot encode a canvas — the download is not offered`);
   const reelButton = page.locator('button[data-control="reel"]');
   if (animated && (await reelButton.count())) {
     await reelButton.first().click();
@@ -228,10 +242,27 @@ for (const slug of SLUGS) {
       }
       await page.screenshot({ path: join(outDir, `${slug}-video-recorded.png`) });
     }
-    // Back out of the sequence so the page is where the next scene expects it.
+    // Back out of the sequence, and check that it actually left.
+    //
+    // The sequence's caption layer and its control row were appended on the
+    // first entry and never removed, so leaving it used to leave both drawn
+    // over the interactive scene — cards quoting the last frame's numbers, and
+    // a live download button sitting on top of the console. Nothing in CSS hid
+    // them and no unit test could see them; this is the level that can.
     const exit = page.locator('.reel-chip.is-exit');
     if (await exit.count()) await exit.first().click();
-    await page.waitForTimeout(600);
+    await page.waitForTimeout(800);
+    const leftOver = await page.evaluate(() =>
+      ['.reel-chrome', '.reel-frame']
+        .filter((selector) => {
+          const node = document.querySelector(selector);
+          if (!node) return false;
+          const box = node.getBoundingClientRect();
+          return getComputedStyle(node).display !== 'none' && box.width > 0 && box.height > 0;
+        })
+    );
+    if (leftOver.length) problems.push(`leaving the sequence left ${leftOver.join(' and ')} on the page`);
+    await page.screenshot({ path: join(outDir, `${slug}-after-reel.png`) });
   } else if (shouldOffer) {
     problems.push('the rule offers a video file but the scene has no sequence to record');
   }

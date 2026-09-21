@@ -110,7 +110,14 @@ export function videoExportProblems(
 
   for (const assetId of profile.candidateAssets ?? []) {
     const candidate = candidates.find((entry) => entry.id === assetId);
-    if (!candidate) continue;
+    // An id that resolves to nothing is *not* the safe case: it is a profile
+    // naming geometry no record describes, which is the one thing that must
+    // never leave in a file. Skipping it silently made an unregistered
+    // candidate weaker than a registered one.
+    if (!candidate) {
+      problems.push(`asset "${assetId}" is named by "${scene.id}" as a candidate but is in no record`);
+      continue;
+    }
     problems.push(`asset "${assetId}" is still under examination, so a file containing it may not be handed out`);
   }
 
