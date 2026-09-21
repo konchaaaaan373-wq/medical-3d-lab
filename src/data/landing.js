@@ -62,6 +62,7 @@ export const LANDING_MODEL_ORDER = Object.freeze([
   'circulation',
   'myocardial-ischemia',
   'amyloid-beta',
+  'higher-brain-function',
   'renal-filtration',
   'pulmonary-edema',
   'pneumonia-consolidation',
@@ -521,6 +522,12 @@ export const LANDING_MODEL_PRESENTATION = Object.freeze({
     '混濁を 3 か所に置いて瞳孔を開き、どちらが通り道にあるかが入れ替わるのを確認。',
     ['THREE PLACES', 'TWO APERTURES', 'BIG IS NOT IN THE WAY'],
     ['3 つの場所', '2 つの開口部', '広い＝邪魔とは限らない']
+  ),
+  'higher-brain-function': presentation(
+    'Put the lesion on one gyrus and watch repetition fail while understanding does not.',
+    '病変を 1 つの脳回に置き、理解が保たれたまま復唱だけが落ちるのを確認。',
+    ['ONE ROUTE PER TASK', 'RIGHT-HANDED', 'THE NAME IS A READING'],
+    ['課題ごとに 1 本の経路', '右利き', '症候名は読み取り結果']
   ),
   'bppv': presentation(
     'Take the head back and watch a loop that could drive nothing begin to.',

@@ -66,7 +66,7 @@ import { VIDEO_MIME_CANDIDATES } from '../src/app/videoRecorder.js';
  *
  * The export is the reason this exists. `MediaRecorder` over
  * `canvas.captureStream()` is a browser feature, and "it works" was measured
- * on exactly one engine until this flag (F-161). The other two cannot be
+ * on exactly one engine until this flag (F-169). The other two cannot be
  * downloaded in every environment, so the default stays Chromium and the
  * matrix lives in `final-browser-validation.yml`, where the runner can fetch
  * them.

@@ -211,7 +211,7 @@ export function paintReelFrame(ctx, { frame = {}, width, height, provenance, for
 
     // A short frame has no empty band for the figures, so at 16:9 and 1:1 they
     // are read over the model — with the same backing the marker and the
-    // callout already use (`reel.css`, and F-163 for why not moving them).
+    // callout already use (`reel.css`, and F-171 for why not moving them).
     // Measured before anything is drawn, because it has to go underneath.
     if (shape.cardBackdrop && opacity > 0.01) {
       const rowHeight = Math.max(

@@ -67,7 +67,18 @@ function cssValue(selector, property) {
   return null;
 }
 
-const ANIMATED_SCENES = ['copd-hyperinflation', 'asthma-heterogeneity', 'heart-failure', 'portal-hypertension', 'hepatorenal-syndrome'];
+const ANIMATED_SCENES = [
+  'copd-hyperinflation',
+  'asthma-heterogeneity',
+  'heart-failure',
+  'portal-hypertension',
+  'hepatorenal-syndrome',
+  // The guard below found this one: it arrived on `main` while this branch was
+  // open, with a sequence of its own, and it is the first scene whose export
+  // carries a licence credit — so its consent screen has four clauses where
+  // the others have three.
+  'higher-brain-function',
+];
 
 // --- who may export at all --------------------------------------------------
 
@@ -656,7 +667,7 @@ test('the painted frame uses its own format\'s sizes, not the default ones', () 
 test('a short frame backs the figures, and only where the stylesheet does', () => {
   // At 16:9 and 1:1 the comparison fills the frame, so the figures are read
   // over the model. Moving them has nowhere to go and pulling the camera back
-  // shrinks the subject to make room for its own caption (F-163), so they get
+  // shrinks the subject to make room for its own caption (F-171), so they get
   // the backing the marker already uses — in the app and in the file, from one
   // decision rather than two.
   for (const format of REEL_FORMATS) {

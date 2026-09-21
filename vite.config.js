@@ -17,8 +17,22 @@ export default defineConfig(({ mode }) => {
   // decides whether the locked scenes are in the bundle to be unlocked.
   const allowPreview = env.VITE_ALLOW_PREVIEW === '1';
 
+  // Which build this is, carried inside the bundle.
+  //
+  // Netlify sets these on every build it runs; a local `npm run build` sets
+  // none of them, and `local` is the right answer there. They are `define`d
+  // rather than read through `import.meta.env` because they are not
+  // `VITE_`-prefixed and they are not configuration a deploy chooses — they
+  // are facts about the build, and the deploy states them by existing.
+  const buildIdentity = {
+    __BUILD_CONTEXT__: JSON.stringify(process.env.CONTEXT || 'local'),
+    __BUILD_COMMIT__: JSON.stringify(process.env.COMMIT_REF || ''),
+    __BUILD_REVIEW__: JSON.stringify(process.env.REVIEW_ID || ''),
+  };
+
   return {
     base: './',
+    define: buildIdentity,
     server: { host: true, port: 5173 },
     build: {
       target: 'es2020',
