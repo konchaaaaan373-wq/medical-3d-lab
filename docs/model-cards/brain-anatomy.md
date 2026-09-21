@@ -152,24 +152,32 @@ picked colour.
 **Two readers are served, and the split is deliberate rather than even.** What
 is measured first is the boundary between two units that actually meet — the
 central sulcus, the edge of the cerebellum — because that is what a reader
-traces; every touching pair is at least ΔE 22 apart, and the list of which
+traces; every touching pair is at least ΔE 28 apart, and the list of which
 units touch is anatomy, written down in `tests/brain-anatomy.test.js` rather
 than derived. Colour-vision deficiency is then given what is available without
-spending that: the bands are nudged along blue–yellow rather than red–green
-and neighbouring units are given different lightness where it is free, which
-holds the worst pair among the eight families on the outside of the model at
-ΔE 4 or better under simulated protanopia, deuteranopia and tritanopia
-(Machado et al. 2009, severity 1.0), against ΔE 0.5 before any of this work.
-**That is a partial measure and is recorded as one: ΔE 4–5 is a difference,
-not a comfortable one.** A version that raised those floors to ΔE 12 was
-measured and rejected because it cost the central sulcus, which dropped to
-ΔE 18.7 and stopped reading for everyone. **Structures inside one family are
-separated by lightness and saturation, which dichromacy compresses, and are
-not claimed to be distinguishable by colour for those readers** — the panel
-names what is selected, and neither the parts tree nor the layer slider uses
-colour. A simulation is a model of what someone sees, not a measurement of it:
-it can show a collapse and cannot certify that there is none, and no reader
-with colour-vision deficiency has used this scene. Natural-anatomy shades use a constrained low-saturation
+spending that: the bands lean along blue–yellow rather than red–green and
+neighbouring units are given different lightness where it is free, which holds
+the worst pair among the eight families on the outside of the model at ΔE 3 or
+better under simulated protanopia, deuteranopia and tritanopia (Machado et al.
+2009, severity 1.0), against ΔE 0.5 before any of this work. **That is a
+partial measure and is recorded as one: ΔE 4 is a difference, not a
+comfortable one.** A version that raised those floors to ΔE 12 was measured
+and rejected because it cost the central sulcus, which dropped to ΔE 18.7 and
+stopped reading for everyone.
+
+**Red and green are used deliberately.** What colour-vision deficiency rules
+out is making red-versus-green the only difference between two things a reader
+must tell apart, not the hues themselves, so the red limbic lobe and the green
+parietal lobe are here with a lightness difference against what they border.
+The cost is measured: a saturated red lowers the dichromacy floor by about
+1 ΔE, because red, orange and brown share the one chromatic axis those readers
+have and can then be separated only by lightness. **Structures inside one
+family are separated by lightness and saturation, which dichromacy compresses,
+and are not claimed to be distinguishable by colour for those readers** — the
+panel names what is selected, and neither the parts tree nor the layer slider
+uses colour. A simulation is a model of what someone sees, not a measurement
+of it: it can show a collapse and cannot certify that there is none, and no
+reader with colour-vision deficiency has used this scene. Natural-anatomy shades use a constrained low-saturation
 range with small deterministic lightness differences between named meshes. The
 same selector also updates the legend swatches; neither mode changes anatomical
 identity or geometry. **Colour aids identification and grouping; it does not
@@ -662,6 +670,42 @@ floors are what a model predicts, not what a reader reported, and the promise
 stops at the large units. Colour still aids identification and grouping and
 does not show real tissue colour, functional localisation, vascular territory,
 exact boundaries or positional accuracy (§6).
+
+Sources in scope: `src/data/brainAnatomy.js`,
+`src/scenes/nervous/scenes/brainAnatomy/BrainAnatomyScene.js`.
+
+**Revision 28 → 29 (2026-09-21) — red and green come back, and the palette
+gets its presence back.** A presentation change only: no geometry, no atlas
+ids, no labels, no hierarchy, no copy and no claim about anatomy changed, and
+natural-anatomy mode is untouched. Revisions 27 and 28 had drained the colour
+out of the map — saturation capped, no strong red and no strong green anywhere
+on the cortical surface — on an assumption that was never true. Avoiding
+red–green confusion means not letting a red-versus-green difference be the
+*only* thing telling two units apart; it does not mean avoiding the hues, and
+it does not mean lowering saturation. The limbic lobe is now a real red and
+the parietal lobe a real green, each with a lightness difference against what
+it borders.
+
+Both readers gained. On the lit surface, comparing the mean of a patch inside
+each lobe in the left-lateral render, the central sulcus is ΔE 49.4 in normal
+vision and 32.9 under deuteranopia — the best of every palette this scene has
+had, against 31.9 / 20.5 in revision 28 and 26.3 / 9.6 before any of this
+work. Member to member, every touching pair is at least ΔE 35.3 apart in
+normal vision. **The one cost is measured and stated**: the worst pair among
+the eight surface families under simulated dichromacy falls from ΔE 4.7 to
+3.8, because red, orange and brown sit on the same side of the single
+chromatic axis a protanope and a deuteranope have, so they can only be
+separated by lightness. The guard floor moves with it, from 4 to 3, and the
+touching-boundary floor rises from 22 to 28. The all-label audit improves to
+ΔE 4.57 across all 147 structures, all distinct. Every colour-map shade
+changed again (147/147). Of the three mutations that prove the guards,
+one is the defect reported against revision 27 and one fails the
+colour-vision assertion alone. Two of them had been silently failing to apply
+at all, which is recorded as L-53 in `docs/verification-lessons.md` and is why
+`scripts/mutate-colour-family.py` now refuses an edit that changes nothing.
+Colour still aids identification and grouping and does not show real tissue
+colour, functional localisation, vascular territory, exact boundaries or
+positional accuracy (§6).
 
 Sources in scope: `src/data/brainAnatomy.js`,
 `src/scenes/nervous/scenes/brainAnatomy/BrainAnatomyScene.js`.

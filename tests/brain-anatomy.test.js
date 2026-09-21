@@ -502,24 +502,27 @@ test('the units that touch are told apart, and dichromacy gets what is free', ()
   // left the frontal and parietal lobes ΔE 18.7 apart.
   for (const [left, right] of TOUCHING_UNITS) {
     const apart = closest('normal', left, right);
-    assert.ok(apart >= 22, `${left} and ${right} touch and are only ΔE ${apart.toFixed(1)} apart (floor 22)`);
+    assert.ok(apart >= 28, `${left} and ${right} touch and are only ΔE ${apart.toFixed(1)} apart (floor 28)`);
   }
 
   // Colour-vision deficiency is given what is available rather than what it
-  // would cost: the bands are nudged along blue-yellow and given different
-  // lightness where that is free, which lifts the worst pair from ΔE 0.5 to
-  // about 5. **Five is a difference, not a comfortable one.** This floor is a
-  // deliberate partial measure, chosen over a high one that made the central
-  // sulcus unreadable for everyone, and the claim stops at the large units:
-  // structures inside one family are separated by lightness and saturation,
-  // which dichromacy compresses, and nothing here pretends otherwise.
+  // would cost: the bands lean along blue-yellow and neighbours are given
+  // different lightness where that is free, which lifts the worst pair from
+  // ΔE 0.5 to about 4. **Four is a difference, not a comfortable one.** This
+  // floor is a deliberate partial measure, chosen over a high one that made
+  // the central sulcus unreadable for everyone, and lowered again by about 1
+  // when a saturated red was added — red, orange and brown share the one
+  // chromatic axis these readers have, so they can only be told apart by
+  // lightness. The claim stops at the large units: structures inside one
+  // family are separated by lightness and saturation, which dichromacy
+  // compresses, and nothing here pretends otherwise.
   for (const vision of ['protan', 'deutan', 'tritan']) {
     for (let left = 0; left < SURFACE_FAMILIES.length; left += 1) {
       for (let right = left + 1; right < SURFACE_FAMILIES.length; right += 1) {
         const apart = closest(vision, SURFACE_FAMILIES[left], SURFACE_FAMILIES[right]);
         assert.ok(
-          apart >= 4,
-          `under ${vision}, ${SURFACE_FAMILIES[left]} and ${SURFACE_FAMILIES[right]} come within ΔE ${apart.toFixed(1)} (floor 4)`
+          apart >= 3,
+          `under ${vision}, ${SURFACE_FAMILIES[left]} and ${SURFACE_FAMILIES[right]} come within ΔE ${apart.toFixed(1)} (floor 3)`
         );
       }
     }

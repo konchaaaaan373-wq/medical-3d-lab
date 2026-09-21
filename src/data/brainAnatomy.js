@@ -7,12 +7,11 @@
  */
 
 /**
- * One hue band per large anatomical unit, with a little room given to
- * colour-vision deficiency.
+ * One hue band per large anatomical unit.
  *
  * A lobe is a thing a reader points at as a whole ("the frontal lobe"), so the
  * gyri inside it have to read as members of one family before they read as
- * individuals. Each family therefore owns a narrow hue band — at most 31° of
+ * individuals. Each family therefore owns a narrow hue band — at most 23° of
  * CIE Lab hue across all of its structures — and separates its members by
  * lightness and saturation inside that band. Widening `hueSpan` back out is
  * what destroys this: an older palette gave a family up to 130° of HSL hue,
@@ -20,52 +19,63 @@
  * gyri ran from magenta through to yellow and the lobe stopped being a
  * visible group.
  *
- * Two readers are being served here and they pull in different directions,
- * so the split is deliberate and it is not down the middle.
+ * **Red and green are used, and that is not a mistake.** What colour-vision
+ * deficiency rules out is making red-versus-green the *only* difference
+ * between two things a reader has to tell apart — not the hues themselves. So
+ * the red limbic lobe and the green parietal lobe are here, and every pair
+ * that touches is also given a lightness difference, which is the part a
+ * protanope and a deuteranope still see.
  *
- *  - **What everyone sees comes first.** The measure that matters is the
- *    boundary between two units that actually touch — the central sulcus, the
- *    edge of the cerebellum — because that is what a reader traces. Every
- *    touching pair is at least ΔE 26 apart. An earlier attempt bought a high
- *    colour-vision floor by spending most of that: it put the frontal and
- *    parietal lobes at ΔE 18.7, and the central sulcus stopped reading.
- *  - **Colour-vision deficiency gets what is free, not what it would cost.**
- *    The bands are nudged along blue–yellow and given different lightness
- *    where that is available, which lifts the worst pair under simulated
- *    dichromacy from ΔE 0.5 to about 5. That is a partial measure and it is
- *    recorded as one: five is a difference, not a comfortable one, and the
- *    structures *inside* a family are not separable under dichromacy at all.
- *    Colour is the entry point here, not the only handle — selecting names
- *    the structure, and the parts tree and the layer slider use no colour.
+ * Three claims, in the order they are allowed to spend the palette:
  *
- * Both floors are measured member to member in `tests/brain-anatomy.test.js`,
- * which is also where the numbers above are kept honest.
+ *  1. **The boundary between two units that meet.** That is what a reader
+ *     traces — the central sulcus, the edge of the cerebellum — so it is the
+ *     objective, and every touching pair is at least ΔE 35 apart. An earlier
+ *     version maximised the smallest distance over *every* pair of families
+ *     instead; most of those are never on screen together, and the budget came
+ *     out of the central sulcus, which fell to ΔE 18.7 and stopped reading.
+ *  2. **Each family reads as one colour.** The hue band above.
+ *  3. **Colour-vision deficiency gets what is free.** The bands lean along
+ *     blue–yellow and neighbours differ in lightness, which holds the worst
+ *     pair among the eight families on the outside of the model at about
+ *     ΔE 4 under simulated dichromacy, against 0.5 before any of this work.
+ *     **That is a partial measure and is recorded as one.** Adding a
+ *     saturated red cost roughly 1 ΔE here, because red, orange and brown all
+ *     sit on the same side of the one chromatic axis those readers have and
+ *     can then be separated only by lightness. The trade was taken
+ *     deliberately: colour is the entry point, not the only handle —
+ *     selecting names the structure, and the parts tree and the layer slider
+ *     use no colour.
+ *
+ * All three are measured member to member in `tests/brain-anatomy.test.js`.
  *
  * Each family carries its own `seed` because the placement inside a band is a
  * deterministic hash, and a hash that is even enough for 35 deep-grey nuclei
  * is not the same one that is even enough for 21 frontal gyri. Changing a band
  * means re-running that search rather than nudging a number — and the centres
  * have to be solved in the *simulated* space, not in HSL: a light violet loses
- * most of its luminance for a protanope and lands on a dark blue, so two
- * bands that look two tiers apart here can be one colour there.
+ * most of its luminance for a protanope and lands on a dark blue, so two bands
+ * that look two tiers apart here can be one colour there.
  */
 const DETAIL_COLOR_FAMILY = {
-  frontal: { hue: 33, hueSpan: 18, saturation: 70, saturationSpan: 38, lightness: 55, lightnessSpan: 28, seed: 'frontal-v6132' },
-  parietal: { hue: 70, hueSpan: 14, saturation: 70, saturationSpan: 18, lightness: 69, lightnessSpan: 32, seed: 'parietal-v18433' },
-  temporal: { hue: 257, hueSpan: 18, saturation: 61, saturationSpan: 18, lightness: 59, lightnessSpan: 32, seed: 'temporal-v9216' },
-  // Light against the temporal lobe's mid violet: neighbouring bands that
-  // differ in lightness keep a boundary when hue collapses.
-  occipital: { hue: 206, hueSpan: 13, saturation: 54, saturationSpan: 18, lightness: 80, lightnessSpan: 32, seed: 'occipital-v24638' },
-  limbic: { hue: 344, hueSpan: 14, saturation: 66, saturationSpan: 16, lightness: 68, lightnessSpan: 30, seed: 'limbic-v1436' },
-  insula: { hue: 173, hueSpan: 8, saturation: 66, saturationSpan: 10, lightness: 50, lightnessSpan: 10, seed: 'insula-v0' },
-  // Cortex the atlas does not place in a lobe. A near-neutral band says so:
-  // it is the one cortical family that is deliberately not a colour.
-  telencephalon: { hue: 22, hueSpan: 18, saturation: 14, saturationSpan: 24, lightness: 48, lightnessSpan: 40, seed: 'telencephalon-v19482' },
-  deep: { hue: 150, hueSpan: 30, saturation: 44, saturationSpan: 46, lightness: 56, lightnessSpan: 44, seed: 'deep-v5286' },
-  whiteMatter: { hue: 46, hueSpan: 12, saturation: 34, saturationSpan: 16, lightness: 80, lightnessSpan: 16, seed: 'whiteMatter-v12743' },
-  ventricles: { hue: 192, hueSpan: 10, saturation: 62, saturationSpan: 14, lightness: 56, lightnessSpan: 24, seed: 'ventricles-v13728' },
-  cerebellum: { hue: 320, hueSpan: 20, saturation: 50, saturationSpan: 38, lightness: 48, lightnessSpan: 44, seed: 'cerebellum-v19191' },
-  brainstem: { hue: 15, hueSpan: 14, saturation: 41, saturationSpan: 32, lightness: 32, lightnessSpan: 30, seed: 'brainstem-v19322' },
+  frontal: { hue: 40, hueSpan: 18, saturation: 80, saturationSpan: 38, lightness: 40, lightnessSpan: 28, seed: 'frontal-v11857' },
+  parietal: { hue: 123, hueSpan: 14, saturation: 55, saturationSpan: 18, lightness: 64, lightnessSpan: 32, seed: 'parietal-v34384' },
+  temporal: { hue: 263, hueSpan: 18, saturation: 72, saturationSpan: 18, lightness: 48, lightnessSpan: 32, seed: 'temporal-v33800' },
+  occipital: { hue: 207, hueSpan: 13, saturation: 76, saturationSpan: 18, lightness: 60, lightnessSpan: 32, seed: 'occipital-v28133' },
+  // A real red, one tier lighter than the frontal lobe it borders: the hue
+  // is for everyone, the lightness step is what survives dichromacy.
+  limbic: { hue: 1, hueSpan: 14, saturation: 78, saturationSpan: 16, lightness: 59, lightnessSpan: 30, seed: 'limbic-v1436' },
+  insula: { hue: 182, hueSpan: 8, saturation: 63, saturationSpan: 10, lightness: 50, lightnessSpan: 10, seed: 'insula-v0' },
+  // Cortex the atlas does not place in a lobe. A near-neutral band says so.
+  // Cool rather than warm, so it is not a fourth family competing with the
+  // frontal lobe, the limbic lobe and the brainstem on the one axis a
+  // protanope has.
+  telencephalon: { hue: 220, hueSpan: 18, saturation: 12, saturationSpan: 24, lightness: 58, lightnessSpan: 40, seed: 'telencephalon-v72395' },
+  deep: { hue: 152, hueSpan: 30, saturation: 44, saturationSpan: 46, lightness: 58, lightnessSpan: 44, seed: 'deep-v78855' },
+  whiteMatter: { hue: 46, hueSpan: 12, saturation: 34, saturationSpan: 16, lightness: 80, lightnessSpan: 16, seed: 'whiteMatter-v95316' },
+  ventricles: { hue: 192, hueSpan: 10, saturation: 62, saturationSpan: 14, lightness: 58, lightnessSpan: 24, seed: 'ventricles-v1317' },
+  cerebellum: { hue: 320, hueSpan: 20, saturation: 70, saturationSpan: 38, lightness: 58, lightnessSpan: 44, seed: 'cerebellum-v1051' },
+  brainstem: { hue: 12, hueSpan: 14, saturation: 22, saturationSpan: 32, lightness: 29, lightnessSpan: 30, seed: 'brainstem-v4729' },
 };
 
 /**

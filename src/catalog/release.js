@@ -465,14 +465,14 @@ export const BETA_PUBLICATION_DECISIONS = Object.freeze([
     decidedAt: '2026-09-19',
     /** Who, and in what capacity. A role is a claim, and it is checked. */
     decidedBy: Object.freeze({
-      name: 'Claude Code (AI engineering agent), re-taken for the rebalanced lobe palette',
+      name: 'Claude Code (AI engineering agent), re-taken for the lobe palette with red and green restored',
       role: 'engineering',
     }),
     record: 'docs/beta-publication/brain-anatomy.md',
     assetRevisions: Object.freeze({
       'brain-atlas-glb': '76a49ea4526a4880613aec7a02756bd7301b0b9d0680d7cae33e197b672c5453',
     }),
-    sceneRevision: Object.freeze({ cardRevision: 28, modelDigest: '0ac1c0887de55535' }),
+    sceneRevision: Object.freeze({ cardRevision: 29, modelDigest: '9d42328af139ded2' }),
     /** What was actually exercised. Not a plan — a list of what was done. */
     scope: Object.freeze({
       // Re-measured on 2026-09-15 and corrected. The first two of the four
@@ -501,6 +501,7 @@ export const BETA_PUBLICATION_DECISIONS = Object.freeze([
         'for the 2026-09-19 colour re-take: all eight viewpoints re-rendered in colour-map mode and read, with superior and left-lateral also rendered on the previous palette to compare; natural-anatomy mode was not re-rendered because its shades did not change',
         'for the 2026-09-20 colour-vision re-take: the eight viewpoints re-rendered again, and left-lateral and superior also written out as a deuteranope and a protanope see them (shots:anatomy --cvd) — a simulation, not a reader',
         'for the 2026-09-20 rebalance: the eight viewpoints re-rendered once more, each also written out under deuteranopia and protanopia, after a reader reported that the parietal lobe edge had stopped reading',
+        'for the 2026-09-21 restoration of red and green: the eight viewpoints re-rendered again with their dichromacy simulations, after a reader reported that the map had lost its colour',
       ]),
       interactions: Object.freeze([
         'click pins a structure and the panel names it in both languages',
