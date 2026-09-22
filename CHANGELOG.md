@@ -57,6 +57,71 @@ person: Safari, Firefox, touch and a screen reader.
   visit was paying 3.5 kB for a recorder, a frame painter and a consent screen
   that the published models cannot use.
 
+### The aphasia model stopped giving a diagnosis
+
+- **It named the syndrome, and it should not have.** The higher-function scene
+  ran its solved tasks through a chain of conditions — comprehension, then
+  repetition, then fluency, first match wins — and printed the name it landed on
+  as the read-out's largest row, together with a verdict of "not aphasia" for
+  two patterns it had rules to exclude. All of that is gone. A first-match chain
+  turns four dimensionless route values into a clinical category whose answer
+  depends on the order the conditions were written in; the features that
+  actually separate the aphasias — paraphasia, agrammatism, effort, phrase
+  length, which stimulus a task was probed with — are not computed here at all;
+  and ruling a language disorder *out* needs an examination this model does not
+  perform. The classical syndromes are reference reading now, described as
+  relative sparing and variable features, each with a list of what this model
+  cannot tell you about it.
+- **The read-out speaks about routes.** 「保たれる／低下／消失」became
+  「経路は概ね通る／部分的に通る／ほとんど通らない」, because the bottom band of a
+  dimensionless number is not a lost function — 0.2 is not 0. Three computation
+  states are distinguished: computed, cannot be determined, and **not modelled**
+  — the last for reading aloud, connected-speech fluency and the Gerstmann
+  tetrad, which have no routes here and must not be read as normal.
+- **Writing is two routes, on two real structures.** Whole-word spelling by way
+  of the angular gyrus, phoneme-to-grapheme conversion by way of the
+  supramarginal gyrus, which is the anatomy the lexical and phonological
+  agraphia case series reported. A nonword has no lexical entry, so it may not
+  take the lexical route — and that is what makes the two come apart instead of
+  one rescuing the other. Moving the pen is a separate stage: a hand that will
+  not move is not agraphia. Writing no longer runs through the planner for
+  *spoken* output, so cutting the arcuate fasciculus no longer abolishes every
+  kind of writing.
+- **Letters and objects are two processes.** They share one occipitotemporal
+  mesh, because the atlas has one — so a lesion takes both, the result says so,
+  and the dissociation is available as a thought experiment instead of being
+  faked from anatomy.
+- **Repeating a word and repeating a nonsense word are different tasks.** A
+  known word can go round through its meaning; a nonword cannot. So cutting the
+  dorsal bundle leaves one partly available and stops the other, which is the
+  stimulus effect the conduction-aphasia descriptions report and which the model
+  used to flatten into a single row.
+- **The thalamus came off the routes.** It was an obligatory serial gate that
+  took naming to zero, placed there from a description of the syndrome rather
+  than from a lesion study. A chronic-phase series of 550 stroke survivors finds
+  no independent thalamic contribution to naming; the lesion-mapping study
+  implicates a nucleus this atlas does not carry. The influence this model
+  cannot compute is now declared on six language tasks, so "off the routes"
+  cannot read as "no effect".
+- **A unilateral lesion no longer cuts both sides.** Connections took their
+  damage from a channel keyed by id, and an id has no side, so selecting one
+  internal capsule zeroed all three frontal circuits bilaterally. A connection
+  takes its integrity from the structures it runs within, on the side it runs on.
+- **Two kinds of intervention, and they cannot mix.** A lesion on the atlas, or
+  one declared process switched off. The read-out's first row says which, the
+  solver refuses to be handed both, and switching modes takes the other one off
+  the brain as well as off the model.
+- **No preset claims to be a lesion it cannot draw.** The occipital preset took
+  an invented 40% of the corpus callosum as a stand-in for the splenium; it
+  takes the whole commissure and says in its own label that the splenium cannot
+  be selected. The insula, the precentral gyrus and the border zones each say
+  what their mesh is and is not.
+- **The evidence dossier leads with what was not checked.** No full text was
+  read for any claim in it: every medical publisher domain is refused by the
+  build environment, so the strongest verification any row carries is
+  "abstract only", and each row now records which. No clinician has reviewed
+  any of it, and this release does not change that.
+
 ### Higher cortical function, as the route a lesion cut
 
 - **A new model and scene: `higher-brain-function`.** A right-handed brain, and
