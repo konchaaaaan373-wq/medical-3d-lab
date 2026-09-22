@@ -796,6 +796,23 @@ export const MODEL_PROFILES = Object.freeze([
       'range, so the level stays mechanistic. One illustrative HFrEF path, not a natural history.',
   },
   {
+    profileId: 'cardiac-output-elastance-experiment',
+    schemaVersion: 1,
+    geometryBasis: GEOMETRY_BASIS.PROCEDURAL,
+    mechanismLevel: MECHANISM_LEVEL.MECHANISTIC,
+    personalization: PERSONALIZATION.REPRESENTATIVE,
+    intendedUses: [INTENDED_USE.GENERAL_EDUCATION, INTENDED_USE.MEDICAL_EDUCATION],
+    prohibitedUses: [...CORE_PROHIBITED_USES, PROHIBITED_USE.PROGNOSIS],
+    assets: [],
+    validationRecords: [],
+    basis:
+      'The closed-loop seven-compartment time-varying elastance circulation, solved for each of four inputs a reader may ' +
+      'move one at a time, with a boundary that refuses an input outside the swept range and reports no figures for a beat ' +
+      'that did not settle. Mechanistic and not literature-calibrated: the reference condition is a calibration chosen so a ' +
+      'healthy case lands where the textbooks put it, the reduced-contractility preset is an illustrative magnitude, and the ' +
+      'model carries no reflex regulation, so nothing here predicts what a manipulation would do to a person.',
+  },
+  {
     profileId: 'circulation-steady-state-lumped',
     schemaVersion: 1,
     geometryBasis: GEOMETRY_BASIS.PROCEDURAL,

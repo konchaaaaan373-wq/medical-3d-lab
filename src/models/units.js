@@ -65,3 +65,26 @@ export const perMinuteToPerSecond = (perMinute) => perMinute / 60;
 
 /** @param {number} perSecond */
 export const perSecondToPerMinute = (perSecond) => perSecond * 60;
+
+/**
+ * 1 mmHg·s/mL in dyn·s·cm⁻⁵.
+ *
+ * The vascular models hold resistance in mmHg·s/mL, because that is what
+ * ΔP = Q·R gives with pressure in mmHg and flow in mL/s. Clinical read-outs
+ * quote systemic vascular resistance in dyn·s·cm⁻⁵, which is the same quantity
+ * in CGS: 1 mmHg is 1333.22 dyn/cm² and 1 mL is 1 cm³, so the factor is that
+ * pressure conversion and nothing else.
+ *
+ * The bedside shortcut — SVR = 80·(MAP − CVP)/CO with CO in L/min — is this
+ * same number wearing the per-minute-to-per-second conversion: 1333.22 × 60 /
+ * 1000 = 79.99. Two routes to one figure, which is what
+ * `tests/cardiac-output-model.test.js` checks rather than calling this
+ * function twice.
+ */
+export const DYN_S_CM5_PER_MMHG_S_ML = 1333.22;
+
+/** @param {number} mmHgSPerMl resistance in mmHg·s/mL */
+export const mmHgSPerMlToDynSCm5 = (mmHgSPerMl) => mmHgSPerMl * DYN_S_CM5_PER_MMHG_S_ML;
+
+/** @param {number} dynSCm5 resistance in dyn·s·cm⁻⁵ */
+export const dynSCm5ToMmHgSPerMl = (dynSCm5) => dynSCm5 / DYN_S_CM5_PER_MMHG_S_ML;

@@ -7,6 +7,7 @@ import {
   ASSERTABLE,
   ASTHMA_EVIDENCE,
   BILIARY_EVIDENCE,
+  CARDIAC_OUTPUT_EVIDENCE,
   BOWEL_OBSTRUCTION_EVIDENCE,
   CIRCULATION_EVIDENCE,
   CONFIDENCE,
@@ -66,6 +67,7 @@ import {
  */
 const FILE_LAYERS = {
   'circulation-physiology.test.js': LAYER.EXTERNAL,
+  'cardiac-output-physiology.test.js': LAYER.EXTERNAL,
   'respiratory-physiology.test.js': LAYER.EXTERNAL,
   'portal-haemodynamics.test.js': LAYER.EXTERNAL,
   'hepatorenal-physiology.test.js': LAYER.EXTERNAL,
@@ -94,6 +96,7 @@ const layerOf = (file) => FILE_LAYERS[file] ?? LAYER.INTEGRITY;
 
 const DOSSIERS = {
   circulation: 'docs/model-evidence/circulation.md',
+  'cardiac-output': 'docs/model-evidence/cardiac-output.md',
   'higher-brain-function': 'docs/model-evidence/higher-brain-function.md',
   copd: 'docs/model-evidence/copd.md',
   asthma: 'docs/model-evidence/asthma.md',
@@ -246,6 +249,7 @@ test('the registries cover every model-backed scene and nothing is duplicated ac
     EVIDENCE_REGISTRIES.map((registry) => registry[0].scene),
     [
       'circulation',
+      'cardiac-output',
       'higher-brain-function',
       'copd',
       'asthma',
@@ -275,6 +279,7 @@ test('the registries cover every model-backed scene and nothing is duplicated ac
     ]
   );
   assert.ok(CIRCULATION_EVIDENCE.length >= 8);
+  assert.ok(CARDIAC_OUTPUT_EVIDENCE.length >= 8);
   assert.ok(HIGHER_BRAIN_FUNCTION_EVIDENCE.length >= 8);
   assert.ok(COPD_EVIDENCE.length >= 8);
   assert.ok(ASTHMA_EVIDENCE.length >= 8);

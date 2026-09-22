@@ -262,7 +262,7 @@ severity scale or a test result.
 - **Not yet honest enough**: a connection this model declares as conceptual is
   drawn the same way as one anchored in a real tract mesh. A reader cannot tell
   from the 3D which lines are tractography-shaped claims and which are
-  functional arrows. `docs/follow-ups.md` F-188.
+  functional arrows. `docs/follow-ups.md` F-198.
 
 ## 9.5 Where else this model is read
 
@@ -366,7 +366,7 @@ the overlay says that for the whole fifteen seconds.
   `pending`, and this revision does not change it.
 - The tract meshes this scene draws have **never been reviewed by an anatomist**.
 - **The 3D view does not yet distinguish a conceptual connection from a real
-  tract** in its legend (`docs/follow-ups.md` F-188).
+  tract** in its legend (`docs/follow-ups.md` F-198).
 
 ## 11. Where it will mislead
 

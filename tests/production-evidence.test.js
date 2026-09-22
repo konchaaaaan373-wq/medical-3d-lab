@@ -37,6 +37,7 @@ test('migrated production evidence and the existing model registries share one c
       'heart-failure',
       'amyloid-beta',
       'circulation',
+      'cardiac-output',
       'higher-brain-function',
       'copd',
       'asthma',

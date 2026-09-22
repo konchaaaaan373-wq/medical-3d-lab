@@ -114,7 +114,7 @@ test('reference: no scene or app file imports it as a source of answers', () => 
       // it to say where the names went. What is forbidden is an import.
       assert.ok(
         !/from\s+'[^']*aphasiaReference/.test(read(`${root}/${name}`)),
-        `${root}/${name} does not import the reference layer yet (see docs/follow-ups.md F-189)`
+        `${root}/${name} does not import the reference layer yet (see docs/follow-ups.md F-199)`
       );
     }
   }

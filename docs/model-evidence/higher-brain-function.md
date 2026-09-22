@@ -180,8 +180,8 @@ Two presets outside the eleven also changed and are recorded for completeness:
 | APH-11 | Watershed presets fixed to syndromes and severities | presets + classifier | **Fixed.** No labels; each declares that it is a set of structures, not a perfusion territory |
 | APH-12 | Gerstmann tetrad forced from the angular gyrus | `calculation-and-body-schema` + classifier | **Fixed.** Declared `modelled: false` |
 | APH-13 | "Cannot compute", "not implemented" and "blocked" conflated | `statusFor` | **Fixed.** Three computation states, `declaredBlock` separate from the bottom band, and `resolveTaskResult` holds the conservative rules |
-| APH-14 | Functional routes conflated with real tracts | `FUNCTION_EDGES` | **Partly fixed.** Every connection declares `mapping` (`atlas-structure` / `coarse-educational` / `conceptual`); the 3D legend work is in `docs/follow-ups.md` F-188 |
-| APH-15 | Result, legend, dossier and release state inconsistent | across | **Fixed for the model, the read-out and these documents.** The scene's 3D legend distinction is F-188 |
+| APH-14 | Functional routes conflated with real tracts | `FUNCTION_EDGES` | **Partly fixed.** Every connection declares `mapping` (`atlas-structure` / `coarse-educational` / `conceptual`); the 3D legend work is in `docs/follow-ups.md` F-198 |
+| APH-15 | Result, legend, dossier and release state inconsistent | across | **Fixed for the model, the read-out and these documents.** The scene's 3D legend distinction is F-198 |
 
 ## 8. Sources consulted and not used
 

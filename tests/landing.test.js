@@ -266,20 +266,27 @@ test('landing: the public models are live organs, not a card index', () => {
     const viewports = findByClass(mounted.element, 'landing-demo-viewport');
     const links = findByClass(mounted.element, 'landing-cta');
 
-    // Four published models since 2026-09-16 (two from 2026-09-15). What this
-    // test is for has not changed: the landing page shows **one organ, live**,
-    // and never turns into a grid of cards as the published set grows — which
-    // is the failure mode each new model makes more tempting. The literal is
-    // kept rather than read from the manifest on both sides, so that widening
-    // the release has to come here and be looked at.
-    assert.equal(PUBLIC_MANIFEST.count, 4);
+    // What this test is for has not changed: the landing page shows **one
+    // organ, live**, and never turns into a grid of cards as the published set
+    // grows — which is the failure mode each new model makes more tempting.
+    // The literals are kept rather than read from the manifest on both sides,
+    // so that widening the release has to come here and be looked at.
+    //
+    // **Models and organs are not the same count any more**, and this used to
+    // assert they were. `cardiac-output` was published on 2026-09-22 and is
+    // the heart's second model, so five models sit on four organs. The
+    // chooser is over *organs* — it swaps what is in the viewport — so it is
+    // the organ count it has to match. Asserting the model count was true
+    // while every organ had exactly one model, and it was never the rule.
+    assert.equal(PUBLIC_MANIFEST.count, 5);
+    assert.equal(PUBLIC_MANIFEST.organs.length, 4);
     assert.equal(findByClass(mounted.element, 'landing-scene-card').length, 0);
     assert.equal(viewports.length, 1, 'one organ on screen, however many are published');
     // The chooser the design always said a second model would bring: with one
     // published organ there was nothing to choose between and no control was
     // drawn. There is one control per published organ, and they are controls
     // over the single live viewport rather than cards standing in for it.
-    assert.equal(controls.length, PUBLIC_MANIFEST.count);
+    assert.equal(controls.length, PUBLIC_MANIFEST.organs.length);
     assert.equal(controls.length, 4);
     // The link follows whichever organ the rotation put up today, rather than
     // being pinned to the brain.
