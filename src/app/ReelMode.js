@@ -177,6 +177,13 @@ export function createReelMode({
     viewer.camera.lookAt(target);
     // Keep the controls' target in step so exiting hands back a sane camera.
     viewer.controls.target.copy(target);
+    // Presentation only, and **after** the camera has moved: a scene that sizes
+    // anything by how much of the frame it fills has to be told where the frame
+    // is now. The sequence sets the camera after driving the scene, so a scene
+    // told during `driveAt` would size everything for the previous instant —
+    // which is how the line types in the higher-function sequence came out a
+    // pixel wide while being three pixels wide in the scene itself.
+    scene.setFramingCamera?.(viewer.camera, viewer.renderer?.domElement?.clientHeight);
 
     // Kept, not only rendered: the video export paints this same description
     // into the recorded frame, so the file carries the captions the reader

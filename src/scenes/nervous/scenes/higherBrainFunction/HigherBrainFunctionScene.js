@@ -192,6 +192,9 @@ export class HigherBrainFunctionScene {
     this.pageLeaving = false;
     this.ready = Promise.resolve(this.root);
     this.pulseTime = 0;
+    /** How much world the frame's height spans where the route is. See `setFramingCamera`. */
+    this.frameSpan = HigherBrainFunctionScene.DEFAULT_FRAME_SPAN;
+    this.frameSpanStep = Math.round(Math.log(this.frameSpan) / Math.log(1.06));
 
     this._pageHide = () => { this.pageLeaving = true; };
     if (typeof window !== 'undefined') window.addEventListener('pagehide', this._pageHide);
@@ -694,27 +697,115 @@ export class HigherBrainFunctionScene {
    * segment stays one mesh and the reach painting below can walk it in order.
    */
   static LINE_TYPES = Object.freeze({
-    [MAPPING.ATLAS]: Object.freeze({ id: 'tract', dash: null, radius: 0.026 }),
-    [MAPPING.COARSE]: Object.freeze({ id: 'coarse', dash: Object.freeze({ on: 3, off: 3 }), radius: 0.018 }),
-    [MAPPING.CONCEPTUAL]: Object.freeze({ id: 'conceptual', dash: Object.freeze({ on: 1, off: 4 }), radius: 0.012 }),
+    [MAPPING.ATLAS]: Object.freeze({ id: 'tract', widthPx: 3.2, dash: null }),
+    [MAPPING.COARSE]: Object.freeze({
+      id: 'coarse', widthPx: 2.4, dash: Object.freeze({ onPx: 12, offPx: 7 }),
+    }),
+    [MAPPING.CONCEPTUAL]: Object.freeze({
+      id: 'conceptual', widthPx: 1.7, dash: Object.freeze({ onPx: 2.5, offPx: 7 }),
+    }),
   });
 
   /**
-   * How long one ring of a dashed segment is, in the scene's own units.
+   * The frame height the pixel figures above are quoted for.
    *
-   * Fixed in **world** space rather than as a fraction of the segment, because
-   * a fraction gives a short connection short dashes and a long one long
-   * dashes: the same line type then looks like two. At this value a coarse
-   * dash is about 0.1 units on and 0.1 off, which is roughly fifteen pixels at
-   * the scene's default framing — the size at which a dashed line reads as
-   * dashed rather than as a slightly noisy solid one.
+   * Widths and dashes are held as a **fraction of the frame's height**, and
+   * that is the whole of how this survives being looked at in four different
+   * sizes. A line that is 1/280 of the frame is 3.2px in a 900px-tall frame and
+   * 3.2px again when the same frame is exported, downscaled and watched on a
+   * phone — because everything in the image scaled with it. Sizing in world
+   * units does not survive the camera moving; sizing in device pixels does not
+   * survive the export; sizing in CSS pixels does not survive either, and adds
+   * the drawing-buffer and device-pixel-ratio confusion on top.
+   *
+   * So the only thing this needs from the outside is the camera, and the only
+   * arithmetic is "how much world does the frame's height span at the distance
+   * the route is": `2 · d · tan(fov/2)`. `fov` is the vertical field of view,
+   * which is why the fraction is of the height and not of the width.
    */
-  static DASH_RING = 0.035;
+  static REFERENCE_FRAME_HEIGHT_PX = 900;
+
+  /**
+   * Which height the pixels are counted against.
+   *
+   * The CSS height of the canvas — what the frame is *presented* at — and not
+   * the drawing buffer, which is that times the device pixel ratio, and not the
+   * export size, which is the same image scaled again. Picking the presented
+   * height is what makes a device pixel ratio of 1 and of 2 give the same
+   * picture: the buffer has twice the samples and the line covers the same
+   * fraction of it. A caller that has no canvas — a unit test — gets the
+   * reference height, so the quoted numbers are the numbers.
+   */
+  frameHeightPx = HigherBrainFunctionScene.REFERENCE_FRAME_HEIGHT_PX;
+
+  /** How much of the curve one ring of a dashed tube covers, in the same pixels. */
+  static RING_PX = 2;
 
   /** The line type of a step, falling back to the most cautious one. */
   static lineTypeFor(mapping) {
     return HigherBrainFunctionScene.LINE_TYPES[mapping]
       ?? HigherBrainFunctionScene.LINE_TYPES[MAPPING.CONCEPTUAL];
+  }
+
+  /**
+   * How much world one unit of frame height covers, where the route is.
+   *
+   * Everything the line drawing needs from the camera, in one number. A scene
+   * with no camera yet — a unit test, the moment before the first frame — gets
+   * a default that matches the scene's own opening pose, so a route built
+   * before the first frame is not built at some arbitrary size and then rebuilt.
+   */
+  static frameSpanFor(camera, centre) {
+    if (!camera?.isPerspectiveCamera) return HigherBrainFunctionScene.DEFAULT_FRAME_SPAN;
+    const distance = camera.position.distanceTo(centre ?? HigherBrainFunctionScene.cameraPose.target);
+    return 2 * distance * Math.tan((camera.fov * Math.PI) / 360);
+  }
+
+  /** The opening pose's own span, for a route built before any camera arrives. */
+  static DEFAULT_FRAME_SPAN = 2
+    * HigherBrainFunctionScene.cameraPose.position.distanceTo(HigherBrainFunctionScene.cameraPose.target)
+    * Math.tan((42 * Math.PI) / 360);
+
+  /** World units per presented pixel, at the current framing. */
+  _worldPerPixel() {
+    return (this.frameSpan ?? HigherBrainFunctionScene.DEFAULT_FRAME_SPAN)
+      / (this.frameHeightPx || HigherBrainFunctionScene.REFERENCE_FRAME_HEIGHT_PX);
+  }
+
+  /**
+   * Keep the drawn line the size it is meant to look, as the camera moves.
+   *
+   * Called from the frame loop with the live camera. Geometry is rebuilt only
+   * when the framing has actually moved the apparent size — in steps of about
+   * six per cent, which is below what a reader can see and far above what an
+   * orbit produces per frame. Rebuilding a tube every frame of a slider drag is
+   * the thing this is careful not to do.
+   */
+  setFramingCamera(camera, frameHeightPx) {
+    const span = HigherBrainFunctionScene.frameSpanFor(camera, this._routeCentre());
+    if (!Number.isFinite(span) || span <= 0) return;
+    const height = Number.isFinite(frameHeightPx) && frameHeightPx > 0
+      ? frameHeightPx
+      : this.frameHeightPx;
+    const step = Math.round(Math.log(span) / Math.log(1.06));
+    if (step === this.frameSpanStep && height === this.frameHeightPx) return;
+    this.frameHeightPx = height;
+    this.frameSpanStep = step;
+    this.frameSpan = 1.06 ** step;
+    // The shape is unchanged; only its thickness and dash period are not, and
+    // both live in the geometry. Dropping the cached shape is what asks for it.
+    this.routeShape = null;
+    this._buildRouteLine(this.tracedTask());
+    this._applyCycle();
+  }
+
+  /** The middle of the drawn route, or the subject's own centre before there is one. */
+  _routeCentre() {
+    const points = this.routePositions ?? [];
+    if (points.length === 0) return HigherBrainFunctionScene.cameraPose.target;
+    const centre = new THREE.Vector3();
+    for (const point of points) centre.add(point.position);
+    return centre.multiplyScalar(1 / points.length).add(this.root.position);
   }
 
   /**
@@ -802,15 +893,19 @@ export class HigherBrainFunctionScene {
   _buildRouteSegment(curve, span) {
     const type = HigherBrainFunctionScene.lineTypeFor(span.step.mapping);
     const radial = 8;
-    // Enough rings that a dash is a fixed length on screen, and bounded so a
-    // long span does not become a thousand-ring tube.
-    const length = curve.getPoint(span.toAt).distanceTo(curve.getPoint(span.fromAt));
-    const rings = Math.min(96, Math.max(24, Math.round(length / HigherBrainFunctionScene.DASH_RING)));
+    const perPixel = this._worldPerPixel();
+    // Along the curve, not between its ends. A route that bends — and the one
+    // through the arcuate bends a long way — is much longer than the straight
+    // line between the two processes it joins, so measuring the chord gave a
+    // bent segment shorter dashes than a straight one of the same length.
+    const length = HigherBrainFunctionScene._arcLength(curve, span.fromAt, span.toAt);
+    const ringWorld = perPixel * HigherBrainFunctionScene.RING_PX;
+    const rings = Math.min(400, Math.max(12, Math.round(length / ringWorld)));
     const sub = new THREE.CatmullRomCurve3(
       Array.from({ length: rings + 1 }, (unused, index) => curve
         .getPoint(span.fromAt + ((span.toAt - span.fromAt) * index) / rings))
     );
-    const geometry = new THREE.TubeGeometry(sub, rings, type.radius, radial, false);
+    const geometry = new THREE.TubeGeometry(sub, rings, (type.widthPx / 2) * perPixel, radial, false);
     geometry.setAttribute(
       'color',
       new THREE.BufferAttribute(new Float32Array(geometry.attributes.position.count * 4), 4)
@@ -826,12 +921,38 @@ export class HigherBrainFunctionScene {
       id: span.step.id,
       mapping: span.step.mapping,
       lineType: type.id,
-      dash: type.dash,
+      dash: HigherBrainFunctionScene._dashRings(type.dash),
+      widthPx: type.widthPx,
       fromAt: span.fromAt,
       toAt: span.toAt,
       rings: rings + 1,
       ringWidth: radial + 1,
     };
+  }
+
+  /** The length of a piece of the curve, walked rather than measured end to end. */
+  static _arcLength(curve, fromAt, toAt, samples = 32) {
+    let total = 0;
+    let previous = curve.getPoint(fromAt);
+    for (let step = 1; step <= samples; step += 1) {
+      const point = curve.getPoint(fromAt + ((toAt - fromAt) * step) / samples);
+      total += point.distanceTo(previous);
+      previous = point;
+    }
+    return total;
+  }
+
+  /**
+   * A dash quoted in pixels, as whole rings of the tube.
+   *
+   * At least one ring on and one off, so that a pattern never rounds away into
+   * a solid line — a dotted connection that renders solid is the one outcome
+   * this distinction cannot survive.
+   */
+  static _dashRings(dash) {
+    if (!dash) return null;
+    const rings = (px) => Math.max(1, Math.round(px / HigherBrainFunctionScene.RING_PX));
+    return Object.freeze({ on: rings(dash.onPx), off: rings(dash.offPx), onPx: dash.onPx, offPx: dash.offPx });
   }
 
   /** What line type each piece of the drawn route is, for a legend or a test. */
@@ -1102,8 +1223,17 @@ export class HigherBrainFunctionScene {
     );
   }
 
-  update(dt) {
+  /**
+   * @param {number} dt seconds since the last frame
+   * @param {number} [elapsed] seconds since the scene started
+   * @param {{camera?: import('three').Camera}} [view] the live framing, for line sizing only
+   */
+  update(dt, elapsed, view) {
     if (!this.pulse) return;
+    // Presentation only. Nothing the camera does reaches the solver: the route,
+    // the mappings, the integrities and the task results are the same at every
+    // distance, and `AR3-T15` is what holds that.
+    if (view?.camera) this.setFramingCamera(view.camera, view.frameHeightPx);
     this.renderAtSeconds(this.cycleTime + dt);
   }
 

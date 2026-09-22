@@ -1445,7 +1445,13 @@ export async function createApp({ stage, ui, onRetryModel = null }) {
   // --- loop -----------------------------------------------------------------
   viewer.onFrame((dt, elapsed) => {
     playback.update(dt);
-    scene.update(dt, elapsed);
+    // The live framing goes with the frame. A scene that draws something whose
+    // apparent size has to survive a zoom, a phone and a video export needs to
+    // know how much of the frame it is filling; every other scene ignores it.
+    scene.update(dt, elapsed, {
+      camera: viewer.camera,
+      frameHeightPx: viewer.renderer?.domElement?.clientHeight,
+    });
     if (learning) {
       learningPanel.tick();
       metricsPanel?.highlight(learningPanel.watched);

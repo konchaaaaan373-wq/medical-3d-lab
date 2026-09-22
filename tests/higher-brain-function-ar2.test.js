@@ -701,19 +701,20 @@ test('AR2-T34: the three line types reach the renderer, and the legend has all t
     else assert.ok(transparent > 0, `${segment.id} has gaps`);
   }
 
-  // The dash is a fixed length in the world, not a fraction of the segment: a
-  // fraction gives a short connection short dashes and a long one long dashes,
-  // and the same line type then looks like two different ones.
+  // A dash is a fixed share of the frame's height, not a fraction of the
+  // segment it is on: a fraction gives a short connection short dashes and a
+  // long one long dashes, and the same line type then looks like two. It was
+  // world units for one commit, which fixed that and left the pattern
+  // disappearing whenever the camera pulled back — AR3-T12 is the rest of it.
   const dashed = mixed.routeSegments.filter((segment) => segment.dash);
   assert.ok(dashed.length >= 2, 'more than one dashed piece to compare');
-  const dashLengths = dashed.map((segment) => {
-    const span = mixed.routeCurve.getPoint(segment.toAt).distanceTo(mixed.routeCurve.getPoint(segment.fromAt));
-    return (span / (segment.rings - 1)) * segment.dash.on;
-  });
-  for (const length of dashLengths) {
+  for (const segment of dashed) {
+    const span = HigherBrainFunctionScene._arcLength(mixed.routeCurve, segment.fromAt, segment.toAt);
+    const onPx = ((span / (segment.rings - 1)) * segment.dash.on)
+      / (mixed.frameSpan / HigherBrainFunctionScene.REFERENCE_FRAME_HEIGHT_PX);
     assert.ok(
-      length > HigherBrainFunctionScene.DASH_RING * 0.5 && length < HigherBrainFunctionScene.DASH_RING * 6,
-      `a dash is a plausible length in the world (${length.toFixed(3)})`
+      Math.abs(onPx - segment.dash.onPx) < segment.dash.onPx * 0.4,
+      `${segment.id}: a dash is about the length it was asked for (${onPx.toFixed(1)}px of ${segment.dash.onPx})`
     );
   }
 

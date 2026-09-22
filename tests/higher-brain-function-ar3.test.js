@@ -1,6 +1,8 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 
+import * as THREE from 'three';
+
 import { PATHWAY_STATE } from '../src/models/higherBrainFunction.js';
 import { PALETTE } from '../src/data/higherBrainFunction.js';
 import HigherBrainFunctionScene from '../src/scenes/nervous/scenes/higherBrainFunction/index.js';
@@ -181,4 +183,220 @@ test('AR3-T11: a weak positive route reaches the end, and the brightness floor c
   assert.equal(tiny.answerStrength(), HigherBrainFunctionScene.ANSWER_VISIBILITY_FLOOR);
   assert.notEqual(tinyTask.availability, HigherBrainFunctionScene.ANSWER_VISIBILITY_FLOOR);
   assert.equal(tiny.routeDisplay().kind, DISPLAY.WEAK, 'and it is not a blockade');
+});
+
+// --- AR3-T12 … T17: the line is the size it is meant to look ----------------
+
+/** A camera at a given distance, framed the way the viewer frames the scene. */
+const cameraAt = (distance, fov = 42) => {
+  const camera = new THREE.PerspectiveCamera(fov, 1.6, 0.1, 200);
+  const pose = HigherBrainFunctionScene.cameraPose;
+  camera.position.copy(pose.position).sub(pose.target).normalize().multiplyScalar(distance).add(pose.target);
+  camera.updateProjectionMatrix();
+  return camera;
+};
+
+/** What a segment measures, expressed in the pixels its line type asked for. */
+const inPixels = (scene, segment) => {
+  const perPixel = scene.frameSpan / scene.frameHeightPx;
+  const span = HigherBrainFunctionScene._arcLength(scene.routeCurve, segment.fromAt, segment.toAt);
+  const ring = span / (segment.rings - 1);
+  return {
+    width: (segment.mesh.geometry.parameters.radius * 2) / perPixel,
+    on: segment.dash ? (ring * segment.dash.on) / perPixel : null,
+    off: segment.dash ? (ring * segment.dash.off) / perPixel : null,
+  };
+};
+
+test('AR3-T12: pulling the camera back keeps the line the size it looks, not the size it is', () => {
+  const scene = buildScene({ task: 'writing-to-dictation-word' }, 0);
+  const measure = () => scene.routeSegments.map((segment) => ({
+    id: segment.id, lineType: segment.lineType, ...inPixels(scene, segment),
+  }));
+
+  scene.setFramingCamera(cameraAt(9));
+  const near = measure();
+  const nearWorld = scene.routeSegments.map((segment) => segment.mesh.geometry.parameters.radius);
+
+  scene.setFramingCamera(cameraAt(22));
+  const far = measure();
+  const farWorld = scene.routeSegments.map((segment) => segment.mesh.geometry.parameters.radius);
+
+  // The world radius grew with the distance — which is the whole point, and is
+  // what a world-unit constant could not do.
+  for (const [index, radius] of farWorld.entries()) {
+    assert.ok(radius > nearWorld[index] * 1.5, `${near[index].id}: the world radius followed the camera`);
+  }
+  // And what a reader sees did not change.
+  for (const [index, row] of far.entries()) {
+    assert.ok(
+      Math.abs(row.width - near[index].width) < near[index].width * 0.12,
+      `${row.id}: the same apparent width (${near[index].width.toFixed(2)} → ${row.width.toFixed(2)}px)`
+    );
+    if (!row.on) continue;
+    assert.ok(
+      Math.abs(row.on - near[index].on) < near[index].on * 0.35,
+      `${row.id}: the same apparent dash (${near[index].on.toFixed(1)} → ${row.on.toFixed(1)}px)`
+    );
+  }
+
+  // A portrait reel frame is a different field of view, and it is handled by
+  // the same arithmetic rather than by a second constant.
+  scene.setFramingCamera(cameraAt(13, 28));
+  for (const row of measure()) {
+    const type = Object.values(HigherBrainFunctionScene.LINE_TYPES)
+      .find((candidate) => candidate.id === row.lineType);
+    assert.ok(
+      Math.abs(row.width - type.widthPx) < type.widthPx * 0.15,
+      `${row.id}: ${row.width.toFixed(2)}px against a target of ${type.widthPx}px`
+    );
+  }
+});
+
+test('AR3-T13: a bent segment and a short one carry the same line type as a straight long one', () => {
+  // Naming an object has three tract pieces and two coarse ones, so each line
+  // type is on segments of visibly different length and curvature.
+  const scene = buildScene({ task: 'naming-object' }, 0);
+  scene.setFramingCamera(cameraAt(13));
+  const byType = new Map();
+  for (const segment of scene.routeSegments) {
+    if (!byType.has(segment.lineType)) byType.set(segment.lineType, []);
+    byType.get(segment.lineType).push(inPixels(scene, segment));
+  }
+  assert.ok(byType.size >= 2, 'more than one line type on this route');
+
+  const lengths = scene.routeSegments.map((segment) => HigherBrainFunctionScene
+    ._arcLength(scene.routeCurve, segment.fromAt, segment.toAt));
+  assert.ok(Math.max(...lengths) > Math.min(...lengths) * 1.4, 'the segments differ in length');
+
+  for (const [lineType, rows] of byType) {
+    const widths = rows.map((row) => row.width);
+    assert.ok(
+      Math.max(...widths) - Math.min(...widths) < 0.25,
+      `${lineType}: every piece is the same width (${widths.map((w) => w.toFixed(2)).join(', ')})`
+    );
+    if (rows[0].on == null) continue;
+    const ons = rows.map((row) => row.on);
+    assert.ok(
+      Math.max(...ons) < Math.min(...ons) * 1.6,
+      `${lineType}: every piece has about the same dash (${ons.map((o) => o.toFixed(1)).join(', ')})`
+    );
+  }
+});
+
+test('AR3-T13b: a dash never rounds away into a solid line', () => {
+  const scene = buildScene({ task: 'writing-to-dictation-word' }, 0);
+  // From very close to very far: at no framing may a dashed piece lose its gaps.
+  for (const distance of [4, 6, 9, 13, 20, 40, 80]) {
+    scene.setFramingCamera(cameraAt(distance));
+    scene.renderAtSeconds(TRAVELLING);
+    for (const segment of scene.routeSegments) {
+      if (segment.lineType === 'tract') continue;
+      assert.ok(segment.dash.on >= 1 && segment.dash.off >= 1, `${distance}: ${segment.id} keeps a pattern`);
+      const colours = segment.mesh.geometry.attributes.color;
+      let transparent = 0;
+      for (let index = 0; index < colours.count; index += 1) if (colours.getW(index) === 0) transparent += 1;
+      assert.ok(transparent > 0, `${distance}: ${segment.id} still has gaps in it`);
+    }
+  }
+});
+
+test('AR3-T14b: the pixels are counted against the presented height, once', () => {
+  const scene = buildScene({ task: 'writing-to-dictation-word' }, 0);
+  // Two frames of the same shape, one twice as tall. A line is the same number
+  // of pixels in both, which is the whole claim: it is sized against what the
+  // reader looks at, and not against a drawing buffer or a device pixel ratio.
+  scene.setFramingCamera(cameraAt(13), 900);
+  const at900 = scene.routeSegments.map((segment) => inPixels(scene, segment).width);
+  const world900 = scene.routeSegments.map((segment) => segment.mesh.geometry.parameters.radius);
+
+  scene.setFramingCamera(cameraAt(13), 1800);
+  const at1800 = scene.routeSegments.map((segment) => inPixels(scene, segment).width);
+  const world1800 = scene.routeSegments.map((segment) => segment.mesh.geometry.parameters.radius);
+
+  for (const [index, width] of at1800.entries()) {
+    assert.ok(Math.abs(width - at900[index]) < 0.05, 'the same apparent width in both frames');
+    // The world size halved, because the taller frame shows the same world in
+    // twice as many pixels. A sizing that ignored the height would not move.
+    assert.ok(
+      Math.abs(world1800[index] - world900[index] / 2) < world900[index] * 0.02,
+      'and the world size followed the frame'
+    );
+  }
+
+  // No height given is the reference height, so the quoted numbers hold.
+  const plain = buildScene({ task: 'writing-to-dictation-word' }, 0);
+  assert.equal(plain.frameHeightPx, HigherBrainFunctionScene.REFERENCE_FRAME_HEIGHT_PX);
+});
+
+test('AR3-T14: the sizing is a property of the framing, and is not applied twice', () => {
+  const scene = buildScene({ task: 'writing-to-dictation-word' }, 0);
+  // The same camera at the same distance answers the same thing, whatever the
+  // aspect or the device pixel ratio the renderer happens to be using: nothing
+  // here reads a drawing buffer or a pixel ratio, so there is nothing to
+  // double-count.
+  scene.setFramingCamera(cameraAt(13));
+  const first = scene.routeSegments.map((segment) => segment.mesh.geometry.parameters.radius);
+  const wide = cameraAt(13);
+  wide.aspect = 0.5;
+  wide.updateProjectionMatrix();
+  scene.setFramingCamera(wide);
+  assert.deepEqual(scene.routeSegments.map((segment) => segment.mesh.geometry.parameters.radius), first);
+
+  // Moving away and back returns to the same numbers rather than drifting.
+  scene.setFramingCamera(cameraAt(30));
+  scene.setFramingCamera(cameraAt(13));
+  const returned = scene.routeSegments.map((segment) => segment.mesh.geometry.parameters.radius);
+  for (const [index, radius] of returned.entries()) {
+    assert.ok(Math.abs(radius - first[index]) < first[index] * 0.02, 'the same framing gives the same line');
+  }
+});
+
+test('AR3-T15: nothing about the camera reaches the answer', () => {
+  const scene = buildScene({ lesion: 'dominant-arcuate', task: 'repetition-nonword' }, 0.6);
+  const snapshot = () => ({
+    tasks: scene.solved.tasks.map((task) => [
+      task.id, task.availability, task.computationStatus, task.state, task.routeId, task.declaredBlock,
+    ]),
+    steps: scene.tracedTask().route.map((step) => [step.id, step.integrity, step.mapping, step.blocked]),
+    influences: scene.solved.unmodelledInfluences.map((influence) => influence.id),
+    structures: scene.solved.affectedStructures.map((structure) => [structure.label, structure.damage]),
+  });
+  const before = snapshot();
+  for (const distance of [5, 9, 18, 40]) {
+    scene.setFramingCamera(cameraAt(distance));
+    scene.renderAtSeconds(ANSWERED);
+    assert.deepEqual(snapshot(), before, `distance ${distance} changed nothing the model says`);
+  }
+  // And the route itself is the same steps in the same order.
+  assert.deepEqual(
+    scene.routeSegments.map((segment) => [segment.id, segment.mapping, segment.lineType]),
+    scene.routeSegments.map((segment) => [segment.id, segment.mapping, segment.lineType])
+  );
+});
+
+test('AR3-T17: the camera moving does not churn geometry, and disposal is complete', () => {
+  const scene = buildScene({ task: 'writing-to-dictation-word' }, 0);
+  let built = 0;
+  const original = scene._buildRouteSegment.bind(scene);
+  scene._buildRouteSegment = (...args) => { built += 1; return original(...args); };
+
+  scene.setFramingCamera(cameraAt(13));
+  const afterFirst = built;
+  // A hundred frames of an orbit that does not change the distance: nothing to
+  // rebuild, because nothing about the apparent size moved.
+  for (let frame = 0; frame < 100; frame += 1) {
+    scene.setFramingCamera(cameraAt(13));
+    scene.renderAtSeconds((frame * CYCLE) / 100);
+  }
+  assert.equal(built, afterFirst, 'a still camera rebuilds nothing');
+
+  // A dolly does rebuild — once per step of apparent size, not once per frame.
+  for (let frame = 0; frame < 100; frame += 1) scene.setFramingCamera(cameraAt(13 + frame * 0.1));
+  const segments = scene.routeSegments.length;
+  assert.ok(built - afterFirst < 12 * segments, `rebuilt ${built - afterFirst} pieces over a 100-frame dolly`);
+  assert.ok(built > afterFirst, 'and it did follow the camera');
+
+  // Nothing is left behind: every mesh a rebuild replaced is off the group.
+  assert.equal(scene.routeGroup.children.filter((child) => child.name.startsWith('route:')).length, segments);
 });
