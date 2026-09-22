@@ -75,19 +75,19 @@ export function functionNoteForSelection(selection) {
   if (!found.carries) return null;
 
   const names = found.tasks.map((task) => shortLabel(task.id));
-  const affected = [...found.ifLost.lost, ...found.ifLost.impaired].map(shortLabel);
-  const syndromes = found.ifLost.syndromes;
+  const lowered = [...found.ifLost.low, ...found.ifLost.intermediate].map(shortLabel);
 
-  const ifLost = affected.length === 0
+  // No syndrome name here, and not because it would not fit: naming one from a
+  // single destroyed structure is the diagnosis this model does not make. What
+  // it can say is which declared routes stop reaching, and it says that.
+  const ifLost = lowered.length === 0
     ? {
-      text: 'Losing this one structure takes none of them away — the model has another way round.',
-      textJa: 'この構造だけを失っても、どれも失われません（モデルには別の経路があります）。',
+      text: 'This one structure gone leaves every declared route still reaching — the model has another way round.',
+      textJa: 'この構造だけを失っても、宣言したどの経路も届きます（モデルには別の経路があります）。',
     }
     : {
-      text: `Losing this one structure: ${affected.map((task) => task.label).join(', ')}`
-        + (syndromes.length ? ` — ${syndromes.map((syndrome) => syndrome.label).join(' + ')}` : ''),
-      textJa: `この構造だけを失うと：${affected.map((task) => task.labelJa).join('・')}`
-        + (syndromes.length ? `　→　${syndromes.map((syndrome) => syndrome.labelJa).join('＋')}` : ''),
+      text: `This one structure gone, these routes stop reaching as well: ${lowered.map((task) => task.label).join(', ')}`,
+      textJa: `この構造だけを失うと、次の経路が届きにくくなります：${lowered.map((task) => task.labelJa).join('・')}`,
     };
 
   return {
@@ -99,8 +99,10 @@ export function functionNoteForSelection(selection) {
     },
     ifLost,
     source: {
-      text: 'Read from the higher cortical function model — a representative right-handed brain, not a lesion localiser.',
-      textJa: '高次脳機能モデルによる読みです（代表的な右利きの脳。病巣同定には使えません）。',
+      text: 'Route availability read from the higher cortical function model — a representative '
+        + 'right-handed brain. Not a syndrome, not a diagnosis, and not a lesion localiser.',
+      textJa: '高次脳機能モデルから読んだ**経路の通りやすさ**です（代表的な右利きの脳）。'
+        + '症候名でも診断でもなく、病巣同定にも使えません。',
     },
   };
 }

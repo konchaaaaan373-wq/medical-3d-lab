@@ -1,21 +1,27 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {
-  FUNCTION_STATUS,
+  COMPUTATION,
+  MODE,
+  PATHWAY_STATE,
   dominanceFor,
   lesionSiteById,
   solveHigherBrainFunction,
 } from '../src/models/higherBrainFunction.js';
 
 /**
- * The claims about people, as opposed to the claims about this model.
+ * The dissociations this model declares, as opposed to the contract it obeys.
  *
  * Every test here is named in `HIGHER_BRAIN_FUNCTION_EVIDENCE`
  * (`src/models/evidence.js`) as what defends one row of the dossier, so a claim
- * cannot be recorded as established while nothing checks it. The claims are
- * dissociations — which task survives when another does not — because that is
- * what the model is entitled to say: it computes whether a route carries, and
- * never how much of anything.
+ * cannot be recorded as established while nothing checks it.
+ *
+ * **What these tests are not.** A selective knockout in {@link MODE.CONCEPTUAL}
+ * is a statement about this model's declared graph. It is not a prediction that
+ * a real lesion produces the dissociation, and the atlas-mode tests further
+ * down are deliberately weaker about the same anatomy for exactly that reason:
+ * where one mesh carries two processes, a lesion takes both, and the test says
+ * so rather than asserting the clean result.
  */
 
 /** The solved state for one declared lesion site, taken to its full extent. */
@@ -25,362 +31,355 @@ function withLesion(id, extent = 1) {
   return solveHigherBrainFunction({ lesions: [site], extent });
 }
 
-function statusOf(state, taskId) {
-  const task = state.tasks.find((candidate) => candidate.id === taskId);
-  assert.ok(task, `${taskId} is a declared task`);
-  return task.status;
+/** The solved state with one declared process switched off directly. */
+function withProcessOff(...ids) {
+  return solveHigherBrainFunction({ mode: MODE.CONCEPTUAL, interventions: ids });
 }
 
-const affected = (state, taskId) => statusOf(state, taskId) !== FUNCTION_STATUS.INTACT;
-const syndromeIds = (state) => state.syndromes.map((syndrome) => syndrome.id);
+function taskOf(state, taskId) {
+  const task = state.tasks.find((candidate) => candidate.id === taskId);
+  assert.ok(task, `${taskId} is a declared task`);
+  return task;
+}
 
-test('physiology: repetition can fail while comprehension and fluency do not', () => {
-  // No cortex is damaged here at all: the lesion is the dorsal route and only
-  // that. If repetition ever finds its way round through meaning, this fails —
-  // and with it the whole reason conduction aphasia is a separate thing.
-  const state = solveHigherBrainFunction({
-    lesions: [{ id: 'dorsal-route-only', structures: [], connections: ['dorsal-phonological'] }],
-  });
-  assert.equal(statusOf(state, 'repetition'), FUNCTION_STATUS.LOST);
-  assert.equal(statusOf(state, 'auditory-comprehension'), FUNCTION_STATUS.INTACT);
-  assert.equal(statusOf(state, 'speech-fluency'), FUNCTION_STATUS.INTACT);
-  assert.equal(statusOf(state, 'propositional-speech'), FUNCTION_STATUS.INTACT);
-  assert.deepEqual(syndromeIds(state), ['conduction-aphasia']);
-  assert.equal(state.tasks.find((task) => task.id === 'repetition').blockedAt.id, 'dorsal-phonological');
+/** The band, and an assertion that there is one at all. */
+function stateOf(state, taskId) {
+  const task = taskOf(state, taskId);
+  assert.equal(task.computationStatus, COMPUTATION.COMPUTED, `${taskId} has a value to read`);
+  return task.state;
+}
 
-  // And the same dissociation from the lesion site that produces it on the
-  // atlas, where cortex at both ends is left alone.
-  const site = withLesion('dominant-arcuate');
-  assert.equal(affected(site, 'repetition'), true);
-  assert.equal(affected(site, 'auditory-comprehension'), false);
-  assert.equal(affected(site, 'speech-fluency'), false);
+const reaches = (state, taskId) => stateOf(state, taskId) === PATHWAY_STATE.HIGH;
+const barely = (state, taskId) => stateOf(state, taskId) === PATHWAY_STATE.LOW;
+
+test('physiology: the two writing routes come apart, and a nonword may not take the lexical one', () => {
+  // The dissociation the pair of case series describes: nonwords cannot be
+  // spelled while real words can, and the mirror image of it. This model used
+  // to route all writing through the phonological stages and the oral output
+  // planner, so cutting the dorsal bundle abolished every kind of writing.
+  const conversionOff = withProcessOff('phoneme-grapheme-conversion');
+  assert.ok(reaches(conversionOff, 'writing-from-meaning'), 'whole-word spelling is untouched');
+  assert.ok(reaches(conversionOff, 'writing-to-dictation-word'), 'and a known word can still be written down');
+  assert.ok(barely(conversionOff, 'writing-to-dictation-nonword'), 'a nonword cannot');
+
+  // The other half: whole-word spelling gone, and a nonword still spellable
+  // from its sound.
+  const lexiconOff = withProcessOff('orthographic-output-lexicon');
+  assert.ok(barely(lexiconOff, 'writing-from-meaning'));
+  assert.ok(reaches(lexiconOff, 'writing-to-dictation-nonword'), 'the phonological route is still there');
+
+  // And the eligibility rule that makes the first case possible: the lexical
+  // route is declared for the nonword task and refused for it, so it can never
+  // be the route a nonword is rescued by.
+  const nonword = taskOf(conversionOff, 'writing-to-dictation-nonword');
+  assert.ok(nonword.ineligibleRouteIds.includes('dictation-lexical'), 'declared, and not eligible');
+  assert.ok(!nonword.evaluatedRouteIds.includes('dictation-lexical'));
 });
 
-test('physiology: an anterior lesion takes fluency and a posterior one takes comprehension', () => {
+test('physiology: writing from meaning does not depend on speaking', () => {
+  // Cutting the way out through the mouth used to abolish writing, because
+  // writing ran through the oral output planner. It does not now.
+  const outputOff = withProcessOff('phonological-output');
+  assert.ok(barely(outputOff, 'repetition-word'), 'the spoken route is gone');
+  assert.ok(reaches(outputOff, 'writing-from-meaning'), 'and the written one is not');
+
+  const motorOff = withProcessOff('speech-motor');
+  assert.ok(reaches(motorOff, 'writing-from-meaning'));
+});
+
+test('physiology: the language of writing and the hand that writes are separate', () => {
+  // A hand that will not move is not agraphia, so the pen is its own stage and
+  // switching it off leaves the spelling routes alone.
+  const penOff = withProcessOff('graphomotor-output');
+  assert.ok(barely(penOff, 'graphomotor-route'));
+  assert.ok(reaches(penOff, 'writing-from-meaning'));
+  assert.ok(reaches(penOff, 'writing-to-dictation-nonword'));
+
+  // And the buffer they converge on, which is the other claim: switching it
+  // off affects every kind of writing at once, whichever route composed the
+  // letters. That is what makes it a convergence rather than a decoration.
+  const bufferOff = withProcessOff('graphemic-buffer');
+  assert.ok(barely(bufferOff, 'graphomotor-route'));
+  assert.ok(barely(bufferOff, 'writing-from-meaning'), 'both routes run through it');
+  assert.ok(barely(bufferOff, 'writing-to-dictation-nonword'));
+  // Upstream of it, the spelling processes themselves are untouched.
+  assert.equal(bufferOff.nodes.find((node) => node.id === 'orthographic-output-lexicon').integrity, 1);
+});
+
+test('physiology: letters and objects come apart when the processes do', () => {
+  const lettersOff = withProcessOff('orthographic-visual-form');
+  assert.ok(barely(lettersOff, 'reading-comprehension-word'));
+  assert.ok(reaches(lettersOff, 'naming-object'), 'the object route does not use it');
+
+  const objectsOff = withProcessOff('object-visual-form');
+  assert.ok(barely(objectsOff, 'naming-object'));
+  assert.ok(reaches(objectsOff, 'reading-comprehension-word'), 'and the mirror image holds');
+
+  // The shared visual input, to show the selectivity is not invented: take the
+  // input both of them enter by and both go.
+  const visionOff = withProcessOff('visual-input-dominant', 'visual-input-nondominant');
+  assert.ok(barely(visionOff, 'reading-comprehension-word'));
+  assert.ok(barely(visionOff, 'naming-object'));
+});
+
+test('physiology: the atlas cannot separate letters from objects, and the result says so', () => {
+  // The honest other half of the test above. One occipitotemporal mesh carries
+  // both processes, so a lesion drawn on it takes reading and object naming
+  // together — and that limit is on the result rather than in a document.
+  const state = withLesion('dominant-occipital-and-whole-callosum');
+  const reading = taskOf(state, 'reading-comprehension-word');
+  const naming = taskOf(state, 'naming-object');
+  assert.ok(reading.coverageLimitations.length > 0, 'the shared mesh is reported');
+  assert.ok(naming.coverageLimitations.length > 0);
+  assert.ok(
+    reading.coverageLimitations.some((limit) => /shares one atlas mesh/.test(limit)),
+    'and it says what the limit is'
+  );
+  // No syndrome is produced, and object naming is not rescued to fit one.
+  assert.equal(naming.state, reading.state, 'they move together under a lesion');
+});
+
+test('physiology: the way in from hearing is separate from the way out and from meaning', () => {
+  const earOff = withProcessOff('auditory-input');
+  assert.ok(barely(earOff, 'auditory-comprehension'));
+  assert.ok(barely(earOff, 'repetition-word'));
+  assert.ok(barely(earOff, 'writing-to-dictation-word'), 'dictation needs the ear');
+  assert.ok(barely(earOff, 'writing-to-dictation-nonword'));
+  assert.ok(reaches(earOff, 'writing-from-meaning'), 'writing from meaning does not');
+  assert.ok(reaches(earOff, 'naming-object'), 'nor does naming what is seen');
+  assert.ok(reaches(earOff, 'reading-comprehension-word'));
+});
+
+test('physiology: a known word can be repeated round through meaning, and a nonword cannot', () => {
+  // The dual route for repetition. Cutting the dorsal bundle leaves a known
+  // word a way round and leaves a nonword none, which is the stimulus effect
+  // the conduction-aphasia descriptions report.
+  const dorsalOff = withProcessOff('dorsal-phonological');
+  assert.notEqual(stateOf(dorsalOff, 'repetition-word'), PATHWAY_STATE.LOW, 'a way round exists');
+  assert.ok(barely(dorsalOff, 'repetition-nonword'), 'and a nonword has none');
+
+  const word = taskOf(dorsalOff, 'repetition-word');
+  const nonword = taskOf(dorsalOff, 'repetition-nonword');
+  assert.ok(word.evaluatedRouteIds.includes('lexical-semantic-repetition'));
+  assert.ok(nonword.ineligibleRouteIds.includes('lexical-semantic-repetition'));
+});
+
+test('physiology: an anterior lesion takes the output routes and a posterior one takes comprehension', () => {
   const anterior = withLesion('dominant-inferior-frontal');
-  assert.equal(affected(anterior, 'speech-fluency'), true);
-  assert.equal(affected(anterior, 'auditory-comprehension'), false);
-  assert.deepEqual(syndromeIds(anterior), ['broca-aphasia']);
+  assert.ok(reaches(anterior, 'auditory-comprehension'), 'the way in is untouched');
+  assert.ok(barely(anterior, 'repetition-word'));
+  assert.ok(barely(anterior, 'speech-initiation-route'));
 
   const posterior = withLesion('dominant-posterior-superior-temporal');
-  assert.equal(affected(posterior, 'auditory-comprehension'), true);
-  assert.equal(affected(posterior, 'speech-fluency'), false, 'Wernicke aphasia is fluent');
-  assert.ok(syndromeIds(posterior).includes('wernicke-aphasia'));
+  assert.ok(barely(posterior, 'auditory-comprehension'));
+  assert.ok(reaches(posterior, 'speech-initiation-route'), 'the output route is untouched');
 
-  // Both, and the whole network between them, is the one that takes everything.
-  const whole = withLesion('dominant-perisylvian');
-  for (const task of ['auditory-comprehension', 'repetition', 'speech-fluency', 'naming']) {
-    assert.equal(affected(whole, task), true, `${task} is gone`);
+  // Both of them leave writing from meaning reaching, and both of them say why
+  // that is a statement about the declared route and not about a person.
+  for (const state of [anterior, posterior]) {
+    const writing = taskOf(state, 'writing-from-meaning');
+    assert.ok(
+      writing.coverageLimitations.some((limit) => /accompanies the perisylvian aphasias/.test(limit)),
+      'the agraphia this model does not produce is declared on the result'
+    );
   }
-  assert.ok(syndromeIds(whole).includes('global-aphasia'));
 });
 
-test('physiology: a lesion outside the perisylvian zone leaves repetition intact', () => {
-  const anteriorWatershed = withLesion('dominant-anterior-watershed');
-  assert.equal(affected(anteriorWatershed, 'speech-fluency'), true);
-  assert.equal(affected(anteriorWatershed, 'repetition'), false, 'repetition does not pass through initiation');
-  assert.equal(affected(anteriorWatershed, 'auditory-comprehension'), false);
-  // And a second finding nobody put there: the medial frontal cortex this
-  // lesion takes is in the initiation circuit as well as in the speech one, so
-  // the model reports reduced drive alongside the aphasia — which is what a
-  // medial frontal or anterior cerebral artery lesion does.
-  assert.deepEqual(syndromeIds(anteriorWatershed), ['transcortical-motor-aphasia', 'abulia']);
+test('physiology: a lesion outside the perisylvian zone leaves the repetition route reaching', () => {
+  for (const id of ['dominant-anterior-watershed', 'dominant-posterior-watershed', 'dominant-watershed-both']) {
+    const state = withLesion(id);
+    assert.ok(reaches(state, 'repetition-word'), `${id} leaves word repetition reaching`);
+    assert.ok(reaches(state, 'repetition-nonword'), `${id} leaves nonword repetition reaching`);
+  }
+  // And the anterior one takes the self-initiation route while leaving the
+  // route that responds to something outside.
+  const anterior = withLesion('dominant-anterior-watershed');
+  assert.ok(barely(anterior, 'speech-initiation-route'));
+  assert.ok(reaches(anterior, 'repetition-word'));
+});
 
-  const posteriorWatershed = withLesion('dominant-posterior-watershed');
-  assert.equal(affected(posteriorWatershed, 'auditory-comprehension'), true);
-  assert.equal(affected(posteriorWatershed, 'repetition'), false, 'repetition does not pass through meaning');
-  assert.equal(affected(posteriorWatershed, 'speech-fluency'), false);
-  assert.ok(syndromeIds(posteriorWatershed).includes('transcortical-sensory-aphasia'));
+test('physiology: a watershed preset is a set of structures, not a perfusion territory', () => {
+  for (const id of ['dominant-anterior-watershed', 'dominant-posterior-watershed', 'dominant-watershed-both']) {
+    const site = lesionSiteById(id);
+    assert.ok(site.granularityLimitJa, `${id} says what it is not`);
+    assert.match(site.granularityLimitJa, /灌流領域ではありません/);
+  }
 });
 
 test('physiology: language and praxis sit in one hemisphere in a right-handed brain', () => {
   const dominance = dominanceFor('right');
   assert.equal(dominance.language, 'left');
-  assert.equal(dominance.praxis, dominance.language, 'praxis formulas sit with language');
-
-  // Every language task is on that side and nothing on the other side touches
-  // them: the mirror of the aphasia-producing lesion produces no aphasia.
-  const mirrored = solveHigherBrainFunction({
-    lesions: [{
-      id: 'nondominant-inferior-frontal',
-      structures: lesionSiteById('dominant-inferior-frontal').structures.map((structure) => ({
-        ...structure, side: 'nondominant',
-      })),
-      connections: [],
-    }],
-  });
-  assert.equal(mirrored.syndromes.length, 0);
-  assert.ok(mirrored.tasks.every((task) => task.status === FUNCTION_STATUS.INTACT));
+  assert.equal(dominance.praxis, 'left');
+  assert.equal(dominance.spatialAttention, 'right');
+  assert.throws(() => dominanceFor('left'), /only right-handedness is modelled/);
+  assert.throws(() => dominanceFor('ambidextrous'), /only right-handedness is modelled/);
 });
 
-test('physiology: spatial attention is not in the language hemisphere, so one parietal lobe is not the mirror of the other', () => {
-  const dominance = dominanceFor('right');
-  assert.notEqual(dominance.spatialAttention, dominance.language);
-
+test('physiology: spatial attention is not in the language hemisphere', () => {
   const nondominant = withLesion('nondominant-parietal');
-  assert.equal(statusOf(nondominant, 'attention-left-space'), FUNCTION_STATUS.LOST);
-  assert.equal(statusOf(nondominant, 'attention-right-space'), FUNCTION_STATUS.INTACT,
-    'the dominant parietal still attends to the right');
-  assert.ok(syndromeIds(nondominant).includes('left-hemispatial-neglect'));
-  assert.ok(!syndromeIds(nondominant).some((id) => id.endsWith('aphasia')), 'language is on the other side');
+  assert.ok(barely(nondominant, 'attention-left-space'));
+  assert.ok(reaches(nondominant, 'attention-right-space'), 'the other side has two routes');
+  assert.ok(reaches(nondominant, 'auditory-comprehension'), 'and language is elsewhere');
 
-  // The same structures, other hemisphere: no neglect at all, and a different
-  // deficit instead — the praxis formulas that live in that gyrus.
-  const mirrored = solveHigherBrainFunction({
-    lesions: [{
-      id: 'dominant-parietal',
-      structures: lesionSiteById('nondominant-parietal').structures.map((structure) => ({
-        ...structure, side: 'dominant',
-      })),
-      connections: [],
-    }],
-  });
-  assert.equal(statusOf(mirrored, 'attention-left-space'), FUNCTION_STATUS.INTACT);
-  assert.ok(!syndromeIds(mirrored).includes('left-hemispatial-neglect'));
-  assert.equal(affected(mirrored, 'praxis-right-hand'), true);
+  // The same parietal lobe on the language side is a different finding.
+  const dominant = withLesion('dominant-angular');
+  assert.ok(reaches(dominant, 'attention-left-space'));
 });
 
 test('physiology: a new memory needs a medial temporal lobe on one side or the other', () => {
+  const bilateral = withLesion('bilateral-medial-temporal');
+  assert.ok(barely(bilateral, 'episodic-memory-formation'));
+
   const oneSide = solveHigherBrainFunction({
-    lesions: [{ id: 'one-hippocampus', structures: [{ label: 'Hippocampus', side: 'dominant' }], connections: [] }],
+    lesions: [{ id: 'one-hippocampus', structures: [{ label: 'Hippocampus', side: 'dominant' }] }],
   });
-  assert.equal(statusOf(oneSide, 'episodic-memory-formation'), FUNCTION_STATUS.INTACT);
-
-  const both = withLesion('bilateral-medial-temporal');
-  assert.equal(statusOf(both, 'episodic-memory-formation'), FUNCTION_STATUS.LOST);
-  assert.deepEqual(syndromeIds(both), ['anterograde-amnesia']);
-  assert.ok(
-    both.tasks.filter((task) => task.id !== 'episodic-memory-formation')
-      .every((task) => task.status === FUNCTION_STATUS.INTACT),
-    'amnesia arrives alone here: language is nowhere near it'
-  );
-
-  // The same redundancy on the auditory side: one Heschl gyrus is not deafness.
-  const oneHeschl = solveHigherBrainFunction({
-    lesions: [{ id: 'one-heschl', structures: [{ label: 'Transverse temporal gyri', side: 'dominant' }], connections: [] }],
-  });
-  assert.equal(statusOf(oneHeschl, 'auditory-comprehension'), FUNCTION_STATUS.INTACT);
-});
-
-test('physiology: reading needs the visual route into language and writing does not', () => {
-  // The dominant occipital lobe alone: the other hemisphere still sees, and the
-  // callosum carries it, so reading survives.
-  const occipitalOnly = solveHigherBrainFunction({
-    lesions: [{
-      id: 'dominant-occipital-only',
-      structures: [
-        { label: 'Calcarine sulcus', side: 'dominant' },
-        { label: 'Cuneus', side: 'dominant' },
-        { label: 'Lingual gyrus', side: 'dominant' },
-      ],
-      connections: [],
-    }],
-  });
-  assert.equal(statusOf(occipitalOnly, 'reading'), FUNCTION_STATUS.INTACT, 'the callosal route still carries it');
-
-  // Add the commissure and both routes are gone, while writing — which never
-  // passes through vision — is untouched.
-  const pureAlexia = withLesion('dominant-occipital-and-callosum');
-  assert.equal(statusOf(pureAlexia, 'reading'), FUNCTION_STATUS.LOST);
-  assert.equal(statusOf(pureAlexia, 'writing'), FUNCTION_STATUS.INTACT);
-  assert.equal(statusOf(pureAlexia, 'auditory-comprehension'), FUNCTION_STATUS.INTACT);
-  assert.ok(syndromeIds(pureAlexia).includes('alexia-without-agraphia'));
-  // Naming fails at the visual end, where the name was never reached, so it is
-  // not filed as an aphasia.
-  assert.equal(affected(pureAlexia, 'naming'), true);
-  assert.ok(!syndromeIds(pureAlexia).includes('anomic-aphasia'));
-
-  // An angular gyrus lesion takes reading with writing, which is the other half
-  // of the dissociation: alexia there is not pure.
-  const angular = withLesion('dominant-angular');
-  assert.equal(statusOf(angular, 'reading'), FUNCTION_STATUS.LOST);
-  assert.equal(statusOf(angular, 'writing'), FUNCTION_STATUS.LOST);
-  assert.equal(statusOf(angular, 'calculation-and-body-schema'), FUNCTION_STATUS.LOST);
-  assert.ok(syndromeIds(angular).includes('gerstmann-syndrome'));
-  assert.ok(!syndromeIds(angular).includes('alexia-without-agraphia'));
+  assert.ok(reaches(oneSide, 'episodic-memory-formation'), 'one side is enough');
 });
 
 test('physiology: the callosum carries the left hand, so cutting it spares the right', () => {
   const state = withLesion('corpus-callosum');
-  assert.equal(statusOf(state, 'praxis-left-hand'), FUNCTION_STATUS.LOST);
-  assert.equal(statusOf(state, 'praxis-right-hand'), FUNCTION_STATUS.INTACT);
-  assert.equal(statusOf(state, 'reading'), FUNCTION_STATUS.INTACT, 'the dominant visual route is untouched');
-  assert.deepEqual(syndromeIds(state), ['callosal-apraxia']);
-
-  // A lesion of the formulas themselves takes both hands, because both hands
-  // are reaching for the same formulas.
-  const parietal = solveHigherBrainFunction({
-    lesions: [{ id: 'praxis-formulas', structures: [{ label: 'Supramarginal gyrus', side: 'dominant' }], connections: [] }],
-  });
-  assert.equal(affected(parietal, 'praxis-left-hand'), true);
-  assert.equal(affected(parietal, 'praxis-right-hand'), true);
-  assert.ok(syndromeIds(parietal).includes('ideomotor-apraxia'));
-});
-
-test('physiology: naming needs the word’s sound form, so it fails wherever that is cut off', () => {
-  // The model used to route naming straight from meaning to the inferior
-  // frontal gyrus, and so reported naming as intact in Wernicke aphasia and in
-  // conduction aphasia. It is not intact in either: producing a word means
-  // retrieving its sound form before it can be planned.
-  for (const id of ['dominant-posterior-superior-temporal', 'dominant-arcuate', 'dominant-inferior-frontal']) {
-    assert.equal(affected(withLesion(id), 'naming'), true, `${id} takes naming with it`);
-  }
-  // And the dissociation that makes it a claim rather than a blanket: a lesion
-  // that leaves the whole word-production chain alone leaves naming alone.
-  for (const id of ['nondominant-parietal', 'bilateral-medial-temporal', 'corpus-callosum']) {
-    assert.equal(affected(withLesion(id), 'naming'), false, `${id} does not touch naming`);
-  }
+  assert.ok(barely(state, 'praxis-left-hand'));
+  assert.ok(reaches(state, 'praxis-right-hand'));
+  assert.ok(reaches(state, 'auditory-comprehension'));
+  assert.ok(reaches(state, 'episodic-memory-formation'));
 });
 
 test('physiology: a frontal–subcortical circuit reads the same wherever it is cut', () => {
-  // The clinically important half of the frontal circuits: the behaviour that
-  // goes is the circuit's, not the cortex's. A lesion of the striatum the
-  // circuit passes through produces the picture of a lesion of the cortex it
-  // starts from — which is why a small deep infarct can present as a frontal
-  // syndrome.
   const cortex = withLesion('bifrontal-dorsolateral');
   const deep = withLesion('striatum-head');
-  assert.equal(affected(cortex, 'set-shifting-and-planning'), true);
-  assert.equal(affected(deep, 'set-shifting-and-planning'), true, 'the same circuit, cut deeper');
-  assert.ok(syndromeIds(cortex).includes('dysexecutive-syndrome'));
-  assert.ok(syndromeIds(deep).includes('dysexecutive-syndrome'));
-  // Neither is an aphasia, and neither touches memory: this is a different
-  // network and the model keeps it separate.
-  for (const state of [cortex, deep]) {
-    assert.equal(affected(state, 'auditory-comprehension'), false);
-    assert.equal(affected(state, 'repetition'), false);
-    assert.equal(affected(state, 'episodic-memory-formation'), false);
+  assert.ok(!reaches(cortex, 'set-shifting-and-planning'), 'from the cortex');
+  assert.ok(!reaches(deep, 'set-shifting-and-planning'), 'and from the striatum');
+  // The cortex is untouched in the second one, which is the teaching point.
+  const frontalCortex = deep.nodes.find((node) => node.id === 'dorsolateral-prefrontal');
+  assert.equal(frontalCortex.integrity, 1);
+});
+
+test('physiology: a unilateral lesion does not cut the other side’s connection', () => {
+  // The defect this replaced: lesions used to name connections by id, and an
+  // id has no side, so selecting one anterior thalamic radiation zeroed the
+  // frontal circuits on both sides at once.
+  const state = withLesion('dominant-anterior-thalamic-radiation');
+  const { dominance } = state;
+  const opposite = dominance.language === 'left' ? 'right' : 'left';
+  for (const edge of state.edges) {
+    const onlyOpposite = edge.within.length > 0 && edge.within.every((s) => s.side === opposite);
+    if (onlyOpposite) {
+      assert.equal(edge.integrity, 1, `${edge.id} runs on the untouched side and is untouched`);
+    }
   }
+  // The circuit it does touch is partly down, not abolished: one side of a
+  // bilateral pathway is half of it.
+  const touched = state.edges.find((edge) => edge.id === 'thalamus-to-dlpfc');
+  assert.ok(touched.integrity > 0 && touched.integrity < 1, `half a bilateral tract, got ${touched.integrity}`);
+  // And no structure on the untouched side took any damage at all.
+  assert.ok(state.affectedStructures.every((structure) => structure.side !== opposite));
 });
 
-test('physiology: the three prefrontal patterns come apart', () => {
-  // Dorsolateral, orbitofrontal and medial: three circuits through the same
-  // pallidum and the same thalamus, and a lesion of one cortex takes one
-  // behaviour.
-  const dorsolateral = withLesion('bifrontal-dorsolateral');
-  assert.equal(affected(dorsolateral, 'set-shifting-and-planning'), true);
-  assert.equal(affected(dorsolateral, 'behavioural-inhibition'), false);
-  assert.equal(affected(dorsolateral, 'initiation-and-drive'), false);
-
-  const orbital = withLesion('orbitofrontal-cortex');
-  assert.equal(affected(orbital, 'behavioural-inhibition'), true);
-  assert.equal(affected(orbital, 'set-shifting-and-planning'), false);
-  assert.deepEqual(syndromeIds(orbital), ['disinhibition']);
-
-  // And the shared parts of the circuits take all three together, which is the
-  // other half of the same claim.
-  const shared = solveHigherBrainFunction({
-    lesions: [{
-      id: 'mediodorsal-thalamus-bilateral',
-      structures: [{ label: 'Mediodorsal nucleus', side: 'dominant' }, { label: 'Mediodorsal nucleus', side: 'nondominant' }],
-      connections: [],
-    }],
-  });
-  assert.equal(statusOf(shared, 'set-shifting-and-planning'), FUNCTION_STATUS.LOST);
-  assert.equal(statusOf(shared, 'behavioural-inhibition'), FUNCTION_STATUS.LOST);
-  assert.equal(statusOf(shared, 'initiation-and-drive'), FUNCTION_STATUS.LOST);
-  assert.equal(statusOf(shared, 'auditory-comprehension'), FUNCTION_STATUS.INTACT);
-});
-
-test('physiology: a frontal syndrome can arrive with the frontal cortex untouched', () => {
-  // The clinical point of drawing the circuits as loops rather than as pieces
-  // of cortex: cut where they close — the fibres between the thalamus and the
-  // frontal lobe — and all three behaviours go while the cortex they belong to
-  // is intact. A capsular genu infarct is a small lesion that does this.
-  const state = withLesion('thalamocortical-disconnection');
-  assert.equal(statusOf(state, 'set-shifting-and-planning'), FUNCTION_STATUS.LOST);
-  assert.equal(statusOf(state, 'behavioural-inhibition'), FUNCTION_STATUS.LOST);
-  assert.equal(statusOf(state, 'initiation-and-drive'), FUNCTION_STATUS.LOST);
-
-  const cortex = ['dorsolateral-prefrontal', 'orbitofrontal', 'medial-frontal-drive'];
-  for (const id of cortex) {
-    assert.equal(state.nodes.find((node) => node.id === id).integrity, 1, `${id} is undamaged`);
-  }
-  // Language, memory and attention are elsewhere and stay where they are.
-  for (const id of ['auditory-comprehension', 'repetition', 'naming', 'episodic-memory-formation', 'attention-left-space']) {
-    assert.equal(statusOf(state, id), FUNCTION_STATUS.INTACT, `${id} is untouched`);
-  }
-});
-
-test('physiology: aphasia is supramodal, which is what tells it from its mimics', () => {
-  // Two pictures look like an aphasia on one modality and are not one. Getting
-  // this wrong is getting the most useful bedside question backwards.
-
-  // Both auditory cortices gone: speech cannot be understood or repeated, and
-  // the same words on a page can be. Language is intact; the way in from one
-  // sense is not.
-  const deaf = withLesion('bilateral-auditory-cortex');
-  assert.equal(statusOf(deaf, 'auditory-comprehension'), FUNCTION_STATUS.LOST);
-  assert.equal(statusOf(deaf, 'repetition'), FUNCTION_STATUS.LOST);
-  assert.equal(statusOf(deaf, 'reading'), FUNCTION_STATUS.INTACT, 'reading carries the same words');
-  assert.equal(statusOf(deaf, 'writing'), FUNCTION_STATUS.INTACT);
-  assert.equal(statusOf(deaf, 'speech-fluency'), FUNCTION_STATUS.INTACT);
-  assert.ok(syndromeIds(deaf).includes('pure-word-deafness'));
-  assert.ok(!syndromeIds(deaf).some((id) => id.endsWith('aphasia')), 'and it is not called an aphasia');
-
-  // The insula: speech will not come out, and the same sentences can be
-  // written. The way out through one channel is gone, not the language.
-  const output = withLesion('dominant-insula');
-  assert.equal(affected(output, 'speech-fluency'), true);
-  assert.equal(affected(output, 'repetition'), true, 'the channel repeating would use is the one that is gone');
-  assert.equal(statusOf(output, 'writing'), FUNCTION_STATUS.INTACT);
-  assert.equal(statusOf(output, 'auditory-comprehension'), FUNCTION_STATUS.INTACT);
-  assert.ok(syndromeIds(output).includes('speech-output-disorder'));
-  assert.ok(!syndromeIds(output).some((id) => id.endsWith('aphasia')));
-
-  // The discriminator on the output side is repetition. Someone who cannot
-  // start a sentence but can repeat a long one has a working channel and an
-  // aphasia — and this is the case that got filed as articulation until the
-  // test was added.
-  const transcortical = withLesion('dominant-anterior-watershed');
-  assert.equal(affected(transcortical, 'speech-fluency'), true);
-  assert.equal(affected(transcortical, 'repetition'), false);
-  assert.equal(statusOf(transcortical, 'writing'), FUNCTION_STATUS.INTACT);
-  assert.ok(syndromeIds(transcortical).includes('transcortical-motor-aphasia'));
-  assert.ok(!syndromeIds(transcortical).includes('speech-output-disorder'));
-});
-
-test('physiology: writing fails with the language, not with the hand', () => {
-  // Agraphia accompanies aphasia. Routed straight from meaning to the letters,
-  // this model had writing intact in both Broca and Wernicke aphasia, which is
-  // the opposite of what those patients do.
-  for (const id of ['dominant-inferior-frontal', 'dominant-posterior-superior-temporal', 'dominant-perisylvian']) {
-    assert.equal(affected(withLesion(id), 'writing'), true, `${id} takes writing with the language`);
-  }
-  // And it still does not run through the mouth: that dissociation is the
-  // whole of the supramodal test above.
-  assert.equal(statusOf(withLesion('dominant-insula'), 'writing'), FUNCTION_STATUS.INTACT);
-  // Nor through vision, which is what leaves alexia without agraphia standing.
-  assert.equal(statusOf(withLesion('dominant-occipital-and-callosum'), 'writing'), FUNCTION_STATUS.INTACT);
-});
-
-test('physiology: a thalamic lesion takes word production and leaves repetition alone', () => {
-  // The picture that made the anomic branch reachable: fluent, with words
-  // missing, and able to repeat a sentence it could not have produced. The
-  // mechanism is contested — the evidence registry files it as uncertain — but
-  // the dissociation it is built to produce is the one that is described.
+test('physiology: the thalamus is not an obligatory gate, and its absence is not "no effect"', () => {
   const state = withLesion('dominant-thalamus');
-  assert.equal(statusOf(state, 'naming'), FUNCTION_STATUS.LOST);
-  assert.equal(affected(state, 'propositional-speech'), true);
-  assert.equal(statusOf(state, 'repetition'), FUNCTION_STATUS.INTACT, 'repetition does not pass through the thalamus');
-  assert.equal(statusOf(state, 'auditory-comprehension'), FUNCTION_STATUS.INTACT);
-  assert.equal(statusOf(state, 'speech-fluency'), FUNCTION_STATUS.INTACT, 'the output machinery is untouched');
-  assert.deepEqual(syndromeIds(state), ['anomic-aphasia']);
+  // No forced zero. Naming used to be abolished by this lesion because the
+  // production routes ran through a thalamic node placed there to produce that
+  // result; the chronic-phase evidence does not support it.
+  const naming = taskOf(state, 'naming-object');
+  assert.equal(naming.computationStatus, COMPUTATION.COMPUTED);
+  assert.notEqual(naming.state, PATHWAY_STATE.LOW);
+  assert.equal(naming.declaredBlock, false);
 
-  // Cortex nowhere near it is undamaged, which is the teaching point: this is
-  // an aphasia from a lesion outside the language cortex.
-  for (const id of ['phonological-analysis', 'phonological-output', 'lexical-semantic']) {
-    assert.equal(state.nodes.find((node) => node.id === id).integrity, 1, `${id} is intact`);
+  // And it is not silence either: the influence this model does not compute is
+  // on the result, and on every language task the site declares it for.
+  assert.ok(state.unmodelledInfluences.length > 0, 'the state carries it');
+  for (const id of ['naming-object', 'propositional-output-route', 'auditory-comprehension', 'repetition-word']) {
+    assert.ok(taskOf(state, id).unmodelledInfluences.length > 0, `${id} carries it too`);
   }
+  // A task the site does not name it for does not get it for free.
+  assert.equal(taskOf(state, 'praxis-left-hand').unmodelledInfluences.length, 0);
 });
 
-test('physiology: losing both watersheds at once spares repetition and nothing else', () => {
-  // The rarest of the eight, and the one that shows the perisylvian zone is an
-  // island: everything around it is gone and the word still goes in one ear and
-  // out of the mouth.
-  const state = withLesion('dominant-watershed-both');
-  assert.equal(affected(state, 'auditory-comprehension'), true);
-  assert.equal(affected(state, 'speech-fluency'), true);
-  assert.equal(statusOf(state, 'repetition'), FUNCTION_STATUS.INTACT);
-  assert.ok(syndromeIds(state).includes('mixed-transcortical-aphasia'));
+test('physiology: bilateral auditory cortex affects what is heard and nothing else', () => {
+  const state = withLesion('bilateral-auditory-cortex');
+  assert.ok(barely(state, 'auditory-comprehension'));
+  assert.ok(barely(state, 'repetition-word'));
+  assert.ok(barely(state, 'writing-to-dictation-word'), 'dictation goes in through the ear');
+  assert.ok(reaches(state, 'reading-comprehension-word'));
+  assert.ok(reaches(state, 'writing-from-meaning'));
+  assert.ok(reaches(state, 'naming-object'));
+
+  // And the model does not get to call it pure word deafness: it has no
+  // audiometry and no non-speech sounds, so it cannot separate that from
+  // cortical deafness. The task says so itself.
+  const comprehension = taskOf(state, 'auditory-comprehension');
+  assert.ok(comprehension.excludes.some((item) => /hearing itself/.test(item)));
+  assert.ok(comprehension.excludesJa.some((item) => /皮質聾/.test(item)));
+
+  // One side is not enough, which is why the node is paired.
+  const oneSide = solveHigherBrainFunction({
+    lesions: [{ id: 'one-heschl', structures: [{ label: 'Transverse temporal gyri', side: 'dominant' }] }],
+  });
+  assert.ok(reaches(oneSide, 'auditory-comprehension'));
+});
+
+test('physiology: the insula preset affects the spoken route and claims nothing about speech quality', () => {
+  const state = withLesion('dominant-insula');
+  assert.ok(!reaches(state, 'repetition-word'), 'the spoken route is affected');
+  assert.ok(reaches(state, 'writing-from-meaning'), 'and the written one is not');
+  // The quality of the articulation is what the diagnosis turns on, and this
+  // model has none of it.
+  assert.ok(taskOf(state, 'repetition-word').excludes.some((item) => /quality of the articulation/.test(item)));
+  // The mesh is the whole insula, and the preset says that.
+  const site = lesionSiteById('dominant-insula');
+  assert.match(site.granularityLimitJa, /前部島を分けて持っていない/);
+});
+
+test('physiology: the angular gyrus does not produce a tetrad', () => {
+  // It used to: calculation-and-body-schema was one node on the angular gyrus,
+  // writing ran through it as well, and the pair of them was read out as
+  // Gerstmann syndrome. The four deficits are not separately implemented, so
+  // the task is declared not-modelled and cannot enter any comparison.
+  const state = withLesion('dominant-angular');
+  const tetrad = taskOf(state, 'calculation-and-body-schema');
+  assert.equal(tetrad.computationStatus, COMPUTATION.NOT_MODELLED);
+  assert.equal(tetrad.availability, null);
+  assert.equal(tetrad.state, null);
+  assert.ok(tetrad.excludesJa.some((item) => /Gerstmann 四徴を出せません/.test(item)));
+
+  // What the lesion does reach is the whole-word spelling route, and that is
+  // reported as itself.
+  assert.ok(barely(state, 'writing-from-meaning'));
+  assert.ok(reaches(state, 'writing-to-dictation-nonword'), 'the phonological route is elsewhere');
+});
+
+test('physiology: the perisylvian preset reports its reading route rather than being overwritten', () => {
+  const state = withLesion('dominant-perisylvian');
+  for (const id of ['auditory-comprehension', 'repetition-word', 'speech-initiation-route', 'naming-object']) {
+    assert.ok(barely(state, id), `${id} is barely available`);
+  }
+  // Reading survives on a ventral route the preset does not touch. That is a
+  // statement about the declared route, and the value is not pushed to zero to
+  // match a label — there is no label.
+  assert.ok(reaches(state, 'reading-comprehension-word'));
+  const site = lesionSiteById('dominant-perisylvian');
+  assert.match(site.granularityLimitJa, /体部位局在はない/);
+});
+
+test('physiology: the whole-commissure preset does not claim to be a splenial lesion', () => {
+  const site = lesionSiteById('dominant-occipital-and-whole-callosum');
+  assert.match(site.labelJa, /膨大部だけは選べません/);
+  assert.match(site.granularityLimitJa, /脳梁後方の病変ではありません/);
+  // And it takes the whole commissure rather than an invented share of one.
+  const callosum = site.structures.find((structure) => structure.label === 'Corpus callosum');
+  assert.equal(callosum.share, undefined, 'no share: all of it');
+});
+
+test('physiology: the same input gives the same answer, and a name is not an input', () => {
+  const site = lesionSiteById('dominant-arcuate');
+  const first = solveHigherBrainFunction({ lesions: [site] });
+  // The same structures under a different id and label. Nothing about the name
+  // may reach the arithmetic.
+  const renamed = solveHigherBrainFunction({
+    lesions: [{ ...site, id: 'something-else', label: 'Anything', labelJa: '何でも' }],
+  });
+  assert.deepEqual(
+    first.tasks.map((task) => [task.id, task.computationStatus, task.availability]),
+    renamed.tasks.map((task) => [task.id, task.computationStatus, task.availability])
+  );
 });

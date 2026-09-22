@@ -75,9 +75,18 @@ test('touching a structure answers with the function model’s own reading', () 
       `${task.id} is accounted for`
     );
   }
-  assert.match(note.ifLost.textJa, /Broca 失語/);
+  // And the reading stops at the routes. Naming a syndrome from one destroyed
+  // structure is the diagnosis this model does not make, and this card used to
+  // print one: "Broca 失語" arrived from a first-match classifier that has been
+  // removed. Nothing on the card may name a syndrome.
+  const everything = [note.title, note.titleJa, note.carries.text, note.carries.textJa,
+    note.ifLost.text, note.ifLost.textJa, note.source.text, note.source.textJa].join(' ');
+  for (const name of ['失語', 'aphasia', 'Broca', 'Wernicke', '失読', '失書', 'Gerstmann']) {
+    assert.ok(!everything.includes(name), `the card does not name ${name}`);
+  }
   assert.match(note.source.textJa, /右利き/, 'the assumption the reading rests on is on the same card');
-  assert.match(note.source.textJa, /病巣同定には使えません/);
+  assert.match(note.source.textJa, /病巣同定にも使えません/);
+  assert.match(note.source.textJa, /症候名でも診断でもなく/, 'and it says what it is not');
 });
 
 test('a structure the model does not use says nothing at all', () => {
@@ -95,11 +104,15 @@ test('carrying a function and taking it away are different answers, and both are
   // that the hippocampus is not a memory structure.
   const note = functionNoteForSelection({ atlasName: 'Hippocampus', side: 'Left' });
   assert.match(note.carries.textJa, /記憶の形成/);
-  assert.match(note.ifLost.textJa, /どれも失われません/);
+  assert.match(note.ifLost.textJa, /宣言したどの経路も届きます/);
 
   const both = functionNoteForSelection({ atlasName: 'Supramarginal gyrus', side: 'Right' });
   assert.match(both.carries.textJa, /左空間の注意/);
-  assert.match(both.ifLost.textJa, /左半側空間無視/);
+  // The route stops reaching, and that is all that is said. The syndrome this
+  // is named after — left hemispatial neglect — lives in the reference layer,
+  // where a reader compares rather than being handed a verdict.
+  assert.match(both.ifLost.textJa, /左空間の注意/);
+  assert.ok(!both.ifLost.textJa.includes('無視'), 'and the syndrome is not named');
 });
 
 test('the panel renders the section only when it is given one', () => {
@@ -109,7 +122,8 @@ test('the panel renders the section only when it is given one', () => {
     const section = findByClass(withNote.element, 'anatomy-function')[0];
     assert.ok(section, 'the section exists');
     assert.equal(section.hidden, false);
-    assert.match(textOf(section), /Broca 失語/);
+    assert.match(textOf(section), /既知語の復唱/, 'the routes are named');
+    assert.ok(!textOf(section).includes('失語'), 'and no syndrome is');
 
     // The same panel, same selection, no function model handed to it.
     const plain = createAnatomyInfoPanel(sceneWith(brocaSelection), {});

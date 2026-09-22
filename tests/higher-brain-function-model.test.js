@@ -4,17 +4,24 @@ import { readFileSync } from 'node:fs';
 import * as THREE from 'three';
 
 import {
+  AVAILABILITY_HIGH,
+  AVAILABILITY_LOW,
+  COMPUTATION,
   FUNCTION_EDGES,
   FUNCTION_NODES,
-  FUNCTION_STATUS,
   FUNCTION_TASKS,
   LESION_SITES,
-  TRANSMISSION_INTACT,
-  TRANSMISSION_LOST,
+  MAPPING,
+  MODE,
+  MODULATORY_NETWORKS,
+  PATHWAY_STATE,
+  STIMULUS,
   dominanceFor,
   edgeBetween,
   lesionSiteById,
   resolveSide,
+  resolveTaskResult,
+  routeIsEligible,
   solveHigherBrainFunction,
 } from '../src/models/higherBrainFunction.js';
 import HigherBrainFunctionScene from '../src/scenes/nervous/scenes/higherBrainFunction/index.js';
@@ -44,30 +51,50 @@ test('model: only the right-handed case is answered', () => {
   assert.throws(() => solveHigherBrainFunction({ handedness: 'ambidextrous' }), /right-handedness/);
 });
 
-test('model: an intact brain leaves every task intact and names no syndrome', () => {
+test('model: an intact brain reaches every declared route, and is not called normal', () => {
   const state = solveHigherBrainFunction({ lesions: [] });
-  assert.equal(state.syndromes.length, 0);
-  assert.ok(state.tasks.every((task) => task.status === FUNCTION_STATUS.INTACT));
-  assert.ok(state.tasks.every((task) => task.blockedAt === null));
+  // Nothing about the solved state is a diagnosis, and there is no field that
+  // could carry one: the classifier and the `syndromes` array are both gone.
+  assert.equal(state.syndromes, undefined, 'no syndrome field exists to be read');
+  const modelled = state.tasks.filter((task) => task.modelled);
+  assert.ok(modelled.length > 0);
+  for (const task of modelled) {
+    assert.equal(task.computationStatus, COMPUTATION.COMPUTED, `${task.id} is computed`);
+    assert.equal(task.availability, 1, `${task.id} reaches`);
+    assert.equal(task.state, PATHWAY_STATE.HIGH);
+    assert.equal(task.declaredBlock, false);
+  }
+  // And the tasks with no route are not swept up into that: they are absent,
+  // which is neither reaching nor blocked.
+  const absent = state.tasks.filter((task) => !task.modelled);
+  assert.ok(absent.length > 0, 'some tasks are declared and not modelled');
+  for (const task of absent) {
+    assert.equal(task.computationStatus, COMPUTATION.NOT_MODELLED);
+    assert.equal(task.availability, null);
+  }
   assert.equal(state.affectedStructures.length, 0);
 
   // A declared lesion at zero extent is the same brain: extent is an input.
   const untouched = solveHigherBrainFunction({ lesions: [lesionSiteById('dominant-perisylvian')], extent: 0 });
-  assert.equal(untouched.syndromes.length, 0);
-  assert.ok(untouched.tasks.every((task) => task.status === FUNCTION_STATUS.INTACT));
+  assert.ok(untouched.tasks.filter((task) => task.modelled).every((task) => task.availability === 1));
 });
 
 test('model: every route is a chain of declared connections between declared nodes', () => {
   const nodeIds = new Set(FUNCTION_NODES.map((node) => node.id));
   const used = new Set();
   for (const task of FUNCTION_TASKS) {
+    if (!task.modelled) {
+      assert.equal(task.routes.length, 0, `${task.id} is declared not-modelled and has no routes`);
+      continue;
+    }
     assert.ok(task.routes.length > 0, `${task.id} has at least one route`);
     for (const route of task.routes) {
-      for (const [index, nodeId] of route.entries()) {
+      assert.ok(route.id, `${task.id} names its routes`);
+      for (const [index, nodeId] of route.nodes.entries()) {
         assert.ok(nodeIds.has(nodeId), `${task.id} names node ${nodeId}`);
         if (index === 0) continue;
-        const edge = edgeBetween(route[index - 1], nodeId);
-        assert.ok(edge, `${task.id} has a declared connection ${route[index - 1]} → ${nodeId}`);
+        const edge = edgeBetween(route.nodes[index - 1], nodeId);
+        assert.ok(edge, `${task.id} has a declared connection ${route.nodes[index - 1]} → ${nodeId}`);
         used.add(edge.id);
       }
     }
@@ -86,46 +113,73 @@ test('model: every lesion site is anatomy plus a cause, and names no deficit', (
   const edgeStructures = new Set(
     FUNCTION_EDGES.flatMap((edge) => edge.within.map((structure) => `${structure.label}|${structure.side}`))
   );
-  const edgeIds = new Set(FUNCTION_EDGES.map((edge) => edge.id));
 
   for (const site of LESION_SITES) {
     assert.ok(site.labelJa && site.usualCauseJa, `${site.id} says what it is and what usually causes it`);
     assert.ok(site.structures.length > 0, `${site.id} is drawn on the atlas`);
-    for (const id of site.connections) assert.ok(edgeIds.has(id), `${site.id} interrupts a declared connection`);
+    assert.equal(site.connections, undefined, `${site.id} does not set connections by id`);
     const touches = site.structures.some((structure) => {
       const key = `${structure.label}|${structure.side}`;
       return nodeStructures.has(key) || edgeStructures.has(key);
     });
-    assert.ok(touches, `${site.id} damages a structure the network uses`);
-    const text = JSON.stringify(site).toLowerCase();
-    for (const word of ['aphasia', 'neglect', 'apraxia', 'amnesia', 'alexia', 'agraphia']) {
-      assert.ok(!text.includes(word), `${site.id} does not name the deficit it produces (${word})`);
+    // A site may instead touch a network this model names and does not
+    // compute — the thalamus is the case, and it has to declare the influence
+    // rather than simply changing nothing.
+    const declaresUnmodelled = (site.unmodelledInfluences ?? []).length > 0;
+    assert.ok(
+      touches || declaresUnmodelled,
+      `${site.id} either damages a structure the network uses or declares an influence this model does not compute`
+    );
+    if (!touches) {
+      for (const influence of site.unmodelledInfluences) {
+        assert.ok(influence.onTasks.length > 0, `${site.id} says which tasks the influence reaches`);
+        assert.ok(
+          MODULATORY_NETWORKS.some((network) => network.id === influence.network),
+          `${site.id} names a declared modulatory network`
+        );
+      }
+    }
+    // The site's *identity* may not be the deficit: a preset called "Broca"
+    // would put a syndrome name into the control that selects it, and from
+    // there into everything downstream. Its stated limitations are another
+    // matter — those are allowed to explain which deficit it is not, and the
+    // insula's does exactly that.
+    const identity = [site.id, site.label, site.labelJa, site.usualCause, site.usualCauseJa]
+      .join(' ').toLowerCase();
+    for (const word of ['aphasia', 'neglect', 'apraxia', 'amnesia', 'alexia', 'agraphia', '失語', '無視', '失行', '健忘', '失読', '失書']) {
+      assert.ok(!identity.includes(word), `${site.id} is not named after the deficit it produces (${word})`);
     }
   }
 });
 
-test('model: a bigger lesion is never reported as a lighter deficit', () => {
+test('model: a bigger lesion never raises availability', () => {
   const site = lesionSiteById('dominant-inferior-frontal');
-  let previous = Infinity;
-  for (const extent of [0, 0.25, 0.5, 0.75, 1]) {
-    const repetition = solveHigherBrainFunction({ lesions: [site], extent })
-      .tasks.find((task) => task.id === 'repetition');
-    assert.ok(repetition.transmission <= previous, `transmission falls as extent rises (at ${extent})`);
-    previous = repetition.transmission;
+  for (const id of ['repetition-word', 'repetition-nonword', 'speech-initiation-route']) {
+    let previous = Infinity;
+    for (const extent of [0, 0.25, 0.5, 0.75, 1]) {
+      const task = solveHigherBrainFunction({ lesions: [site], extent })
+        .tasks.find((candidate) => candidate.id === id);
+      assert.equal(task.computationStatus, COMPUTATION.COMPUTED);
+      assert.ok(task.availability <= previous, `${id} does not rise as extent rises (at ${extent})`);
+      previous = task.availability;
+    }
+    assert.equal(previous, 0, `${id} ends at zero`);
   }
-  assert.equal(previous, 0);
-  assert.ok(TRANSMISSION_LOST < TRANSMISSION_INTACT, 'the two thresholds are ordered');
+  assert.ok(AVAILABILITY_LOW < AVAILABILITY_HIGH, 'the two thresholds are ordered');
 });
 
 test('model: two mild lesions on one route add up', () => {
-  const half = (label) => ({ structures: [{ label, side: 'dominant' }], connections: [], severity: 0.45 });
-  const alone = solveHigherBrainFunction({ lesions: [half('Temporal plane')] });
+  const half = (label, id) => ({ id, structures: [{ label, side: 'dominant' }], severity: 0.45 });
+  const alone = solveHigherBrainFunction({ lesions: [half('Temporal plane', 'a')] });
   const together = solveHigherBrainFunction({
-    lesions: [half('Temporal plane'), half('Opercular part of inferior frontal gyrus')],
+    lesions: [half('Temporal plane', 'a'), half('Opercular part of inferior frontal gyrus', 'b')],
   });
-  const transmissionOf = (state) => state.tasks.find((task) => task.id === 'repetition').transmission;
-  assert.equal(alone.tasks.find((task) => task.id === 'repetition').status, FUNCTION_STATUS.IMPAIRED);
-  assert.ok(transmissionOf(together) < transmissionOf(alone), 'a route is no better than the product of its steps');
+  const availabilityOf = (state) => state.tasks.find((task) => task.id === 'repetition-nonword').availability;
+  assert.equal(
+    alone.tasks.find((task) => task.id === 'repetition-nonword').state,
+    PATHWAY_STATE.INTERMEDIATE
+  );
+  assert.ok(availabilityOf(together) < availabilityOf(alone), 'a route is no better than the product of its steps');
 });
 
 // ---------------------------------------------------------------------------
@@ -206,14 +260,17 @@ test('model: the scene lights the structures the model damaged, and nothing else
 });
 
 test('model: the traced route stops where the model says it stops', () => {
-  const intact = buildScene({ task: 'repetition' }, 0);
+  const intact = buildScene({ task: 'repetition-nonword' }, 0);
   assert.equal(intact.blockedFraction(), 1, 'nothing stops a signal in an intact brain');
   assert.ok(intact.routePoints().length >= 4, 'the route has a point for every step');
   intact.dispose();
 
-  const cut = buildScene({ lesion: 'dominant-arcuate', task: 'repetition' });
+  const cut = buildScene({ lesion: 'dominant-arcuate', task: 'repetition-nonword' });
   const task = cut.tracedTask();
-  assert.equal(task.blockedAt.id, 'dorsal-phonological');
+  // The nonword route has no way round the dorsal bundle, so that is where it
+  // stops. The known-word task does have one, and the scene traces whichever
+  // task the control names — which is why the two are separate rows now.
+  assert.equal(cut.blockingStep()?.id, 'dorsal-phonological');
   const fraction = cut.blockedFraction();
   assert.ok(fraction > 0 && fraction < 1, 'the signal gets part of the way and stops');
 
@@ -227,7 +284,7 @@ test('model: the traced route stops where the model says it stops', () => {
   // the way, so the marker touched the right place while travelling straight
   // on through it. What tells a signal that stops from one that does not is
   // where it is when it has finished moving.
-  const blockedStepIndex = task.route.findIndex((step) => step === task.blockedAt);
+  const blockedStepIndex = task.route.findIndex((step) => step === cut.blockingStep());
   const points = cut.routePoints();
   const stopsAt = points[blockedStepIndex].position;
   const beyond = points[blockedStepIndex + 1].position;
@@ -256,59 +313,92 @@ test('model: the traced route stops where the model says it stops', () => {
 });
 
 test('model: the read-out is the solved state, not a second calculation', () => {
-  const scene = buildScene({ lesion: 'dominant-posterior-superior-temporal', task: 'repetition' });
+  const scene = buildScene({ lesion: 'dominant-posterior-superior-temporal', task: 'repetition-word' });
   const rows = new Map(scene.getMetrics().map((row) => [row.id, row]));
+  const bands = { high: '経路は概ね通る', intermediate: '経路は部分的に通る', low: '経路はほとんど通らない' };
+  const statuses = { indeterminate: '判定不能', not_modeled: '対象外（このモデルにありません）' };
   for (const task of scene.solved.tasks) {
     const row = rows.get(task.id);
     assert.ok(row, `${task.id} is on the read-out`);
-    const expected = { intact: '保たれる', impaired: '低下', lost: '消失' }[task.status];
-    assert.equal(row.valueJa, expected, `${task.id} reads the solved status`);
+    const expected = task.computationStatus === COMPUTATION.COMPUTED
+      ? bands[task.state]
+      : statuses[task.computationStatus];
+    assert.ok(row.valueJa.startsWith(expected), `${task.id} reads the solved state (got ${row.valueJa})`);
   }
-  assert.equal(rows.get('syndrome').valueJa, scene.solved.syndromes.map((s) => s.labelJa).join('＋'));
-  assert.match(rows.get('syndrome').valueJa, /Wernicke/);
-  assert.equal(rows.get('probe').valueJa, '復唱', 'the probe row names the traced task');
-  assert.match(rows.get('probe').labelJa, /私のあとに続けて/, 'and says how it is tested');
+  // No syndrome row exists. This is the row that used to carry the verdict,
+  // and its absence is the point.
+  assert.equal(rows.get('syndrome'), undefined, 'the verdict row is gone');
+  const everything = scene.getMetrics().map((row) => `${row.label} ${row.labelJa} ${row.value} ${row.valueJa}`).join(' ');
+  for (const name of ['失語', 'aphasia', 'Aphasia', '失読', '失書', 'Gerstmann', '無視']) {
+    assert.ok(!everything.includes(name), `the read-out does not name ${name}`);
+  }
+  // An eponym is allowed where it names an *area* — "Phonological analysis
+  // (Wernicke area)" is anatomy, and dropping it would make the panel harder
+  // to read for no gain. What it may not do is stand alone as a verdict.
+  for (const match of everything.matchAll(/(Wernicke|Broca)\s*(area|野)?/g)) {
+    assert.match(match[0], /(Wernicke|Broca)\s*(area|野)/, `${match[0]} appears as an area name`);
+  }
+  // What is being changed is on it, and so is what the traced task does not cover.
+  assert.match(rows.get('mode').valueJa, /アトラス上の病変/);
+  assert.match(rows.get('probe').valueJa, /私のあとに続けて/, 'the probe says how it is asked');
+  assert.ok(rows.get('excludes'), 'and what the task does not evaluate');
 
   // Every task has a short name for the panel: the model's clinical labels are
   // long enough to arrive clipped in one narrow column, which is how a row
   // came to read 「覚理」.
   for (const task of scene.solved.tasks) {
     const row = rows.get(task.id);
-    assert.ok(row.labelJa.length <= 9, `${task.id} has a read-out label that fits (${row.labelJa})`);
+    assert.ok(row.labelJa.length <= 14, `${task.id} has a read-out label that fits (${row.labelJa})`);
     assert.ok(row.labelJa.length > 0);
   }
   scene.dispose();
 });
 
-test('model: a task that is impaired without being blocked still says where it is weakest', () => {
-  // Half a lesion leaves every step carrying something, so nothing is
-  // "blocked" — and the row that answers "where does it stop?" used to say
-  // 「通っています」 next to a row reading 低下, which is two answers to one
-  // question.
-  const scene = buildScene({ lesion: 'dominant-inferior-frontal', task: 'repetition' }, 0.5);
-  const task = scene.tracedTask();
-  assert.equal(task.status, FUNCTION_STATUS.IMPAIRED);
-  assert.equal(task.blockedAt, null, 'nothing is cut outright at half extent');
-  const row = scene.getMetrics().find((candidate) => candidate.id === 'blocked-at');
-  assert.equal(row.valueJa, task.weakestLink.labelJa);
-  assert.notEqual(row.valueJa, '通っています');
+test('model: a task held down without being stopped says what holds it', () => {
+  // A route can be in the middle band with nothing on it at zero, and the
+  // read-out used to answer "it gets through" beside a row that said otherwise.
+  const scene = buildScene({ lesion: 'dominant-insula', task: 'repetition-word' });
+  const traced = scene.tracedTask();
+  assert.equal(traced.state, PATHWAY_STATE.INTERMEDIATE, 'the middle band');
+  assert.equal(scene.blockingStep(), null, 'and nothing on it is at zero');
+  assert.ok(traced.limitingSteps.length > 0, 'but something holds it down');
 
-  // And when the task really is intact, it says so.
-  const intact = buildScene({ task: 'repetition' }, 0);
-  assert.equal(intact.getMetrics().find((candidate) => candidate.id === 'blocked-at').valueJa, '通っています');
+  const rows = new Map(scene.getMetrics().map((row) => [row.id, row]));
+  assert.notEqual(rows.get('limiting').valueJa, 'この経路上には何もありません');
+  assert.match(rows.get('limiting').valueJa, /発語の運動出力|島/, 'and the read-out names it');
+
+  // `declaredBlock` is reserved for a route with an element at exactly zero.
+  // The bottom band on its own is not a blockade.
+  assert.equal(traced.declaredBlock, false);
   scene.dispose();
-  intact.dispose();
 });
 
 test('model: a tract is drawn only when the task runs through it or the lesion took it', () => {
-  const scene = buildScene({ task: 'repetition' }, 0);
+  const scene = buildScene({ task: 'repetition-nonword' }, 0);
   const visibleTracts = () => [...scene.meshesByStructure.entries()]
     .filter(([, meshes]) => meshes.some((mesh) => mesh.userData.isTract && mesh.visible))
     .map(([key]) => key).sort();
 
-  // Repetition runs through the arcuate fasciculus, and through nothing else
-  // the atlas files as a tract.
+  // Repeating a nonword runs through the arcuate fasciculus and through
+  // nothing else the atlas files as a tract. Repeating a *known* word has the
+  // way round through meaning, which runs in two more bundles — the two tasks
+  // draw different pictures, which is the point of their being two tasks.
   assert.deepEqual(visibleTracts(), ['Arcuate fasciculus|left']);
+
+  // Repeating a *known* word has the way round through meaning. On an intact
+  // brain the two routes are equal and the tie goes to the first declared, so
+  // the picture is the same; cut the dorsal bundle and the reported route
+  // becomes the other one, and the bundles it runs in are the ones drawn.
+  scene.setModelControl('task', 'repetition-word');
+  assert.deepEqual(visibleTracts(), ['Arcuate fasciculus|left'], 'the tie is broken by declaration order');
+  scene.setModelControl('lesion', 'dominant-arcuate');
+  scene.setProgress(1);
+  assert.ok(
+    visibleTracts().includes('Middle longitudinal fasciculus|left'),
+    `the way round is drawn once it is the route reported (got ${visibleTracts().join(', ')})`
+  );
+  scene.setProgress(0);
+  scene.setModelControl('task', 'repetition-nonword');
 
   scene.setModelControl('task', 'praxis-right-hand');
   assert.deepEqual(visibleTracts(), ['Superior longitudinal fasciculus III|left']);
@@ -375,40 +465,66 @@ test('model: every task is on the read-out, and every traceable one has a route 
   scene.dispose();
 });
 
-test('model: every name the classifier can reach is reachable from a declared lesion', () => {
-  // This used to be the opposite test. Every step of naming was shared with
-  // another task, so the anomic branch — the right reading of a naming-only
-  // failure — could not be produced by any site, and both the test and the
-  // model card recorded that as a fact about the model. It was a fact about
-  // the *routes*, and the thalamic route closed it: a thalamic lesion takes
-  // word production while leaving repetition and comprehension alone.
-  //
-  // A test that pins a limitation goes red when the limitation is fixed, which
-  // is backwards. So this one pins the property instead — a branch nothing can
-  // reach is a claim nobody checks — and reads the list of names out of the
-  // classifier rather than repeating it here, so adding a name without a lesion
-  // that produces it fails without anybody remembering to come back.
+test('model: nothing in the model layer classifies, and nothing in it names a syndrome', () => {
+  // This replaces its own opposite. The test here used to check that every
+  // name the classifier could produce was reachable from some declared lesion
+  // — a reasonable guard on a classifier that should not have existed. What is
+  // pinned now is that there is no classifier: a first-match chain over four
+  // route values is a diagnosis, and the features that separate these
+  // syndromes are not computed here at all.
   const source = readFileSync(new URL('../src/models/higherBrainFunction.js', import.meta.url), 'utf8');
-  const classifier = source.slice(source.indexOf('function classifySyndromes'), source.indexOf('function solveRoute'));
-  const declared = new Set([
-    ...classifier.matchAll(/id: '([a-z][a-z-]+)'/g),
-    // The aphasias are returned as [id, label, labelJa] before being pushed.
-    ...classifier.matchAll(/\['([a-z][a-z-]+)', '[A-Z]/g),
-  ].map((match) => match[1]));
-  assert.ok(declared.size >= 15, `the classifier's names were found (${declared.size})`);
-  assert.ok(declared.has('anomic-aphasia') && declared.has('pure-word-deafness'), 'and they are the right ones');
+  const code = source.replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$/gm, '');
 
-  const reachable = new Map();
+  // No solved state carries a syndrome, under any lesion or intervention.
   for (const site of LESION_SITES) {
-    for (const extent of [0.4, 0.7, 1]) {
-      for (const syndrome of solveHigherBrainFunction({ lesions: [site], extent }).syndromes) {
-        if (!reachable.has(syndrome.id)) reachable.set(syndrome.id, `${site.id}@${extent}`);
+    const state = solveHigherBrainFunction({ lesions: [site] });
+    assert.equal(state.syndromes, undefined, `${site.id} produces no syndrome field`);
+    for (const task of state.tasks) {
+      assert.ok(!('syndrome' in task), `${task.id} carries no syndrome`);
+    }
+  }
+
+  // A syndrome name may appear in a *declaration of what the model does not
+  // do* — `excludes`, `coverageLimitations`, a preset's granularity limit —
+  // and those are the most useful strings in the file. What it may not do is
+  // come out as something the model decided. So the check is on the values a
+  // result carries, not on the source text.
+  const decided = (task) => [task.label, task.labelJa, task.computationStatus, task.state,
+    ...(task.route ?? []).flatMap((step) => [step.label, step.labelJa])].filter(Boolean).join(' ');
+  for (const site of LESION_SITES) {
+    for (const task of solveHigherBrainFunction({ lesions: [site] }).tasks) {
+      const text = decided(task);
+      for (const name of ['aphasia', 'Aphasia', '失語', 'agraphia', 'alexia', 'Gerstmann', 'neglect', 'amnesia']) {
+        assert.ok(!text.includes(name), `${site.id}/${task.id} does not decide "${name}"`);
       }
     }
   }
-  for (const id of declared) {
-    assert.ok(reachable.has(id), `${id} is produced by a declared lesion site`);
-  }
+  // And nothing in the executable part of the file classifies. The word
+  // "diagnosis" does appear — inside the `excludes` list of a task, saying
+  // that a diagnosis is not what the value means — so what is checked is that
+  // no function is one, and that no declaration produces one.
+  assert.ok(!/classif/i.test(code), 'nothing in it classifies');
+  assert.ok(
+    !/function\s+\w*(Syndrome|Diagnos|Classif)/i.test(code),
+    'and no function is named after doing it'
+  );
+
+  // The reference layer, which does hold the names, cannot be reached from
+  // here. The header may *point at* it — saying where the names went is the
+  // most useful sentence in the file — but nothing may import it.
+  assert.ok(!/from\s+'[^']*aphasiaReference/.test(code), 'the model does not import the reference layer');
+  assert.ok(source.includes('aphasiaReference'), 'and it says where the names went');
+});
+
+test('model: the reference layer is reference, and the solver cannot see it', () => {
+  const model = readFileSync(new URL('../src/models/higherBrainFunction.js', import.meta.url), 'utf8');
+  assert.ok(!/from '.*aphasiaReference/.test(model));
+
+  // Nor may anything the reference layer says reach a result. It is data with
+  // no imports of its own from the model, so a value cannot travel either way.
+  const reference = readFileSync(new URL('../src/data/aphasiaReference.js', import.meta.url), 'utf8');
+  assert.ok(!/from '.*models\//.test(reference), 'the reference layer imports no model');
+  assert.ok(!/function .*\(/.test(reference.replace(/^const feature[\s\S]*?;$/m, '')), 'and exports no classifier');
 });
 
 test('model: the scene refuses to answer for a handedness the model will not model', () => {
@@ -424,7 +540,7 @@ test('model: tracing a route that runs under the cortex shows what it runs throu
   // The frontal–subcortical circuits are deep: cortex, then caudate, pallidum
   // and thalamus. Left opaque, the cortex hid every part of the route except
   // the one node on the surface.
-  const surface = buildScene({ lesion: 'dominant-inferior-frontal', task: 'repetition' }, 1);
+  const surface = buildScene({ lesion: 'dominant-inferior-frontal', task: 'repetition-nonword' }, 1);
   const cortexOpacity = (scene, label, side) =>
     (scene.meshesByStructure.get(`${label}|${side}`) ?? [])[0]?.material.opacity;
   assert.equal(cortexOpacity(surface, 'Lingual gyrus', 'right'), 1, 'a surface route leaves the cortex alone');
@@ -461,7 +577,7 @@ test('model: a route that runs deep draws its own structures in front, and moves
   assert.deepEqual(caudate.scale.toArray(), [1, 1, 1]);
 
   // A route that stays on the surface does not lift anything.
-  const surface = buildScene({ lesion: 'dominant-inferior-frontal', task: 'repetition' }, 1);
+  const surface = buildScene({ lesion: 'dominant-inferior-frontal', task: 'repetition-nonword' }, 1);
   const broca = surface.meshesByStructure.get('Opercular part of inferior frontal gyrus|left')[0];
   assert.equal(broca.material.depthTest, true, 'a surface route is seen the ordinary way');
   deep.dispose();
@@ -470,7 +586,7 @@ test('model: a route that runs deep draws its own structures in front, and moves
 
 test('model: the run asks, carries, and answers — and the answer is the task’s own status', () => {
   const cycle = HigherBrainFunctionScene.CYCLE_SECONDS;
-  const intact = buildScene({ task: 'repetition' }, 0);
+  const intact = buildScene({ task: 'repetition-nonword' }, 0);
 
   // Three parts, in that order, every run.
   assert.deepEqual(
@@ -494,8 +610,8 @@ test('model: the run asks, carries, and answers — and the answer is the task�
   assert.ok(intact.answer.mesh.position.equals(intact.routePoints().at(-1).position));
 
   // A route that is cut answers with nothing at all — not a weaker flash, none.
-  const cut = buildScene({ lesion: 'dominant-inferior-frontal', task: 'repetition' }, 1);
-  assert.equal(cut.tracedTask().status, FUNCTION_STATUS.LOST);
+  const cut = buildScene({ lesion: 'dominant-inferior-frontal', task: 'repetition-nonword' }, 1);
+  assert.equal(cut.tracedTask().state, PATHWAY_STATE.LOW);
   assert.equal(cut.answerStrength(), 0);
   for (let i = 0; i <= 40; i += 1) {
     cut.renderAtSeconds((cycle * i) / 40);
@@ -503,8 +619,8 @@ test('model: the run asks, carries, and answers — and the answer is the task�
   }
 
   // And a route that is only weakened answers weakly.
-  const weak = buildScene({ lesion: 'dominant-inferior-frontal', task: 'repetition' }, 0.5);
-  assert.equal(weak.tracedTask().status, FUNCTION_STATUS.IMPAIRED);
+  const weak = buildScene({ lesion: 'dominant-inferior-frontal', task: 'repetition-nonword' }, 0.5);
+  assert.equal(weak.tracedTask().state, PATHWAY_STATE.INTERMEDIATE);
   weak.renderAtSeconds(cycle * 0.9);
   assert.ok(weak.answer.mesh.visible);
   assert.ok(
@@ -520,15 +636,15 @@ test('model: the same second of the run renders the same, whatever the frame rat
   // The sequence has to be a recording, not a performance: a screen capture at
   // 30 frames a second and one at 60 have to show the same thing at 2.0 s.
   const cycle = HigherBrainFunctionScene.CYCLE_SECONDS;
-  const coarse = buildScene({ lesion: 'dominant-arcuate', task: 'repetition' }, 1);
-  const fine = buildScene({ lesion: 'dominant-arcuate', task: 'repetition' }, 1);
+  const coarse = buildScene({ lesion: 'dominant-arcuate', task: 'repetition-nonword' }, 1);
+  const fine = buildScene({ lesion: 'dominant-arcuate', task: 'repetition-nonword' }, 1);
   for (let i = 0; i < 60; i += 1) coarse.update(1 / 30);
   for (let i = 0; i < 120; i += 1) fine.update(1 / 60);
   assert.ok(Math.abs(coarse.cycleTime - fine.cycleTime) < 1e-9);
   assert.ok(coarse.pulse.position.distanceTo(fine.pulse.position) < 1e-9);
 
   // And driving it by absolute time gives the same answer as having played it.
-  const driven = buildScene({ lesion: 'dominant-arcuate', task: 'repetition' }, 1);
+  const driven = buildScene({ lesion: 'dominant-arcuate', task: 'repetition-nonword' }, 1);
   driven.renderAtSeconds(2.0);
   coarse.renderAtSeconds(2.0);
   assert.ok(driven.pulse.position.distanceTo(coarse.pulse.position) < 1e-9);
@@ -542,7 +658,7 @@ test('model: the bundle a route runs inside is drawn where a reader can see it',
   // Cutting the arcuate fasciculus is this model's signature claim, and the
   // bundle sits under the cortex: drawn the ordinary way, the sequence showed a
   // signal stopping at nothing visible.
-  const scene = buildScene({ lesion: 'dominant-arcuate', task: 'repetition' }, 1);
+  const scene = buildScene({ lesion: 'dominant-arcuate', task: 'repetition-nonword' }, 1);
   const arcuate = scene.meshesByStructure.get('Arcuate fasciculus|left')[0];
   assert.equal(arcuate.visible, true);
   assert.equal(arcuate.material.depthTest, false, 'the cut bundle is in front of the cortex');
@@ -590,7 +706,7 @@ test('model: every structure a route runs through is visible, whatever the atlas
 
 test('model: the signal goes dark where it stops, not for the whole journey', () => {
   const cycle = HigherBrainFunctionScene.CYCLE_SECONDS;
-  const cut = buildScene({ lesion: 'dominant-arcuate', task: 'repetition' }, 1);
+  const cut = buildScene({ lesion: 'dominant-arcuate', task: 'repetition-nonword' }, 1);
   const carrying = new THREE.Color(PALETTE.carrying).getHex();
   const blocked = new THREE.Color(PALETTE.blocked).getHex();
 
@@ -603,7 +719,7 @@ test('model: the signal goes dark where it stops, not for the whole journey', ()
   assert.equal(cut.pulseMaterial.color.getHex(), blocked, 'and it piles up dark against the cut');
 
   // A route with nothing in its way never goes dark at all.
-  const clear = buildScene({ task: 'repetition' }, 0);
+  const clear = buildScene({ task: 'repetition-nonword' }, 0);
   for (const at of [0.05, 0.4, 0.92]) {
     clear.renderAtSeconds(cycle * at);
     assert.equal(clear.pulseMaterial.color.getHex(), carrying, `still carrying at ${at}`);
@@ -616,7 +732,7 @@ test('model: a second atlas rebuilds the route rather than keeping the first one
   // The shape cache keys on which steps the route takes, and a re-attached
   // atlas takes the same steps in different places. Kept, the tube stayed
   // where the old brain had been while the markers moved to the new one.
-  const scene = buildScene({ lesion: 'dominant-arcuate', task: 'repetition' }, 1);
+  const scene = buildScene({ lesion: 'dominant-arcuate', task: 'repetition-nonword' }, 1);
   const before = scene.routeCurve.getPoint(0.5).clone();
 
   // One structure moved, not all of them: `placeBrainAtlas` re-centres and
@@ -654,7 +770,7 @@ test('scene: the route is lit as far as the word got, and neutral past it', () =
     return { lit, of: scene.routeRings };
   };
 
-  const intact = buildScene({ lesion: 'dominant-arcuate', task: 'repetition' }, 0);
+  const intact = buildScene({ lesion: 'dominant-arcuate', task: 'repetition-nonword' }, 0);
   intact.renderAtSeconds(2.0);
   const whole = litRings(intact);
   assert.equal(whole.lit, whole.of, 'nothing in the way: the whole line is lit');
@@ -663,9 +779,9 @@ test('scene: the route is lit as far as the word got, and neutral past it', () =
   // The same task, the same route, cut in two different places. What must
   // differ is how much of the line is lit — and it must differ in the
   // direction the anatomy says, with the posterior cut stopping it sooner.
-  const front = buildScene({ lesion: 'dominant-inferior-frontal', task: 'repetition' });
+  const front = buildScene({ lesion: 'dominant-inferior-frontal', task: 'repetition-nonword' });
   front.renderAtSeconds(2.0);
-  const behind = buildScene({ lesion: 'dominant-posterior-superior-temporal', task: 'repetition' });
+  const behind = buildScene({ lesion: 'dominant-posterior-superior-temporal', task: 'repetition-nonword' });
   behind.renderAtSeconds(2.0);
 
   const frontLit = litRings(front);

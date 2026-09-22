@@ -3,17 +3,19 @@ import * as THREE from 'three';
 import {
   DISCLAIMER, DISCLAIMER_JA, DISCLAIMER_SHORT, DISCLAIMER_SHORT_JA,
   LEGEND, LESION_NOTES, MODEL_CONTROLS_COPY, MODEL_SCOPE, PALETTE,
-  PROGRESS_LABEL, RANGE, RELATED, STAGES, STRUCTURE_NAMES_JA, TASK_PROBES, TASK_READOUT_LABELS, TRACEABLE_TASKS, VISUAL_MAPPING,
+  COMPUTATION_NOTE, COMPUTATION_TEXT, CONCEPTUAL_INTERVENTIONS, MODE_COPY,
+  PROGRESS_LABEL, RANGE, RELATED, STAGES, STATE_TEXT, STRUCTURE_NAMES_JA, TASK_PROBES,
+  TASK_READOUT_LABELS, TRACEABLE_TASKS, VISUAL_MAPPING,
 } from '../../../../data/higherBrainFunction.js';
 import {
-  BULK_WHITE_MATTER, FUNCTION_STATUS, FUNCTION_TASKS, LESION_SITES,
+  AVAILABILITY_HIGH, AVAILABILITY_LOW, BULK_WHITE_MATTER, COMPUTATION, FUNCTION_TASKS, LESION_SITES, MODE, PATHWAY_STATE,
   lesionSiteById, solveHigherBrainFunction,
 } from '../../../../models/higherBrainFunction.js';
 import {
   ATLAS_CATEGORIES, brainAtlasMetadata, loadBrainAtlas, placeBrainAtlas,
 } from '../../organs/brainAtlasSource.js';
 import {
-  REEL_CUES, REEL_DURATION, REEL_TASK, cameraAt, extentAt, overlayAt, runTimeAt, segmentAt,
+  REEL_CUES, REEL_DURATION, REEL_ROWS, REEL_TASK, cameraAt, extentAt, overlayAt, runTimeAt, segmentAt,
 } from './reelStoryboard.js';
 import { brainStructureInfo } from '../../../../data/brainAnatomy.js';
 import { disposeObject } from '../../../../utils/dispose.js';
@@ -149,7 +151,13 @@ export class HigherBrainFunctionScene {
     ATLAS_CATEGORIES.WHITE_MATTER, ATLAS_CATEGORIES.CEREBELLUM, ATLAS_CATEGORIES.BRAINSTEM,
   ]);
 
-  static DEFAULT_CONTROLS = Object.freeze({ lesion: 'dominant-inferior-frontal', task: 'repetition' });
+  static DEFAULT_CONTROLS = Object.freeze({
+    mode: MODE.ATLAS_LESION,
+    lesion: 'dominant-inferior-frontal',
+    /** Conceptual mode only, and never read in atlas mode. */
+    intervention: CONCEPTUAL_INTERVENTIONS[0].id,
+    task: 'repetition-word',
+  });
 
   constructor({ viewer, atlas, atlasLoader } = {}) {
     this.viewer = viewer ?? null;
@@ -316,6 +324,11 @@ export class HigherBrainFunctionScene {
   setModelControl(id, value) {
     if (!(id in this.controls)) return;
     this.controls[id] = value;
+    // Switching modes takes the other mode's intervention off the model as well
+    // as off the screen. Leaving a lesion set while a conceptual knockout is
+    // shown is how a thought experiment gets read as the consequence of a
+    // lesion — so the solver refuses to be given both, and this is what keeps
+    // it from being asked.
     this.solve();
   }
 
@@ -325,26 +338,68 @@ export class HigherBrainFunctionScene {
   }
 
   getModelControls() {
+    const conceptual = this.controls.mode === MODE.CONCEPTUAL;
     return [
       {
-        id: 'lesion',
+        id: 'mode',
         kind: 'choice',
-        label: 'Where the lesion is',
-        labelJa: '病変の場所',
-        value: this.controls.lesion,
-        // No "none" option: the progress slider already starts at an intact
-        // brain, and offering the same state twice makes a pair of controls
-        // that can disagree about which one is in charge of it.
+        label: MODE_COPY.label,
+        labelJa: MODE_COPY.labelJa,
+        value: this.controls.mode,
         options: [
-          ...LESION_SITES.map((site) => ({
+          {
+            value: MODE.ATLAS_LESION,
+            label: MODE_COPY.atlas.label,
+            labelJa: MODE_COPY.atlas.labelJa,
+            effect: MODE_COPY.atlasNote.text,
+            effectJa: MODE_COPY.atlasNote.textJa,
+          },
+          {
+            value: MODE.CONCEPTUAL,
+            label: MODE_COPY.conceptual.label,
+            labelJa: MODE_COPY.conceptual.labelJa,
+            effect: MODE_COPY.conceptualNote.text,
+            effectJa: MODE_COPY.conceptualNote.textJa,
+          },
+        ],
+      },
+      // Only the control the current mode actually reads is offered. Both at
+      // once would show a lesion selected while a knockout is on screen, which
+      // is the confusion the two modes exist to prevent.
+      conceptual
+        ? {
+          id: 'intervention',
+          kind: 'choice',
+          label: 'Which process is switched off',
+          labelJa: '遮断する処理',
+          value: this.controls.intervention,
+          options: CONCEPTUAL_INTERVENTIONS.map((entry) => ({
+            value: entry.id,
+            label: entry.label,
+            labelJa: entry.labelJa,
+            effect: entry.shows,
+            effectJa: entry.showsJa,
+          })),
+        }
+        : {
+          id: 'lesion',
+          kind: 'choice',
+          label: 'Where the lesion is',
+          labelJa: '病変の場所',
+          value: this.controls.lesion,
+          // No "none" option: the progress slider already starts at an intact
+          // brain, and offering the same state twice makes a pair of controls
+          // that can disagree about which one is in charge of it.
+          options: LESION_SITES.map((site) => ({
             value: site.id,
             label: site.label,
             labelJa: site.labelJa,
-            effect: `${LESION_NOTES[site.id]?.text ?? ''} Usually: ${site.usualCause}.`.trim(),
-            effectJa: `${LESION_NOTES[site.id]?.textJa ?? ''}原因：${site.usualCauseJa}。`.trim(),
+            effect: [LESION_NOTES[site.id]?.text, `Usually: ${site.usualCause}.`, site.granularityLimit]
+              .filter(Boolean).join(' '),
+            effectJa: [LESION_NOTES[site.id]?.textJa, `原因：${site.usualCauseJa}。`, site.granularityLimitJa]
+              .filter(Boolean).join(''),
           })),
-        ],
-      },
+        },
       {
         id: 'task',
         kind: 'choice',
@@ -352,11 +407,8 @@ export class HigherBrainFunctionScene {
         labelJa: '辿る課題',
         value: this.controls.task,
         // Label only. The probe — what a clinician would actually ask — is on
-        // the read-out for whichever task is traced, so thirteen cards here do
-        // not each carry a sentence of prose over the brain they are about.
-        // In the order the copy layer lists them: the buttons are a reading
-        // order, and the model's own order is the order the network was
-        // written in.
+        // the read-out for whichever task is traced, so the buttons here do not
+        // each carry a sentence of prose over the brain they are about.
         options: TRACEABLE_TASKS.map((id) => {
           const task = FUNCTION_TASKS.find((candidate) => candidate.id === id);
           return {
@@ -370,9 +422,20 @@ export class HigherBrainFunctionScene {
   }
 
   solveModel() {
+    if (this.controls.mode === MODE.CONCEPTUAL) {
+      return solveHigherBrainFunction({
+        handedness: 'right',
+        mode: MODE.CONCEPTUAL,
+        interventions: this.controls.intervention ? [this.controls.intervention] : [],
+        // A knockout is a knockout. There is no "40% of a process" here, and
+        // the extent slider says so by not applying.
+        extent: 1,
+      });
+    }
     const site = lesionSiteById(this.controls.lesion);
     return solveHigherBrainFunction({
       handedness: 'right',
+      mode: MODE.ATLAS_LESION,
       lesions: site ? [site] : [],
       extent: this.progress,
     });
@@ -613,14 +676,27 @@ export class HigherBrainFunctionScene {
   }
 
   /**
+   * The step where the traced route stops, or null when it does not.
+   *
+   * "Stops" means an element of the reported route is in the bottom band — a
+   * statement about this route, not about a person, and not "the responsible
+   * lesion". A task with no value at all has no stopping place either, which
+   * is why this returns null for one rather than picking a step.
+   */
+  blockingStep(task = this.tracedTask()) {
+    if (!task || task.computationStatus !== COMPUTATION.COMPUTED || !task.route) return null;
+    return task.route.find((step) => step.integrity < AVAILABILITY_LOW) ?? null;
+  }
+
+  /**
    * How far along the route the signal gets, as a fraction of its length.
    *
-   * The first step that stops it is where it stops. With nothing blocking, the
-   * signal runs the whole way.
+   * With nothing stopping it, the signal runs the whole way.
    */
   blockedFraction(task = this.tracedTask()) {
-    if (!task || !task.blockedAt) return 1;
-    const index = task.route.findIndex((step) => step === task.blockedAt);
+    const blocking = this.blockingStep(task);
+    if (!blocking) return 1;
+    const index = task.route.findIndex((step) => step === blocking);
     if (index <= 0) return 0;
     if (task.route.length < 2) return 0;
     return index / (task.route.length - 1);
@@ -665,13 +741,19 @@ export class HigherBrainFunctionScene {
   }
 
   /**
-   * What comes back at the end of a run: the traced task's own status, and
-   * nothing else. A route that carries answers; a blocked one does not.
+   * What comes back at the end of a run: the traced task's own band, and
+   * nothing else.
+   *
+   * A task with no value has nothing to answer with, and that is drawn as
+   * nothing coming back rather than as a failure — the difference is in the
+   * read-out, which says whether the reason is "not modelled" or "cannot be
+   * determined".
    */
   answerStrength() {
-    const status = this.tracedTask()?.status;
-    if (status === FUNCTION_STATUS.INTACT) return 1;
-    if (status === FUNCTION_STATUS.IMPAIRED) return 0.45;
+    const task = this.tracedTask();
+    if (!task || task.computationStatus !== COMPUTATION.COMPUTED) return 0;
+    if (task.state === PATHWAY_STATE.HIGH) return 1;
+    if (task.state === PATHWAY_STATE.INTERMEDIATE) return 0.45;
     return 0;
   }
 
@@ -792,51 +874,111 @@ export class HigherBrainFunctionScene {
 
   getMetrics() {
     const traced = this.tracedTask();
-    const rows = this.solved.tasks.map((task) => ({
-      id: task.id,
-      label: TASK_READOUT_LABELS[task.id]?.label ?? task.label,
-      labelJa: TASK_READOUT_LABELS[task.id]?.labelJa ?? task.labelJa,
-      value: STATUS_TEXT[task.status].en,
-      valueJa: STATUS_TEXT[task.status].ja,
-      unit: '',
-      // Not emphasised: on a phone every emphasised row is kept at 21px, and
-      // three of them plus the syndrome left the panel wider than the screen.
-      // The pattern is read on a wider window; the phone gets the headline.
-      emphasis: false,
-    }));
-    const probe = TASK_PROBES[traced?.id] ?? { text: '', textJa: '' };
-    // A task can be impaired without being blocked outright, and reporting
-    // "it gets through" beside a row reading 低下 is two answers to one
-    // question. When nothing blocks it, the weakest step is the answer.
-    const blockingStep = traced?.blockedAt
-      ?? (traced && traced.status !== FUNCTION_STATUS.INTACT ? traced.weakestLink : null);
-    rows.push({
-      id: 'probe',
-      label: `Tested by: “${probe.text}”`,
-      labelJa: `試し方：${probe.textJa}`,
-      value: TASK_READOUT_LABELS[traced?.id]?.label ?? '',
-      valueJa: TASK_READOUT_LABELS[traced?.id]?.labelJa ?? '',
-      unit: '',
+    const conceptual = this.solved.mode === MODE.CONCEPTUAL;
+    /** One row's value: the band when there is one, and why not when there is not. */
+    const valueOf = (task) => {
+      if (task.computationStatus === COMPUTATION.COMPUTED) return STATE_TEXT[task.state];
+      return COMPUTATION_TEXT[task.computationStatus];
+    };
+    const rows = this.solved.tasks.map((task) => {
+      const value = valueOf(task);
+      return {
+        id: task.id,
+        label: TASK_READOUT_LABELS[task.id]?.label ?? task.label,
+        labelJa: TASK_READOUT_LABELS[task.id]?.labelJa ?? task.labelJa,
+        value: value.label + (task.unmodelledInfluences.length ? ' (＋)' : ''),
+        valueJa: value.labelJa + (task.unmodelledInfluences.length ? '（＋未計算）' : ''),
+        unit: '',
+        emphasis: false,
+      };
     });
-    rows.push({
-      id: 'blocked-at',
-      label: 'Where the traced task stops',
-      labelJa: '辿った課題が止まるところ',
-      value: blockingStep?.label ?? 'It gets through',
-      valueJa: blockingStep?.labelJa ?? '通っています',
+
+    // What is being changed, first: a result from a switched-off process and a
+    // result from a lesion are different kinds of statement, and a reader must
+    // be able to tell which one they are looking at from the read-out alone.
+    rows.unshift({
+      id: 'mode',
+      label: 'What is being changed',
+      labelJa: '操作しているもの',
+      value: conceptual ? MODE_COPY.conceptual.label : MODE_COPY.atlas.label,
+      valueJa: conceptual ? MODE_COPY.conceptual.labelJa : MODE_COPY.atlas.labelJa,
       unit: '',
-    });
-    const syndromes = this.solved.syndromes;
-    rows.push({
-      id: 'syndrome',
-      label: 'What this pattern is called',
-      labelJa: 'この組み合わせの呼び名',
-      value: syndromes.length ? syndromes.map((syndrome) => syndrome.label).join(' + ') : 'No named pattern',
-      valueJa: syndromes.length ? syndromes.map((syndrome) => syndrome.labelJa).join('＋') : '該当なし',
-      unit: '',
-      // The one row a phone keeps: the finding, in one line.
       emphasis: true,
     });
+    if (conceptual) {
+      const entry = CONCEPTUAL_INTERVENTIONS.find((candidate) => candidate.id === this.controls.intervention);
+      rows.push({
+        id: 'conceptual-note',
+        label: 'What this is not',
+        labelJa: 'これが何ではないか',
+        value: `A thought experiment on ${entry?.label ?? 'a declared process'}. Not a prediction about any lesion.`,
+        valueJa: `${entry?.labelJa ?? '宣言した処理'}についての思考実験です。実在の病変の予測ではありません。`,
+        unit: '',
+      });
+    }
+
+    const probe = TASK_PROBES[traced?.id] ?? { text: '', textJa: '' };
+    rows.push({
+      id: 'probe',
+      label: 'The traced task, asked as',
+      labelJa: '辿っている課題の試し方',
+      value: probe.text,
+      valueJa: probe.textJa,
+      unit: '',
+    });
+
+    // Where the traced route is held down — and only ever as a statement about
+    // the route that was reported, never as "the responsible lesion".
+    const limiting = traced?.route?.filter((step) => step.integrity < AVAILABILITY_HIGH) ?? [];
+    rows.push({
+      id: 'limiting',
+      label: 'What holds the traced route down',
+      labelJa: '辿った経路を抑えているもの',
+      value: traced?.computationStatus === COMPUTATION.COMPUTED
+        ? (limiting.length ? limiting.map((step) => step.label).join(' → ') : 'Nothing on it')
+        : (COMPUTATION_NOTE[traced?.computationStatus]?.text ?? ''),
+      valueJa: traced?.computationStatus === COMPUTATION.COMPUTED
+        ? (limiting.length ? limiting.map((step) => step.labelJa).join(' → ') : 'この経路上には何もありません')
+        : (COMPUTATION_NOTE[traced?.computationStatus]?.textJa ?? ''),
+      unit: '',
+    });
+
+    // The limits of this result, next to the result. Not a footnote: a high
+    // value on a route that passes through a shared mesh, or through a process
+    // no lesion can reach, is a narrower statement than it looks.
+    if (traced?.coverageLimitations?.length) {
+      rows.push({
+        id: 'coverage',
+        label: 'What this value does not settle',
+        labelJa: 'この値が決めていないこと',
+        value: traced.coverageLimitations.join(' / '),
+        valueJa: traced.coverageLimitationsJa.join(' / '),
+        unit: '',
+      });
+    }
+    if (traced?.unmodelledInfluences?.length) {
+      rows.push({
+        id: 'unmodelled',
+        label: 'Influences this model does not compute',
+        labelJa: 'このモデルが計算していない影響',
+        value: traced.unmodelledInfluences.join(' / '),
+        valueJa: traced.unmodelledInfluences.join(' / '),
+        unit: '',
+        emphasis: true,
+      });
+    }
+    // What the task itself is not about. The rows a reader over-reads are the
+    // ones whose names are shorter than their meaning.
+    if (traced?.excludesJa?.length) {
+      rows.push({
+        id: 'excludes',
+        label: 'Not evaluated by this task',
+        labelJa: 'この課題が評価していないもの',
+        value: traced.excludes.join(' / '),
+        valueJa: traced.excludesJa.join(' / '),
+        unit: '',
+      });
+    }
     return rows;
   }
 
@@ -876,18 +1018,22 @@ export class HigherBrainFunctionScene {
         const lesion = segmentAt(t).lesion;
         // An intact beat leaves whichever lesion is selected in place and takes
         // its extent to zero: one state, and the slider is the one that owns it.
+        if (target.controls.mode !== MODE.ATLAS_LESION) target.setModelControl('mode', MODE.ATLAS_LESION);
         if (lesion && target.controls.lesion !== lesion) target.setModelControl('lesion', lesion);
         if (target.controls.task !== REEL_TASK) target.setModelControl('task', REEL_TASK);
         target.setProgress(extentAt(t));
         target.renderAtSeconds(runTimeAt(t, HigherBrainFunctionScene.CYCLE_SECONDS));
       },
 
-      /** The three rows this sequence is about, from the solved state. */
+      /** The rows this sequence is about, from the solved state. */
       readMetrics(target = scene) {
         const rows = {};
-        for (const id of ['repetition', 'auditory-comprehension', 'speech-fluency']) {
+        for (const id of REEL_ROWS) {
           const task = target.solved.tasks.find((candidate) => candidate.id === id);
-          rows[id] = { en: STATUS_TEXT[task.status].en, ja: STATUS_TEXT[task.status].ja };
+          const text = task.computationStatus === COMPUTATION.COMPUTED
+            ? STATE_TEXT[task.state]
+            : COMPUTATION_TEXT[task.computationStatus];
+          rows[id] = { en: text.label, ja: text.labelJa };
         }
         return rows;
       },
@@ -935,8 +1081,4 @@ export class HigherBrainFunctionScene {
   }
 }
 
-const STATUS_TEXT = {
-  [FUNCTION_STATUS.INTACT]: { en: 'Intact', ja: '保たれる' },
-  [FUNCTION_STATUS.IMPAIRED]: { en: 'Impaired', ja: '低下' },
-  [FUNCTION_STATUS.LOST]: { en: 'Lost', ja: '消失' },
-};
+

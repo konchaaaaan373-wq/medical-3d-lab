@@ -430,22 +430,22 @@ export const FUNCTION_NODES = Object.freeze([
   {
     id: 'graphemic-buffer',
     mapping: MAPPING.CONCEPTUAL,
+    assumedAvailable: true,
     label: 'Graphemic buffer (holding and ordering the letters)',
     labelJa: '書記素の保持と配列',
     substrate: NODE_SUBSTRATE.COMPOSITE,
     structures: Object.freeze([]),
     note:
-      'No atlas structure, and deliberately **off** both writing tasks rather than at the end of them. '
-      + 'The two spelling routes converge here, so it is declared and can be switched off in conceptual '
-      + 'mode — but a lesion cannot be drawn on it, and putting it on the routes would have made every '
-      + 'writing result indeterminate for want of a mesh. What the writing tasks report is whether a '
-      + 'spelling route reaches; holding and ordering the letters is a stage this model does not compute.',
+      'No atlas structure, so no lesion can be drawn on it: it is taken as available, and every task '
+      + 'whose route passes through it carries that assumption as a stated limitation rather than as a '
+      + 'finding. Both spelling routes converge here, which is the claim — switching it off affects '
+      + 'every kind of writing at once, whichever route composed the letters, and leaves the routes '
+      + 'above it untouched.',
     noteJa:
-      'アトラスに対応する構造がなく、**書字課題の経路には意図的に載せていません**（末尾でもありません）。'
-      + '2 つの綴りの経路はここで合流するので、宣言して概念モードで遮断できるようにしてあります。'
-      + 'ただし病変は置けず、経路に載せれば「メッシュが無いから」という理由だけで書字の結果が全部'
-      + '判定不能になります。書字課題が報告するのは綴りの経路が届くかどうかで、'
-      + '書記素の保持と配列は**このモデルが計算しない段階**です。',
+      'アトラスに対応する構造がないので、**病変は置けません**。利用可能として扱い、'
+      + 'ここを通る課題はその仮定を「所見」ではなく「明示した限界」として結果に載せます。'
+      + '2 つの綴りの経路がここで合流することがこのノードの主張で、遮断すれば'
+      + '**どの経路で綴ったかに関係なく書字全体**が影響を受け、上流の経路は影響を受けません。',
   },
   {
     id: 'graphomotor-output',
@@ -770,12 +770,6 @@ export const FUNCTION_EDGES = Object.freeze([
     within: Object.freeze([dominant('Middle longitudinal fasciculus')]),
   },
   {
-    id: 'integration-to-premotor', from: 'cross-modal-integration', to: 'premotor-dominant',
-    label: 'Cross-modal integration to premotor cortex', labelJa: '角回 → 運動前野',
-    mapping: MAPPING.ATLAS,
-    within: Object.freeze([dominant('Superior longitudinal fasciculus II')]),
-  },
-  {
     id: 'praxis-to-premotor', from: 'praxis-formula', to: 'premotor-dominant',
     label: 'Praxis formulas to dominant premotor cortex', labelJa: '行為の図式 → 優位半球 運動前野',
     mapping: MAPPING.ATLAS,
@@ -857,12 +851,6 @@ export const FUNCTION_EDGES = Object.freeze([
     within: Object.freeze([...bilateral('Anterior thalamic radiation')]),
   },
   {
-    id: 'output-to-integration', from: 'phonological-output', to: 'cross-modal-integration',
-    label: 'Phonological encoding to letters', labelJa: '音韻の符号化 → 文字への変換',
-    mapping: MAPPING.ATLAS,
-    within: Object.freeze([dominant('Superior longitudinal fasciculus II')]),
-  },
-  {
     id: 'visual-to-object-form', from: 'visual-input-dominant', to: 'object-visual-form',
     label: 'Dominant visual cortex to object form', labelJa: '優位半球 視覚野 → 物体の形態',
     mapping: MAPPING.ATLAS,
@@ -905,18 +893,21 @@ export const FUNCTION_EDGES = Object.freeze([
     label: 'Whole-word spelling into the graphemic buffer', labelJa: '語の綴り → 書記素の保持',
     within: Object.freeze([]),
     mapping: MAPPING.CONCEPTUAL,
+    assumedAvailable: true,
   },
   {
     id: 'conversion-to-buffer', from: 'phoneme-grapheme-conversion', to: 'graphemic-buffer',
     label: 'Converted letters into the graphemic buffer', labelJa: '変換された文字 → 書記素の保持',
     within: Object.freeze([]),
     mapping: MAPPING.CONCEPTUAL,
+    assumedAvailable: true,
   },
   {
     id: 'buffer-to-graphomotor', from: 'graphemic-buffer', to: 'graphomotor-output',
     label: 'Letters to the moving hand', labelJa: '文字列 → 手の運動',
     within: Object.freeze([]),
     mapping: MAPPING.CONCEPTUAL,
+    assumedAvailable: true,
   },
   {
     id: 'fornix-outflow', from: 'medial-temporal-memory', to: 'limbic-memory-relay',
@@ -1189,7 +1180,7 @@ export const FUNCTION_TASKS = Object.freeze([
         label: 'Whole-word spelling',
         labelJa: '語まるごとの綴り（語彙経路）',
         stimuli: Object.freeze([STIMULUS.KNOWN_WORD, STIMULUS.MEANING]),
-        nodes: Object.freeze(['lexical-semantic', 'orthographic-output-lexicon']),
+        nodes: Object.freeze(['lexical-semantic', 'orthographic-output-lexicon', 'graphemic-buffer']),
       }),
     ]),
     coverageLimitations: Object.freeze([
@@ -1230,7 +1221,8 @@ export const FUNCTION_TASKS = Object.freeze([
         labelJa: '意味を経由して語彙的に綴る',
         stimuli: Object.freeze([STIMULUS.KNOWN_WORD]),
         nodes: Object.freeze([
-          'auditory-input', 'phonological-analysis', 'lexical-semantic', 'orthographic-output-lexicon',
+          'auditory-input', 'phonological-analysis', 'lexical-semantic',
+          'orthographic-output-lexicon', 'graphemic-buffer',
         ]),
       }),
       Object.freeze({
@@ -1238,7 +1230,7 @@ export const FUNCTION_TASKS = Object.freeze([
         label: 'Sound to letters, without meaning',
         labelJa: '意味を経由せず音から文字へ',
         nodes: Object.freeze([
-          'auditory-input', 'phonological-analysis', 'phoneme-grapheme-conversion',
+          'auditory-input', 'phonological-analysis', 'phoneme-grapheme-conversion', 'graphemic-buffer',
         ]),
       }),
     ]),
@@ -1272,13 +1264,14 @@ export const FUNCTION_TASKS = Object.freeze([
         id: 'dictation-lexical',
         stimuli: Object.freeze([STIMULUS.KNOWN_WORD]),
         nodes: Object.freeze([
-          'auditory-input', 'phonological-analysis', 'lexical-semantic', 'orthographic-output-lexicon',
+          'auditory-input', 'phonological-analysis', 'lexical-semantic',
+          'orthographic-output-lexicon', 'graphemic-buffer',
         ]),
       }),
       Object.freeze({
         id: 'dictation-phonological',
         nodes: Object.freeze([
-          'auditory-input', 'phonological-analysis', 'phoneme-grapheme-conversion',
+          'auditory-input', 'phonological-analysis', 'phoneme-grapheme-conversion', 'graphemic-buffer',
         ]),
       }),
     ]),
@@ -1551,6 +1544,12 @@ export const LESION_SITES = Object.freeze([
   {
     id: 'dominant-perisylvian',
     label: 'Whole dominant perisylvian territory', labelJa: '優位半球 シルビウス裂周囲の全域',
+    granularityLimit:
+      'Includes a share of the precentral gyrus, which the atlas carries with no somatotopy: this '
+      + 'preset cannot take the articulators without also taking the hand.',
+    granularityLimitJa:
+      '中心前回の一部を含みます。アトラスの中心前回に体部位局在はないので、'
+      + 'このプリセットは構音器官だけを取ることができません（手も一緒に取ります）。',
     usualCause: 'Middle cerebral artery stem occlusion',
     usualCauseJa: '中大脳動脈 本幹の閉塞',
     structures: Object.freeze([
@@ -1570,6 +1569,13 @@ export const LESION_SITES = Object.freeze([
     label: 'Dominant anterior watershed', labelJa: '優位半球 前方分水嶺（上前頭回・前部帯状回）',
     usualCause: 'Border zone between the anterior and middle cerebral arteries, in systemic hypoperfusion',
     usualCauseJa: '前大脳動脈と中大脳動脈の境界領域（全身性の低灌流）',
+    granularityLimit:
+      'A set of structures chosen for teaching, not a perfusion territory. This model has no blood '
+      + 'flow, no vascular anatomy and no individual variation in where a border zone falls, so '
+      + 'selecting this is not reproducing a border-zone infarct in anybody.',
+    granularityLimitJa:
+      '教材として選んだ構造の集合であって、灌流領域ではありません。本モデルは血流も血管解剖も'
+      + '分水嶺の位置の個人差も持たないので、これを選ぶことは誰かの分水嶺梗塞を再現することではありません。',
     structures: Object.freeze([
       dominant('Superior frontal gyrus'),
       dominant('Cingulate gyrus and sulcus (Middle anterior part)'),
@@ -1580,6 +1586,13 @@ export const LESION_SITES = Object.freeze([
     label: 'Dominant posterior watershed', labelJa: '優位半球 後方分水嶺（中側頭回後部・角回）',
     usualCause: 'Border zone between the middle and posterior cerebral arteries, in systemic hypoperfusion',
     usualCauseJa: '中大脳動脈と後大脳動脈の境界領域（全身性の低灌流）',
+    granularityLimit:
+      'A set of structures chosen for teaching, not a perfusion territory. This model has no blood '
+      + 'flow, no vascular anatomy and no individual variation in where a border zone falls, so '
+      + 'selecting this is not reproducing a border-zone infarct in anybody.',
+    granularityLimitJa:
+      '教材として選んだ構造の集合であって、灌流領域ではありません。本モデルは血流も血管解剖も'
+      + '分水嶺の位置の個人差も持たないので、これを選ぶことは誰かの分水嶺梗塞を再現することではありません。',
     structures: Object.freeze([
       dominant('Middle temporal gyrus'),
       dominant('Angular gyrus'),
@@ -1591,6 +1604,13 @@ export const LESION_SITES = Object.freeze([
     label: 'Both dominant watersheds at once', labelJa: '優位半球 前後の分水嶺（同時）',
     usualCause: 'Global hypoperfusion — cardiac arrest, or a critical carotid stenosis',
     usualCauseJa: '全脳性の低灌流（心停止、頸動脈の高度狭窄）',
+    granularityLimit:
+      'A set of structures chosen for teaching, not a perfusion territory. This model has no blood '
+      + 'flow, no vascular anatomy and no individual variation in where a border zone falls, so '
+      + 'selecting this is not reproducing a border-zone infarct in anybody.',
+    granularityLimitJa:
+      '教材として選んだ構造の集合であって、灌流領域ではありません。本モデルは血流も血管解剖も'
+      + '分水嶺の位置の個人差も持たないので、これを選ぶことは誰かの分水嶺梗塞を再現することではありません。',
     structures: Object.freeze([
       dominant('Superior frontal gyrus'),
       dominant('Cingulate gyrus and sulcus (Middle anterior part)'),
@@ -1608,7 +1628,14 @@ export const LESION_SITES = Object.freeze([
   },
   {
     id: 'dominant-insula',
-    label: 'Dominant insula', labelJa: '優位半球 島皮質',
+    label: 'Dominant insula, whole', labelJa: '優位半球 島皮質（全体）',
+    granularityLimit:
+      'The whole insular mesh. The atlas does not divide the anterior insula out, so this is not the '
+      + 'restricted anterior region that was proposed for apraxia of speech — and this model has no '
+      + 'speech quality to test that proposal against in any case.',
+    granularityLimitJa:
+      '島のメッシュ全体です。アトラスは前部島を分けて持っていないので、これは発語失行に関して'
+      + '提唱された限定領域ではありません。そもそも本モデルはその提唱を検証できる発話の質を持ちません。',
     usualCause: 'Insular branch of the middle cerebral artery (M2)',
     usualCauseJa: '中大脳動脈 島枝（M2）の梗塞',
     structures: Object.freeze([dominant('Insula (Subcentral gyrus and ant. and post. sulci)')]),
@@ -1644,12 +1671,24 @@ export const LESION_SITES = Object.freeze([
   {
     id: 'dominant-occipital-and-whole-callosum',
     label: 'Dominant occipital lobe with the whole corpus callosum',
-    labelJa: '優位半球 後頭葉＋脳梁（膨大部を含む）',
+    labelJa: '優位半球 後頭葉＋脳梁（全体。膨大部だけは選べません）',
+    granularityLimit:
+      'The classical lesion is of the splenium. This atlas carries one undivided corpus callosum, so '
+      + 'this preset takes the whole commissure — a much larger lesion than the one being taught, and '
+      + 'not a posterior callosal lesion.',
+    granularityLimitJa:
+      '古典的な病変は脳梁**膨大部**のものです。このアトラスは分割されていない脳梁を 1 つしか持たないため、'
+      + 'このプリセットは交連**全体**を取ります——教えている病変よりはるかに大きく、脳梁後方の病変ではありません。',
     usualCause: 'Posterior cerebral artery',
     usualCauseJa: '後大脳動脈',
     structures: Object.freeze([
       dominant('Calcarine sulcus'), dominant('Cuneus'), dominant('Lingual gyrus'),
-      { ...median('Corpus callosum'), share: 0.4 },
+      // The whole commissure, not a share of it. The share used to be 0.4, an
+      // invented number standing in for the splenium — which made the preset
+      // look like a posterior callosal lesion while actually being a fraction
+      // of an undivided mesh. If the atlas cannot show the splenium, the honest
+      // preset is the one that says it takes all of the callosum.
+      median('Corpus callosum'),
     ]),
   },
   {
@@ -1699,11 +1738,16 @@ export const LESION_SITES = Object.freeze([
     ]),
   },
   {
-    id: 'thalamocortical-disconnection',
-    label: 'Thalamus cut off from the frontal cortex', labelJa: '視床–前頭連絡の遮断（内包膝部など）',
+    id: 'dominant-anterior-thalamic-radiation',
+    label: 'Dominant anterior thalamic radiation',
+    labelJa: '優位側 視床前脚・前放線（内包膝部など）',
     usualCause: 'Capsular genu infarct, or a lesion of the anterior thalamic peduncle',
     usualCauseJa: '内包膝部の梗塞、視床前脚の病変',
-    structures: Object.freeze([...bilateral('Anterior thalamic radiation')]),
+    // One side. It used to be declared on both, and on top of that the old
+    // connection channel was keyed by id with no side at all, so selecting this
+    // zeroed all three frontal circuits bilaterally — heavier than the
+    // unilateral infarct the preset is named after.
+    structures: Object.freeze([dominant('Anterior thalamic radiation')]),
     // Connections in this model are not sided — there is one of each, standing
     // for both — so cutting these stands for a bilateral interruption. Stated
     // here because a one-sided capsular lesion is the commoner event, and this
@@ -2057,6 +2101,12 @@ export function solveHigherBrainFunction({
   const resolveElement = (element, structures) => {
     if (switchedOff.has(element.id)) return { integrity: 0, evaluable: true };
     if (element.mapping === MAPPING.CONCEPTUAL) {
+      // A process with no mesh is available unless it is switched off, *and*
+      // every task whose route passes through it carries that as a coverage
+      // limitation. `assumedAvailable` is the declaration of that assumption;
+      // without it the element is simply not evaluable by a lesion, which is
+      // reported as indeterminate rather than as health.
+      if (element.assumedAvailable) return { integrity: 1, evaluable: true, assumed: true };
       return { integrity: 1, evaluable: mode === MODE.CONCEPTUAL };
     }
     if (structures.length === 0) {
@@ -2073,7 +2123,7 @@ export function solveHigherBrainFunction({
       const side = resolveSide(structure.side, dominance);
       return { label: structure.label, side, damage: damageOf(structure.label, side) };
     });
-    const { integrity, evaluable } = resolveElement(node, structures);
+    const { integrity, evaluable, assumed } = resolveElement(node, structures);
     return {
       id: node.id,
       label: node.label,
@@ -2081,6 +2131,8 @@ export function solveHigherBrainFunction({
       mapping: node.mapping,
       integrity,
       evaluable,
+      /** True when this is a process no lesion can reach, taken as available. */
+      assumed: Boolean(assumed),
       structures,
     };
   });
@@ -2097,7 +2149,7 @@ export function solveHigherBrainFunction({
       return { label: structure.label, side, damage: damageOf(structure.label, side) };
     });
     const substrate = edge.substrate ?? NODE_SUBSTRATE.COMPOSITE;
-    const { integrity, evaluable } = resolveElement({ ...edge, substrate }, structures);
+    const { integrity, evaluable, assumed } = resolveElement({ ...edge, substrate }, structures);
     return {
       id: edge.id,
       from: edge.from,
@@ -2108,6 +2160,7 @@ export function solveHigherBrainFunction({
       within: structures.map(({ label, side }) => ({ label, side })),
       integrity,
       evaluable,
+      assumed: Boolean(assumed),
     };
   });
   const edgeById = new Map(edges.map((edge) => [edge.id, edge]));
@@ -2146,6 +2199,16 @@ export function solveHigherBrainFunction({
     const meshLimitsJa = new Set();
     for (const route of solved) {
       for (const step of route.steps) {
+        if (step.assumed) {
+          meshLimits.add(
+            `${step.label} has no atlas structure, so it is taken as available: no lesion here can `
+            + 'affect it, and that is an assumption rather than a finding'
+          );
+          meshLimitsJa.add(
+            `${step.labelJa}にはアトラス上の構造がないため、利用可能として扱っています。`
+            + 'ここに置いたどの病変もこれには影響せず、それは所見ではなく仮定です'
+          );
+        }
         const node = step.kind === 'node' ? functionNodeById(step.id) : null;
         if (node?.sharesMeshWith?.length) {
           const siblings = node.sharesMeshWith.map((id) => functionNodeById(id));
@@ -2210,14 +2273,14 @@ function solveRoute(route, nodeById, edgeById) {
       const solvedEdge = edgeById.get(edge.id);
       steps.push({
         kind: 'connection', id: edge.id, label: edge.label, labelJa: edge.labelJa,
-        integrity: solvedEdge.integrity, evaluable: solvedEdge.evaluable,
+        integrity: solvedEdge.integrity, evaluable: solvedEdge.evaluable, assumed: solvedEdge.assumed,
       });
     }
     const node = nodeById.get(nodeId);
     if (!node) throw new Error(`higherBrainFunction: route ${route.id} names an unknown process ${nodeId}`);
     steps.push({
       kind: 'node', id: node.id, label: node.label, labelJa: node.labelJa,
-      integrity: node.integrity, evaluable: node.evaluable,
+      integrity: node.integrity, evaluable: node.evaluable, assumed: node.assumed,
     });
   }
   // A closed loop — the frontal–subcortical circuits return to the cortex they

@@ -128,6 +128,7 @@ export const STRUCTURE_NAMES_JA = {
   'Corticostriatal tract (posterior)': '皮質線条体路（後方）',
   'Corticostriatal tract (superior)': '皮質線条体路（上方）',
   'Anterior thalamic radiation': '前視床放線',
+  'Posterior thalamic radiation': '後視床放線',
 };
 
 /**
@@ -213,14 +214,20 @@ export const LESION_NOTES = {
  * none.
  */
 export const TASK_READOUT_LABELS = {
-  'auditory-comprehension': { label: 'Comprehension', labelJa: '聴覚的理解' },
-  repetition: { label: 'Repetition', labelJa: '復唱' },
-  'speech-fluency': { label: 'Fluency', labelJa: '流暢性' },
-  'propositional-speech': { label: 'Speech with content', labelJa: '発話の内容' },
-  naming: { label: 'Naming', labelJa: '呼称' },
-  reading: { label: 'Reading', labelJa: '読字' },
-  writing: { label: 'Writing', labelJa: '書字' },
+  'auditory-comprehension': { label: 'Heard word → meaning', labelJa: '聞いた語 → 意味' },
+  'repetition-word': { label: 'Repeat a known word', labelJa: '既知語の復唱' },
+  'repetition-nonword': { label: 'Repeat a nonword', labelJa: '非語の復唱' },
+  'speech-initiation-route': { label: 'Route for starting to speak', labelJa: '話し始める経路' },
+  'propositional-output-route': { label: 'Meaning → spoken word', labelJa: '意味 → 発話' },
+  'naming-object': { label: 'Name a seen object', labelJa: '見た物品の呼称' },
+  'reading-comprehension-word': { label: 'Written word → meaning', labelJa: '書かれた語 → 意味' },
+  'writing-from-meaning': { label: 'Write from meaning', labelJa: '意味からの書字' },
+  'writing-to-dictation-word': { label: 'Write a known word down', labelJa: '既知語の書き取り' },
+  'writing-to-dictation-nonword': { label: 'Write a nonword down', labelJa: '非語の書き取り' },
+  'graphomotor-route': { label: 'Route that moves the pen', labelJa: '筆記の運動の経路' },
   'calculation-and-body-schema': { label: 'Calculation, fingers, L/R', labelJa: '計算・手指・左右' },
+  'reading-aloud': { label: 'Reading aloud', labelJa: '音読' },
+  'connected-speech-fluency': { label: 'Fluency of connected speech', labelJa: '連続発話の流暢性' },
   'praxis-right-hand': { label: 'Right-hand praxis', labelJa: '右手の行為' },
   'praxis-left-hand': { label: 'Left-hand praxis', labelJa: '左手の行為' },
   'attention-left-space': { label: 'Attention, left', labelJa: '左空間の注意' },
@@ -232,7 +239,41 @@ export const TASK_READOUT_LABELS = {
 };
 
 /**
- * How each task is tested at the bedside, in the words a clinician would use.
+ * What the read-out words mean, and what they deliberately do not.
+ *
+ * These replace 「保たれる／低下／消失」. The old third value said a patient had
+ * *lost* the function, which a dimensionless number in the bottom band cannot
+ * support: 0.2 is not 0. And the old first value said "preserved", which reads
+ * as a clinical finding rather than as "the declared route reaches".
+ */
+export const STATE_TEXT = {
+  high: { label: 'Route available', labelJa: '経路は概ね通る' },
+  intermediate: { label: 'Route partly available', labelJa: '経路は部分的に通る' },
+  low: { label: 'Route barely available', labelJa: '経路はほとんど通らない' },
+};
+
+export const COMPUTATION_TEXT = {
+  computed: { label: 'Computed', labelJa: '計算した' },
+  indeterminate: { label: 'Cannot be determined', labelJa: '判定不能' },
+  not_modeled: { label: 'Not modelled here', labelJa: '対象外（このモデルにありません）' },
+};
+
+/** The one line that has to sit next to a result, per computation status. */
+export const COMPUTATION_NOTE = {
+  indeterminate: {
+    text: 'An eligible route runs through something this mode cannot evaluate, so no value is reported.',
+    textJa: 'このモードでは評価できない要素を含む経路があるため、値を出していません。',
+  },
+  not_modeled: {
+    text: 'No route is declared for this task. It is not normal and not abolished — it is absent, and it '
+      + 'must not be used to tell one syndrome from another.',
+    textJa: 'この課題に経路を宣言していません。正常でも消失でもなく「無い」ので、'
+      + '症候の鑑別に使わないでください。',
+  },
+};
+
+/**
+ * What a run of the examination is asking, in the words a clinician would use.
  *
  * These were in the model, and they are copy: `src/models/README.md` rule 6
  * says a model may not carry any. What is medical about a task — the structures
@@ -240,18 +281,42 @@ export const TASK_READOUT_LABELS = {
  */
 export const TASK_PROBES = {
   'auditory-comprehension': { text: 'Point to the one I name.', textJa: '「言った物を指してください」' },
-  repetition: { text: 'Say after me.', textJa: '「私のあとに続けて言ってください」' },
-  'speech-fluency': {
-    text: 'Does speech come out, at length and without effort?',
-    textJa: '発話が努力なく、まとまった長さで出てくるか',
+  'repetition-word': { text: 'Say after me: “table”.', textJa: '「私のあとに続けて言ってください——『つくえ』」' },
+  'repetition-nonword': { text: 'Say after me: “nalpid”.', textJa: '「私のあとに続けて言ってください——『ナルピド』」' },
+  'speech-initiation-route': {
+    text: 'Nothing is asked. Does an utterance get started at all?',
+    textJa: '何も尋ねない。自分から発話が始まるか',
   },
-  'propositional-speech': { text: 'Tell me what happened.', textJa: '「何があったか話してください」' },
-  naming: { text: 'What is this called?', textJa: '「これは何ですか」' },
-  reading: { text: 'Read this out, and tell me what it says.', textJa: '「これを読んで、意味を教えてください」' },
-  writing: { text: 'Write this sentence.', textJa: '「この文を書いてください」' },
+  'propositional-output-route': {
+    text: 'Given the idea, does a word come out for it?',
+    textJa: '言いたい内容があるとき、それに対応する語が出てくるか',
+  },
+  'naming-object': { text: 'What is this called?', textJa: '「これは何ですか」' },
+  'reading-comprehension-word': {
+    text: 'Without saying it out loud, point to what this word means.',
+    textJa: '「声に出さずに、この語の意味を指してください」',
+  },
+  'writing-from-meaning': {
+    text: 'Write the name of this idea. No dictation, no picture.',
+    textJa: '「この意味の語を書いてください」（書き取りでも絵からでもない）',
+  },
+  'writing-to-dictation-word': { text: 'Write down: “table”.', textJa: '「書いてください——『つくえ』」' },
+  'writing-to-dictation-nonword': { text: 'Write down: “nalpid”.', textJa: '「書いてください——『ナルピド』」' },
+  'graphomotor-route': {
+    text: 'The letters are already chosen. Does the hand produce them?',
+    textJa: '書く文字は決まっている。手がそれを書けるか',
+  },
   'calculation-and-body-schema': {
-    text: 'Take 7 from 100. Which is your left thumb?',
-    textJa: '「100 から 7 を引いてください」「左手の親指はどれですか」',
+    text: 'Not implemented — nothing is asked, and nothing is reported.',
+    textJa: '未実装。何も尋ねず、何も報告しません',
+  },
+  'reading-aloud': {
+    text: 'Not implemented — the orthography-to-phonology route is not declared.',
+    textJa: '未実装。正書法—音韻の経路を宣言していません',
+  },
+  'connected-speech-fluency': {
+    text: 'Not implemented — no rate, no phrase length, no grammar.',
+    textJa: '未実装。発話速度も句の長さも文法も持ちません',
   },
   'praxis-right-hand': { text: 'Show me how you would use a comb.', textJa: '「櫛を使うまねをしてください」' },
   'praxis-left-hand': { text: 'Now the same thing with the other hand.', textJa: '「同じことを反対の手でしてください」' },
@@ -278,25 +343,100 @@ export const TASK_PROBES = {
 /**
  * The tasks a reader can trace through the brain, and why not all of them.
  *
- * Every task the model solves is on the read-out — the pattern of what survives
- * is the finding, and dropping rows from it would hide the finding. Tracing is
- * a different job: it draws one route across the model, and the control for it
- * is a button per task on a panel that sits over the brain it is about. Seven
- * buttons cover every network in the model and every route a reader needs to
- * follow; thirteen covered the model.
+ * Tracing draws one route across the model, and the control for it is a button
+ * per task on a panel over the brain. A task this model does not compute has no
+ * route to draw, so it is not here — and it is still on the read-out, saying
+ * that it is not modelled, because a row that disappears teaches nothing.
  */
 export const TRACEABLE_TASKS = Object.freeze([
   'auditory-comprehension',
-  'repetition',
-  'speech-fluency',
-  'naming',
-  'reading',
+  'repetition-word',
+  'repetition-nonword',
+  'naming-object',
+  'reading-comprehension-word',
+  'writing-from-meaning',
+  'writing-to-dictation-nonword',
   'praxis-left-hand',
   'attention-left-space',
   'episodic-memory-formation',
   'set-shifting-and-planning',
-  'initiation-and-drive',
 ]);
+
+/**
+ * The processes a reader can switch off directly, and what each one shows.
+ *
+ * This is the conceptual mode. Every entry is a process the model declares;
+ * switching one off is **not** a prediction about any lesion, and the copy says
+ * so wherever a result from this mode is shown.
+ */
+export const CONCEPTUAL_INTERVENTIONS = Object.freeze([
+  {
+    id: 'phoneme-grapheme-conversion',
+    label: 'Phoneme-to-grapheme conversion',
+    labelJa: '音韻—文字変換',
+    shows: 'Nonwords can no longer be written down; a known word written from its meaning still can.',
+    showsJa: '非語が書き取れなくなり、意味からの既知語の書字は残ります。',
+  },
+  {
+    id: 'orthographic-output-lexicon',
+    label: 'Whole-word spelling',
+    labelJa: '語まるごとの綴り（正書法出力語彙）',
+    shows: 'The other half: writing from meaning goes, and a nonword can still be written from its sound.',
+    showsJa: 'その反対側。意味からの書字が落ち、非語は音から書けます。',
+  },
+  {
+    id: 'orthographic-visual-form',
+    label: 'Visual form of letters',
+    labelJa: '文字の形態の視覚処理',
+    shows: 'Written words stop reaching meaning; naming a seen object does not change.',
+    showsJa: '書かれた語が意味に届かなくなり、見た物品の呼称は変わりません。',
+  },
+  {
+    id: 'object-visual-form',
+    label: 'Visual form of objects',
+    labelJa: '物体の形態の視覚処理',
+    shows: 'The mirror image: object naming goes and reading does not.',
+    showsJa: '鏡像。物品呼称が落ち、読解は落ちません。',
+  },
+  {
+    id: 'auditory-input',
+    label: 'The way in from hearing',
+    labelJa: '聴覚からの入口',
+    shows: 'Everything spoken is affected, including dictation; writing from meaning is not.',
+    showsJa: '話し言葉を使うものすべて（書き取りを含む）が影響を受け、意味からの書字は受けません。',
+  },
+  {
+    id: 'graphemic-buffer',
+    label: 'Holding and ordering the letters',
+    labelJa: '書記素の保持と配列',
+    shows: 'The pen stops, and the spelling routes above it do not.',
+    showsJa: 'ペンが止まり、その上流の綴りの経路は止まりません。',
+  },
+  {
+    id: 'dorsal-phonological',
+    label: 'The dorsal bundle between analysis and output',
+    labelJa: '音韻分析と音韻出力のあいだの背側の束',
+    shows: 'Nonword repetition goes; a known word can still be repeated round through its meaning.',
+    showsJa: '非語の復唱が落ち、既知語は意味を経由して復唱できます。',
+  },
+]);
+
+export const MODE_COPY = {
+  label: 'What to change',
+  labelJa: '何を操作するか',
+  atlas: { label: 'A lesion on the atlas', labelJa: 'アトラス上の病変' },
+  conceptual: { label: 'Switch off one process', labelJa: '処理を 1 つ遮断する' },
+  atlasNote: {
+    text: 'Named structures of one normal specimen, taken as a whole or as a stated share.',
+    textJa: '1 体の正常標本の、名前のついた構造。まるごと、または宣言した割合で取ります。',
+  },
+  conceptualNote: {
+    text: 'A thought experiment on the declared processes. It is not a prediction about any real lesion, '
+      + 'and no lesion is placed on the atlas while it runs.',
+    textJa: '宣言した処理についての思考実験です。実在の病変についての予測ではなく、'
+      + '実行中はアトラスに病変を置きません。',
+  },
+};
 
 export const MODEL_CONTROLS_COPY = {
   label: 'A lesion, and a task to try',

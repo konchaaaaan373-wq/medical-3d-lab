@@ -54,7 +54,20 @@ export const REEL_SEGMENTS = Object.freeze([
 export const REEL_CUES = REEL_SEGMENTS.map(({ id, at, until }) => ({ id, at, until }));
 
 /** The task the sequence asks for, by its id in the model. */
-export const REEL_TASK = 'repetition';
+export const REEL_TASK = 'repetition-word';
+
+/**
+ * The rows the overlay prints, by task id.
+ *
+ * The third row used to be clinical fluency, which this model does not compute.
+ * It is the self-initiation *route* now, under the name it deserves, and the
+ * caption no longer claims anything about how fluent the speech is.
+ */
+export const REEL_ROWS = Object.freeze([
+  'repetition-word',
+  'auditory-comprehension',
+  'speech-initiation-route',
+]);
 
 const HOLD_PAST_END = REEL_DURATION + 1.5;
 
@@ -161,13 +174,13 @@ export function overlayAt(t, { language, metrics }) {
           label: site
             ? pick(language, site.label, site.labelJa)
             : pick(language, REEL_COPY.cards.task.label, REEL_COPY.cards.task.labelJa),
-          rows: [row(language, 'repetition', metrics.repetition)],
+          rows: [row(language, 'repetition-word', metrics['repetition-word'])],
         },
         {
           label: pick(language, REEL_COPY.cards.spared.label, REEL_COPY.cards.spared.labelJa),
           rows: [
             row(language, 'auditory-comprehension', metrics['auditory-comprehension']),
-            row(language, 'speech-fluency', metrics['speech-fluency']),
+            row(language, 'speech-initiation-route', metrics['speech-initiation-route']),
           ],
         },
       ],
