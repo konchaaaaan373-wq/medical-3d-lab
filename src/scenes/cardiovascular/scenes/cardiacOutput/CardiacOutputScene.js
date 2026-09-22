@@ -16,7 +16,7 @@ import {
   resistanceAt,
 } from './reelStoryboard.js';
 import { ExperimentSession } from './experimentSession.js';
-import { CONTROL_DOMAIN, PRESET_IDS, REFERENCE_GEOMETRY } from '../../../../models/cardiacOutput.js';
+import { CONTROL_DOMAIN, CONTROL_IDS, PRESET_IDS, REFERENCE_GEOMETRY } from '../../../../models/cardiacOutput.js';
 import {
   advanceCardiacPhase,
   beatPhaseAt,
@@ -534,6 +534,44 @@ export class CardiacOutputScene {
       });
     }
 
+    // With the comparison on, say **what is being compared** before saying what
+    // came of it. An external review asked for this: a reader looking at two
+    // hearts side by side can see that something differs and not which of the
+    // four it was, and "I only changed one thing" is the claim the whole scene
+    // rests on. So the row names the inputs that differ and their sizes, and
+    // says how many are held — and when several differ, it says that too
+    // rather than letting a multi-input condition read as a one-factor
+    // comparison. The intervention is a multi-input change by construction.
+    if (ref) {
+      // `view.input`, not `session.input`: the row describes the condition the
+      // numbers beside it came from. When a condition is refused the two
+      // differ — the controls hold what was asked for, the screen holds what
+      // was solved — and a row that described the request would name a change
+      // the figures do not contain.
+      const shown = this.session.view.input;
+      const moved = CONTROL_IDS.filter((id) => shown[id] !== this.session.baseline.input[id]);
+      const held = CONTROL_IDS.length - moved.length;
+      const describe = (id) => {
+        const label = CONTROLS.find((control) => control.id === id);
+        const format = (value) => (Number.isInteger(value) ? value : Number(value.toFixed(2)));
+        return {
+          en: `${(label?.label ?? id).split('·')[0].trim()} ${format(this.session.baseline.input[id])} → ${format(shown[id])}`,
+          ja: `${(label?.labelJa ?? id).split('・')[0].trim()} ${format(this.session.baseline.input[id])} → ${format(shown[id])}`,
+        };
+      };
+      const parts = moved.map(describe);
+      rows.push({
+        id: 'changed',
+        label: moved.length === 1 ? 'Changed (one input)' : `Changed (${moved.length} inputs)`,
+        labelJa: moved.length === 1 ? '変更した入力（1 つ）' : `変更した入力（${moved.length} つ）`,
+        value: parts.length ? parts.map((part) => part.en).join(' · ') : 'nothing yet',
+        valueJa: parts.length ? parts.map((part) => part.ja).join(' ・ ') : 'まだありません',
+        unit: parts.length ? `${held} held` : '',
+        unitJa: parts.length ? `他 ${held} つは固定` : '',
+        emphasis: true,
+      });
+    }
+
     rows.push(
       {
         id: 'co',
@@ -571,6 +609,23 @@ export class CardiacOutputScene {
         labelJa: '左室拡張末期圧',
         value: mmHg(m.endDiastolicPressureMmHg),
         reference: ref ? mmHg(ref.endDiastolicPressureMmHg) : undefined,
+        unit: 'mmHg',
+        emphasis: true,
+      },
+      {
+        id: 'pvp',
+        // Promoted alongside the filling pressure for the same reason: raising
+        // the filling raises output *and* the pressure behind the left heart,
+        // and a reader who sees only the first has been shown half of it.
+        // Reviewed externally 2026-09-22 and asked for explicitly.
+        //
+        // It is this model's pulmonary venous compartment and nothing more —
+        // not a wedge pressure, not a capillary pressure, and no threshold in
+        // it is read as oedema. The scope panel says so on the same screen.
+        label: 'Mean pulmonary venous pressure',
+        labelJa: '平均肺静脈圧',
+        value: mmHg(m.meanPulmonaryVenousPressureMmHg),
+        reference: ref ? mmHg(ref.meanPulmonaryVenousPressureMmHg) : undefined,
         unit: 'mmHg',
         emphasis: true,
       },
@@ -632,16 +687,6 @@ export class CardiacOutputScene {
         value: Math.round(m.systemicResistanceDynSCm5),
         reference: ref ? Math.round(ref.systemicResistanceDynSCm5) : undefined,
         unit: 'dyn·s·cm⁻⁵',
-      },
-      {
-        id: 'pvp',
-        // Named for what it is. There is no right atrium in this model, so
-        // nothing here is a central venous pressure.
-        label: 'Mean pulmonary venous pressure',
-        labelJa: '平均肺静脈圧',
-        value: mmHg(m.meanPulmonaryVenousPressureMmHg),
-        reference: ref ? mmHg(ref.meanPulmonaryVenousPressureMmHg) : undefined,
-        unit: 'mmHg',
       }
     );
     return rows;
