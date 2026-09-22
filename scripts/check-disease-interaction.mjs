@@ -161,13 +161,20 @@ for (const slug of SLUGS) {
   const hasSlider = (await page.locator('input.slider:not(.slider-sm)').count()) > 0;
   await page.screenshot({ path: join(outDir, `${slug}-baseline.png`) });
 
-  if (!hasSlider) problems.push('no progression slider');
+  const controlLocator = page.locator('.model-control input[type="range"]');
+  const hasModelControls = (await controlLocator.count()) > 0;
+  // A scene whose subject is a set of independent conditions rather than a
+  // trajectory declares `meta.progression.enabled = false` and is *right* not
+  // to have a progression slider — `circulation` and `cardiac-output` are both
+  // this shape. What must never be true is that there is nothing to move at
+  // all, so the check is "one of the two", not "the slider".
+  if (!hasSlider && !hasModelControls) problems.push('nothing on the page moves the model');
   await setSlider('1000');
 
   // Push every model control to its far end as well, where there is one: a
   // scene whose slider is its whole story and a scene whose controls are the
   // story both have to end up somewhere different from where they started.
-  const controls = page.locator('.model-control input[type="range"]');
+  const controls = controlLocator;
   const controlCount = await controls.count();
   for (let i = 0; i < controlCount; i += 1) {
     await controls.nth(i).evaluate((el) => {
@@ -187,7 +194,14 @@ for (const slug of SLUGS) {
     if (baseline.metrics && baseline.metrics === diseased.metrics) problems.push('no metric changed');
   }
 
-  const reset = page.locator('button', { hasText: 'モデル初期化' });
+  // Two resets, because there are two panels that can carry one. A scene with a
+  // progression axis gets "モデル初期化" on the console; a scene whose model
+  // controls are the whole story gets "戻す" on the controls panel instead
+  // (`ModelControls`, `copy.reset`). Looking for only the first reported
+  // `circulation` and `cardiac-output` as having no reset at all, which is the
+  // kind of false red that teaches people to ignore a checker.
+  const consoleReset = page.locator('button', { hasText: 'モデル初期化' });
+  const reset = (await consoleReset.count()) ? consoleReset : page.locator('.model-control-reset');
   if (!(await reset.count())) problems.push('no reset control');
   else {
     await reset.first().click();
@@ -205,6 +219,56 @@ for (const slug of SLUGS) {
     if (baseline.metrics && back.metrics !== baseline.metrics) {
       problems.push(`reset did not restore the numbers (${baseline.metrics} -> ${back.metrics})`);
     }
+  }
+
+  // --- the plots, and the comparison --------------------------------------
+  //
+  // A scene can build a pressure-volume panel, mount it, update it every frame
+  // and never show it: the plots live in Data view, and whether that view is
+  // reachable is a separate decision. So this asks for the view the way a
+  // reader does, and then asks the canvas whether anything was actually drawn
+  // on it — a blank plot and a plot nobody can reach look identical from here
+  // and from every unit test.
+  const dataButton = page.locator('button[data-control="data"]');
+  if (await dataButton.count()) {
+    await dataButton.first().click();
+    await page.waitForFunction(() => document.querySelector('#ui')?.dataset.view === 'data');
+    await page.waitForTimeout(1400);
+    await page.screenshot({ path: join(outDir, `${slug}-data-view.png`) });
+    const plots = await page.evaluate(() =>
+      [...document.querySelectorAll('.pv canvas, .wave canvas, .chart canvas')].map((canvas) => {
+        const box = canvas.getBoundingClientRect();
+        if (!box.width || !box.height) return { name: canvas.parentElement?.className ?? '?', drawn: 0, visible: false };
+        const context = canvas.getContext('2d');
+        if (!context) return { name: canvas.parentElement?.className ?? '?', drawn: 0, visible: true };
+        const { data } = context.getImageData(0, 0, canvas.width, canvas.height);
+        const colours = new Set();
+        for (let i = 0; i < data.length; i += 4 * 37) {
+          colours.add(`${data[i]},${data[i + 1]},${data[i + 2]},${data[i + 3]}`);
+        }
+        return { name: canvas.parentElement?.className ?? '?', drawn: colours.size, visible: true };
+      })
+    );
+    for (const plot of plots) {
+      if (!plot.visible) problems.push(`a plot in ${plot.name} is mounted with no size`);
+      else if (plot.drawn < 3) problems.push(`the plot in ${plot.name} is blank (${plot.drawn} colours)`);
+    }
+    if (plots.length) console.log(`  ${slug}: ${plots.length} plot(s) drawn in Data view`);
+  } else if (await page.locator('.pv canvas').count()) {
+    problems.push('the scene draws a pressure-volume plot that Data view is the only way to reach, and offers no Data button');
+  }
+
+  const compareButton = page.locator('button[data-control="compare"]');
+  if (await compareButton.count()) {
+    await compareButton.first().click();
+    await page.waitForTimeout(2200);
+    await page.screenshot({ path: join(outDir, `${slug}-compare.png`) });
+    const referenced = await page.evaluate(() =>
+      [...document.querySelectorAll('.metrics .metric-reference')].filter((node) => node.textContent.trim()).length
+    );
+    if (!referenced) problems.push('comparison is on and no row shows what it is compared against');
+    await compareButton.first().click();
+    await page.waitForTimeout(900);
   }
 
   // --- the sequence as a file ---------------------------------------------

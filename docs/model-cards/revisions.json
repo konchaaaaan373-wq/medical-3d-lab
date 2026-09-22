@@ -54,6 +54,17 @@
     "cardUpdatedAt": "2026-09-22"
   },
   {
+    "sceneId": "cardiac-output",
+    "card": "docs/model-cards/cardiac-output.md",
+    "modelSources": [
+      "src/models/cardiacOutput.js",
+      "src/models/cardiacMechanics.js"
+    ],
+    "cardRevision": 2,
+    "modelDigest": "4998782d1a048478",
+    "cardUpdatedAt": "2026-09-22"
+  },
+  {
     "sceneId": "copd-hyperinflation",
     "card": "docs/model-cards/copd.md",
     "modelSources": [

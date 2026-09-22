@@ -34,6 +34,7 @@ export const CLINICAL_REVIEW_STATES = Object.freeze({
   'brain-anatomy': 'pending',
   'breast-anatomy': 'pending',
   'breast-lesion': 'pending',
+  'cardiac-output': 'pending',
   'cataract': 'pending',
   'circulation': 'pending',
   'copd-hyperinflation': 'stale',

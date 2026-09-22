@@ -5,6 +5,7 @@ import { SCENES, structureFunctionScene } from '../catalog/index.js';
 import { RELEASED_SCENES } from '../catalog/release.js';
 import { betaUnlocked, sceneOpen } from './releaseGate.js';
 import { structureOf } from './router.js';
+import { hasDataOnlySurface } from './dataView.js';
 import { installDeparture } from './departure.js';
 import { Playback } from '../utils/Playback.js';
 import { damp } from '../utils/math.js';
@@ -148,7 +149,7 @@ export async function createApp({ stage, ui, onRetryModel = null }) {
    * and then hiding its `.data-only` controls would be a one-way door, so it
    * starts in Data view and the split simply does not apply to it.
    */
-  const hasDataView = Boolean(scene.getMetrics);
+  const hasDataView = hasDataOnlySurface(scene, meta);
   let dataView = !hasDataView;
   /** Set while the guided sequence is running; null the rest of the time. */
   let storyFocus = null;
@@ -725,11 +726,12 @@ export async function createApp({ stage, ui, onRetryModel = null }) {
     onCompareToggle: scene.setComparison ? (enabled) => setComparison(enabled) : undefined,
     onReel: scene.getReel ? () => toggleReel() : undefined,
     onLearn: scene.getLearningModules ? () => toggleLearning() : undefined,
-    // A primary tactile interaction keeps its three read-outs on screen. It
-    // has no second layer of plots or parameters to reveal, so a Data button
-    // would be a switch between two views that contain the same information.
-    onDataToggle:
-      scene.getMetrics && !meta.modelControls?.primary ? (enabled) => setDataView(enabled) : undefined,
+    // A primary tactile interaction keeps its three read-outs on screen and may
+    // have no second layer to reveal, in which case a Data button would switch
+    // between two views holding the same information. `hasDataOnlySurface` is
+    // the question — asked of the panels rather than of the controls, because a
+    // scene can have both.
+    onDataToggle: hasDataView ? (enabled) => setDataView(enabled) : undefined,
     onZoom: (direction) => zoomBy(direction),
     // An anatomy scene owns its display controls: they are a tab of its panel,
     // reached by the panel's own Parts button and its tabs. A second control in

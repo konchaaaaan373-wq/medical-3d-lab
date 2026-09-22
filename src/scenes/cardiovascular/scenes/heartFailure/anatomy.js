@@ -353,7 +353,27 @@ export const ANCHORS = {
  * first, and the blood that never leaves is the apical blood — the classic
  * picture of stasis in a dilated ventricle.
  */
-export function buildCavityBlood(count, seed = 90210) {
+/**
+ * @param {number} count
+ * @param {number} [seed]
+ * @param {{ exitCurve?: THREE.Curve<THREE.Vector3>, exitRange?: [number, number],
+ *   entryCurve?: THREE.Curve<THREE.Vector3>, entryRange?: [number, number] }} [paths]
+ *   Where ejected blood goes and where filling blood comes from. The defaults
+ *   are this scene's aorta and mitral inflow, so nothing here changes for it.
+ *
+ *   They are parameters because a second scene needed them to be. The
+ *   cardiac-output scene draws a schematic circuit instead of an aorta, and
+ *   with the curve hard-coded its ejected blood streamed up into empty space
+ *   where an aortic arch would have been — visible in a render and in nothing
+ *   else. Copying this function to change two curves is what the organ/disease
+ *   split exists to prevent, so the curves became arguments.
+ */
+export function buildCavityBlood(count, seed = 90210, {
+  exitCurve = AORTA,
+  exitRange = [EJECTION_REACH.startT, EJECTION_REACH.endT],
+  entryCurve = MITRAL_INFLOW,
+  entryRange = [0.05, 0.85],
+} = {}) {
   const rnd = createRandom(seed);
   const slots = [];
   const dir = new THREE.Vector3();
@@ -399,11 +419,11 @@ export function buildCavityBlood(count, seed = 90210) {
     // occupy — valve to the end of the arch — asked for by name. Quoting arc
     // length here is what once sent it ten units below the apex and off the
     // bottom of the screen when the descending aorta was added.
-    AORTA.getPointAt(lerp(EJECTION_REACH.startT, EJECTION_REACH.endT, rnd()), tmp);
+    exitCurve.getPointAt(lerp(exitRange[0], exitRange[1], rnd()), tmp);
     jitter(tmp, rnd, 0.22);
     write(buffers.exits, i, tmp);
 
-    MITRAL_INFLOW.getPointAt(lerp(0.05, 0.85, rnd()), tmp);
+    entryCurve.getPointAt(lerp(entryRange[0], entryRange[1], rnd()), tmp);
     jitter(tmp, rnd, 0.28);
     write(buffers.entries, i, tmp);
   });

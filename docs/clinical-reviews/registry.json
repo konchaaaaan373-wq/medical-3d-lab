@@ -53,6 +53,32 @@
     ]
   },
   {
+    "sceneId": "cardiac-output",
+    "reviewStatus": "pending",
+    "reviewerRole": "no completed clinical sign-off recorded",
+    "reviewedAt": null,
+    "reviewedCommit": null,
+    "scope": [
+      "closed-loop elastance model exposed as four one-at-a-time inputs, its read-out, pressure-volume loop and pressure waveform, prepared for future clinical sign-off"
+    ],
+    "sources": [
+      "docs/model-cards/cardiac-output.md",
+      "docs/model-evidence/cardiac-output.md",
+      "docs/proposals/cardiac-output.md",
+      "tests/cardiac-output-physiology.test.js",
+      "tests/cardiac-output-model.test.js",
+      "docs/medical-notes.md"
+    ],
+    "unresolvedLimitations": [
+      "The model carries no reflex regulation of any kind — no baroreflex, no chemoreflex, no neurohormonal axis, no autoregulation — so a change to one input is never answered by the others as it would be in a person.",
+      "Systolic duration is a fixed fraction of the cardiac cycle, so the loss of diastolic filling time with tachycardia is under-represented and the scene is not a general model of tachycardia.",
+      "The circulating quantity is stressed volume, not blood volume; the model has no compartment fluid can leave to, so nothing here is a fluid balance, a fluid requirement or a fluid-responsiveness test.",
+      "There is no right atrium, so the mean systemic venous pressure reported is not a central venous pressure.",
+      "The reference condition is a calibration and the reduced-contractility preset's elastance is an illustrative magnitude; the model claims directions and mechanisms, never response sizes.",
+      "Suga & Sagawa (1974) is cited as the framework on its bibliographic record only; the full text was not read for this work and no coefficient is fitted to it."
+    ]
+  },
+  {
     "sceneId": "circulation",
     "reviewStatus": "pending",
     "reviewerRole": "no completed clinical sign-off recorded",
