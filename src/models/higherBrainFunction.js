@@ -311,14 +311,6 @@ export const FUNCTION_NODES = Object.freeze([
     structures: Object.freeze([dominant('Middle temporal gyrus'), dominant('Temporal pole')]),
   },
   {
-    id: 'cross-modal-integration',
-    mapping: MAPPING.ATLAS,
-    label: 'Cross-modal integration (angular gyrus)',
-    labelJa: '多感覚の統合（角回）',
-    substrate: NODE_SUBSTRATE.COMPOSITE,
-    structures: Object.freeze([dominant('Angular gyrus')]),
-  },
-  {
     id: 'speech-initiation',
     mapping: MAPPING.COARSE,
     label: 'Speech initiation (supplementary motor and anterior cingulate)',
@@ -752,22 +744,10 @@ export const FUNCTION_EDGES = Object.freeze([
     within: Object.freeze([median('Corpus callosum')]),
   },
   {
-    id: 'form-to-integration', from: 'orthographic-visual-form', to: 'cross-modal-integration',
-    label: 'Letter form to cross-modal integration', labelJa: '文字の形態 → 角回',
-    mapping: MAPPING.COARSE,
-    within: Object.freeze([dominant('White matter of telencephalon')]),
-  },
-  {
     id: 'object-form-to-semantic', from: 'object-visual-form', to: 'lexical-semantic',
     label: 'Object form to meaning', labelJa: '物体の形態 → 意味',
     mapping: MAPPING.ATLAS,
     within: Object.freeze([dominant('Inferior longitudinal fasciculus')]),
-  },
-  {
-    id: 'integration-to-semantic', from: 'cross-modal-integration', to: 'lexical-semantic',
-    label: 'Cross-modal integration to meaning', labelJa: '角回 → 意味',
-    mapping: MAPPING.ATLAS,
-    within: Object.freeze([dominant('Middle longitudinal fasciculus')]),
   },
   {
     id: 'praxis-to-premotor', from: 'praxis-formula', to: 'premotor-dominant',
@@ -1138,12 +1118,6 @@ export const FUNCTION_TASKS = Object.freeze([
       Object.freeze({
         id: 'reading-crossed-ventral',
         nodes: Object.freeze(['visual-input-nondominant', 'orthographic-visual-form', 'lexical-semantic']),
-      }),
-      Object.freeze({
-        id: 'reading-dominant-field-angular',
-        nodes: Object.freeze([
-          'visual-input-dominant', 'orthographic-visual-form', 'cross-modal-integration', 'lexical-semantic',
-        ]),
       }),
     ]),
     coverageLimitations: Object.freeze([

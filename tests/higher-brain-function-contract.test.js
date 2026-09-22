@@ -362,3 +362,78 @@ test('contract: the same input gives the same output, twice running', () => {
   const twice = solveHigherBrainFunction({ lesions: [lesionSiteById('dominant-watershed-both')], extent: 0.6 });
   assert.deepEqual(JSON.parse(JSON.stringify(once)), JSON.parse(JSON.stringify(twice)));
 });
+
+test('contract: no declared process is inert, and no route is strictly dominated', () => {
+  // Two ways to carry a claim the model never makes. A node nothing can ever
+  // be changed by is decoration on the diagram; a route that can never be the
+  // best one is a way round that never opens. The angular gyrus was both: it
+  // was on a third reading route that added steps to the ventral one and so
+  // could never beat it, and with the Gerstmann task declared not-modelled
+  // that node could not change any answer at all.
+  const baseline = solveHigherBrainFunction({ mode: MODE.CONCEPTUAL, interventions: [] });
+  const modelled = baseline.tasks.filter((task) => task.modelled).map((task) => task.id);
+  const changedBy = (interventions) => {
+    const state = solveHigherBrainFunction({ mode: MODE.CONCEPTUAL, interventions });
+    return modelled.filter((id) => {
+      const before = baseline.tasks.find((task) => task.id === id);
+      const after = state.tasks.find((task) => task.id === id);
+      return before.availability !== after.availability
+        || before.computationStatus !== after.computationStatus;
+    });
+  };
+
+  // These three change nothing on their own *by declaration*: each is one half
+  // of an alternative the model states — two visual fields into the same form
+  // process, and two parietal lobes attending to the right of space. Knocking
+  // out the pair has to change something, or the alternative is fiction.
+  const alternatives = {
+    'visual-input-dominant': ['visual-input-nondominant'],
+    'visual-input-nondominant': ['visual-input-dominant'],
+    'spatial-attention-dominant': ['spatial-attention-nondominant'],
+  };
+  for (const node of FUNCTION_NODES) {
+    const alone = changedBy([node.id]);
+    if (alone.length > 0) continue;
+    const pair = alternatives[node.id];
+    assert.ok(pair, `${node.id} changes nothing and is not a declared alternative`);
+    assert.ok(
+      changedBy([node.id, ...pair]).length > 0,
+      `${node.id} and its alternative change nothing together either`
+    );
+  }
+
+  // And every declared route can be the reported one under some single
+  // knockout, so no route is a way round that never opens.
+  const reported = new Set();
+  const record = (state) => {
+    for (const task of state.tasks) {
+      for (const id of task.evaluatedRouteIds) {
+        if (task.route && task.route.length > 0) reported.add(`${task.id}:${task.evaluatedRouteIds[0]}`);
+      }
+    }
+  };
+  const bestRouteOf = (state, taskId) => {
+    const task = state.tasks.find((candidate) => candidate.id === taskId);
+    if (!task?.route) return null;
+    return task.route.map((step) => step.id).join('>');
+  };
+  for (const task of FUNCTION_TASKS.filter((candidate) => candidate.modelled && candidate.routes.length > 1)) {
+    const shapes = new Set();
+    shapes.add(bestRouteOf(baseline, task.id));
+    // Connections as well as nodes: the way round through meaning only becomes
+    // the reported route when the *bundle* between analysis and output is cut,
+    // and no single node does that.
+    for (const element of [...FUNCTION_NODES, ...FUNCTION_EDGES]) {
+      const state = solveHigherBrainFunction({ mode: MODE.CONCEPTUAL, interventions: [element.id] });
+      const shape = bestRouteOf(state, task.id);
+      if (shape) shapes.add(shape);
+    }
+    const eligible = task.routes.filter((route) => routeIsEligible(route, task.stimulus));
+    assert.ok(
+      shapes.size >= eligible.length,
+      `${task.id} reports ${shapes.size} distinct routes for ${eligible.length} eligible ones — `
+      + 'one of them can never be the best'
+    );
+  }
+  record(baseline);
+});

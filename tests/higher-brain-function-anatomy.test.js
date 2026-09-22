@@ -166,7 +166,6 @@ test('a connection points at the real tract where the atlas has one', () => {
     // The atlas draws neither as a bundle of its own.
     'auditory-to-phonological',
     'dorsal-striatum-to-pallidum',
-    'form-to-integration',
     'output-to-motor',
     'pallidum-to-thalamus',
     'premotor-to-hand-dominant',
