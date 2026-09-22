@@ -465,17 +465,17 @@ export const BETA_PUBLICATION_DECISIONS = Object.freeze([
   }),
   Object.freeze({
     sceneId: 'brain-anatomy',
-    decidedAt: '2026-09-17',
+    decidedAt: '2026-09-19',
     /** Who, and in what capacity. A role is a claim, and it is checked. */
     decidedBy: Object.freeze({
-      name: 'Claude Code (AI engineering agent), landing the four-round terminology review (PR #125) after the selection-label fix (PR #132)',
+      name: 'Claude Code (AI engineering agent), re-taken for a deeper green parietal lobe and the red it is read against',
       role: 'engineering',
     }),
     record: 'docs/beta-publication/brain-anatomy.md',
     assetRevisions: Object.freeze({
       'brain-atlas-glb': '76a49ea4526a4880613aec7a02756bd7301b0b9d0680d7cae33e197b672c5453',
     }),
-    sceneRevision: Object.freeze({ cardRevision: 25, modelDigest: '7e4825b9b5c3ce58' }),
+    sceneRevision: Object.freeze({ cardRevision: 33, modelDigest: 'd62c3881d2d2905a' }),
     /** What was actually exercised. Not a plan — a list of what was done. */
     scope: Object.freeze({
       // Re-measured on 2026-09-15 and corrected. The first two of the four
@@ -501,6 +501,13 @@ export const BETA_PUBLICATION_DECISIONS = Object.freeze([
       views: Object.freeze([
         'left-lateral (applied by the interaction drive)',
         'all eight named viewpoints rendered in both colour modes at one camera each; the six that existed before this work were rendered before and after it (docs/screenshots/b3-1/)',
+        'for the 2026-09-19 colour re-take: all eight viewpoints re-rendered in colour-map mode and read, with superior and left-lateral also rendered on the previous palette to compare; natural-anatomy mode was not re-rendered because its shades did not change',
+        'for the 2026-09-20 colour-vision re-take: the eight viewpoints re-rendered again, and left-lateral and superior also written out as a deuteranope and a protanope see them (shots:anatomy --cvd) — a simulation, not a reader',
+        'for the 2026-09-20 rebalance: the eight viewpoints re-rendered once more, each also written out under deuteranopia and protanopia, after a reader reported that the parietal lobe edge had stopped reading',
+        'for the 2026-09-21 restoration of red and green: the eight viewpoints re-rendered again with their dichromacy simulations, after a reader reported that the map had lost its colour',
+        'for the 2026-09-21 LCh redesign: the eight viewpoints re-rendered once more with their dichromacy simulations, after a reader reported that the set did not read as one palette',
+        'for the 2026-09-21 red frontal lobe: the eight viewpoints re-rendered again with their dichromacy simulations, the central sulcus being a red-against-green boundary and therefore carried by lightness',
+        'for the 2026-09-21 deeper green: the eight viewpoints re-rendered once more, after a reader read the parietal lobe as mint rather than green; how far the green could be taken was decided by where the central sulcus collapses under simulated protanopia',
       ]),
       interactions: Object.freeze([
         'click pins a structure and the panel names it in both languages',
@@ -570,6 +577,8 @@ export const BETA_PUBLICATION_DECISIONS = Object.freeze([
       'the anatomy/CG quality bar for the beta (B3) is measured only for what the fixed views show; nothing here is an anatomical judgement',
       'whether the cerebellum should show folia was not settled — it is a question about the source mesh (F-38)',
       'the posterior and inferior viewpoints were rendered and read by an engineer; no anatomist has confirmed what they show',
+      'no reader with colour-vision deficiency has used this scene — the palette clears floors measured against a simulation of dichromacy, which is a model of what someone sees rather than a report from one, and those floors are a deliberate partial measure (ΔE 4-5) chosen over higher ones that cost the central sulcus',
+      'inside one colour family the structures are separated by lightness and saturation, which dichromacy compresses: that separation is not claimed for those readers, and anomalous trichromacy at partial severity and monochromacy are unmeasured',
     ]),
   }),
 ]);

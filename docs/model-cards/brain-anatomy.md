@@ -141,9 +141,60 @@ they do not convert the distributed geometry into a Destrieux atlas.
 
 Geometry is never enlarged, separated or moved by hover, selection, camera
 view, or the layer slider. Hover and selection change emissive emphasis only.
-Colour-map shades are deterministic from anatomical metadata, use the same
-colour for left/right homologues, and vary hue, saturation and lightness inside
-the parent lobe family. Natural-anatomy shades use a constrained low-saturation
+Colour-map shades are deterministic from anatomical metadata and use the same
+colour for left/right homologues. Each large unit — a lobe, the ventricular
+system, the cerebellum, the brainstem — owns one narrow hue band, and the
+structures inside it are told apart by lightness and saturation within that
+band, so a lobe reads as one family before its gyri read as individuals. The
+legend swatch for a unit is the centre of its band rather than a separate
+picked colour.
+
+**Two readers are served, and the split is deliberate rather than even.** What
+is measured first is the boundary between two units that actually meet — the
+central sulcus, the edge of the cerebellum — because that is what a reader
+traces; every touching pair is at least ΔE 28 apart, and the list of which
+units touch is anatomy, written down in `tests/brain-anatomy.test.js` rather
+than derived. Colour-vision deficiency is then given what is available without
+spending that: the bands lean along blue–yellow rather than red–green and
+neighbouring units are given different lightness where it is free, which holds
+the worst pair among the eight families on the outside of the model at ΔE 3 or
+better under simulated protanopia, deuteranopia and tritanopia (Machado et al.
+2009, severity 1.0), against ΔE 0.5 before any of this work. **That is a
+partial measure and is recorded as one: ΔE 4 is a difference, not a
+comfortable one.** A version that raised those floors to ΔE 12 was measured
+and rejected because it cost the central sulcus, which dropped to ΔE 18.7 and
+stopped reading for everyone.
+
+**Red and green are used deliberately.** What colour-vision deficiency rules
+out is making red-versus-green the only difference between two things a reader
+must tell apart, not the hues themselves, so the red limbic lobe and the green
+parietal lobe are here with a lightness difference against what they border.
+The cost is measured: a saturated red lowers the dichromacy floor by about
+1 ΔE, because red, orange and brown share the one chromatic axis those readers
+have and can then be separated only by lightness.
+
+**The map is designed in CIE LCh, and that is what makes it one set.** The
+cortical lobes are specified at a single perceptual chroma, the supporting
+families step down from it, and the two neutrals sit lowest; the lightness
+alternates across every boundary a reader traces. Designed in HSL the same
+numbers had produced perceptual chroma anywhere from 39 to 101, which is why
+the map read as a pile of unrelated colours. Where sRGB cannot reach that
+chroma — teal tops out near 36 where red reaches 62 — the chroma is pulled in
+at fixed hue and lightness rather than clipped, and
+`tests/brain-anatomy.test.js` requires each lobe to be as colourful as the set
+or as colourful as its hue and lightness permit, whichever is less. The
+frontal lobe is red, which makes the central sulcus a red-against-green
+boundary — the one pair dichromacy cannot separate by hue at all — so the
+value step across it is sized for those readers rather than for the eye, and
+how deep the green may go is decided by where that step stops working for a
+protanope rather than by taste. Natural-anatomy mode stays in HSL: it is a narrow band of hand-picked tissue
+tones, not a categorical system. **Structures inside one
+family are separated by lightness and saturation, which dichromacy compresses,
+and are not claimed to be distinguishable by colour for those readers** — the
+panel names what is selected, and neither the parts tree nor the layer slider
+uses colour. A simulation is a model of what someone sees, not a measurement
+of it: it can show a collapse and cannot certify that there is none, and no
+reader with colour-vision deficiency has used this scene. Natural-anatomy shades use a constrained low-saturation
 range with small deterministic lightness differences between named meshes. The
 same selector also updates the legend swatches; neither mode changes anatomical
 identity or geometry. **Colour aids identification and grouping; it does not
@@ -531,3 +582,280 @@ Sources in scope: `src/data/brainAnatomy.js`,
 `src/components/InspectionPanel.js`. `src/components/InspectionPanel.js` is
 shared UI, not a medical source, and is not part of the revision digest below
 — see `docs/model-cards/revisions.json`.
+
+**Revision 25 → 26 (2026-09-19) — the colour map groups by lobe.** A
+presentation change only: no geometry, no atlas ids, no labels, no
+hierarchy, no copy and no claim in this card changed, and natural-anatomy
+mode is untouched. Each colour family in `DETAIL_COLOR_FAMILY`
+(`src/data/brainAnatomy.js`) now holds a narrow hue band and separates its
+members by lightness and saturation inside it, where before a family spanned
+up to 130° of HSL hue — 155° of CIE Lab hue for the frontal lobe in the
+render, magenta through to yellow within one lobe — which left the large
+units with no visible identity of their own. The bands were also pushed
+apart: the frontal and parietal lobes had overlapped, and the cerebellum now
+sits clear of the temporal lobe and the limbic lobe. The palette is seeded
+per family rather than once for the whole atlas, because the placement
+inside a band is a deterministic hash and the seed that is even enough for
+35 deep-grey nuclei is not the one that is even enough for 21 frontal gyri;
+each seed is the outcome of a search against the same all-label perceptual
+distance audit, whose closest pair improves from ΔE 4.31 to 4.65 across all
+147 named structures. The cost is paid inside a family: the median
+nearest-neighbour distance among the 21 frontal structures falls from ΔE 10.9
+to 7.3, because hue is no longer available to separate them. That trade is
+the change — the lobe is now a visible group and its gyri are separated by
+value instead of by hue. Since the seeds and the bands are both in every hash,
+every colour-map shade changed (147/147); all 147 remain distinct.
+`BRAIN_PALETTE` — the legend swatches, and the colour-mode selector's own
+preview — is now derived from the band centres instead of being a separate
+hand-picked list, so a swatch cannot drift away from the meshes it stands
+for. `tests/brain-anatomy.test.js` holds both halves of the new rule: the
+hue spread inside each family, including its legend swatch, and the hue gap
+between the cortical lobes. Colour still aids identification and grouping
+and does not show real tissue colour, functional localisation, vascular
+territory, exact boundaries or positional accuracy (§6).
+
+Sources in scope: `src/data/brainAnatomy.js`,
+`src/scenes/nervous/scenes/brainAnatomy/BrainAnatomyScene.js`.
+
+**Revision 26 → 27 (2026-09-20) — the colour map is placed for colour-vision
+deficiency.** A presentation change only: no geometry, no atlas ids, no
+labels, no hierarchy, no copy and no claim about anatomy changed, and
+natural-anatomy mode is untouched. Revision 26 gave each large unit its own
+hue band; an audit of it under simulated dichromacy found that the bands were
+separated along an axis some readers do not have. For a deuteranope the
+temporal and occipital lobes were ΔE 0.5 apart and the frontal and parietal
+lobes 3.0, against 27 and 23 in normal vision — **and the palette before
+revision 26 was no better (0.5 and 2.8), so this is a defect the grouping work
+neither caused nor fixed.** The bands are now spread along blue–yellow rather
+than red–green, with different lightness for adjacent lobes (temporal and
+occipital are the same blue at two lightnesses), following Okabe & Ito's
+colour-universal set; the exact centres and the per-family seeds were solved
+together against all four visions. Measured member to member, the closest two
+cortical lobes are now ΔE 18.7 in normal vision, 13.5 under protanopia, 12.2
+under deuteranopia and 13.9 under tritanopia; for the eight families on the
+outside of the model the figures are 17.4 / 13.3 / 12.2 / 13.4. On the lit
+surface itself, comparing the mean of a patch inside each lobe in the
+left-lateral render, frontal↔parietal goes from ΔE 9.6 to 19.2 under
+deuteranopia and temporal↔occipital from 18.9 to 70.0. The all-label
+perceptual-distance audit is unchanged in kind and holds at ΔE 4.33 across all
+147 named structures, all of which remain distinct. Every colour-map shade
+changed again (147/147). `tests/brain-anatomy.test.js` gains a second guard
+that measures the floors under all four visions; of its three mutations, the
+one that separates two lobes along red–green only leaves every normal-vision
+assertion green and fails protanopia alone. `scripts/capture-anatomy-views.mjs`
+gains `--cvd`, which writes the dichromat's view of the same frame, so the
+check is repeatable rather than a one-off. **What this does not establish:**
+the floors are what a model of dichromacy predicts, not what a reader reported,
+and structures inside one family are not separable by colour under dichromacy
+by design. Colour still aids identification and grouping and does not show
+real tissue colour, functional localisation, vascular territory, exact
+boundaries or positional accuracy (§6).
+
+Sources in scope: `src/data/brainAnatomy.js`,
+`src/scenes/nervous/scenes/brainAnatomy/BrainAnatomyScene.js`.
+
+**Revision 27 → 28 (2026-09-20) — the colour-vision floors are traded back for
+the boundary a reader traces.** A presentation change only: no geometry, no
+atlas ids, no labels, no hierarchy, no copy and no claim about anatomy
+changed, and natural-anatomy mode is untouched. Revision 27 raised the
+dichromacy floors to ΔE 12 by optimising the minimum distance over *every*
+pair of colour families. Most of those pairs are never on screen together, and
+the budget they took came out of the ones that are: the central sulcus — the
+frontal-to-parietal boundary — fell to ΔE 18.7, from 23.5 in revision 26 and
+25.8 before that, and a reader reported it as unreadable. Every guard was
+green while that happened, which is recorded as L-72 in
+`docs/verification-lessons.md`.
+
+The objective and the constraint are now the other way round. What is
+maximised is the worst boundary between two units that actually touch, listed
+explicitly because which lobe borders which is anatomy and cannot be read off
+the mesh names; colour-vision separation is a floor the solution must clear,
+set at ΔE 4 rather than 12. Measured member to member: every touching pair is
+at least ΔE 26.2 apart in normal vision (frontal↔parietal 26.5), and the worst
+pair among the eight surface families is ΔE 4.9 under protanopia, 4.7 under
+deuteranopia and 5.8 under tritanopia. On the lit surface, comparing the mean
+of a patch inside each lobe in the left-lateral render, frontal↔parietal is
+ΔE 31.9 in normal vision and 20.5 under deuteranopia — **better than both
+revision 26 (26.3 / 9.6) and revision 27 (22.9 / 19.2)**, because the two
+readers stopped being traded against each other on the pairs that matter. The
+all-label audit holds at ΔE 4.30 across all 147 structures, all distinct.
+Every colour-map shade changed again (147/147). The guard is rewritten to
+match the claim, and one of its three mutations is the reported defect itself
+— putting the parietal lobe back on the frontal lobe's tone fails at ΔE 4.1.
+**What this does not establish** is unchanged from revision 27: the dichromacy
+floors are what a model predicts, not what a reader reported, and the promise
+stops at the large units. Colour still aids identification and grouping and
+does not show real tissue colour, functional localisation, vascular territory,
+exact boundaries or positional accuracy (§6).
+
+Sources in scope: `src/data/brainAnatomy.js`,
+`src/scenes/nervous/scenes/brainAnatomy/BrainAnatomyScene.js`.
+
+**Revision 28 → 29 (2026-09-21) — red and green come back, and the palette
+gets its presence back.** A presentation change only: no geometry, no atlas
+ids, no labels, no hierarchy, no copy and no claim about anatomy changed, and
+natural-anatomy mode is untouched. Revisions 27 and 28 had drained the colour
+out of the map — saturation capped, no strong red and no strong green anywhere
+on the cortical surface — on an assumption that was never true. Avoiding
+red–green confusion means not letting a red-versus-green difference be the
+*only* thing telling two units apart; it does not mean avoiding the hues, and
+it does not mean lowering saturation. The limbic lobe is now a real red and
+the parietal lobe a real green, each with a lightness difference against what
+it borders.
+
+Both readers gained. On the lit surface, comparing the mean of a patch inside
+each lobe in the left-lateral render, the central sulcus is ΔE 49.4 in normal
+vision and 32.9 under deuteranopia — the best of every palette this scene has
+had, against 31.9 / 20.5 in revision 28 and 26.3 / 9.6 before any of this
+work. Member to member, every touching pair is at least ΔE 35.3 apart in
+normal vision. **The one cost is measured and stated**: the worst pair among
+the eight surface families under simulated dichromacy falls from ΔE 4.7 to
+3.8, because red, orange and brown sit on the same side of the single
+chromatic axis a protanope and a deuteranope have, so they can only be
+separated by lightness. The guard floor moves with it, from 4 to 3, and the
+touching-boundary floor rises from 22 to 28. The all-label audit improves to
+ΔE 4.57 across all 147 structures, all distinct. Every colour-map shade
+changed again (147/147). Of the three mutations that prove the guards,
+one is the defect reported against revision 27 and one fails the
+colour-vision assertion alone. Two of them had been silently failing to apply
+at all, which is recorded as L-71 in `docs/verification-lessons.md` and is why
+`scripts/mutate-colour-family.py` now refuses an edit that changes nothing.
+Colour still aids identification and grouping and does not show real tissue
+colour, functional localisation, vascular territory, exact boundaries or
+positional accuracy (§6).
+
+Sources in scope: `src/data/brainAnatomy.js`,
+`src/scenes/nervous/scenes/brainAnatomy/BrainAnatomyScene.js`.
+
+**Revision 29 → 30 (2026-09-21) — the colour map is redesigned in a
+perceptual space.** A presentation change only: no geometry, no atlas ids, no
+labels, no hierarchy, no copy and no claim about anatomy changed, and
+natural-anatomy mode is untouched. The map had been specified in HSL, where
+"saturation" is not colourfulness and "lightness" is not brightness. Measured
+in CIE terms, twelve families whose HSL saturations sat between 52 and 80 had
+perceptual chroma between 39 and 101 — the temporal lobe at 101, nearly
+outside sRGB, the insula at 39 — so the set read as unrelated colours rather
+than one system, which is what a reader reported. The map is now specified in
+LCh: one chroma per tier (the five large cortical lobes all at 62, supporting
+families at 48/40/36, neutrals at 26/14/9) and a lightness rhythm that
+alternates across every boundary a reader traces. `lchToHex` resolves
+out-of-gamut by pulling the chroma in at fixed hue and lightness, so a band
+may ask for more than the display can give; the occipital lobe reaches 52 and
+the insula 41 for that reason and no other.
+
+What it cost and what it kept, measured member to member: every touching pair
+is ΔE 34.3 apart (34.2 before), the worst pair among the eight surface
+families under simulated dichromacy is ΔE 4.0 (3.8 before), and all 147
+structures stay distinct with the closest pair at ΔE 4.07 (4.57 before). On
+the lit surface the central sulcus is ΔE 50.0 in normal vision and 29.7 under
+deuteranopia, against 49.4 / 32.9. So the numbers are a wash and the gain is
+the design: the palette now has a stated structure a later change can be
+checked against, which two new guards do — chroma consistency across the
+cortical lobes, and that running out of gamut costs chroma and not hue. A
+third mutation for the latter (clipping the channels instead) turns the test
+red. Every colour-map shade changed again (147/147). Colour still aids
+identification and grouping and does not show real tissue colour, functional
+localisation, vascular territory, exact boundaries or positional accuracy
+(§6).
+
+Sources in scope: `src/data/brainAnatomy.js`,
+`src/scenes/nervous/scenes/brainAnatomy/BrainAnatomyScene.js`.
+
+**Revision 30 → 31 (2026-09-21) — the frontal lobe is red.** A presentation
+change only: no geometry, no atlas ids, no labels, no hierarchy, no copy and
+no claim about anatomy changed, and natural-anatomy mode is untouched. The
+frontal lobe moves from gold to red at the reader's request, and two families
+move with it because the warm sector cannot hold three. The cingulate, which
+had the red, moves to teal on the cool side — beside a red frontal lobe and an
+amber insula it could otherwise have been told from them only by lightness —
+and the insula takes the amber.
+
+The consequence worth recording is that **the central sulcus becomes a
+red-against-green boundary, which is the one pair a protanope and a
+deuteranope cannot separate by hue at all.** It is therefore carried by a
+value step: the frontal lobe sits at L\* 55 and the parietal lobe at 74.
+Measured on the lit surface, that boundary is ΔE 72.7 in normal vision
+against 50.0 before — the strongest it has been — and 26.1 under protanopia
+against 21.2, so the pair a dichromat finds hardest came out ahead as well.
+Member to member, every touching pair is at least ΔE 28 apart, the worst pair
+among the eight surface families under simulated dichromacy is ΔE 4.2, and
+all 147 structures stay distinct with the closest at ΔE 4.17. The
+temporal-to-occipital boundary gives some back: ΔE 60.0 normal and 36.4 under
+deuteranopia, against 64.4 and 45.1. Every colour-map shade changed again
+(147/147).
+
+The chroma guard is rewritten while here. It had compared the lobes against
+each other, which is a demand on the display rather than on the palette —
+teal cannot be as colourful as red in sRGB. It now asks each lobe for the
+set's chroma *or* the most its own hue and lightness allow, whichever is
+less, which is the invariant that was meant all along. Colour still aids
+identification and grouping and does not show real tissue colour, functional
+localisation, vascular territory, exact boundaries or positional accuracy
+(§6).
+
+Sources in scope: `src/data/brainAnatomy.js`,
+`src/scenes/nervous/scenes/brainAnatomy/BrainAnatomyScene.js`.
+
+**Revision 31 → 32 (2026-09-21) — the parietal lobe's green is deepened to
+where the central sulcus allows.** A presentation change only: no geometry, no
+atlas ids, no labels, no hierarchy, no copy and no claim about anatomy
+changed, and natural-anatomy mode is untouched. The parietal lobe was already
+green but sat at L\* 74, which reads as mint rather than as green. It moves to
+L\* 61 and the frontal red moves with it, from L\* 55 to 50, to keep the pair
+apart.
+
+**How deep the green could go was not a matter of taste.** The central sulcus
+is a red-against-green boundary, the one pair dichromacy cannot separate by
+hue, so it is held by the lightness step between the two — and the step is
+what deepening the green spends. Measured across the range, the floors hold at
+L\* 61 and break below it: at L\* 58 the two lobes come within ΔE 3.5 under
+simulated protanopia and at L\* 52 within 1.1, against a floor of 3. L\* 61 is
+therefore the limit, and it is recorded as a limit rather than a preference.
+
+What it cost and what it bought, on the lit surface: the central sulcus is
+ΔE 79.0 in normal vision, up from 72.7, and 21.8 under protanopia, down from
+26.1 — the narrower lightness step is spent where a trichromat gains and a
+dichromat loses, both still far above anything the guards require. Member to
+member, every touching pair is at least ΔE 31.4 apart, the worst pair among
+the eight surface families under simulated dichromacy is ΔE 4.2, and all 147
+structures stay distinct at ΔE 4.17. Every colour-map shade changed again
+(147/147). The mutation that now proves the colour-vision guard is the one
+this change was measured against: darkening the parietal lobe to L\* 52 fails
+protanopia alone, at ΔE 1.1. Colour still aids identification and grouping and
+does not show real tissue colour, functional localisation, vascular territory,
+exact boundaries or positional accuracy (§6).
+
+Sources in scope: `src/data/brainAnatomy.js`,
+`src/scenes/nervous/scenes/brainAnatomy/BrainAnatomyScene.js`.
+
+**Revision 32 → 33 (2026-09-21) — review corrections before merge.** No
+colour changed: every shade, every band and every seed is exactly as revision
+32 left them, and this entry exists because reviewing the branch against
+`main` found two faults in it.
+
+The first was in this file's own source. The header comment of
+`src/data/brainAnatomy.js` still described the lightness rhythm from two
+revisions earlier — "Gold 66, green 50, violet 45, blue 67" where the frontal
+lobe is red at 50 and the parietal green at 61 — and quoted measurements
+(ΔE 34, 4.3, 4.0) that the bands had since moved past. It now states the
+**floors the file must keep** rather than what it happened to measure on the
+day, because a measurement copied into prose goes stale the next time a band
+moves, which is exactly what had happened.
+
+The second was in the guard. `the colour map reads as one set` compared the
+cortical lobes against each other, so twelve equally drab colours would have
+passed it — and that is not hypothetical: a revision of this palette was
+reported as having lost its colour while every guard was green. The set now
+has a floor as well as a shape (chroma 45), and desaturating all six lobes to
+30 fails it.
+
+Also on merge: this branch's follow-up and lesson numbers collided with
+`main` twice. First `main` took F-159–F-168 and L-52–L-55 while the branch was
+in flight; then, after the renumbering, it took L-64–L-70 as well. The items
+are now F-177/F-178 and L-71/L-72, with their cross-references, and both
+collisions are recorded in `docs/follow-ups.md` as the thirteenth and
+fourteenth of their kind. The F numbers survived the second round because they
+had a reserved block; the L numbers, which have no such table, did not.
+
+Sources in scope: `src/data/brainAnatomy.js`,
+`src/scenes/nervous/scenes/brainAnatomy/BrainAnatomyScene.js`.
