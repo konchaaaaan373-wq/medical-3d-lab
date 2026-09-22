@@ -213,6 +213,18 @@ test('claims: the documents quote the measurements that are on file', () => {
   );
 
   // The fixture impact, in all three documents that state it.
+  //
+  // First: what it was compared *against*. The first recording wrote the argv
+  // path, which was a scratch directory outside the repository — a provenance
+  // field naming a file no reader can open records nothing, and reads as
+  // though it does (L-107). A baseline is either the committed fixture or a
+  // repository path with the revision it was taken at.
+  assert.ok(
+    fixtureImpact.baseline === 'the committed fixture' ||
+      /^tests\/fixtures\/[\w.-]+\.json .*\b[0-9a-f]{7,40}\b/.test(fixtureImpact.baseline),
+    `the baseline names something a reader can open, not ${JSON.stringify(fixtureImpact.baseline)}`
+  );
+
   const moved = fixtureImpact.fields['state.endDiastolicPressureMmHg'];
   assert.ok(moved, 'the fixture impact is on file');
   assert.equal(Object.keys(fixtureImpact.fields).length, 1, 'exactly one field moved');

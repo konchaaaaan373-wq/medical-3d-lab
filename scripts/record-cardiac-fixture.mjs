@@ -5,6 +5,10 @@
  *   node scripts/record-cardiac-fixture.mjs --check   # what would change
  *   node scripts/record-cardiac-fixture.mjs --write   # write it
  *
+ * `--baseline <path>` compares against a fixture other than the committed one
+ * (main's, for "what does this branch move"), `--baseline-name <text>` says in
+ * the record what that file was, and `--record [path]` writes the aggregate.
+ *
  * The fixture pins every figure the heart-failure circulation produces, at
  * each authored stage under each loading. It exists so that a change to the
  * shared solver cannot move a number quietly — and it had no generator, which
@@ -187,10 +191,14 @@ if (changedFields.length === 0 && notes.length === 0) {
   }
 }
 
-// The aggregate, where a test can read it. `--against-main` names the baseline
-// a report should quote: "what this branch changes" is a comparison with main,
-// not with whatever the fixture happened to hold mid-review.
+// The aggregate, where a test can read it. The baseline a report should quote
+// is a comparison with main, not with whatever the fixture happened to hold
+// mid-review — so `--baseline` takes a file, and `--baseline-name` says what
+// that file *was*. The first recording wrote the argv path, which was a
+// scratch directory outside the repository: a provenance field naming a path
+// that does not exist for the reader records nothing.
 const recordAt = process.argv.indexOf('--record');
+const baselineNameAt = process.argv.indexOf('--baseline-name');
 if (recordAt >= 0) {
   const path = process.argv[recordAt + 1] ?? 'docs/model-evidence/cardiac-output-measurements.json';
   const existing = existsSync(path) ? JSON.parse(readFileSync(path, 'utf8')) : {};
@@ -201,7 +209,12 @@ if (recordAt >= 0) {
         ...existing,
         recordedAt: new Date().toISOString().slice(0, 10),
         fixtureImpact: {
-          baseline: baselineAt >= 0 ? process.argv[baselineAt + 1] : 'the committed fixture',
+          baseline:
+            baselineNameAt >= 0
+              ? process.argv[baselineNameAt + 1]
+              : baselineAt >= 0
+                ? process.argv[baselineAt + 1]
+                : 'the committed fixture',
           cases,
           fieldsCompared: byField.size,
           fields: Object.fromEntries(

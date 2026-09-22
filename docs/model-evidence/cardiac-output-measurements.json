@@ -63,7 +63,7 @@
     }
   },
   "fixtureImpact": {
-    "baseline": "/tmp/claude-0/-home-user-medical-3d-lab/6fa72a06-edfd-51bf-883e-ecb168eae9ae/scratchpad/main-fixture.json",
+    "baseline": "tests/fixtures/cardiac-mechanics.json as committed on origin/main at 7068b6cf",
     "cases": 30,
     "fieldsCompared": 32,
     "fields": {

@@ -903,6 +903,33 @@ L-95 と L-96 は「別件を直したら、触っていない検査が赤くな
 
 ---
 
+### L-107 証拠ファイルが「何と比べたか」に、読む人が開けない道を書いていた
+
+- **症状**: `docs/model-evidence/cardiac-output-measurements.json` の
+  `fixtureImpact.baseline` が
+  `/tmp/claude-0/…/scratchpad/main-fixture.json` でした。
+  比較の中身（32 欄 × 30 件、動いたのは 1 欄、最大 2.186 mmHg）は正しく、
+  **何と比べたかだけが、この容器の外では存在しない道**を指しています。
+  欄が埋まっているので、読む人にも、この欄を読むテストにも、
+  出典が記録されているように見えます。
+- **どう見つかったか**: main を取り込んだあとに全 fixture を測り直して、
+  書き出した JSON を読み返したとき。記録した側が読み返さなければ、
+  **次に開く人が「この道は何だ」と聞くまで**残りました。
+- **いま何が捕まえるか**: `tests/cardiac-output-claims.test.js` の
+  「the documents quote the measurements that are on file」に追加した 1 行で、
+  `baseline` は `the committed fixture` か、
+  **repo 相対の fixture パス + それを取った revision** でなければ赤。
+  scratch の絶対パスに戻すと赤（確認済み）、revision を落とした
+  `tests/fixtures/cardiac-mechanics.json on main` でも赤（確認済み）。
+  記録する側は `scripts/record-cardiac-fixture.mjs --baseline-name` が持ちます。
+- **一般形**: **測定値の隣の「出典」欄は、測定値と同じ強さで検査する。**
+  数値は他の記録と突き合わせれば嘘が出ますが、出典欄は
+  **文字列として正しい限り誰も突き合わせません**。
+  そして `--baseline <path>` のような引数をそのまま記録に書くと、
+  **記録は測った人の作業机を指します**——測った人の机は、記録の読者にはありません。
+
+---
+
 ### L-106 「960 ステップで検査した」は、「240 ステップの表示値が収束している」ではなかった
 
 - **症状**: 境界は 240 ステップで解いた状態を **960 ステップで 1 拍歩いて**周期性・
