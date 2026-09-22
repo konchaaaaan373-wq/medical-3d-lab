@@ -590,6 +590,40 @@ test('AR2-T21b: a step drawn outside the brain is labelled as having no structur
   assert.ok(anchored && !anchored.text.includes('no atlas structure'));
 });
 
+test('AR2-T35: atlas → conceptual → atlas → reset leaves nothing of the previous mode', () => {
+  const scene = buildScene({ lesion: 'dominant-arcuate', task: 'repetition-nonword' }, 1);
+  const rowsOf = () => scene.getMetrics().map((row) => `${row.id}=${row.valueJa}`).join('|');
+  const start = rowsOf();
+  assert.match(start, /mode=アトラス上の病変/);
+  const litStructures = () => scene.solved.affectedStructures.map((structure) => structure.label);
+  assert.ok(litStructures().length > 0, 'the lesion is on the atlas');
+
+  scene.setModelControl('mode', MODE.CONCEPTUAL);
+  scene.setModelControl('intervention', 'phoneme-grapheme-conversion');
+  assert.equal(scene.solved.mode, MODE.CONCEPTUAL);
+  assert.deepEqual(litStructures(), [], 'no atlas lesion survives the switch');
+  const conceptual = rowsOf();
+  assert.match(conceptual, /mode=処理を 1 つ遮断する/);
+  assert.ok(conceptual.includes('conceptual-note='), 'the conceptual-mode caveat is on the read-out');
+
+  scene.setModelControl('mode', MODE.ATLAS_LESION);
+  assert.equal(scene.solved.mode, MODE.ATLAS_LESION);
+  assert.deepEqual(scene.solved.interventions, [], 'the knockout does not survive the switch back');
+  assert.ok(!rowsOf().includes('conceptual-note='), 'and neither does its caveat');
+
+  scene.resetModelControls();
+  scene.setProgress(1);
+  // Back to the declared baseline, by value and not just by control.
+  const fresh = buildScene({}, 1);
+  assert.deepEqual(
+    scene.solved.tasks.map((task) => [task.id, task.availability, task.computationStatus]),
+    fresh.solved.tasks.map((task) => [task.id, task.availability, task.computationStatus])
+  );
+  assert.deepEqual(scene.controls, fresh.controls);
+  // And the drawn route is the baseline's, not the one the conceptual mode left.
+  assert.deepEqual(scene.routeLineKinds(), fresh.routeLineKinds());
+});
+
 // --- AR2-T31, T33, T34, T36, T41 -------------------------------------------
 
 test('AR2-T31: every coverage limitation is on the read-out, not only the first', () => {
