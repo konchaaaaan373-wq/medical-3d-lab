@@ -2,6 +2,15 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import * as THREE from 'three';
 import {
+  INTERVENTION_IDS as CARDIAC_INTERVENTION_IDS,
+  INTERVENTION_PROFILES as CARDIAC_INTERVENTIONS,
+  applyIntervention as applyCardiacIntervention,
+} from '../src/models/cardiacInterventions.js';
+import {
+  presetInput as cardiacPresetInput,
+  solveCardiacOutput,
+} from '../src/models/cardiacOutput.js';
+import {
   CAPACITY_ML as ACHALASIA_CAPACITY_ML,
   REFERENCE as ACHALASIA_REFERENCE,
   solveAchalasia,
@@ -272,6 +281,33 @@ test('calibration: fixed oxygen content makes global DO2 proportional to cardiac
 // ===========================================================================
 // COPD
 // ===========================================================================
+
+test('calibration: the cardiac-output interventions keep their chosen illustrative sizes', () => {
+  // Invented magnitudes, pinned so they cannot drift without somebody deciding
+  // to move them. They are in the calibration layer because that is what they
+  // are: a choice this repository made so the two interventions contrast
+  // legibly on screen, not a response anybody measured.
+  assert.deepEqual(CARDIAC_INTERVENTIONS[CARDIAC_INTERVENTION_IDS.DOBUTAMINE].effects, {
+    contractilityEesMmHgPerMl: { multiply: 1.5 },
+    systemicResistanceMmHgSPerMl: { multiply: 0.85 },
+  });
+  assert.deepEqual(CARDIAC_INTERVENTIONS[CARDIAC_INTERVENTION_IDS.VOLUME_LOADING].effects, {
+    fillingVolumeMl: { add: 120 },
+  });
+  // And the contrast they were chosen for: both raise output, and the filling
+  // pressure goes opposite ways. If a magnitude moved far enough to lose that,
+  // the scene stops making the point it exists to make.
+  const base = solveCardiacOutput(cardiacPresetInput('reduced-contractility'));
+  const read = (id) =>
+    solveCardiacOutput(applyCardiacIntervention(cardiacPresetInput('reduced-contractility'), id).input)
+      .metrics;
+  const volume = read(CARDIAC_INTERVENTION_IDS.VOLUME_LOADING);
+  const drug = read(CARDIAC_INTERVENTION_IDS.DOBUTAMINE);
+  assert.ok(volume.cardiacOutputLMin > base.metrics.cardiacOutputLMin);
+  assert.ok(drug.cardiacOutputLMin > base.metrics.cardiacOutputLMin);
+  assert.ok(volume.endDiastolicPressureMmHg > base.metrics.endDiastolicPressureMmHg);
+  assert.ok(drug.endDiastolicPressureMmHg < base.metrics.endDiastolicPressureMmHg);
+});
 
 test('calibration: the reference lung lands on the textbook volumes and time constant', () => {
   // Defends `reference-lung`. The resistance, compliance and chest-wall recoil

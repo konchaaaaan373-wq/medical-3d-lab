@@ -49,9 +49,21 @@
       "src/models/cardiacMechanics.js",
       "src/scenes/cardiovascular/scenes/heartFailure/hemodynamics.js"
     ],
-    "cardRevision": 3,
-    "modelDigest": "f0e94de89bd2546d",
-    "cardUpdatedAt": "2026-09-05"
+    "cardRevision": 4,
+    "modelDigest": "76c6289b6aec87ea",
+    "cardUpdatedAt": "2026-09-22"
+  },
+  {
+    "sceneId": "cardiac-output",
+    "card": "docs/model-cards/cardiac-output.md",
+    "modelSources": [
+      "src/models/cardiacOutput.js",
+      "src/models/cardiacInterventions.js",
+      "src/models/cardiacMechanics.js"
+    ],
+    "cardRevision": 5,
+    "modelDigest": "9482474ed50d1090",
+    "cardUpdatedAt": "2026-09-22"
   },
   {
     "sceneId": "copd-hyperinflation",

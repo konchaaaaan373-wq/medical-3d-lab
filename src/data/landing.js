@@ -59,6 +59,7 @@ export const LANDING_MODEL_ORDER = Object.freeze([
   'abdomen-anatomy',
   'pelvis-anatomy',
   'heart-failure',
+  'cardiac-output',
   'circulation',
   'myocardial-ischemia',
   'amyloid-beta',
@@ -342,6 +343,12 @@ export const LANDING_MODEL_PRESENTATION = Object.freeze({
     '前負荷・後負荷・収縮性を変え、PVループと肺うっ血を確認。',
     ['LOADING', 'PV LOOP', 'CONGESTION'],
     ['負荷', '圧−容積', 'うっ血']
+  ),
+  'cardiac-output': presentation(
+    'Raise the resistance and watch pressure and output go opposite ways, from one solved beat.',
+    '血管抵抗を上げると、血圧と拍出は逆を向く。どちらも同じ 1 拍から。',
+    ['FILLING', 'RESISTANCE', 'CONTRACTILITY'],
+    ['充満', '血管抵抗', '収縮力']
   ),
   'stomach-anatomy': presentation(
     'Pick the antrum, then fade the wall to the sphincter it empties through.',

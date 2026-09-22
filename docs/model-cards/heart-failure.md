@@ -82,6 +82,36 @@ The scene predates the current versioned Clinical Review standard. This model ca
 
 ## 10. Revision history
 
+### Revision 4 — the solver says whether it settled
+
+**No claim in this card changed, and no number in this model moved.** Two
+additive facts were added to `src/models/cardiacMechanics.js` for a second
+reader of the same solver, `src/models/cardiacOutput.js`:
+
+- `solveSteadyState()` now returns `converged`, along with the `maxBeats`,
+  `tolerance` and `stepsPerBeat` it ran under. Reading `beats < maxBeats`
+  afterwards cannot distinguish a circulation that settled on the last allowed
+  beat from one that never settled, and only the loop knows which happened.
+- `walkBeat()` now returns the compartment volumes one full beat on. The last
+  visitor call is handed the step *before* the closing one, so without this a
+  caller cannot ask whether the compartments came back to where they started.
+
+Nothing reads either of them in this scene, and the progression, the
+haemodynamics, the geometry and the read-out are untouched.
+
+**Verified as additive.** `tests/cardiac-mechanics.test.js` pins the solver's
+outputs against `tests/fixtures/cardiac-mechanics.json` and fails on a 1e-7
+relative perturbation to one line; it passes unchanged. `npm test` runs the
+heart-failure physiology, hemodynamics, learning, story, reel and chamber
+geometry suites, all green.
+
+**Why a second reader needed this.** The termination test compares successive
+end-diastolic and end-systolic volumes of the left ventricle — a statement
+about one chamber. Over the wider parameter range the cardiac-output experiment
+opens, the ventricle can repeat while the systemic venous reservoir is still
+drifting; at one corner of that range it did. The heart-failure progression
+does not reach that region, so nothing here changes.
+
 ### Revision 2 — the solver moved out of the scene
 
 **No claim in this card changed.** The time-varying elastance model and the

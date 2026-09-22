@@ -114,6 +114,17 @@ const page = await browser.newPage({ viewport: { width: 1440, height: 900 }, dev
 console.log(`deviceScaleFactor: ${dpr}`);
 
 /**
+ * Anything the page threw, kept for the report.
+ *
+ * An uncaught error inside the render loop stops the loop, and everything
+ * downstream of it — a lesson step that advances from `tick()`, the reel, the
+ * export — then fails as "nothing happened" rather than as "this threw". That
+ * cost a day once already (L-86). One listener is the whole fix.
+ */
+const pageErrors = [];
+page.on('pageerror', (error) => pageErrors.push(String(error?.message ?? error)));
+
+/**
  * Whether this engine can make a WebGL2 context *here*.
  *
  * Every scene in this check is a 3D scene, so an engine that cannot is not a
@@ -203,13 +214,20 @@ for (const slug of SLUGS) {
   const hasSlider = (await page.locator('input.slider:not(.slider-sm)').count()) > 0;
   await page.screenshot({ path: join(outDir, `${slug}-baseline.png`) });
 
-  if (!hasSlider) problems.push('no progression slider');
+  const controlLocator = page.locator('.model-control input[type="range"]');
+  const hasModelControls = (await controlLocator.count()) > 0;
+  // A scene whose subject is a set of independent conditions rather than a
+  // trajectory declares `meta.progression.enabled = false` and is *right* not
+  // to have a progression slider — `circulation` and `cardiac-output` are both
+  // this shape. What must never be true is that there is nothing to move at
+  // all, so the check is "one of the two", not "the slider".
+  if (!hasSlider && !hasModelControls) problems.push('nothing on the page moves the model');
   await setSlider('1000');
 
   // Push every model control to its far end as well, where there is one: a
   // scene whose slider is its whole story and a scene whose controls are the
   // story both have to end up somewhere different from where they started.
-  const controls = page.locator('.model-control input[type="range"]');
+  const controls = controlLocator;
   const controlCount = await controls.count();
   for (let i = 0; i < controlCount; i += 1) {
     await controls.nth(i).evaluate((el) => {
@@ -229,7 +247,14 @@ for (const slug of SLUGS) {
     if (baseline.metrics && baseline.metrics === diseased.metrics) problems.push('no metric changed');
   }
 
-  const reset = page.locator('button', { hasText: 'モデル初期化' });
+  // Two resets, because there are two panels that can carry one. A scene with a
+  // progression axis gets "モデル初期化" on the console; a scene whose model
+  // controls are the whole story gets "戻す" on the controls panel instead
+  // (`ModelControls`, `copy.reset`). Looking for only the first reported
+  // `circulation` and `cardiac-output` as having no reset at all, which is the
+  // kind of false red that teaches people to ignore a checker.
+  const consoleReset = page.locator('button', { hasText: 'モデル初期化' });
+  const reset = (await consoleReset.count()) ? consoleReset : page.locator('.model-control-reset');
   if (!(await reset.count())) problems.push('no reset control');
   else {
     await reset.first().click();
@@ -246,6 +271,219 @@ for (const slug of SLUGS) {
     if (controlCount && back.controls !== baseline.controls) problems.push('reset did not restore the model controls');
     if (baseline.metrics && back.metrics !== baseline.metrics) {
       problems.push(`reset did not restore the numbers (${baseline.metrics} -> ${back.metrics})`);
+    }
+  }
+
+  // --- the plots, and the comparison --------------------------------------
+  //
+  // A scene can build a pressure-volume panel, mount it, update it every frame
+  // and never show it: the plots live in Data view, and whether that view is
+  // reachable is a separate decision. So this asks for the view the way a
+  // reader does, and then asks the canvas whether anything was actually drawn
+  // on it — a blank plot and a plot nobody can reach look identical from here
+  // and from every unit test.
+  const dataButton = page.locator('button[data-control="data"]');
+  if (await dataButton.count()) {
+    await dataButton.first().click();
+    await page.waitForFunction(() => document.querySelector('#ui')?.dataset.view === 'data');
+    await page.waitForTimeout(1400);
+    await page.screenshot({ path: join(outDir, `${slug}-data-view.png`) });
+    const plots = await page.evaluate(() =>
+      [...document.querySelectorAll('.pv canvas, .wave canvas, .chart canvas')].map((canvas) => {
+        const box = canvas.getBoundingClientRect();
+        if (!box.width || !box.height) return { name: canvas.parentElement?.className ?? '?', drawn: 0, visible: false };
+        const context = canvas.getContext('2d');
+        if (!context) return { name: canvas.parentElement?.className ?? '?', drawn: 0, visible: true };
+        const { data } = context.getImageData(0, 0, canvas.width, canvas.height);
+        const colours = new Set();
+        for (let i = 0; i < data.length; i += 4 * 37) {
+          colours.add(`${data[i]},${data[i + 1]},${data[i + 2]},${data[i + 3]}`);
+        }
+        return { name: canvas.parentElement?.className ?? '?', drawn: colours.size, visible: true };
+      })
+    );
+    for (const plot of plots) {
+      if (!plot.visible) problems.push(`a plot in ${plot.name} is mounted with no size`);
+      else if (plot.drawn < 3) problems.push(`the plot in ${plot.name} is blank (${plot.drawn} colours)`);
+    }
+    if (plots.length) console.log(`  ${slug}: ${plots.length} plot(s) drawn in Data view`);
+  } else if (await page.locator('.pv canvas').count()) {
+    problems.push('the scene draws a pressure-volume plot that Data view is the only way to reach, and offers no Data button');
+  }
+
+  const compareButton = page.locator('button[data-control="compare"]');
+  if (await compareButton.count()) {
+    await compareButton.first().click();
+    await page.waitForTimeout(2200);
+    await page.screenshot({ path: join(outDir, `${slug}-compare.png`) });
+    const referenced = await page.evaluate(() =>
+      [...document.querySelectorAll('.metrics .metric-reference')].filter((node) => node.textContent.trim()).length
+    );
+    if (!referenced) problems.push('comparison is on and no row shows what it is compared against');
+    await compareButton.first().click();
+    await page.waitForTimeout(900);
+  }
+
+  // --- the lesson, end to end ---------------------------------------------
+  //
+  // A lesson is content that makes a claim about the model, and its tests check
+  // the claim. What they cannot check is that a reader can get through it: the
+  // panel drives the model through the scene's own setters, and a lesson that
+  // names a control the scene does not have, or a row the read-out does not
+  // carry, renders a dead button or a table of `undefined` and throws nothing.
+  // The pulmonary-oedema scene shipped a lesson that failed on the first click.
+  //
+  // So this walks it — predict, apply, and on to the end — and then checks the
+  // thing only a browser can: that leaving it puts the model back where the
+  // reader had it.
+  const learnButton = page.locator('button[data-control="learn"]');
+  if (await learnButton.count()) {
+    const before = await state();
+    await learnButton.first().click();
+    await page.waitForSelector('.learn-body', { timeout: 5000 });
+    await page.waitForTimeout(600);
+
+    /**
+     * The control on this step that carries a reader *forward*.
+     *
+     * Forward is the whole of it. An earlier version of this walk asked for
+     * the first visible button in the nav row, and the nav row puts **Back**
+     * first — so it pressed Back on every observe step, bounced to manipulate,
+     * pressed apply, came back, and pressed Back again. It never reached
+     * explain or transfer, and whether it happened to stop on a step that has
+     * a table decided whether this check passed. On `cardiac-output` it did,
+     * on `copd` it did not, and the report blamed the copd lesson for it.
+     *
+     * So: choices, then an action that is still pressable, then the primary
+     * nav button only (`Next` / `Done` carry `.primary`; `Back` does not).
+     * Asked for by visibility as well, because a step keeps the previous
+     * step's nodes in the DOM and clicking a hidden one waits thirty seconds
+     * and then fails as a timeout rather than as "the lesson is stuck".
+     */
+    const pressable = async () => {
+      for (const selector of [
+        '.learn-step .learn-choice',
+        '.learn-step .learn-action:not([disabled])',
+        '.learn-step .learn-nav-btn.primary',
+      ]) {
+        const all = page.locator(selector);
+        for (let i = 0; i < (await all.count()); i += 1) {
+          const candidate = all.nth(i);
+          if (await candidate.isVisible().catch(() => false)) return candidate;
+        }
+      }
+      return null;
+    };
+
+    // Read while walking, not at the end. The last step's own button is
+    // `Done`, which closes the panel — so anything measured after the loop is
+    // measured on a lesson that is no longer on screen.
+    let sawRows = 0;
+    let blank = false;
+    let shot = false;
+    const readTable = async () => {
+      const rows = await page.locator('.learn-row-label').count();
+      if (!rows) return;
+      sawRows = Math.max(sawRows, rows);
+      blank =
+        blank ||
+        (await page.evaluate(() =>
+          [...document.querySelectorAll('.learn-row-figure')].some((node) => /undefined|NaN/.test(node.textContent))
+        ));
+      if (!shot) {
+        shot = true;
+        await page.screenshot({ path: join(outDir, `${slug}-lesson.png`) });
+      }
+    };
+
+    /**
+     * Which step the lesson is on, by its own kicker.
+     *
+     * The walk needs this because a click that *failed* looks exactly like a
+     * click that worked if all you count is clicks — and on a slow runner
+     * Playwright's own stability wait times out rather than pressing. Counting
+     * attempts said "4 steps" for a walk that had not left the first one, and
+     * the report then blamed the lesson for having no table. What is counted
+     * here is where the lesson actually got to.
+     */
+    const kicker = async () =>
+      (await page
+        .locator('.learn-step .learn-kicker .lang-en')
+        .first()
+        .textContent()
+        .catch(() => null)) ?? '';
+
+    const trail = [await kicker()];
+    // `idle` is the tween, not a stuck lesson: apply disables itself and the
+    // step only advances once the manipulation has been driven into the model,
+    // which for a scene with `settleModel` is a dozen breaths rather than a
+    // second. Waiting is how this walk tells the two apart.
+    //
+    // The budget is generous on purpose. The tween is timed on the wall clock
+    // but only advanced from the render loop, and the render loop is what a
+    // high device pixel ratio slows down: at `--dpr 2` on software GL this
+    // scene's manipulate step took longer than a ten-second budget, and the
+    // walk reported it as a lesson with no table. Waiting is cheap and only
+    // paid by a lesson that really is stuck.
+    const IDLE_WAIT_MS = 1500;
+    const IDLE_LIMIT = 30;
+    let idle = 0;
+    let clicked = 0;
+    let refused = 0;
+    const note = async () => {
+      const now = await kicker();
+      if (now && now !== trail[trail.length - 1]) trail.push(now);
+    };
+    for (let guard = 0; guard < 44 && idle < IDLE_LIMIT; guard += 1) {
+      await readTable();
+      const target = await pressable();
+      if (!target) {
+        idle += 1;
+        await page.waitForTimeout(IDLE_WAIT_MS);
+        if (!(await page.locator('.learn-body').count())) break;
+        await note();
+        continue;
+      }
+      idle = 0;
+      // A refusal is recorded, not swallowed. `.catch(() => {})` alone is how
+      // a walk that pressed nothing reported four steps.
+      const pressed = await target
+        .click({ timeout: 6000 })
+        .then(() => true)
+        .catch(() => false);
+      if (pressed) clicked += 1;
+      else refused += 1;
+      // The manipulation is tweened into the model over about a second and a
+      // half, and the transfer step solves the model four times.
+      await page.waitForTimeout(1700);
+      if (!(await page.locator('.learn-body').count())) break;
+      await note();
+      await readTable();
+    }
+    // Steps reached, not buttons pressed. `Predict → Manipulate → Observe →
+    // Explain` is the loop this project's lessons are built on; a lesson that
+    // ships `Transfer` adds a fifth.
+    const steps = trail.filter(Boolean).length;
+    const walked = `walked ${trail.filter(Boolean).join(' → ') || 'nowhere'}`
+      + `, ${clicked} press(es)${refused ? `, ${refused} refused` : ''}`
+      + `${idle >= IDLE_LIMIT ? `, then nothing to press for ${(IDLE_LIMIT * IDLE_WAIT_MS) / 1000}s` : ''}`;
+    if (steps < 4) problems.push(`the lesson stopped after ${steps} step(s) — ${walked}`);
+    if (!sawRows) problems.push(`the lesson never showed a before/after row — ${walked}`);
+    if (blank) problems.push('the lesson read `undefined` into its own table');
+    if (!shot) await page.screenshot({ path: join(outDir, `${slug}-lesson.png`) });
+
+    // The lesson may already have closed itself — its last button is `Done`,
+    // and the panel's nodes stay in the DOM after it does, so `count()` is not
+    // an answer to "is it still open".
+    const close = page.locator('.learn-close').first();
+    if (await close.isVisible().catch(() => false)) await close.click();
+    await page.waitForTimeout(1200);
+    const reset = page.locator('.model-control-reset');
+    if (await reset.count()) await reset.first().click();
+    await page.waitForTimeout(1500);
+    const back = await state();
+    if (back.controls !== before.controls) {
+      problems.push(`after the lesson and a reset the controls are ${back.controls}, not ${before.controls}`);
     }
   }
 
@@ -437,6 +675,15 @@ for (const slug of SLUGS) {
     await page.screenshot({ path: join(outDir, `${slug}-after-reel.png`) });
   } else if (shouldOffer) {
     problems.push('the rule offers a video file but the scene has no sequence to record');
+  }
+
+  // Said once per scene, and said even on a green run: a page that threw and
+  // carried on is a finding, and a page that threw and stopped is the reason
+  // everything after it looks like "nothing happened".
+  if (pageErrors.length) {
+    const unique = [...new Set(pageErrors)];
+    problems.push(`the page threw: ${unique.slice(0, 3).join(' · ')}`);
+    pageErrors.length = 0;
   }
 
   report.push({ slug, controlCount, problems, baseline, diseased });

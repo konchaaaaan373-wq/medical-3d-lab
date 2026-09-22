@@ -195,6 +195,7 @@ test('every solver scene is mechanistic, amyloid is illustrative and the brain a
     // thresholds, and no parameter of it is calibrated to a dataset.
     'higher-brain-function': MECHANISM_LEVEL.MECHANISTIC,
     'heart-failure': MECHANISM_LEVEL.MECHANISTIC,
+    'cardiac-output': MECHANISM_LEVEL.MECHANISTIC,
     circulation: MECHANISM_LEVEL.MECHANISTIC,
     'myocardial-ischemia': MECHANISM_LEVEL.MECHANISTIC,
     'copd-hyperinflation': MECHANISM_LEVEL.MECHANISTIC,
