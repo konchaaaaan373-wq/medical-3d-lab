@@ -102,3 +102,21 @@ test('both places that resolve a route apply the correction', () => {
     );
   }
 });
+
+
+test('a correction onto the route already painted does not rebuild it', () => {
+  // `#/organs` pressed *from* the landing page corrects straight back to the
+  // landing page. Rebuilding it would tear down and re-mount the surface the
+  // reader is looking at and scroll them to the top of it — a visible cost for
+  // a navigation that went nowhere.
+  //
+  // Read from the source rather than driven: the swap's own harness lives in
+  // `navigation-swap.test.js` and the condition here is one line in the middle
+  // of it. What has to stay true is that the line exists and asks `sameRoute`
+  // against what is painted, not against the hash it was handed.
+  const source = readFileSync(new URL('../src/app/shellNavigation.js', import.meta.url), 'utf8');
+  const corrected = source.slice(source.indexOf('const corrected = redirectFor('));
+  const guard = corrected.slice(0, corrected.indexOf('const next = resolveRoute('));
+  assert.match(guard, /sameRoute\(hash, shownHash\)/, 'the correction must check what is on screen');
+  assert.match(guard, /return true/, 'and return without mounting');
+});

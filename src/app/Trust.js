@@ -344,7 +344,7 @@ function trustFilter(entries, cardsById) {
  * @param {ReturnType<typeof trustEntry>} entry
  * @param {{open: boolean}} options
  */
-function trustCard({ scene, id, review }, { open }) {
+function trustCard({ scene, id, review }, { open, lead = false }) {
   const maturity = statusById(scene.status);
   const note = REVIEW_NOTES[review.status] ?? REVIEW_NOTES.unrecorded;
   const record = review.record;
@@ -352,25 +352,54 @@ function trustCard({ scene, id, review }, { open }) {
     ? `${record.reviewedAt} · ${record.reviewedCommit?.slice(0, 8) ?? ''}`
     : null;
 
-  return el('details', { class: 'trust-card', id, ...(open ? { open: '' } : {}) }, [
-    el('summary', { class: 'trust-card-summary' }, [
-      el('h2', { class: 'trust-card-title' }, [
-        el('span', { class: 'lang-en', text: scene.titleEn }),
-        el('span', { class: 'lang-ja', text: scene.titleJa }),
-      ]),
-      el('span', { class: 'trust-card-badges' }, [
-        el('span', { class: `trust-maturity is-${scene.status}` }, [
-          el('span', { class: 'lang-en', text: `Status: ${maturity?.label ?? scene.status}` }),
-          el('span', { class: 'lang-ja', text: `公開状態: ${maturity?.labelJa ?? scene.status}` }),
-        ]),
-        reviewBadge(review),
-      ]),
+  const badges = el('span', { class: 'trust-card-badges' }, [
+    el('span', { class: `trust-maturity is-${scene.status}` }, [
+      el('span', { class: 'lang-en', text: `Status: ${maturity?.label ?? scene.status}` }),
+      el('span', { class: 'lang-ja', text: `公開状態: ${maturity?.labelJa ?? scene.status}` }),
     ]),
+    reviewBadge(review),
+  ]);
+
+  /**
+   * The record of the model the page is *about* is not a disclosure.
+   *
+   * As one it repeated the page's own `<h1>` two lines under it, offered a
+   * collapse control for the one thing nobody came here to collapse, and
+   * carried a second "モデルを開く →" beside the hero's "← 3Dモデルに戻る" —
+   * two links to one place on one screen. Measured on a 390 px phone: the
+   * model's name appeared twice in the first 600 px.
+   *
+   * So in lead position the summary goes and the badges move into the body,
+   * which is where they were being read from anyway.
+   */
+  const head = lead
+    ? [el('div', { class: 'trust-card-lead-badges' }, [badges])]
+    : [
+        el('summary', { class: 'trust-card-summary' }, [
+          el('h2', { class: 'trust-card-title' }, [
+            el('span', { class: 'lang-en', text: scene.titleEn }),
+            el('span', { class: 'lang-ja', text: scene.titleJa }),
+          ]),
+          badges,
+        ]),
+      ];
+
+  return el(lead ? 'section' : 'details', {
+    class: `trust-card${lead ? ' is-lead' : ''}`,
+    id,
+    ...(open && !lead ? { open: '' } : {}),
+  }, [
+    ...head,
     el('div', { class: 'trust-card-body' }, [
       // Trust stays open while most of what it describes is not: saying which
       // models are reviewed is more honest with the closed ones listed than
       // with the page hidden. What it must not do is offer to open one.
-      betaUnlocked() || isSceneReleased(scene)
+      //
+      // Not in lead position: the hero above it already carries
+      // "← 3Dモデルに戻る" to the same route.
+      lead
+        ? null
+        : betaUnlocked() || isSceneReleased(scene)
         ? el('a', { class: 'trust-open-model', href: sceneRoute(scene) }, [
             el('span', { class: 'lang-en', text: 'Open model →' }),
             el('span', { class: 'lang-ja', text: 'モデルを開く →' }),
@@ -450,7 +479,7 @@ export function createTrust({ ui, accountButton = null, focusId = null }) {
   const cardsById = new Map(others.map((entry, index) => [entry.id, cards[index]]));
   const filter = trustFilter(others, cardsById);
 
-  const leadCard = focused ? trustCard(focused, { open: true }) : null;
+  const leadCard = focused ? trustCard(focused, { open: true, lead: true }) : null;
   const canOpenFocused =
     focused && (betaUnlocked() || isSceneReleased(focused.scene));
 

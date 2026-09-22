@@ -312,6 +312,19 @@ export async function installShellNavigation({
         /* the surface below is still the right one; only the address bar lags */
       }
       hash = corrected;
+      // Correcting can land on the route already painted — arriving at
+      // `#/organs` from the landing page corrects straight back to it. There
+      // is nothing to build, and building it anyway would rebuild the surface
+      // the reader is looking at and scroll them to the top of it.
+      //
+      // `departure.js` answers 'stay' for this case from its own record of
+      // what is shown, and cannot here: it asked about `#/organs`, which is
+      // genuinely a different route from the one on screen. Only this side
+      // knows the correction happened.
+      if (shownHash !== null && sameRoute(hash, shownHash)) {
+        stopWorking();
+        return true;
+      }
     }
 
     const next = resolveRoute(hash);

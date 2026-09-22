@@ -23,7 +23,7 @@ function queryByClass(root, className) {
   return findByClass(root, className)[0] ?? null;
 }
 
-function sceneUi({ anatomy = true } = {}) {
+function sceneUi({ anatomy = true, withTitle = false } = {}) {
   const subtitle = new FakeElement('p');
   subtitle.classList.add('subtitle');
   subtitle.textContent = 'Always-visible production explanation';
@@ -31,12 +31,22 @@ function sceneUi({ anatomy = true } = {}) {
   const status = new FakeElement('div');
   status.classList.add('title-trust-badges');
 
+  const titleEn = new FakeElement('h1');
+  titleEn.classList.add('title', 'lang-en');
+  titleEn.textContent = 'Interactive brain anatomy';
+  const titleJa = new FakeElement('p');
+  titleJa.classList.add('title-ja', 'lang-ja');
+  titleJa.textContent = '触れて学ぶ脳の解剖';
+
   const titleCard = new FakeElement('header');
   titleCard.classList.add('title-card');
+  if (withTitle) titleCard.append(titleEn, titleJa);
   titleCard.append(status, subtitle);
   titleCard.querySelector = (selector) => {
     if (selector === '.subtitle') return queryByClass(titleCard, 'subtitle');
     if (selector === '.title-trust-badges') return queryByClass(titleCard, 'title-trust-badges');
+    if (withTitle && selector === '.title') return titleEn;
+    if (withTitle && selector === '.title-ja') return titleJa;
     return null;
   };
 
@@ -45,7 +55,31 @@ function sceneUi({ anatomy = true } = {}) {
   ui.append(titleCard);
   ui.querySelector = (selector) => selector === '.title-card' ? titleCard : null;
 
-  return { ui, titleCard, status, subtitle };
+  return { ui, titleCard, status, subtitle, titleEn, titleJa };
+}
+
+/**
+ * A viewport, as `matchMedia` reports one.
+ *
+ * `applyWidth()` reads the *global* `window`, not an injected one, which is
+ * how this adapter behaves in a browser. Restoring whatever was there is the
+ * whole of the cleanup.
+ */
+function withWidth(narrow, run) {
+  const previous = globalThis.window;
+  globalThis.window = {
+    matchMedia: (query) => ({
+      matches: narrow && query.includes('430'),
+      addEventListener() {},
+      removeEventListener() {},
+    }),
+  };
+  try {
+    return run();
+  } finally {
+    if (previous === undefined) delete globalThis.window;
+    else globalThis.window = previous;
+  }
 }
 
 test('anatomy shell presentation is a no-op outside the shared anatomy contract', () => {
@@ -100,4 +134,63 @@ test('anatomy shell CSS cannot affect a scene until the adapter opts in', () => 
   assert.match(css, /console > \.stage-readout/);
   assert.match(css, /global-nav-current-scene/);
   assert.match(css, /\.anatomy-panel/);
+});
+
+
+/**
+ * The model's name, on a phone.
+ *
+ * At 430px and under the title card stops being a card: its title lines and
+ * its review state move inside the "情報・設定" disclosure so the model gets the
+ * height back. Screenshotted at 390×844 on `#/brain-anatomy`, the result was a
+ * screen with **no model name on it at all** — the only identity was a
+ * one-character chip in the header — behind a control whose label gives no
+ * reason to press it, while the one link to the model's medical basis was
+ * inside that same closed disclosure.
+ *
+ * So the title lines go into the summary rather than into the body: the
+ * control names the model, and what opens is that model's information. Moved,
+ * never copied — two titles is how one of them comes to be wrong, which is the
+ * rule the review state already follows.
+ */
+test('on a phone the disclosure is named by the model, and the name is not duplicated', () => {
+  withDom(() => {
+    withWidth(true, () => {
+      const { ui, titleCard, titleEn, titleJa, status } = sceneUi({ withTitle: true });
+      mountAnatomyShellPresentation({ ui });
+
+      const identity = queryByClass(titleCard, 'anatomy-shell-about-identity');
+      assert.ok(identity, 'the summary has somewhere to put the model name');
+      assert.equal(identity.children.includes(titleEn), true, 'the English title moved into it');
+      assert.equal(identity.children.includes(titleJa), true, 'and the Japanese one');
+
+      // In the summary, not in the body — the point is that the *control* says
+      // which model this is, before anything is opened.
+      const copy = queryByClass(titleCard, 'anatomy-shell-about-copy');
+      assert.equal(findByClass(copy, 'title').includes(titleEn), false, 'not also in the body');
+      assert.equal(findByClass(copy, 'title-ja').includes(titleJa), false, 'nor the Japanese one');
+
+      // The review state and the link beside it still go inside, where there
+      // is room to read them.
+      assert.equal(copy.children.includes(status), true, 'the review state is inside the disclosure');
+
+      // And the label survives, so what opening it does is still stated.
+      assert.ok(queryByClass(titleCard, 'anatomy-shell-about-label'), 'the label is still there');
+    });
+  });
+});
+
+test('above that width the title stays where it was and the summary is unnamed', () => {
+  withDom(() => {
+    withWidth(false, () => {
+      const { ui, titleCard, titleEn, titleJa } = sceneUi({ withTitle: true });
+      mountAnatomyShellPresentation({ ui });
+
+      const identity = queryByClass(titleCard, 'anatomy-shell-about-identity');
+      assert.ok(identity, 'the span exists at every width');
+      assert.deepEqual(identity.children, [], 'and is empty, so CSS collapses it away');
+      assert.equal(titleCard.children.includes(titleEn), true, 'the heading is still the heading');
+      assert.equal(titleCard.children.includes(titleJa), true);
+    });
+  });
 });

@@ -144,12 +144,18 @@ test('Trust: a record the route named is never left hidden by a filter', () => {
       .find((node) => node.getAttribute('id') === `trust-${focused.slug}`);
     assert.ok(card);
     assert.equal(card.hidden, false, 'the record the route named must be on screen');
-    assert.equal(card.getAttribute('open'), '', 'and open');
+    // Not a `<details open>` any more: the record the page is about is not a
+    // disclosure, because there is nothing to disclose and nothing anybody
+    // came here to collapse. "On screen and not collapsible" is the stronger
+    // form of what this was asserting.
+    assert.equal(card.tagName, 'SECTION', 'and it is a plain section, not a collapsible one');
+    assert.equal(card.classList.contains('is-lead'), true);
   });
 });
 
 test('Trust: every model section is a closed <details> by default', () => {
   withFakeBrowser(() => {
+    // No focus id, so nothing is promoted and every record is a disclosure.
     const element = mountTrust();
     const cards = findByClass(element, 'trust-card');
     assert.equal(cards.length, PUBLIC_SCENES.length);
@@ -160,21 +166,42 @@ test('Trust: every model section is a closed <details> by default', () => {
   });
 });
 
-test('Trust: a route naming a model opens only that model\'s section', () => {
+test('Trust: a route naming a model leaves every other record collapsed', () => {
   withFakeBrowser(() => {
     const focused = PUBLIC_SCENES[PUBLIC_SCENES.length - 1];
     const element = mountTrust({ focusId: focused.id });
-    const cards = findByClass(element, 'trust-card');
     const focusedId = `trust-${focused.slug}`;
 
-    for (const card of cards) {
-      const shouldBeOpen = card.getAttribute('id') === focusedId;
+    for (const card of findByClass(element, 'trust-card')) {
+      if (card.getAttribute('id') === focusedId) {
+        assert.equal(card.tagName, 'SECTION', 'the named record is not collapsible');
+        continue;
+      }
+      assert.equal(card.tagName, 'DETAILS');
       assert.equal(
         card.getAttribute('open'),
-        shouldBeOpen ? '' : null,
-        `${card.getAttribute('id')}: expected open=${shouldBeOpen}`
+        null,
+        `${card.getAttribute('id')}: every other record stays collapsed`
       );
     }
+  });
+});
+
+test('Trust: the promoted record does not offer a second way to the same model', () => {
+  // The hero above it carries "← 3Dモデルに戻る". The card's own "モデルを開く →"
+  // goes to the same route, and on a 390px phone both were on screen at once
+  // — two links to one place, 200px apart, in the first screenful.
+  withFakeBrowser(() => {
+    const focused = PUBLIC_SCENES[0];
+    const element = mountTrust({ focusId: focused.id });
+    const lead = findByClass(element, 'trust-lead-record')[0];
+    assert.ok(lead);
+    assert.deepEqual(findByClass(lead, 'trust-open-model'), []);
+    // And the model's name is not printed twice: the page heading has it.
+    assert.deepEqual(findByClass(lead, 'trust-card-title'), []);
+    // The badges survive the summary being removed — they are what the plain
+    // sentence in the hero is explaining.
+    assert.ok(findByClass(lead, 'trust-card-badges')[0], 'the badges are still on the record');
   });
 });
 
@@ -210,7 +237,7 @@ test("Trust: a route naming a model puts that model's record first, as the skip 
     const inLead = findByClass(lead, 'trust-card');
     assert.equal(inLead.length, 1);
     assert.equal(inLead[0].getAttribute('id'), `trust-${focused.slug}`);
-    assert.equal(inLead[0].getAttribute('open'), '', 'and it is open, because it is what was asked for');
+    assert.equal(inLead[0].tagName, 'SECTION', 'shown outright, with nothing to expand');
 
     // Not also left in the list below it: one record, one place.
     const grid = findByClass(element, 'trust-grid')[0];
@@ -250,16 +277,24 @@ test('Trust with no model named is unchanged: the ledger, and nothing promoted',
   });
 });
 
-test('Trust: a focus id also matches by slug, and an unknown focus id opens nothing', () => {
+test('Trust: a focus id also matches by slug, and an unknown focus id promotes nothing', () => {
   withFakeBrowser(() => {
     const focused = PUBLIC_SCENES[0];
     const bySlug = mountTrust({ focusId: focused.slug });
-    const openBySlug = findByClass(bySlug, 'trust-card').filter((card) => card.getAttribute('open') === '');
-    assert.deepEqual(openBySlug.map((card) => card.getAttribute('id')), [`trust-${focused.slug}`]);
+    // Promoted, not opened: the record the route names is lifted out of the
+    // ledger into its own section, so "which one did the route pick" is asked
+    // of that section rather than of an `open` attribute.
+    const promoted = findByClass(bySlug, 'trust-lead-record')[0];
+    assert.ok(promoted, 'a slug must resolve the same as an id');
+    assert.deepEqual(
+      findByClass(promoted, 'trust-card').map((card) => card.getAttribute('id')),
+      [`trust-${focused.slug}`]
+    );
 
     const unknown = mountTrust({ focusId: 'not-a-real-scene' });
+    assert.deepEqual(findByClass(unknown, 'trust-lead-record'), []);
     const openUnknown = findByClass(unknown, 'trust-card').filter((card) => card.getAttribute('open') === '');
-    assert.deepEqual(openUnknown, []);
+    assert.deepEqual(openUnknown, [], 'and it opens nothing in the ledger either');
   });
 });
 
@@ -308,10 +343,20 @@ test("a scene's Trust link actually opens that scene's card, for any published s
       assert.equal(route.focusId, scene.id);
 
       const element = mountTrust({ focusId: route.focusId });
-      const openIds = findByClass(element, 'trust-card')
-        .filter((card) => card.getAttribute('open') === '')
-        .map((card) => card.getAttribute('id'));
-      assert.deepEqual(openIds, [`trust-${scene.slug}`], `${scene.id}: its own link must open its own card`);
+      const promoted = findByClass(element, 'trust-lead-record')[0];
+      assert.ok(promoted, `${scene.id}: its own link must promote its own record`);
+      assert.deepEqual(
+        findByClass(promoted, 'trust-card').map((card) => card.getAttribute('id')),
+        [`trust-${scene.slug}`],
+        `${scene.id}: and it must be that scene's record, not another's`
+      );
+      // The page is headed by that model, so a reader arriving from inside it
+      // is not asked to find it.
+      const heading = findByClass(element, 'trust-hero')[0].querySelector('h1');
+      assert.deepEqual(
+        findByClass(heading, 'lang-ja').map((node) => node.textContent),
+        [scene.titleJa]
+      );
     }
   });
 });

@@ -351,3 +351,26 @@
 @media (max-width: 720px) {
   .trust-empty { padding: 20px 14px; }
 }
+
+/* ---- The promoted record ----------------------------------------------------
+   A `<section>` rather than a `<details>`, so it needs the padding the summary
+   and body were carrying between them, and a frame that reads as "this is the
+   record" rather than as the first of seventy-one rows. */
+.trust-card.is-lead {
+  display: block;
+  padding: 0;
+}
+
+.trust-card-lead-badges {
+  padding: 18px 22px 0;
+}
+
+.trust-card.is-lead > .trust-card-body {
+  padding-top: 12px;
+}
+
+@media (max-width: 720px) {
+  .trust-card-lead-badges {
+    padding: 16px 20px 0;
+  }
+}

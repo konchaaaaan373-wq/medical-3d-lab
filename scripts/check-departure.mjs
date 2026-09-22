@@ -421,7 +421,7 @@ try {
     const page = await context.newPage();
     let documents = 0;
     page.on('load', () => { documents += 1; });
-    await page.goto(`${origin}/#/organs`, { waitUntil: 'networkidle' });
+    await page.goto(`${origin}/#/`, { waitUntil: 'networkidle' });
     await page.waitForTimeout(1500);
 
     let stacked = false;
@@ -460,11 +460,15 @@ try {
       return { reloaded: documents > before, blank, settled, ...after };
     };
 
+    // `#/organs` is deliberately not in this list any more: in the beta it is
+    // not a surface, it is a correction (`src/app/routeRedirects.js`), and it
+    // gets its own check below. `#/terms` and `#/privacy` are two routes that
+    // share a `kind`, which is the case `sameRoute` has to get right.
     const READING = [
       ['#/trust', 'trust'],
       ['#/terms', 'legal'],
       ['#/', 'landing'],
-      ['#/organs', 'explorer'],
+      ['#/privacy', 'legal'],
     ];
     const costs = [];
     let clean = true;
@@ -494,6 +498,24 @@ try {
     // is on it. It was not: a surface's own teardown disposes a WebGL hero
     // before removing its element, so the old page sat under the new one for
     // 870 ms with the page height going 1061 → 2495 → 1434 px.
+    // A route with no page of its own, followed *during* a swap. The unit
+    // tests fix the rule; this is the part they cannot see — that the address
+    // bar and the page agree afterwards. A swap that rendered the landing page
+    // while the hash still said `#/organs` would leave every later navigation
+    // asking the wrong question, because the shell decides what is still
+    // wanted by reading the address bar.
+    {
+      const seen = await move('#/organs', 'landing');
+      const landed = seen.hash === '#/' && seen.route === 'landing' && !seen.reloaded && !seen.blank;
+      record(
+        'a route with no page of its own corrects itself, address bar included',
+        landed,
+        landed
+          ? `#/organs -> ${seen.hash} in ${seen.settled}ms, no document load`
+          : `settled at hash ${seen.hash} with data-route="${seen.route}"` +
+            `${seen.reloaded ? ', and replaced the document' : ''}`
+      );
+    }
     record(
       'the outgoing surface is never left stacked under the incoming one',
       stacked === false,
