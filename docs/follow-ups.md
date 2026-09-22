@@ -4920,3 +4920,6 @@ shell は `M/3`、シーンは `3D`（`global-nav-brand-mark`）。
 - いま何が捕まえるか: `tests/in-page-anchors.test.js` が
   `observe()` の開始位置を surface の構築より後に固定します（決定的）。
   `verify:ui` の skip link 判定はこれまで通り実ブラウザ側を見ます
+- **確認**: 修正前は full run 4/4 が赤（2・3・1・2 件）。修正後は
+  full run 2/2 が `Every declared viewport and surface met the declared rules`
+  （exit 0）。DOM の並びは 36/36 で skip link が先
