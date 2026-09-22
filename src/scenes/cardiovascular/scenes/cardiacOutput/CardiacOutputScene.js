@@ -16,12 +16,7 @@ import {
   resistanceAt,
 } from './reelStoryboard.js';
 import { ExperimentSession } from './experimentSession.js';
-import {
-  CONTROL_DOMAIN,
-  PRESET_IDS,
-  REFERENCE_GEOMETRY,
-  referenceInput,
-} from '../../../../models/cardiacOutput.js';
+import { CONTROL_DOMAIN, PRESET_IDS, REFERENCE_GEOMETRY } from '../../../../models/cardiacOutput.js';
 import {
   advanceCardiacPhase,
   beatPhaseAt,
@@ -853,10 +848,6 @@ class BeforeHeart extends THREE.Group {
     this.blood.update(elapsed);
   }
 
-  setPresence(value) {
-    this.chamber.setOpacity(value);
-  }
-
   syncViewport(camera, renderer) {
     this.blood.syncViewport(camera, renderer);
   }
@@ -866,6 +857,3 @@ class BeforeHeart extends THREE.Group {
     this.outline.dispose();
   }
 }
-
-/** Exported for the tests, which need a condition without a renderer. */
-export { referenceInput };

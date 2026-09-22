@@ -96,7 +96,7 @@ const BAND_POSITIONS = [0.58, 0.7, 0.82];
 const NODE_POSITION = new THREE.Vector3(6.4, -0.2, -2.95);
 
 /** Anchors a label may hang from. World coordinates, since nothing here moves. */
-export const CIRCUIT_ANCHORS = {
+const CIRCUIT_ANCHORS = {
   resistance: ARTERIAL_PATH.getPointAt((RESISTANCE_ZONE.from + RESISTANCE_ZONE.to) / 2),
   return: VENOUS_PATH.getPointAt(0.45),
   node: NODE_POSITION.clone(),

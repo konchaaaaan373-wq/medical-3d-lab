@@ -1,5 +1,4 @@
 import {
-  CONTROL_DOMAIN,
   CONTROL_IDS,
   PRESET_IDS,
   RESULT_STATUS,
@@ -293,15 +292,4 @@ export class ExperimentSession {
     return view;
   }
 
-  /**
-   * The controls as the UI wants them, with the current values.
-   *
-   * The preset comes **first**, and that ordering is load-bearing:
-   * `restoreSessionState` replays controls in the order `getModelControls()`
-   * returned them, and selecting a preset resets the four sliders. Restored
-   * last, a preset would wipe the very values being restored.
-   */
-  controlValues() {
-    return CONTROL_IDS.map((id) => ({ id, value: this._input[id], domain: CONTROL_DOMAIN[id] }));
-  }
 }

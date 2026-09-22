@@ -221,6 +221,22 @@ resistance", which is the misconception rather than the teaching.
 
 **Catalog status:** `alpha`
 
+### Revision 3 — dead surface removed
+
+No behaviour changed and no number moved. A self-review found four exported or
+public things nothing called: a `setPresence` on the comparison heart, a
+`controlValues()` on the session, a re-export of `referenceInput` from the
+scene "for the tests" that the tests never used, and a `HEART_RATE_LIMITATION`
+constant in the model.
+
+The last one is worth the sentence. It was prose in a model — which
+`src/models/README.md` rule 6 forbids — and it was a *third* copy of a statement
+that already exists as a machine-readable evidence entry (`phase-scaled-systole`)
+and as the caution a reader actually sees on the scope panel. Three copies of one
+claim is two chances for it to drift. The fact now lives once in each place it
+has a job: the registry records it, the scope panel says it, and a comment on the
+control explains why.
+
 ### Revision 2 — interventions, a lesson and a sequence
 
 Adds `src/models/cardiacInterventions.js` (two interventions as input

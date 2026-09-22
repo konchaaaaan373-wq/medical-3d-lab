@@ -158,31 +158,21 @@ export const CONTROL_DOMAIN = Object.freeze({
   systemicResistanceMmHgSPerMl: Object.freeze({ min: 0.7, max: 1.8, step: 0.01, default: 1.1 }),
   /** Left-ventricular end-systolic elastance. */
   contractilityEesMmHgPerMl: Object.freeze({ min: 0.8, max: 4.0, step: 0.02, default: 2.74 }),
-  /** Heart rate. See `HEART_RATE_LIMITATION`. */
+  /**
+   * Heart rate.
+   *
+   * The activation function is defined on normalised phase, so raising the rate
+   * compresses systole and diastole in the same proportion — in a real heart
+   * systole shortens proportionally less, and diastolic filling time is lost
+   * faster than it is here. The range is bounded so that distortion stays
+   * modest; the limitation itself is recorded as `phase-scaled-systole` in
+   * `evidence.js` and stated on the scene's scope panel, and narrowing the
+   * range further would not make either unnecessary.
+   */
   heartRatePerMin: Object.freeze({ min: 50, max: 110, step: 1, default: 70 }),
 });
 
 export const CONTROL_IDS = Object.freeze(Object.keys(CONTROL_DOMAIN));
-
-/**
- * What the heart-rate control does *not* model.
- *
- * The solver's activation function is a function of normalised phase, so
- * systolic duration is a fixed fraction of the cycle: raising the rate shortens
- * systole in exactly the same proportion as diastole. In a real heart systole
- * shortens proportionally less than diastole, so diastolic filling time is lost
- * faster than this model loses it, and the rate at which filling starts to
- * limit output is therefore later here than in a person. The control is kept
- * inside a range where that distortion stays modest and the limitation is
- * stated on the scene's scope panel and in the model card — it is not repaired
- * by narrowing the range, and narrowing it further would not make the statement
- * unnecessary.
- */
-export const HEART_RATE_LIMITATION = Object.freeze({
-  id: 'phase-scaled-systole',
-  what: 'Systolic duration is a fixed fraction of the cycle, so raising the rate compresses systole and diastole equally.',
-  consequence: 'Loss of filling time with tachycardia is under-represented; this is not a general model of tachycardia.',
-});
 
 /** Defaults, as an input object. */
 export function referenceInput() {
