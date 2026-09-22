@@ -1,4 +1,4 @@
-import { el, ICONS } from '../utils/dom.js';
+import { el, emphasised, ICONS } from '../utils/dom.js';
 import { inLanguage, onLanguageChange } from '../utils/language.js';
 
 /** Social-friendly export sizes. Rendered off-screen, so the window can stay any size. */
@@ -10,24 +10,6 @@ export const CAPTURE_PRESETS = [
   { id: 'wide', label: '1920 × 1080 (16:9)', labelJa: '横 16:9', size: { width: 1920, height: 1080 } },
 ];
 
-/**
- * `**like this**` as emphasis, and nothing else as markup.
- *
- * Every disclaimer in the catalogue marks its sharpest sentence this way —
- * "no volume may be read off this model", "nothing here moves" — because the
- * same string is read by the model cards, which are markdown. Set as plain text
- * the asterisks were showing through, so the one warning a reader most needs to
- * notice was the one wearing punctuation. Split, never parsed: the text becomes
- * text nodes and `<strong>` elements, so nothing here can inject markup even if
- * a disclaimer one day contains some.
- */
-function emphasised(text) {
-  if (!text) return [];
-  return String(text)
-    .split('**')
-    .map((part, index) => (index % 2 ? el('strong', { text: part }) : document.createTextNode(part)))
-    .filter((node) => node.textContent !== '');
-}
 
 /**
  * Progression slider + transport buttons + the educational disclaimer.

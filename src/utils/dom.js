@@ -129,3 +129,30 @@ export const ICONS = {
     '<g fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round"><circle cx="10.3" cy="10.3" r="6.4"/><path d="M15.2 15.2 20.6 20.6"/><path d="M7.4 10.3h5.8"/></g>'
   ),
 };
+
+/**
+ * `**like this**` as real emphasis rather than as four asterisks.
+ *
+ * The copy in `src/data/` is written with Markdown emphasis on the phrase that
+ * carries the caveat — "**not** a required diagnostic step", "言語障害を
+ * **否定する**ことは" — because the same strings are read by the model cards,
+ * which are Markdown. Set as plain text the asterisks show through, on exactly
+ * the sentence a reader most needs to notice.
+ *
+ * Split, never parsed: the text becomes text nodes and `<strong>` elements, so
+ * nothing here can inject markup even if a string one day contains some.
+ *
+ * Shared because three components had written it and a fourth was about to.
+ * Two of the three dropped empty parts and one did not, which is the kind of
+ * difference that makes one copy’s behaviour depend on which file you are in.
+ *
+ * @param {string} text
+ * @returns {(Text|HTMLElement)[]}
+ */
+export function emphasised(text) {
+  if (!text) return [];
+  return String(text)
+    .split('**')
+    .map((part, index) => (index % 2 ? el('strong', { text: part }) : document.createTextNode(part)))
+    .filter((node) => node.textContent !== '');
+}

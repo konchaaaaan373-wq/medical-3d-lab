@@ -1,4 +1,4 @@
-import { el } from '../utils/dom.js';
+import { el, emphasised } from '../utils/dom.js';
 
 /**
  * What this model answers, what it does not, and where its numbers came from.
@@ -109,25 +109,3 @@ function list(entries, className) {
   );
 }
 
-/**
- * `**like this**` as real emphasis rather than as four asterisks.
- *
- * The scope copy has always been written with Markdown emphasis on the phrase
- * that carries the caveat — "**not** a required diagnostic step", "**a chosen
- * path through parameter space**" — and this panel used to render the asterisks
- * literally. It looked like a typo on the one sentence that most needed to be
- * read, and it did so in all four model-backed scenes.
- *
- * Built as text nodes and `<strong>` rather than assigned as HTML: this copy is
- * repository content, but a panel that interprets markup is one bad string away
- * from interpreting a tag.
- *
- * @param {string} text
- * @returns {(Node|string)[]}
- */
-function emphasised(text) {
-  const parts = String(text ?? '').split(/\*\*(.+?)\*\*/gs);
-  return parts.map((part, index) =>
-    index % 2 === 1 ? el('strong', { text: part }) : document.createTextNode(part)
-  );
-}

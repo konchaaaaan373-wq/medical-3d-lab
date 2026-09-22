@@ -103,6 +103,29 @@ export function createMetricsPanel() {
     },
     /** @param {{id:string,label:string,labelJa:string,value:number|string,unit:string,emphasis?:boolean}[]} metrics */
     update(metrics) {
+      // A row this update does not carry is hidden, not left showing its last
+      // value. Rows were only ever created and updated here, which was correct
+      // while every scene sent the same set every time and wrong the moment one
+      // sent a row conditionally: resetting the higher-function scene left
+      // "where it stops: nothing of Broca's area is left" on the panel over an
+      // intact brain, because the reset simply stopped sending that row.
+      // Hidden rather than removed, so that a row which comes back keeps its
+      // place in the order instead of jumping to the end.
+      const present = new Set(metrics.map((metric) => metric.id));
+      for (const [id, row] of rows) {
+        if (present.has(id)) continue;
+        row.node.hidden = true;
+        // Emptied as well as hidden. A hidden node keeps its text, and the text
+        // is the claim: "nothing of Broca's area is left" sitting in the
+        // document over an intact brain is still in the page a reader copies,
+        // and it is what a checker reading the panel's own text will find.
+        row.value.textContent = '';
+        if (row.valueJa) row.valueJa.textContent = '';
+        row.unit.textContent = '';
+        row.reference.textContent = '';
+        row.change.textContent = '';
+        row.details?.list.replaceChildren();
+      }
       for (const metric of metrics) {
         let row = rows.get(metric.id);
         if (!row) {
@@ -121,8 +144,15 @@ export function createMetricsPanel() {
           // could only widen the panel until it left the side of a phone. The
           // class says which kind of value this is; the stylesheet decides what
           // that means.
+          // `essential` is not `emphasis`. A phone hides every row that is not
+          // a headline figure, which is right for eleven haemodynamic numbers
+          // and wrong for "what this value does not settle": the rows that say
+          // what a result is *not* are the ones a reader most needs and the
+          // ones a narrow screen was dropping. This marks them as rows that
+          // stay, without making them louder than the result they qualify.
           const node = el('div', {
-            class: `metric${metric.emphasis ? ' is-key' : ''}${bilingual ? ' is-qualitative' : ''}`,
+            class: `metric${metric.emphasis ? ' is-key' : ''}${metric.essential ? ' is-essential' : ''}`
+              + `${bilingual ? ' is-qualitative' : ''}`,
           }, [
             el('span', { class: 'metric-label' }, [
               el('span', { class: 'lang-en', text: metric.label }),
@@ -131,7 +161,7 @@ export function createMetricsPanel() {
             el('span', { class: 'metric-figure' }, [reference, value, valueJa, unit, change]),
           ]);
           groupFor(metric).append(node);
-          row = { value, valueJa, reference, unit, change, node };
+          row = { value, valueJa, reference, unit, change, node, group: metric.group ?? null };
           row.details = detailsFor(metric, node);
           rows.set(metric.id, row);
         }
@@ -154,6 +184,7 @@ export function createMetricsPanel() {
         if (row.valueJa) row.valueJa.textContent = String(metric.valueJa);
         row.unit.textContent = metric.unit;
         row.reference.textContent = metric.reference == null ? '' : `${metric.reference} →`;
+        row.node.hidden = false;
         row.change.textContent = metric.change === 'up' ? '↑' : metric.change === 'down' ? '↓' : metric.change === 'flat' ? '≈' : '';
         if (metric.change) {
           row.node.dataset.change = metric.change;
@@ -165,6 +196,11 @@ export function createMetricsPanel() {
           row.change.removeAttribute('title');
           row.node.removeAttribute('aria-label');
         }
+      }
+      // A section whose every row went away is a heading over nothing.
+      for (const [id, group] of groups) {
+        const live = [...rows.values()].some((row) => row.group === id && !row.node.hidden);
+        group.section.hidden = !live;
       }
     },
   };

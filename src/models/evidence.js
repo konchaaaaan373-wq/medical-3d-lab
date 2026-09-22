@@ -147,11 +147,45 @@ const LAYERS = new Set(Object.values(LAYER));
  * honestly claim today, and a registry that had no way to say so would end up
  * claiming it by default.
  */
+/**
+ * How far a source was actually checked. Not how good the claim is.
+ *
+ * Six of these are degrees of the same thing and two are not, and the reason
+ * there are this many is that a coarser set let a weaker check be recorded as a
+ * stronger one. "The search engine's summary said so" and "the abstract says
+ * so" were both `abstract-only` until this list grew: the first is a third
+ * party's paraphrase, and this build environment cannot reach the medical
+ * publishers, so it is usually the most that was available.
+ *
+ * Ordered from strongest to weakest, and the ordering is the point: a registry
+ * entry may never be moved up it by anything short of somebody reading the
+ * thing it names.
+ */
 export const VERIFICATION = {
+  /** The passage supporting this claim was read in the body of the paper. */
+  PASSAGE: 'body-passage',
   /** The paper itself was read, including its tables and figures. */
   FULL_TEXT: 'full-text',
-  /** The abstract was read; the body of the paper was not retrieved. */
+  /**
+   * The full text was retrieved and the passage this claim rests on was not
+   * located in it. Stronger than an abstract for the paper's existence and
+   * weaker than {@link PASSAGE} for the claim.
+   */
+  FULL_TEXT_PASSAGE_UNCHECKED: 'full-text-passage-unchecked',
+  /** The publisher's or PubMed's own abstract was read. */
   ABSTRACT: 'abstract-only',
+  /**
+   * The content is known through a review, a reading list or correspondence
+   * that quotes it — including an audit document written by somebody else who
+   * read the source. Reading their account is not reading the source.
+   */
+  VIA_REVIEW: 'via-review-material',
+  /**
+   * A search service's summary of the source, and nothing from the source
+   * itself. The commonest honest value in this repository, because the medical
+   * publishers are unreachable from the build environment.
+   */
+  SEARCH_SUMMARY: 'search-summary-only',
   /** Author, year, journal, title and identifier were matched; no abstract read. */
   CITATION: 'citation-only',
   /** A textbook-level description this repository is restating. */
@@ -162,7 +196,28 @@ export const VERIFICATION = {
   DESIGN: 'repository-decision',
 };
 
+/**
+ * Whether the source, as far as it was read, supports the claim made from it.
+ *
+ * Separate from {@link VERIFICATION} on purpose: a paper can be confirmed to
+ * exist, and to say something adjacent to what an entry claims from it. The
+ * audited registry had one of each — a dissociation asserted for *processes*
+ * from a paper that reported recognition, and a localisation asserted from a
+ * summary that describes a wider lesion than the entry uses.
+ */
+export const CLAIM_SUPPORT = {
+  /** What was read states the claim. */
+  STATES: 'source-states-it',
+  /** What was read is consistent with the claim and does not state it. */
+  CONSISTENT: 'consistent-with-source',
+  /** What was read is narrower or wider than the claim, and the entry says how. */
+  NARROWER: 'source-is-narrower',
+  /** Not checked against the source at all. */
+  UNCHECKED: 'not-checked-against-source',
+};
+
 const VERIFICATIONS = new Set(Object.values(VERIFICATION));
+const CLAIM_SUPPORTS = new Set(Object.values(CLAIM_SUPPORT));
 
 export const ASSERTABLE = new Set([CONFIDENCE.ESTABLISHED, CONFIDENCE.SUPPORTED]);
 
@@ -187,7 +242,7 @@ export const ASSERTABLE = new Set([CONFIDENCE.ESTABLISHED, CONFIDENCE.SUPPORTED]
  *
  * @param {{id:string, claim:string, confidence:string, source:string,
  *          validation?:string, layer?:string, note?:string,
- *          sourceVerification?:string, doesNotEstablish?:string}[]} entries
+ *          sourceVerification?:string, claimSupport?:string, doesNotEstablish?:string}[]} entries
  */
 export function defineEvidence(scene, entries) {
   const seen = new Set();
@@ -202,6 +257,21 @@ export function defineEvidence(scene, entries) {
       throw new Error(
         `${scene}: "${entry.id}" claims verification "${entry.sourceVerification}", which is not one of `
         + [...VERIFICATIONS].join(', ')
+      );
+    }
+    if (entry.claimSupport && !CLAIM_SUPPORTS.has(entry.claimSupport)) {
+      throw new Error(
+        `${scene}: "${entry.id}" claims support "${entry.claimSupport}", which is not one of `
+        + [...CLAIM_SUPPORTS].join(', ')
+      );
+    }
+    // Saying how far a source was read is not saying that it supports the
+    // claim. An entry that records one without the other is half an answer, so
+    // once a registry starts recording verification it records both.
+    if (entry.sourceVerification && entry.sourceVerification !== VERIFICATION.DESIGN && !entry.claimSupport) {
+      throw new Error(
+        `${scene}: "${entry.id}" says how far its source was read and not whether what was read `
+        + 'supports the claim. Add `claimSupport`.'
       );
     }
     if (!ASSERTABLE.has(entry.confidence) && !entry.note) {
@@ -3523,13 +3593,18 @@ export const HIGHER_BRAIN_FUNCTION_EVIDENCE = defineEvidence('higher-brain-funct
       + 'spelled, the lexical route is preserved) and Roeltgen and Heilman, Brain 1984;107:811 (lexical '
       + 'agraphia, the complementary case). Rapcsak et al., Neuropsychologia 2007, report that a '
       + 'dual-route model predicts reading and spelling performance in acquired alexia and agraphia.',
-    sourceVerification: VERIFICATION.ABSTRACT,
+    sourceVerification: VERIFICATION.VIA_REVIEW,
+    claimSupport: CLAIM_SUPPORT.STATES,
     validation: 'physiology: the two writing routes come apart, and a nonword may not take the lexical one',
     layer: LAYER.EXTERNAL,
     doesNotEstablish:
       'The anatomy. The 1984 series localised the two to the angular and supramarginal gyri on CT in '
       + 'four patients each, which is where this model places them, and that is a small old series '
-      + 'rather than a settled localisation.',
+      + 'rather than a settled localisation. What has been read of it here is the publisher summary, '
+      + 'quoted in a review of this model rather than retrieved: the summary describes the '
+      + 'phonological group as supramarginal **or the insula deep to it**, which is wider than the '
+      + 'one-gyrus assignment. The dissociation is the claim; the localisation is carried separately '
+      + 'and marked uncertain.',
   },
   {
     id: 'writing-is-not-downstream-of-speaking',
@@ -3540,7 +3615,8 @@ export const HIGHER_BRAIN_FUNCTION_EVIDENCE = defineEvidence('higher-brain-funct
     source:
       'The same two case series, in which spelling is assessed in patients whose spoken output is '
       + 'affected, and the standard description of apraxia of speech as leaving writing available.',
-    sourceVerification: VERIFICATION.ABSTRACT,
+    sourceVerification: VERIFICATION.SEARCH_SUMMARY,
+    claimSupport: CLAIM_SUPPORT.CONSISTENT,
     validation: 'physiology: writing from meaning does not depend on speaking',
     layer: LAYER.EXTERNAL,
     doesNotEstablish:
@@ -3558,13 +3634,16 @@ export const HIGHER_BRAIN_FUNCTION_EVIDENCE = defineEvidence('higher-brain-funct
       'Gaillard et al., Neuron 2006, report a patient whose reading changed after resection of a small '
       + 'word-responsive region of left occipitotemporal cortex that overlapped the word-specific fMRI '
       + 'activation, with pre-operative category selectivity for words, faces, houses and tools.',
-    sourceVerification: VERIFICATION.ABSTRACT,
+    sourceVerification: VERIFICATION.VIA_REVIEW,
+    claimSupport: CLAIM_SUPPORT.NARROWER,
     validation: 'physiology: letters and objects come apart when the processes do',
     layer: LAYER.EXTERNAL,
     doesNotEstablish:
-      'The post-operative comparison in detail: the full text was not retrieved, so what happened to '
-      + 'object naming specifically is not something this entry states. The dissociation is asserted '
-      + 'for the *processes* in this model, and the atlas cannot separate them at all.',
+      'The post-operative comparison in detail. The abstract was read by a reviewer of this model and '
+      + 'not retrieved here, and what it reports is the **recognition** of other visual categories '
+      + 'being preserved. Recognition is not oral object naming, which is the task this model carries, '
+      + 'and this entry does not read one for the other. The dissociation is asserted for the '
+      + '*processes* in this model, and the atlas cannot separate them at all.',
   },
   {
     id: 'the-atlas-cannot-separate-letters-from-objects',
@@ -3592,6 +3671,7 @@ export const HIGHER_BRAIN_FUNCTION_EVIDENCE = defineEvidence('higher-brain-funct
       + 'aphasia in which repetition is reported as worse for nonwords and function words than for '
       + 'familiar content words.',
     sourceVerification: VERIFICATION.TEXTBOOK,
+    claimSupport: CLAIM_SUPPORT.STATES,
     validation: 'physiology: a known word can be repeated round through meaning, and a nonword cannot',
     layer: LAYER.EXTERNAL,
     doesNotEstablish:
@@ -3607,6 +3687,7 @@ export const HIGHER_BRAIN_FUNCTION_EVIDENCE = defineEvidence('higher-brain-funct
     confidence: CONFIDENCE.SUPPORTED,
     source: 'The standard clinical descriptions of the anterior and posterior perisylvian aphasias.',
     sourceVerification: VERIFICATION.TEXTBOOK,
+    claimSupport: CLAIM_SUPPORT.STATES,
     validation: 'physiology: an anterior lesion takes the output routes and a posterior one takes comprehension',
     layer: LAYER.EXTERNAL,
     doesNotEstablish:
@@ -3623,6 +3704,7 @@ export const HIGHER_BRAIN_FUNCTION_EVIDENCE = defineEvidence('higher-brain-funct
     confidence: CONFIDENCE.SUPPORTED,
     source: 'The standard clinical descriptions of the transcortical aphasias.',
     sourceVerification: VERIFICATION.TEXTBOOK,
+    claimSupport: CLAIM_SUPPORT.STATES,
     validation: 'physiology: a lesion outside the perisylvian zone leaves the repetition route reaching',
     layer: LAYER.EXTERNAL,
     doesNotEstablish:
@@ -3649,7 +3731,8 @@ export const HIGHER_BRAIN_FUNCTION_EVIDENCE = defineEvidence('higher-brain-funct
     source:
       'Maffei et al., Cortex 2017;97:240, report a case of pure word deafness after left temporal '
       + 'damage with intact processing of non-speech sounds and normal speech, reading and writing.',
-    sourceVerification: VERIFICATION.ABSTRACT,
+    sourceVerification: VERIFICATION.SEARCH_SUMMARY,
+    claimSupport: CLAIM_SUPPORT.CONSISTENT,
     validation: 'physiology: the way in from hearing is separate from the way out and from meaning',
     layer: LAYER.EXTERNAL,
     doesNotEstablish:
@@ -3684,7 +3767,8 @@ export const HIGHER_BRAIN_FUNCTION_EVIDENCE = defineEvidence('higher-brain-funct
       + 'Communications Biology 2024;7:700, associate the left ventral anterior and ventrolateral '
       + 'nuclei with aphasia after thalamic stroke, and specifically with semantic and phonemic '
       + 'fluency tasks and complex comprehension, by lesion-symptom and lesion-network mapping.',
-    sourceVerification: VERIFICATION.ABSTRACT,
+    sourceVerification: VERIFICATION.SEARCH_SUMMARY,
+    claimSupport: CLAIM_SUPPORT.CONSISTENT,
     validation: 'physiology: the thalamus is not an obligatory gate, and its absence is not "no effect"',
     layer: LAYER.EXTERNAL,
     doesNotEstablish:
@@ -3707,7 +3791,8 @@ export const HIGHER_BRAIN_FUNCTION_EVIDENCE = defineEvidence('higher-brain-funct
       + 'lesions of the left insula, anterior insula or the superior tip of the precentral gyrus of '
       + 'the insula; it was associated instead with structural damage or low blood flow in the left '
       + 'posterior inferior frontal gyrus. The anterior-insula proposal is Dronkers, Nature 1996;384:159.',
-    sourceVerification: VERIFICATION.ABSTRACT,
+    sourceVerification: VERIFICATION.SEARCH_SUMMARY,
+    claimSupport: CLAIM_SUPPORT.CONSISTENT,
     validation: 'physiology: the insula preset affects the spoken route and claims nothing about speech quality',
     layer: LAYER.EXTERNAL,
     doesNotEstablish:
@@ -3726,7 +3811,8 @@ export const HIGHER_BRAIN_FUNCTION_EVIDENCE = defineEvidence('higher-brain-funct
       + 'activation patterns for the four domains in healthy subjects, and concluded that the tetrad '
       + 'does not share a common network — its co-occurrence after parietal injury reflecting '
       + 'anatomical proximity of separate fibre tracts in the parietal white matter.',
-    sourceVerification: VERIFICATION.ABSTRACT,
+    sourceVerification: VERIFICATION.SEARCH_SUMMARY,
+    claimSupport: CLAIM_SUPPORT.CONSISTENT,
     validation: 'physiology: the angular gyrus does not produce a tetrad',
     layer: LAYER.EXTERNAL,
     doesNotEstablish:
@@ -3744,6 +3830,7 @@ export const HIGHER_BRAIN_FUNCTION_EVIDENCE = defineEvidence('higher-brain-funct
       + 'handedness and language dominance not being the same variable; it was not retrieved beyond '
       + 'its citation.',
     sourceVerification: VERIFICATION.TEXTBOOK,
+    claimSupport: CLAIM_SUPPORT.STATES,
     validation: 'physiology: language and praxis sit in one hemisphere in a right-handed brain',
     layer: LAYER.EXTERNAL,
     doesNotEstablish:
@@ -3758,6 +3845,7 @@ export const HIGHER_BRAIN_FUNCTION_EVIDENCE = defineEvidence('higher-brain-funct
     confidence: CONFIDENCE.SUPPORTED,
     source: 'Standard clinical descriptions of hemispatial neglect and the right parietal attention system.',
     sourceVerification: VERIFICATION.TEXTBOOK,
+    claimSupport: CLAIM_SUPPORT.STATES,
     validation: 'physiology: spatial attention is not in the language hemisphere',
     layer: LAYER.EXTERNAL,
   },
@@ -3769,6 +3857,7 @@ export const HIGHER_BRAIN_FUNCTION_EVIDENCE = defineEvidence('higher-brain-funct
     confidence: CONFIDENCE.SUPPORTED,
     source: 'Standard accounts of the amnesic syndrome and of the hippocampal-fornix-mamillary-anterior thalamic circuit.',
     sourceVerification: VERIFICATION.TEXTBOOK,
+    claimSupport: CLAIM_SUPPORT.STATES,
     validation: 'physiology: a new memory needs a medial temporal lobe on one side or the other',
     layer: LAYER.EXTERNAL,
   },
@@ -3780,6 +3869,7 @@ export const HIGHER_BRAIN_FUNCTION_EVIDENCE = defineEvidence('higher-brain-funct
     confidence: CONFIDENCE.SUPPORTED,
     source: 'Standard descriptions of callosal disconnection and sympathetic (left-hand) apraxia.',
     sourceVerification: VERIFICATION.TEXTBOOK,
+    claimSupport: CLAIM_SUPPORT.STATES,
     validation: 'physiology: the callosum carries the left hand, so cutting it spares the right',
     layer: LAYER.EXTERNAL,
   },
@@ -3806,7 +3896,8 @@ export const HIGHER_BRAIN_FUNCTION_EVIDENCE = defineEvidence('higher-brain-funct
       'Roeltgen and Heilman, Brain 1984;107:811, localised lexical agraphia to posterior angular '
       + 'lesions sparing the supramarginal gyrus and phonological agraphia to supramarginal lesions '
       + '(or the insula deep to it) sparing the angular gyrus — four patients in each group, on CT.',
-    sourceVerification: VERIFICATION.ABSTRACT,
+    sourceVerification: VERIFICATION.VIA_REVIEW,
+    claimSupport: CLAIM_SUPPORT.NARROWER,
     note:
       'Known weakness, and the direction this part of the model is most likely to mislead in. The '
       + '*functional* dissociation of the two routes is the supported claim; pinning each to one gyrus '
@@ -3824,6 +3915,7 @@ export const HIGHER_BRAIN_FUNCTION_EVIDENCE = defineEvidence('higher-brain-funct
       + 'practice: real lesions rarely respect one circuit, and apathy, disinhibition and dysexecutive '
       + 'features commonly appear together.',
     sourceVerification: VERIFICATION.TEXTBOOK,
+    claimSupport: CLAIM_SUPPORT.STATES,
     note:
       'Known weakness. It will show a cleaner dissociation than a person presents with. The circuits '
       + 'are the claim; the tidiness of the three pictures is not.',
@@ -3837,6 +3929,7 @@ export const HIGHER_BRAIN_FUNCTION_EVIDENCE = defineEvidence('higher-brain-funct
     confidence: CONFIDENCE.SUPPORTED,
     source: 'The frontal-subcortical circuits as described by Alexander, DeLong and Strick, and the clinical literature on caudate and thalamic infarcts.',
     sourceVerification: VERIFICATION.TEXTBOOK,
+    claimSupport: CLAIM_SUPPORT.STATES,
     validation: 'physiology: a frontal–subcortical circuit reads the same wherever it is cut',
     layer: LAYER.EXTERNAL,
     doesNotEstablish:

@@ -1073,7 +1073,9 @@
 .metric-group-toggle {
   display: block;
   width: 100%;
-  min-height: 32px;
+  /* A heading that folds a section is a control, so it is a control-sized
+     target: 32px is under the floor `verify:disease` measures at 390px. */
+  min-height: 44px;
   background: none;
   border: 0;
   color: var(--ink-faint);
@@ -1101,7 +1103,7 @@
 
 .metric-details-toggle {
   display: inline-block;
-  min-height: 32px;
+  min-height: 44px;
   background: none;
   border: 0;
   padding: 4px 0;
@@ -3138,14 +3140,52 @@
     font-size: 10.5px;
   }
 
+  /* ---------- reference reading on a phone ----------
+     The left column is 110px wide and 169px tall at 390x844 — it scrolls, and
+     a 461px panel inside it is reference reading nobody does. Measured, after
+     the panel passed a check that only asked whether its controls were big
+     enough: they were, in a column the width of the words.
+
+     So the toggle stays in the column, where it belongs among the other
+     panels, and *opening* it puts the reading on the screen: a sheet between
+     the chrome and the console, with its own scroll. Closing it puts it back.
+     `--console-height` and `--chrome-bottom` are published by the app, so the
+     sheet lands in the same band every other phone surface uses. */
+  .reference-library.is-open {
+    /* Opaque, unlike the panels it sits among: this one covers the model while
+       it is open, and reading a case description through a brain is not
+       reading it. */
+    background: var(--panel-sheet);
+    position: fixed;
+    left: 8px;
+    right: 8px;
+    top: calc(var(--chrome-bottom, 70px) + 8px);
+    bottom: calc(var(--console-height, 240px) + 8px);
+    width: auto;
+    max-width: none;
+    z-index: 30;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+  }
+
+  .reference-library.is-open .reference-body {
+    flex: 1;
+    max-height: none;
+    overscroll-behavior: contain;
+  }
+
   .metrics {
     min-width: 0;
     padding: 8px 10px;
     gap: 4px;
   }
 
-  /* On phones only the headline figure is worth the space. */
-  .metric:not(.is-key) {
+  /* On phones only the headline figure is worth the space — and the rows that
+     say what the figure does not settle, which a scene marks `essential`. A
+     limitation a reader cannot reach on the screen they are holding is a
+     limitation the product does not have. */
+  .metric:not(.is-key):not(.is-essential) {
     display: none;
   }
 
@@ -4204,4 +4244,18 @@
   .rail-buttons > * {
     white-space: nowrap;
   }
+}
+
+/* ---------- a read-out row that is not in this update ----------
+   `[hidden]` is a `display: none` from the user-agent stylesheet, and it loses
+   to every rule that lays a row out — `.metric` sets `display: flex`, and so
+   does the narrow-screen rule that brings the headline figures back. So the
+   row the panel had just hidden stayed on screen showing its last value: the
+   higher-function scene kept "where it stops: nothing of Broca's area is left"
+   over an intact brain after a reset, because the reset stopped *sending* that
+   row rather than changing it. Specific enough to win, and last so that a rule
+   added later does not quietly take it back. */
+#ui .metric[hidden],
+#ui .metric-group[hidden] {
+  display: none;
 }

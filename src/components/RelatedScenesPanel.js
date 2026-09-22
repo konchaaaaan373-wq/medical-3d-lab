@@ -1,4 +1,4 @@
-import { el } from '../utils/dom.js';
+import { el, emphasised } from '../utils/dom.js';
 import { TRANSITION_COPY } from '../data/relatedContract.js';
 
 /**
@@ -81,10 +81,3 @@ export function createRelatedScenesPanel(related) {
   return { element, open() { if (body.hidden) toggle.click(); } };
 }
 
-/** `**like this**` as real emphasis, built as nodes rather than assigned HTML. */
-function emphasised(text) {
-  const parts = String(text ?? '').split(/\*\*(.+?)\*\*/gs);
-  return parts.map((part, index) =>
-    index % 2 === 1 ? el('strong', { text: part }) : document.createTextNode(part)
-  );
-}

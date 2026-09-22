@@ -583,20 +583,64 @@ export class HigherBrainFunctionScene {
     return keys;
   }
 
-  /** Where each step of the traced route sits in the scene. */
+  /**
+   * Where each step of the traced route sits in the scene.
+   *
+   * A step with no atlas structure has no centroid, and the audited version
+   * simply dropped it: the two conceptual steps of the writing routes were not
+   * on the line at all, so a reader saw a route two steps shorter than the one
+   * the model solved, with no sign that anything was missing. They are placed
+   * **schematically** now — between their neighbours and pushed outward, away
+   * from the brain, so the detour is visible as a detour — and drawn as a
+   * dotted line.
+   *
+   * The position is never read back: `displayAnchor` and this offset exist for
+   * the renderer, and {@link solveHigherBrainFunction} has no idea either
+   * happened. A conceptual step sitting over the parietal lobe is not a claim
+   * that the process is in the parietal lobe, which is why it is put where no
+   * structure is rather than on the nearest one.
+   */
   routePoints(task = this.tracedTask()) {
     if (!task?.route) return [];
-    const points = [];
-    for (const step of task.route) {
+    const placed = task.route.map((step) => {
       const keys = step.kind === 'node'
         ? (this.solved.nodes.find((node) => node.id === step.id)?.structures ?? [])
           .map((structure) => `${structure.label}|${structure.side}`)
         : (this.solved.edges.find((edge) => edge.id === step.id)?.within ?? [])
           .map((structure) => `${structure.label}|${structure.side}`);
-      const centre = this._centroidOf(keys);
-      if (centre) points.push({ step, position: centre });
+      return { step, position: this._centroidOf(keys) };
+    });
+    const anchored = placed.filter((point) => point.position);
+    if (anchored.length === 0) return [];
+    return placed
+      .map((point, index) => {
+        if (point.position) return { ...point, schematic: false };
+        const before = placed.slice(0, index).reverse().find((candidate) => candidate.position);
+        const after = placed.slice(index + 1).find((candidate) => candidate.position);
+        const position = HigherBrainFunctionScene._schematicPosition(before, after, index, anchored);
+        return position ? { ...point, position, schematic: true } : null;
+      })
+      .filter(Boolean);
+  }
+
+  /** A legible place for a step with no structure. Drawing only — see `routePoints`. */
+  static _schematicPosition(before, after, index, anchored) {
+    const outward = (point, step) => point.clone().add(
+      point.clone().setY(point.y + 0.35).normalize().multiplyScalar(0.55 + step * 0.22)
+    );
+    if (before && after) {
+      return outward(before.position.clone().lerp(after.position, 0.5), 1);
     }
-    return points;
+    const neighbour = before ?? after;
+    if (!neighbour) return null;
+    // Off one end of the route: step away from the last placed point, in the
+    // direction the route was already going, so the line reads as continuing.
+    const direction = anchored.length > 1
+      ? anchored.at(-1).position.clone().sub(anchored[0].position).normalize()
+      : null;
+    const base = neighbour.position.clone();
+    if (direction) base.add(direction.multiplyScalar(before ? 0.5 : -0.5));
+    return outward(base, index % 3);
   }
 
   _centroidOf(keys) {
@@ -1146,6 +1190,7 @@ export class HigherBrainFunctionScene {
       groupLabel: 'The task being traced',
       groupLabelJa: '辿っている課題',
       groupOpen: true,
+      essential: true,
     };
     const probe = TASK_PROBES[traced?.id] ?? { text: '', textJa: '' };
     rows.push({
@@ -1253,6 +1298,11 @@ export class HigherBrainFunctionScene {
       groupLabel: 'What this result does not settle',
       groupLabelJa: 'この結果が決めていないこと',
       groupOpen: true,
+      // Kept on a phone. The narrow-screen rule hides every row that is not a
+      // headline figure, and these are the rows a reader most needs: a value
+      // whose limits are only visible on a laptop is a value without limits on
+      // the screen most people are holding.
+      essential: true,
     };
     // Not a footnote: a high value on a route that passes through a shared
     // mesh, or through a process no lesion can reach, is a narrower statement
@@ -1347,6 +1397,7 @@ export class HigherBrainFunctionScene {
       groupLabel: 'Tasks this model has no route for',
       groupLabelJa: 'このモデルが経路を持たない課題',
       groupOpen: true,
+      essential: true,
     };
     for (const task of this.solved.tasks) {
       if (task.id === traced?.id) continue;

@@ -153,11 +153,26 @@ if (!hasWebgl2) {
 
 const state = () =>
   page.evaluate(() => {
-    const text = (selector) =>
-      [...document.querySelectorAll(selector)].map((node) => node.textContent.trim()).join(' | ');
+    // Only what is on screen. A read-out row a scene has stopped sending is
+    // hidden rather than removed, so that it keeps its place if it comes back —
+    // and reading its text anyway made "the same numbers" depend on rows nobody
+    // can see, which is the opposite of what this comparison is for.
+    const shown = (node) => {
+      for (let at = node; at instanceof Element; at = at.parentElement) {
+        if (at.hidden || getComputedStyle(at).display === 'none') return false;
+      }
+      return true;
+    };
+    const text = (selector, onlyShown = false) => [...document.querySelectorAll(selector)]
+      .filter((node) => !onlyShown || shown(node))
+      .map((node) => node.textContent.trim())
+      .join(' | ');
     return {
+      // Not filtered: one of the two language spans is hidden by the language
+      // setting, and a stage that reads empty in both states would compare
+      // equal and report that the stage never moved.
       stage: text('.stage-name.lang-en'),
-      metrics: text('.metrics .metric-figure'),
+      metrics: text('.metrics .metric-figure', true),
       controls: [...document.querySelectorAll('.model-control input[type="range"]')].map((el) => el.value).join(','),
       // The progression slider, not a model control. Both carry `slider`; only
       // the small ones inside the model panel carry `slider-sm`, and matching
@@ -677,6 +692,17 @@ for (const slug of SLUGS) {
     problems.push('the rule offers a video file but the scene has no sequence to record');
   }
 
+  // --- the things a reader has to be able to open ---------------------------
+  //
+  // A limitation shown as "(1 of 4)", a folded section of the read-out and a
+  // reference panel are all the same failure mode when they do not open: the
+  // content exists, a test that reads the array passes, and the reader never
+  // sees it. So the control is clicked, here, in a browser, at the width where
+  // it is hardest — and what is checked is the **last** item of each list,
+  // because the first one was already on screen.
+  const disclosure = await checkDisclosures(page, slug, outDir);
+  problems.push(...disclosure);
+
   // Said once per scene, and said even on a green run: a page that threw and
   // carried on is a finding, and a page that threw and stopped is the reason
   // everything after it looks like "nothing happened".
@@ -691,6 +717,109 @@ for (const slug of SLUGS) {
   console.log(
     `${slug}: ${controlCount} control(s), ${problems.length ? `PROBLEMS: ${problems.join('; ')}` : 'baseline → disease → reset all observed'}`
   );
+}
+
+
+/**
+ * Every disclosure on the scene, opened and read at phone width.
+ *
+ * Three kinds, and each of them was a way this repository has already hidden
+ * something from a reader while a unit test passed:
+ *
+ * 1. `.metric-details-toggle` — the read-out shows one coverage limitation and
+ *    a count. The rest were in the array and nowhere else.
+ * 2. `.metric-group-toggle` — a folded section of the read-out.
+ * 3. `.reference-library` — reference reading a scene offers. It existed as a
+ *    data file, with tests, and no way in.
+ *
+ * Run at 390px, because a control that is reachable on a laptop and 37px tall
+ * on a phone is not reachable.
+ */
+async function checkDisclosures(page, slug, outDir) {
+  const problems = [];
+  const TOUCH = 44;
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.waitForTimeout(400);
+
+  const measure = async (locator, name) => {
+    const box = await locator.boundingBox();
+    if (!box) {
+      problems.push(`${name} is in the DOM and has no box on a 390px screen`);
+      return false;
+    }
+    if (box.height < TOUCH - 1) problems.push(`${name} is ${Math.round(box.height)}px tall, under ${TOUCH}px`);
+    return true;
+  };
+
+  // 1 — the read-out's own detail lists.
+  const detailToggles = page.locator('.metric-details-toggle');
+  const detailCount = await detailToggles.count();
+  for (let index = 0; index < detailCount; index += 1) {
+    const toggle = detailToggles.nth(index);
+    await toggle.scrollIntoViewIfNeeded().catch(() => {});
+    await toggle.click({ force: true });
+    const list = page.locator('.metric-details').nth(index);
+    const items = await list.evaluate((node) => [...node.children]
+      .map((item) => (item.querySelector('.lang-ja')?.textContent ?? '').trim()));
+    if (items.length === 0) problems.push('a detail control opened an empty list');
+    // The last one, by name: reaching the first proves nothing.
+    const last = items.at(-1);
+    if (!last) problems.push('the last item of a detail list is empty');
+    const shown = await list.isVisible();
+    if (!shown) problems.push('a detail list opened and is not visible');
+  }
+  if (detailCount === 0) console.log(`  ${slug}: no read-out detail controls on this scene`);
+
+  // 2 — folded sections of the read-out.
+  const groupToggles = page.locator('.metric-group-toggle[aria-expanded="false"]');
+  const groupCount = await groupToggles.count();
+  for (let index = 0; index < groupCount; index += 1) {
+    const toggle = groupToggles.nth(index);
+    if (!(await measure(toggle, 'a read-out section heading'))) continue;
+    await toggle.click({ force: true });
+  }
+  const stillFolded = await page.locator('.metric-group-toggle[aria-expanded="false"]').count();
+  if (groupCount > 0 && stillFolded === groupCount) problems.push('a read-out section would not open');
+
+  // 3 — the reference panel, opened, read, and closed from the keyboard.
+  const referenceToggle = page.locator('.reference-toggle');
+  if (await referenceToggle.count()) {
+    await referenceToggle.first().scrollIntoViewIfNeeded().catch(() => {});
+    await measure(referenceToggle.first(), 'the reference panel toggle');
+    await referenceToggle.first().click({ force: true });
+    const entries = page.locator('.reference-entry');
+    const entryCount = await entries.count();
+    if (entryCount === 0) problems.push('the reference panel opened with nothing in it');
+    else {
+      // The last entry, not the first: a list that renders one item and stops
+      // is the failure this is looking for.
+      const last = entries.nth(entryCount - 1);
+      await last.scrollIntoViewIfNeeded().catch(() => {});
+      await measure(last, 'a reference entry');
+      await last.click({ force: true });
+      const detail = page.locator('.reference-detail');
+      const text = (await detail.evaluate((node) => node.innerText).catch(() => '')) ?? '';
+      if (text.trim().length < 40) problems.push('a reference entry opened with no detail under it');
+      const limits = await page.locator('.reference-not-evaluated li').count();
+      if (limits === 0) problems.push('a reference entry does not say what the model cannot evaluate');
+      await page.screenshot({ path: join(outDir, `${slug}-reference.png`) });
+      // Keyboard: Escape closes the entry and focus goes back to the button
+      // that opened it, rather than to the top of the document.
+      await last.focus();
+      await page.keyboard.press('Escape');
+      const returned = await page.evaluate(() => document.activeElement?.className ?? '');
+      if (!returned.includes('reference-entry')) {
+        problems.push(`Escape left focus on "${returned}" rather than the entry that was opened`);
+      }
+      if (await page.locator('.reference-detail').isVisible()) {
+        problems.push('Escape did not close the open reference entry');
+      }
+    }
+  }
+
+  await page.setViewportSize({ width: 1440, height: 900 });
+  await page.waitForTimeout(300);
+  return problems;
 }
 
 await browser.close();

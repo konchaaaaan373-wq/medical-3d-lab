@@ -1,4 +1,4 @@
-import { el } from '../utils/dom.js';
+import { el, emphasised } from '../utils/dom.js';
 
 /**
  * Reference reading a scene offers beside its model, opened one entry at a time.
@@ -80,8 +80,8 @@ export function createReferenceLibraryPanel(library) {
     ]),
     group.note
       ? el('p', { class: 'reference-group-note' }, [
-        el('span', { class: 'lang-en', text: group.note }),
-        el('span', { class: 'lang-ja', text: group.noteJa }),
+        el('span', { class: 'lang-en' }, emphasised(group.note)),
+        el('span', { class: 'lang-ja' }, emphasised(group.noteJa)),
       ])
       : null,
     el('ul', { class: 'reference-list' }, group.entries.map((entry) => {
@@ -102,8 +102,8 @@ export function createReferenceLibraryPanel(library) {
 
   const body = el('div', { class: 'reference-body' }, [
     el('p', { class: 'reference-intro' }, [
-      el('span', { class: 'lang-en', text: library.intro }),
-      el('span', { class: 'lang-ja', text: library.introJa }),
+      el('span', { class: 'lang-en' }, emphasised(library.intro)),
+      el('span', { class: 'lang-ja' }, emphasised(library.introJa)),
     ]),
     ...groups,
     detail,
@@ -165,8 +165,8 @@ function renderEntry(entry, close) {
       dismiss,
     ]),
     el('p', { class: 'reference-gist' }, [
-      el('span', { class: 'lang-en', text: entry.gist }),
-      el('span', { class: 'lang-ja', text: entry.gistJa }),
+      el('span', { class: 'lang-en' }, emphasised(entry.gist)),
+      el('span', { class: 'lang-ja' }, emphasised(entry.gistJa)),
     ]),
     entry.lines?.length
       ? el('dl', { class: 'reference-lines' }, entry.lines.flatMap((line) => [
@@ -175,8 +175,8 @@ function renderEntry(entry, close) {
           el('span', { class: 'lang-ja', text: line.labelJa }),
         ]),
         el('dd', { class: 'reference-line-text' }, [
-          el('span', { class: 'lang-en', text: line.text }),
-          el('span', { class: 'lang-ja', text: line.textJa }),
+          el('span', { class: 'lang-en' }, emphasised(line.text)),
+          el('span', { class: 'lang-ja' }, emphasised(line.textJa)),
         ]),
       ]))
       : null,
@@ -187,8 +187,8 @@ function renderEntry(entry, close) {
           el('span', { class: 'lang-ja', text: 'このモデルがこれについて評価していないこと' }),
         ]),
         el('ul', {}, entry.notEvaluated.map((item) => el('li', {}, [
-          el('span', { class: 'lang-en', text: item.text }),
-          el('span', { class: 'lang-ja', text: item.textJa }),
+          el('span', { class: 'lang-en' }, emphasised(item.text)),
+          el('span', { class: 'lang-ja' }, emphasised(item.textJa)),
         ]))),
       ])
       : null,
