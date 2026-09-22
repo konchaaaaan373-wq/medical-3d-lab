@@ -183,6 +183,54 @@ test('raising the rate does not by itself raise cardiac output', () => {
   );
 });
 
+test('cardiac output rises with rate everywhere in the range, which is a limitation', () => {
+  // Not a claim about hearts. It is a measured property of *this* model, and
+  // the model card's §14 now rests on it: a reader who takes "faster is more"
+  // from the rate control will never be contradicted inside the declared
+  // range, because systole is a fixed fraction of the cycle here and the point
+  // where filling time starts to limit output sits outside it.
+  //
+  // The card used to assert the opposite — that such a condition existed in
+  // range — and nothing had measured it (L-95). This is what measures it, so
+  // that if the model ever gains a rate-dependent systolic fraction, this goes
+  // red and the card has to be rewritten rather than quietly becoming true.
+  const axes = {
+    contractilityEesMmHgPerMl: [0.8, 1.4, 2.74, 4.0],
+    fillingVolumeMl: [540, 710, 980],
+    systemicResistanceMmHgSPerMl: [0.7, 1.1, 1.8],
+  };
+  let measured = 0;
+  for (const ees of axes.contractilityEesMmHgPerMl) {
+    for (const fillingVolumeMl of axes.fillingVolumeMl) {
+      for (const systemicResistanceMmHgSPerMl of axes.systemicResistanceMmHgSPerMl) {
+        let previous = null;
+        for (let heartRatePerMin = 50; heartRatePerMin <= 110; heartRatePerMin += 10) {
+          const result = solve({
+            contractilityEesMmHgPerMl: ees,
+            fillingVolumeMl,
+            systemicResistanceMmHgSPerMl,
+            heartRatePerMin,
+          });
+          assert.equal(result.status, 'valid');
+          const output = result.metrics.cardiacOutputLMin;
+          if (previous) {
+            assert.ok(
+              output > previous.output,
+              `Ees ${ees}, filling ${fillingVolumeMl}, SVR ${systemicResistanceMmHgSPerMl}: output ` +
+                `${previous.output.toFixed(3)} → ${output.toFixed(3)} from ${previous.rate} to ` +
+                `${heartRatePerMin}/min. If this is now a turn-over the model can reach, §14 of the ` +
+                'model card is wrong again and has to be rewritten.'
+            );
+            measured += 1;
+          }
+          previous = { rate: heartRatePerMin, output };
+        }
+      }
+    }
+  }
+  assert.ok(measured >= 200, `only ${measured} rate steps were compared`);
+});
+
 test('filling more raises filling pressure faster than it raises output', () => {
   // The end-diastolic pressure-volume relationship is exponential, so the
   // pressure cost of the last increment of filling is larger than the output

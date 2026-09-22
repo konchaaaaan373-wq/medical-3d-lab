@@ -209,9 +209,23 @@ resistance", which is the misconception rather than the teaching.
   reflection and the aortic valve are all part of what the ventricle works
   against, and only the first of those exists here, held constant.
 - **A reader may take "raise the rate and output rises" from playing with the
-  rate control.** It is not true in general and it is not true everywhere in
-  this model; the tests deliberately refuse to encode it, and there is a
-  condition inside the declared range where raising the rate lowers the output.
+  rate control, and inside the declared range this model will never contradict
+  them.** Stroke volume does fall as the rate rises — each beat fills less —
+  but the product rises anyway at every condition measured: 1820 solves across
+  the four axes, the rate walked in steps of 5/min, and cardiac output is
+  monotonically increasing in rate at all of them.
+
+  This is a **consequence of the limitation in §13, not a physiological
+  claim**: systole is a fixed fraction of the cycle here, so diastolic filling
+  time is lost more slowly than in a person, and the point where filling starts
+  to limit output sits outside the range this model will solve. The tests
+  refuse to encode "faster is more" as a fact about hearts — what they pin is
+  that stroke volume falls, that output is the product rather than the rate,
+  and that this monotonicity holds so that it is noticed if it ever stops.
+
+  An earlier version of this section claimed the opposite — that a condition
+  inside the range existed where raising the rate lowered output. Nothing had
+  measured it, and measuring it found none (L-95).
 - **Two conditions shown side by side look like a before and an after.** They
   are two settled states. The time between them on screen is the time the
   browser took.
@@ -223,6 +237,31 @@ resistance", which is the misconception rather than the teaching.
 ## 15. Review status
 
 **Catalog status:** `alpha`
+
+### Correction to revision 5 (2026-09-22) — §14 asserted a condition that does not exist
+
+§14 warned that a reader might take "faster is more" from the rate control, and
+then said the model would contradict them somewhere inside the declared range.
+**It does not.** The claim was written from the shape of the physics — each beat
+fills less, so at some rate the product must turn over — and nothing measured
+whether that point falls inside the range this model solves. It does not:
+across 1820 solves spanning the four axes, with the rate walked in steps of
+5/min from 50 to 110, cardiac output is monotonically increasing in rate at
+every condition.
+
+The limitation in §13 is why, and it makes the misconception risk **worse**
+rather than better: systole is a fixed fraction of the cycle, so filling time
+is lost more slowly here than in a person, and the turn-over sits outside the
+range. §14 now says that, and
+`tests/cardiac-output-physiology.test.js` pins the monotonicity so that the
+card is forced to change if the model's behaviour ever does.
+
+**No model source changed**, so the registry revision does not move and the
+publication decision stays pinned to revision 5 — this is a correction to what
+the card said about a model that is unchanged, not a change to the model.
+
+Found while writing an external-review request that quoted the card back at
+itself and checked the quote. L-95.
 
 ### Revision 5 — the hidden undo target, and the beat that jumped
 
