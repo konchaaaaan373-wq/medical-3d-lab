@@ -180,7 +180,46 @@ if (await closeSheet.count()) {
   await settle(600);
 }
 
-// --- the bottom control bar, on its own
+// --- the read-out panel, open
+//
+// The panel a disease scene puts its numbers in, which nothing else here
+// captures: `1-initial` has it closed, and the viewport check measures the
+// controls rather than what a panel does once it is open. It is the surface a
+// model's own rows land on, so it is the one that grows when a model gains
+// tasks — the higher-function model went from 19 rows to 27 in one change, and
+// one of its values was 215 characters before anybody looked.
+// The console buttons carry no stable data attribute, so this addresses the
+// one whose Japanese label is the read-out's — the same way the viewport check
+// identifies them.
+const readout = page.locator('button.btn', { has: page.locator('.btn-label.lang-ja', { hasText: 'データ' }) }).first();
+if (await readout.count()) {
+  await readout.click({ noWaitAfter: true }).catch(() => {});
+  await settle(700);
+  const panel = await page.evaluate(() => {
+    const node = document.querySelector('.panel.metrics');
+    if (!node) return null;
+    const box = node.getBoundingClientRect();
+    return {
+      x: box.left, y: box.top, width: box.width, height: box.height,
+      scrollWidth: node.scrollWidth, clientWidth: node.clientWidth,
+      longest: Math.max(0, ...[...node.querySelectorAll('.metric')].map((row) => row.scrollWidth)),
+      rows: node.querySelectorAll('.metric').length,
+    };
+  });
+  if (panel) {
+    console.log(
+      `read-out: ${panel.rows} row(s), ${Math.round(panel.width)}px wide, `
+      + `overflow ${Math.max(0, panel.scrollWidth - panel.clientWidth)}px, widest row ${panel.longest}px`
+    );
+    await shot('8-readout');
+  } else {
+    console.log('(no read-out panel on this scene)');
+  }
+  await readout.click({ noWaitAfter: true }).catch(() => {});
+  await settle(400);
+}
+
+// --- the bottom control bar, on its own// --- the bottom control bar, on its own
 //
 // Clipped to the bar's own box plus a margin, so the picture answers "is any of
 // it off the bottom or the side" rather than "is it somewhere in this page".

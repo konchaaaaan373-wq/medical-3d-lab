@@ -890,3 +890,37 @@ test('scene: the read-out never shows a value for a task that has none', () => {
   }
   scene.dispose();
 });
+
+test('scene: every lesion against every task, without a crash and without a wall of text', () => {
+  // Two defects this found the first time it ran. Tracing a task with no
+  // routes threw, because the route drawing iterated `task.route` and a task
+  // with no value reports `route: null` — reachable through `setModelControl`
+  // and through the sequence even though the task control does not offer it.
+  // And the limitations row joined every limitation into one cell: 215
+  // characters in a 190px rail is not a limitation a reader reads.
+  const scene = buildScene();
+  let longest = 0;
+  let longestWhere = '';
+  for (const site of LESION_SITES) {
+    for (const task of FUNCTION_TASKS) {
+      scene.setModelControl('lesion', site.id);
+      scene.setModelControl('task', task.id);
+      scene.setProgress(1);
+      // The things the view does every frame, on a task that may have no route.
+      assert.doesNotThrow(() => scene.getMetrics(), `${site.id}/${task.id}: read-out`);
+      assert.doesNotThrow(() => scene.routePoints(), `${site.id}/${task.id}: route points`);
+      assert.doesNotThrow(() => scene.blockedFraction(), `${site.id}/${task.id}: blocked fraction`);
+      assert.doesNotThrow(() => scene.renderAtSeconds(2), `${site.id}/${task.id}: a frame of the run`);
+      assert.doesNotThrow(() => scene.getAnnotations(), `${site.id}/${task.id}: annotations`);
+      for (const row of scene.getMetrics()) {
+        assert.ok(String(row.valueJa).length > 0, `${site.id}/${task.id}/${row.id} has a value`);
+        if (String(row.valueJa).length > longest) {
+          longest = String(row.valueJa).length;
+          longestWhere = `${site.id}/${task.id}/${row.id}`;
+        }
+      }
+    }
+  }
+  assert.ok(longest <= 140, `the longest read-out value is ${longest} characters (${longestWhere})`);
+  scene.dispose();
+});

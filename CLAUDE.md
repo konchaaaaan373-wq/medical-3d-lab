@@ -59,7 +59,7 @@ CLAUDE.md が禁じる「中身のない網羅」の、インフラ版です。
 
 | 何を測るか | 道具 |
 | --- | --- |
-| viewport × surface（overflow / 重なり / タッチ目標 / tab 巡回 / 属性の言語） | `npm run verify:ui` |
+| viewport × surface（overflow / 重なり / タッチ目標 / tab 巡回 / 属性の言語）。**非公開シーンも `-- --scene <slug> --preview` で測れます** | `npm run verify:ui` |
 | 解剖シーンの操作（選択・drag is not click・シート・拡大の支点） | `npm run verify:anatomy` |
 | 病態シーンの操作（baseline → disease → reset）と**動画書き出し**（同意画面 → 録画 → 書き出したファイルをブラウザに再生させて 1 フレーム撮る） | `npm run verify:disease` |
 | hero のタッチとキーボード | `npm run verify:hero-input` |

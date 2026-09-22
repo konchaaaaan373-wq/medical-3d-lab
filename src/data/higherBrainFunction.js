@@ -42,7 +42,17 @@ export const LEGEND = [
   { key: 'attention', label: 'Spatial attention, non-dominant hemisphere', labelJa: '空間性注意（非優位半球）' },
   { key: 'memory', label: 'Memory circuit', labelJa: '記憶の回路' },
   { key: 'executive', label: 'Frontal–subcortical circuits', labelJa: '前頭葉–皮質下の回路' },
-  { key: 'tract', label: 'The tract a step runs in', labelJa: 'その段階が通る線維束' },
+  {
+    key: 'tract',
+    label: 'The mesh a step runs in — a real tract, or a coarse stand-in for one',
+    labelJa: 'その段階が通るメッシュ（実在の線維束か、その粗い代用）',
+    note: 'The atlas carries some of these as real tract meshes and not others; a few steps of this '
+      + 'model have no structure at all. The line is drawn the same way for all three, which is a '
+      + 'limitation of the view rather than a claim about the anatomy.',
+    noteJa: 'アトラスが実在の線維束メッシュとして持っているものと、持っていないものがあり、'
+      + 'このモデルの一部の段階には対応する構造がまったくありません。**線はどれも同じように'
+      + '描かれます**——これは解剖についての主張ではなく、表示側の限界です。',
+  },
   { key: 'lesion', label: 'The lesion', labelJa: '病変' },
   { key: 'carrying', label: 'The task getting through', labelJa: '課題の信号が通っているところ' },
   { key: 'blocked', label: 'Where it stops', labelJa: '信号が止まるところ' },
@@ -80,14 +90,21 @@ export const STAGES = [
   },
   {
     id: 'complete',
-    name: 'The step is gone, and the pattern has a name',
-    nameJa: '段階が失われ、その組み合わせに名前がつく',
+    name: 'The step is gone, and the pattern is the finding',
+    nameJa: '段階が失われ、その組み合わせが所見になる',
     at: 1,
     focus: ['blocked', 'lesion'],
+    // This used to end "and the pattern has a name", pointing at a syndrome
+    // row that the read-out no longer has. Which routes still reach is the
+    // finding; what the picture is called is a different question, and the
+    // features that answer it are not computed here.
     summary:
-      'Which tasks survive is the finding. The syndrome name at the bottom of the read-out is a reading of that pattern — it is not stored anywhere, and changing the routes changes it.',
+      'Which routes still reach is the finding. Reading it against the classical syndromes is a separate '
+      + 'step, and the features those turn on — the quality of the speech, which stimulus was used — are '
+      + 'not computed here.',
     summaryJa:
-      '所見は「どの課題が残ったか」です。読み取り欄の最後にある症候名は、その組み合わせを読んだ結果であって、どこかに保存されているものではありません。経路を変えれば名前も変わります。',
+      '所見は「どの経路が届くか」です。それを古典的な症候と照らし合わせるのは別の手順で、'
+      + 'その症候が依拠する特徴——発話の質、どの刺激で調べたか——はここでは計算していません。',
   },
 ];
 

@@ -29,6 +29,8 @@
  *   --engine <name>  chromium (default), firefox or webkit
  *   --viewport <id>  check one viewport (repeatable)
  *   --surface <id>   check one surface (repeatable)
+ *   --scene <slug>   point the scene surface at this model instead of the published one
+ *   --preview        unlock a withheld model (needs VITE_ALLOW_PREVIEW=1 at build time)
  *   --headed         show the browser
  *   --evidence-dir <dir>  save B1 Chromium screenshots and capture metadata
  *   --diagnostics-dir <dir>  record lifecycle/network events for a targeted run
@@ -95,9 +97,30 @@ const engineName = value('--engine', 'chromium');
 const viewports = onlyViewports.length
   ? VIEWPORTS.filter((viewport) => onlyViewports.includes(viewport.id))
   : VIEWPORTS;
-const surfaces = onlySurfaces.length
-  ? SURFACES.filter((surface) => onlySurfaces.includes(surface.id))
+const sceneSlug = value('--scene');
+const preview = flag('--preview');
+
+/**
+ * The scene surface, pointed at a different model.
+ *
+ * `SURFACES` names one scene route — the published atlas — because that is the
+ * layout a visitor gets. A model the release is holding back renders the plain
+ * "to be updated" page instead, so its own layout was never measured by this
+ * check at any width, and the one layout defect found in the higher-function
+ * scene was found by looking at a phone screenshot rather than by measuring
+ * (`docs/follow-ups.md` F-162). `--scene <slug> --preview` against a build made
+ * with `VITE_ALLOW_PREVIEW=1` measures that scene instead, so a withheld model
+ * can be held to the same overflow, touch-target and tab-order floors as a
+ * published one before it is ever published.
+ */
+const surfaceList = sceneSlug
+  ? SURFACES.map((surface) => (surface.needsRenderer
+    ? { ...surface, route: `${preview ? '?preview=1' : ''}#/${sceneSlug}`, label: `Scene (${sceneSlug})` }
+    : surface))
   : SURFACES;
+const surfaces = onlySurfaces.length
+  ? surfaceList.filter((surface) => onlySurfaces.includes(surface.id))
+  : surfaceList;
 
 // --- preconditions ---------------------------------------------------------
 

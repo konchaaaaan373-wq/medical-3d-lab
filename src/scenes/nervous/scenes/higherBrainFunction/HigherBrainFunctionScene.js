@@ -57,8 +57,12 @@ export class HigherBrainFunctionScene {
     status: 'alpha',
     title: 'Higher cortical function: which route the lesion took away',
     titleJa: '高次脳機能：その病変が奪ったのはどの経路か',
-    subtitle: 'A right-handed brain. Each task is a route through named structures, and the syndrome is what the surviving routes spell.',
-    subtitleJa: '右利きの脳。1 つの課題は名前の付いた構造を通る 1 本の経路で、症候名は残った経路が綴る言葉です。',
+    // The subtitle used to end "...and the syndrome is what the surviving
+    // routes spell", which promised the verdict this scene no longer gives.
+    subtitle: 'A right-handed brain. Each task is a route through named structures, and what is computed is '
+      + 'how far each one still reaches — not a diagnosis.',
+    subtitleJa: '右利きの脳。1 つの課題は名前の付いた構造を通る 1 本の経路で、計算するのは'
+      + '**それぞれがどこまで届くか**です——診断ではありません。',
     stages: STAGES,
     legend: LEGEND,
     palette: PALETTE,
@@ -549,9 +553,17 @@ export class HigherBrainFunctionScene {
     this._buildRouteLine(traced);
   }
 
-  /** Every structure the traced route passes through or runs inside. */
+  /**
+   * Every structure the traced route passes through or runs inside.
+   *
+   * A task with no value has no route either — `not_modeled` and
+   * `indeterminate` both report `route: null` — so there is nothing to draw and
+   * nothing to light. This used to iterate it regardless and throw, which is
+   * how a scene reachable only through the task control would have crashed the
+   * moment a task without routes was traced.
+   */
   _routeStructureKeys(task) {
-    if (!task) return [];
+    if (!task?.route) return [];
     const keys = [];
     for (const step of task.route) {
       if (step.kind === 'node') {
@@ -567,7 +579,7 @@ export class HigherBrainFunctionScene {
 
   /** Where each step of the traced route sits in the scene. */
   routePoints(task = this.tracedTask()) {
-    if (!task) return [];
+    if (!task?.route) return [];
     const points = [];
     for (const step of task.route) {
       const keys = step.kind === 'node'
@@ -695,7 +707,7 @@ export class HigherBrainFunctionScene {
    */
   blockedFraction(task = this.tracedTask()) {
     const blocking = this.blockingStep(task);
-    if (!blocking) return 1;
+    if (!blocking || !task?.route) return 1;
     const index = task.route.findIndex((step) => step === blocking);
     if (index <= 0) return 0;
     if (task.route.length < 2) return 0;
@@ -934,11 +946,18 @@ export class HigherBrainFunctionScene {
       id: 'limiting',
       label: 'What holds the traced route down',
       labelJa: '辿った経路を抑えているもの',
+      // A connection's label names both ends, so listing a connection next to
+      // the process it leads into read as the same name twice — "音韻の分析 →
+      // 音韻—文字変換 → 音韻—文字変換". Each step says which kind it is instead.
       value: traced?.computationStatus === COMPUTATION.COMPUTED
-        ? (limiting.length ? limiting.map((step) => step.label).join(' → ') : 'Nothing on it')
+        ? (limiting.length
+          ? limiting.map((step) => (step.kind === 'connection' ? `${step.label} (connection)` : step.label)).join('; ')
+          : 'Nothing on it')
         : (COMPUTATION_NOTE[traced?.computationStatus]?.text ?? ''),
       valueJa: traced?.computationStatus === COMPUTATION.COMPUTED
-        ? (limiting.length ? limiting.map((step) => step.labelJa).join(' → ') : 'この経路上には何もありません')
+        ? (limiting.length
+          ? limiting.map((step) => (step.kind === 'connection' ? `${step.labelJa}（連絡）` : step.labelJa)).join('／')
+          : 'この経路上には何もありません')
         : (COMPUTATION_NOTE[traced?.computationStatus]?.textJa ?? ''),
       unit: '',
     });
@@ -947,12 +966,17 @@ export class HigherBrainFunctionScene {
     // value on a route that passes through a shared mesh, or through a process
     // no lesion can reach, is a narrower statement than it looks.
     if (traced?.coverageLimitations?.length) {
+      // One limitation, and a count when there are more. Joining them all put
+      // 215 characters into a value cell in a 190px rail — which is not a
+      // limitation a reader reads, it is a limitation a reader scrolls past.
+      // The full list is on the model's scope panel.
+      const more = (list) => (list.length > 1 ? `（${list.length} 件のうち 1 件）` : '');
       rows.push({
         id: 'coverage',
         label: 'What this value does not settle',
         labelJa: 'この値が決めていないこと',
-        value: traced.coverageLimitations.join(' / '),
-        valueJa: traced.coverageLimitationsJa.join(' / '),
+        value: `${traced.coverageLimitations[0]}${traced.coverageLimitations.length > 1 ? ` (1 of ${traced.coverageLimitations.length})` : ''}`,
+        valueJa: `${more(traced.coverageLimitationsJa)}${traced.coverageLimitationsJa[0]}`,
         unit: '',
       });
     }
@@ -975,7 +999,7 @@ export class HigherBrainFunctionScene {
         label: 'Not evaluated by this task',
         labelJa: 'この課題が評価していないもの',
         value: traced.excludes.join(' / '),
-        valueJa: traced.excludesJa.join(' / '),
+        valueJa: traced.excludesJa.join('／'),
         unit: '',
       });
     }
