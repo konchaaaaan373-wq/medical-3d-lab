@@ -547,3 +547,134 @@ test('a scene with plots is offered Data view even when its controls are primary
   assert.equal(hasDataOnlySurface(null, {}), false);
   assert.equal(hasDataOnlySurface({}, { modelControls: { primary: true } }), false);
 });
+
+// ---------------------------------------------------------------------------
+// Combinations
+//
+// Both defects this file's earlier tests missed were "A and B at the same
+// time": comparing *and* switching preset, restoring *and* holding an
+// intervention. Each test above moves one thing. So the invariants that must
+// hold whatever the reader has done are swept over the product of the modes
+// instead of being asserted once per path — a new mode joins the sweep by
+// being listed, rather than by somebody remembering to pair it with every
+// other one.
+// ---------------------------------------------------------------------------
+
+/** Every state a reader can put the scene into with the controls it has. */
+function* everyCombination() {
+  for (const comparing of [false, true]) {
+    for (const preset of [PRESET_IDS.REFERENCE, PRESET_IDS.REDUCED_CONTRACTILITY]) {
+      for (const intervention of ['none', 'volume-loading', 'dobutamine']) {
+        for (const moved of [null, ['fillingVolumeMl', 880], ['heartRatePerMin', 96]]) {
+          yield { comparing, preset, intervention, moved };
+        }
+      }
+    }
+  }
+}
+
+const describeState = (s) =>
+  `comparing=${s.comparing} preset=${s.preset} intervention=${s.intervention} moved=${s.moved ? s.moved.join('=') : 'no'}`;
+
+/** Drives the scene into a state the way a reader would: through the controls. */
+function drive(scene, state) {
+  scene.setComparison(state.comparing);
+  scene.setModelControl('preset', state.preset);
+  scene.setModelControl('intervention', state.intervention);
+  if (state.moved) scene.setModelControl(state.moved[0], state.moved[1]);
+}
+
+test('whatever the reader has done, every panel is reading one solved beat', async () => {
+  const scene = await buildScene();
+  let checked = 0;
+
+  for (const state of everyCombination()) {
+    drive(scene, state);
+    const where = describeState(state);
+    checked += 1;
+
+    // The condition on screen solves, and the read-out is that solve — not a
+    // number left over from the condition before it.
+    assert.equal(scene.session.applied, true, `${where}: the condition did not apply`);
+    const truth = solveCardiacOutput({ ...scene.session.input });
+    assert.equal(truth.status, 'valid', `${where}: a reachable state does not solve`);
+    const rows = Object.fromEntries(scene.getMetrics().map((row) => [row.id, row]));
+    assert.equal(rows.unsolved, undefined, `${where}: an unsolved notice on a reachable state`);
+    assert.equal(rows.co.value, truth.metrics.cardiacOutputLMin.toFixed(1), `${where}: CO`);
+    assert.equal(rows.map.value, Math.round(truth.metrics.meanArterialPressureMmHg), `${where}: MAP`);
+    assert.equal(rows.edv.value, Math.round(truth.metrics.edvMl), `${where}: EDV`);
+
+    // The plots are that same solve, by identity rather than by value.
+    const pv = scene.getPressureVolume();
+    assert.equal(pv.current, scene.session.view.curves, `${where}: the loop is a different beat`);
+
+    // Muscle is never grown by anything a reader can press.
+    assert.equal(scene.myocardialVolumeMl, scene.reference?.myocardialVolumeMl ?? scene.myocardialVolumeMl,
+      `${where}: the two hearts were given different muscle`);
+
+    // And the comparison — the pair that both earlier defects lived in.
+    if (state.comparing) {
+      assert.equal(
+        scene.reference.metrics,
+        scene.session.baseline.metrics,
+        `${where}: the drawn "before" heart is not the baseline the numbers cite`
+      );
+      assert.equal(pv.reference, scene.session.baseline.curves, `${where}: the reference loop is stale`);
+      assert.equal(
+        Number(rows.edv.reference),
+        Math.round(scene.reference.metrics.edvMl),
+        `${where}: the "before" column and the "before" heart disagree`
+      );
+    } else {
+      assert.equal(rows.edv.reference, undefined, `${where}: a comparison column with nothing to compare`);
+      assert.equal(pv.reference, null, `${where}: a reference loop with nothing to compare`);
+    }
+  }
+  assert.equal(checked, 36, 'the whole product was walked');
+});
+
+test('every one of those states survives being captured and restored', async () => {
+  // The second defect was here: the medical state came back and the mode did
+  // not. Round-tripping every combination is what makes that a property rather
+  // than a case somebody thought of.
+  const { captureSessionState, restoreSessionState } = await import('../src/app/sessionState.js');
+  const scene = await buildScene();
+  const viewer = {
+    camera: new THREE.PerspectiveCamera(50, 1.6, 0.1, 100),
+    controls: { target: new THREE.Vector3(), autoRotate: false, enabled: true, update() {} },
+  };
+  const playback = {
+    value: 0,
+    playing: false,
+    play() { this.playing = true; },
+    pause() { this.playing = false; },
+    set(v) { this.value = v; },
+  };
+
+  for (const state of everyCombination()) {
+    drive(scene, state);
+    const where = describeState(state);
+    const wanted = { ...scene.session.input };
+    const wantedPreset = scene.session.presetId;
+    const wantedIntervention = scene.session.interventionId;
+    const snapshot = captureSessionState({ playback, viewer, scene, comparing: state.comparing });
+
+    // Somewhere else entirely, the way the sequence and a lesson both leave it.
+    scene.resetModelControls();
+    scene.setModelControl('preset', PRESET_IDS.REFERENCE);
+    scene.setModelControl('systemicResistanceMmHgSPerMl', 1.55);
+
+    restoreSessionState(snapshot, { playback, viewer, scene, setComparison: (v) => scene.setComparison(v) });
+
+    assert.deepEqual({ ...scene.session.input }, wanted, `${where}: the condition did not come back`);
+    assert.equal(scene.session.presetId, wantedPreset, `${where}: the preset did not come back`);
+    assert.equal(
+      scene.session.interventionId,
+      wantedIntervention,
+      `${where}: the condition came back but not what it was called`
+    );
+    if (state.comparing) {
+      assert.equal(scene.reference.metrics, scene.session.baseline.metrics, `${where}: stale after restore`);
+    }
+  }
+});
