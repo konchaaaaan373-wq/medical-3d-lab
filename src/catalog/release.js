@@ -542,11 +542,18 @@ export const BETA_PUBLICATION_DECISIONS = Object.freeze([
       // first run. Three of the four points were wrong and two of those had
       // come to name the same structure, so the scope below would have
       // claimed four distinct parts that a run could only show three of.
+      // Re-measured 2026-09-22, the third time. Same cause as the second and
+      // the opposite direction: the scene had gone back to opening at a
+      // framing it abandons the moment anything re-frames it (F-133), and
+      // fixing that moved the model again — this time towards filling the
+      // frame. The fourth point had been naming "Orbital gyri" where it is
+      // authored for its neighbour, under both framings, because it was last
+      // measured three framing changes ago.
       structures: Object.freeze([
-        'Precentral gyrus',
+        'Middle frontal gyrus',
+        'Superior parietal lobule',
+        'Inferior frontal sulcus',
         'Supramarginal gyrus',
-        'Angular gyrus',
-        'Orbital part of inferior frontal gyrus',
       ]),
       views: Object.freeze([
         'left-lateral (applied by the interaction drive)',

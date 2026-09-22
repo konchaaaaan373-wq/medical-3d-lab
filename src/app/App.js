@@ -212,6 +212,26 @@ export async function createApp({ stage, ui, onRetryModel = null }) {
   let userZoom = 1;
 
   /**
+   * Whether the camera belongs to the reader rather than to the framing.
+   *
+   * Written down when it happens, rather than inferred afterwards from how far
+   * the camera has drifted from the last shot. That inference is what F-133 was
+   * two attempts at, and it cannot work: `controls.update()` runs every frame
+   * with damping on and never leaves the camera bit-exactly where it was put
+   * (measured: 0.00125 of a world unit), so an exact test says "the reader has
+   * it" about a camera nobody has touched — and a threshold loose enough to
+   * forgive that also forgives the first frames of a zoom, where the camera is
+   * still within half a percent of the shot it is leaving, and snaps the
+   * reader's zoom away. The quantity is small in both cases, so no threshold
+   * separates them. This is not a quantity: the three ways a reader can take
+   * the camera each say so.
+   *
+   * It is one-way while it matters. The only thing that hands the camera back
+   * is `resetView()`, which is the reader asking for the authored framing.
+   */
+  let readerOwnsCamera = false;
+
+  /**
    * What each edge of the frame is covered by, as a fraction of it.
    *
    * Measured from the elements themselves, because they move: the console grows
@@ -357,6 +377,7 @@ export async function createApp({ stage, ui, onRetryModel = null }) {
     if (next === userZoom) return;
     const applied = next / userZoom;
     userZoom = next;
+    readerOwnsCamera = true;
 
     // About the middle of what the reader can see, not about the orbit centre.
     //
@@ -496,6 +517,11 @@ export async function createApp({ stage, ui, onRetryModel = null }) {
   const storyCurrent = new THREE.Vector3();
 
   viewer.controls.addEventListener('start', () => {
+    // A drag, a pinch or a wheel. The other two ways in are `zoomBy` (the zoom
+    // buttons and the +/- keys, which move the camera directly and so raise no
+    // control event) and `focusOnStructure` ("go to it", which writes the shot
+    // without changing what the framing is a framing *of*).
+    readerOwnsCamera = true;
     view.active = false;
     storyView.dragging = true;
     // A named viewpoint describes an exact reproducible pose. Once the learner
@@ -970,6 +996,10 @@ export async function createApp({ stage, ui, onRetryModel = null }) {
         })
       : pose;
     userZoom = 1;
+    // The shot now frames one structure while `shotSource` still names the
+    // scene's establishing pose, so anything that re-frames `shotSource` would
+    // take the reader away from what they asked to see.
+    readerOwnsCamera = true;
     shot.target.copy(fitted.target);
     shot.position.copy(fitted.position);
     view.active = true;
@@ -1419,6 +1449,7 @@ export async function createApp({ stage, ui, onRetryModel = null }) {
     // "View" means the framing the scene authored, so it puts the zoom back
     // too — and, inside the guided sequence, the vantage it authored as well.
     userZoom = 1;
+    readerOwnsCamera = false;
     storyView.orbit.identity();
     syncZoomLimits();
     if (hasAuthoredInspectionViews && initialInspectionView) {
@@ -1879,34 +1910,25 @@ export async function createApp({ stage, ui, onRetryModel = null }) {
         // new framing still applies to the next viewpoint they choose, but
         // nothing pulls them out of the view they are in.
         //
-        // **This asked for a tolerance once, and the tolerance was worse than
-        // the bug.** The equality below is exact, and `update()` runs every
-        // frame with damping on, so it never leaves the camera bit-exactly
-        // where it was put: measured, a drift of 0.00125 against a threshold of
-        // 0.001, which made every re-frame compute and then discard itself.
-        // That is F-133 and it is real.
+        // **This was twice asked as a distance, and a distance cannot answer
+        // it.** Exactly, it says the reader has the camera about one nobody has
+        // touched, because `update()` runs every frame with damping on and
+        // leaves about 0.00125 of a world unit behind — so every re-frame was
+        // computed and then discarded, and the brain opened at 6.90 world units
+        // where the settled layout asks for 6.06 (F-133, and it came back as
+        // F-179 when the framing check caught it from the other end). With a
+        // tolerance, it says nobody has the camera during the first frames of a
+        // zoom, where the camera is still within half a percent of the shot it
+        // is leaving, and snaps the reader's zoom away — 20px of drift on the
+        // brain at 390x844 where the anchor should hold it at 0.
         //
-        // The fix tried here was `max(1e-3, distance * 0.005)`, reasoned as
-        // "far below the smallest deliberate zoom step". Measured, it is not.
-        // A wheel notch moves the camera gradually under damping, so early in a
-        // zoom the camera is still within half a percent of the shot it started
-        // from — and if the band changes at that moment the watcher calls it
-        // untouched and snaps the camera to the new framing, taking the
-        // reader's zoom with it. `verify:anatomy` reads 20px of drift on the
-        // brain at 390x844 where the anchor should hold it at 0, and 17px left
-        // over after zooming back out. `origin/main` is clean, so it was ours.
-        //
-        // So the strict comparison is back and F-133 is open again. The next
-        // attempt needs a test of ownership that is not "how close is the
-        // camera to where we last put it" — that quantity is small for damping
-        // and also small at the start of a zoom, and no threshold separates
-        // them. The zoom checks in `check-anatomy-interaction.mjs` are the
-        // guard any replacement has to pass.
-        const untouched =
-          viewer.camera.position.distanceToSquared(shot.position) < 1e-6 &&
-          viewer.controls.target.distanceToSquared(shot.target) < 1e-6;
+        // So ownership is recorded where it happens instead: `readerOwnsCamera`
+        // is set by the three things that take the camera and cleared by the
+        // one that gives it back. The zoom checks in
+        // `check-anatomy-interaction.mjs` are still the guard, and the opening
+        // framing check beside them is the other half.
         setShot(shotSource);
-        if (!untouched) return;
+        if (readerOwnsCamera) return;
         viewer.camera.position.copy(shot.position);
         viewer.controls.target.copy(shot.target);
         viewer.controls.update();
