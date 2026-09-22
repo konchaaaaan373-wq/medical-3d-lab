@@ -28,7 +28,7 @@ Last updated: 2026-09-21
   | **F-149〜F-158** | 番号衝突のガードとブロック予約（この PR。使うのは F-149 のみ） | 2026-09-17 |
   | **F-159〜F-168** | 高次脳機能シーン（`higher-brain-function`）の追加。使うのは F-159・F-160・F-162〜F-166（F-161 は監査で解消したので穴） | 2026-09-20 |
   | **F-167〜F-176** | 病態シーンの動画書き出しと同意画面（使うのは F-167〜F-172。**採番し直し 1 回目**: F-159〜F-164 で取ったところ、main が同じブロックを先に取っていました） | 2026-09-21 |
-  | **F-177〜F-186** | 脳アトラスの配色（大分類ごとの統一・色覚配慮・LCh 再設計。使うのは F-177 と F-178。**採番し直し 1 回目**: F-159〜F-160 で取ったところ、main が同じブロックを先に取っていました） | 2026-09-21 |
+  | **F-177〜F-186** | 脳アトラスの配色（大分類ごとの統一・色覚配慮・LCh 再設計。使うのは F-177・F-178・F-179。**採番し直し 1 回目**: F-159〜F-160 で取ったところ、main が同じブロックを先に取っていました） | 2026-09-21 |
 
 - **重複の一覧は [`tests/follow-ups-numbers.test.js`](../tests/follow-ups-numbers.test.js) が持ちます。ここには書き写しません。**
   この節は長らく「F-90〜F-93 の 4 件」と書いていましたが、**数えたら 18 件**
@@ -751,6 +751,38 @@ F-126 の構図比較で腎を 3 状態レンダリングしたときに見え�
   成立するなら 2 件の `sceneRevision` を 14 と新 digest に差し替えて緑になります
 - 完了の定義: 上の判断が記録され、branch がマージされ、`verify:site` の
   `publishes N` が減っていないこと
+
+---
+
+
+### F-179 `verify:anatomy` が brain-anatomy で赤（開いた枠と reset 後の枠が違う） — P1（2026-09-22）
+
+**main で赤です。** 配色の branch をマージする前に走らせて見つけましたが、
+`origin/main`（`9ff5fb1`）単体で**同じ 2 件が同じ値で**落ちます。
+配色の変更由来ではありません。
+
+```
+2 problem(s):
+  - the scene opens framed differently from how it resets: across the frame's
+    middle row the model spans 0.26..0.5 of the frame at first and 0.2..0.54
+    after "reset the display", with nothing moved in between.
+  - the tour's point (0.215, 0.465) should be on
+    "Orbital part of inferior frontal gyrus" and named "Orbital gyri"
+```
+
+- **2 件目は 1 件目の結果です。** 開いた瞬間の枠が reset 後より狭いので、
+  記録済みの tour 点 (0.215, 0.465) が意図した構造から外れ、隣の
+  「眼窩回」に当たっています。**枠を直せば点も戻る**はずで、
+  点のほうを測り直して `SCENE_POINTS` に書くのは**症状の追認**です
+- **いつ入ったか**: この branch の revision 32（マージ前）では緑でした。
+  `git log origin/main` の範囲では #145「Organs open in the colours organs
+  have; the brain keeps its map」が枠に触れている候補です（未確認）
+- **なぜこの PR で直さないか**: 配色だけの branch で、枠のコードには
+  触れていません。**赤の原因を持っている PR が直すべき**です
+- やること: (1) 開始時のフィットと reset 時のフィットが**同じ経路**を通るか確認、
+  (2) 直ったら `verify:anatomy` が緑に戻ることと、tour の 4 点が
+  記録どおりの構造を指すことを確認
+- 完了の定義: `npm run verify:anatomy -- --scene brain-anatomy` が緑
 
 ---
 
