@@ -312,6 +312,8 @@ export async function installShellNavigation({
         open: nextOpen,
         observe,
         onRendererFailure,
+        // The ground changes when the page does, not when the build starts.
+        applyState: false,
       });
     } catch (error) {
       console.error('navigation: the destination did not build', error);
@@ -320,19 +322,22 @@ export async function installShellNavigation({
     }
 
     // Asked again, because building took time. Discard rather than commit: the
-    // surface is in the document but nothing else has moved, so removing it
-    // and putting `data-route` back leaves exactly what was there before.
+    // surface is in the document and nothing else has moved — and because the
+    // mount was told not to touch `data-route`, there is no ground to put back
+    // either.
     if (!stillWanted(hash)) {
       try {
         mounted.destroy();
       } catch (error) {
         console.warn('navigation: an abandoned surface did not tear down cleanly', error);
       }
-      if (previous?.state) doc.documentElement.dataset.route = previous.state;
       stopWorking();
       return true;
     }
 
+    // Committed: the ground and the page change in the same task, so no frame
+    // shows one surface on the other's background.
+    doc.documentElement.dataset.route = mounted.state;
     current = mounted;
     stopWorking();
     // Recorded against the page being left, and only when this is a link: on a

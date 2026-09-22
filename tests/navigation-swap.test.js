@@ -375,7 +375,7 @@ async function shellHarness({ mountDelay = 0 } = {}) {
   globalThis.requestAnimationFrame = (fn) => setTimeout(fn, 0);
 
   const mounts = [];
-  const mountDocumentSurface = async ({ route }) => {
+  const mountDocumentSurface = async ({ route, applyState = true }) => {
     // The same mapping `documentSurfaces.js` uses, so `data-route` in these
     // tests means what it means in the product. The first version of this stub
     // sent every kind but two to 'explorer', which made a landing mount
@@ -383,8 +383,11 @@ async function shellHarness({ mountDelay = 0 } = {}) {
     // tell two outcomes apart passes for whichever happens.
     const state = { landing: 'landing', trust: 'trust', legal: 'legal', lab: 'explorer' }[route.kind]
       ?? 'explorer';
-    // A mount claims `data-route` while it builds, exactly as the real one does.
-    globalThis.document.documentElement.dataset.route = state;
+    // Only the initial mount claims `data-route` while it builds — a swap waits
+    // until it commits, so the outgoing surface is never painted on the
+    // incoming one's ground. The stub has to honour that or it tests a
+    // mechanism the product does not have.
+    if (applyState) globalThis.document.documentElement.dataset.route = state;
     if (mountDelay) await new Promise((resolve) => setTimeout(resolve, mountDelay));
     const record = { route: route.kind, state, destroyed: false };
     mounts.push(record);
@@ -666,4 +669,27 @@ test('the wait does not promise a model the release has not opened', () => {
   assert.equal(openingMessage('#/copd', 'en', { open: false }), 'the lungs model — in development');
   // And an open one is unaffected.
   assert.equal(openingMessage('#/heart-anatomy', 'ja', { open: true }), '心臓の3Dモデルを開いています');
+});
+
+test('the ground changes when the page does, not when the build starts', async () => {
+  // `data-route` decides the page's background. The surface being replaced is
+  // still on screen for the length of the mount — 100 to 600 ms of dynamic
+  // import and build — so setting it at the start painted the *outgoing*
+  // surface on the *incoming* one's ground. Leaving the landing page for the
+  // publication record turned a dark page pale underneath text written for a
+  // dark page, for longer than the blank frame the swap was built to remove.
+  const h = await shellHarness({ mountDelay: 60 });
+  assert.equal(h.doc.documentElement.dataset.route, 'explorer', 'the initial mount applies its own');
+
+  h.windowRef.go('#/trust');
+  await settle(25);
+  assert.equal(
+    h.doc.documentElement.dataset.route,
+    'explorer',
+    'mid-build the ground still belongs to the surface on screen'
+  );
+
+  await settle(150);
+  assert.equal(h.doc.documentElement.dataset.route, 'trust', 'and changes with the page');
+  h.restore();
 });

@@ -76,7 +76,10 @@ export { isDocumentSurface };
  *   closed, which renders the locked surface instead of the route's own.
  * @param {(options: object) => Promise<any>} options.observe
  * @param {(error: Error, context: object) => void} [options.onRendererFailure]
- * @returns {Promise<{destroy: () => void}>}
+ * @param {boolean} [options.applyState] whether to put this surface's
+ *   `data-route` on `<html>` now. A swap says no and applies the returned
+ *   `state` when it commits — see below.
+ * @returns {Promise<{destroy: () => void, state: string}>}
  */
 export async function mountDocumentSurface({
   route,
@@ -85,13 +88,25 @@ export async function mountDocumentSurface({
   open = true,
   observe,
   onRendererFailure = () => {},
+  applyState = true,
 }) {
   const locked = !open;
   const kind = locked ? 'locked' : route.kind;
   const state = locked ? 'locked' : ROUTE_ELEMENT_STATE[route.kind];
   if (!state) throw new Error(`not a document surface: ${route.kind}`);
 
-  document.documentElement.dataset.route = state;
+  // Not while a swap is building.
+  //
+  // `data-route` decides the page's ground, and the surface being replaced is
+  // still on screen for the length of the mount — a dynamic import plus the
+  // build, measured between 100 and 600 ms. Setting it here painted the
+  // *outgoing* surface on the *incoming* surface's ground for that whole time:
+  // leaving the landing page for the publication record turned a dark page
+  // pale underneath text written for a dark page, which is worse than the
+  // blank frame the swap was built to remove.
+  //
+  // The initial mount has nothing to replace, so it applies immediately.
+  if (applyState) document.documentElement.dataset.route = state;
   // Seed the persisted language before the surface builds, so its first paint
   // is already in the reader's language rather than in the default one. Each
   // surface's own toggle takes over from here.
@@ -155,13 +170,11 @@ export async function mountDocumentSurface({
   return {
     surface,
     /**
-     * The `data-route` value this mount put on `<html>`.
+     * The `data-route` value this surface renders as.
      *
-     * Returned so a caller that has to discard a mount can put back the one
-     * belonging to the surface that is still on screen. A surface has to have
-     * it *while it builds* — the stylesheets that make a document scroll are
-     * keyed on it, and the landing hero measures itself — so it cannot be
-     * deferred until the mount is known to be wanted.
+     * Returned rather than only applied, because a swap does not apply it here
+     * — it applies it at the moment it commits, so the ground and the page
+     * change together. See `applyState` above.
      */
     state,
     destroy() {
