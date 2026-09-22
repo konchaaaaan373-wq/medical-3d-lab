@@ -180,7 +180,7 @@ test('the video frame hides the application by default, not by a list of names',
   // was later moved to sit beside one of them. It became a child of `#ui` that
   // the rule did not name, so a breadcrumb and a sign-in button rode across
   // the top of the frame for as long as it took somebody to look at a rendered
-  // one (`docs/verification-lessons.md` L-60).
+  // one (`docs/verification-lessons.md` L-81).
   //
   // A list of what to hide is maintained by whoever adds chrome, who has no
   // reason to think about a video. This pins the inversion: everything is

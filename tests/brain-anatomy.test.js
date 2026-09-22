@@ -4,7 +4,14 @@ import { readFileSync } from 'node:fs';
 import { createHash } from 'node:crypto';
 import * as THREE from 'three';
 import BrainAnatomyScene from '../src/scenes/nervous/scenes/brainAnatomy/index.js';
-import { BRAIN_COLOR_MODES, brainColor, brainColorKey, brainStructureInfo } from '../src/data/brainAnatomy.js';
+import {
+  BRAIN_COLOR_MODES,
+  BRAIN_PALETTE,
+  brainColor,
+  brainColorKey,
+  brainStructureInfo,
+  lchToHex,
+} from '../src/data/brainAnatomy.js';
 
 test('brain anatomy adopts individually named atlas meshes instead of proxy lobes', () => {
   const scene = buildScene();
@@ -406,20 +413,7 @@ test('abbreviated lateral-sulcus labels are expanded without losing atlas identi
 });
 
 test('every selectable atlas label has a deliberate Japanese name and hierarchy', () => {
-  const bytes = readFileSync(new URL('../public/assets/brain/brain.glb', import.meta.url));
-  const jsonLength = bytes.readUInt32LE(12);
-  const gltf = JSON.parse(bytes.subarray(20, 20 + jsonLength).toString());
-  const selectableCategories = new Set([
-    'cortex', 'deep_grey', 'diencephalon', 'white_matter',
-    'ventricles', 'cerebellum', 'brainstem',
-  ]);
-  const structures = new Map();
-  for (const node of gltf.nodes) {
-    const metadata = node.extras;
-    if (metadata && selectableCategories.has(metadata.bx_cat)) {
-      structures.set(`${metadata.bx_cat}:${metadata.bx_label}`, metadata);
-    }
-  }
+  const structures = atlasStructures();
   assert.equal(structures.size, 147);
   const detailColours = new Set();
   const naturalColours = new Set();
@@ -451,6 +445,152 @@ test('every selectable atlas label has a deliberate Japanese name and hierarchy'
     closest.distance >= 3.8,
     `closest detail colours are too similar: ${closest.labels.join(' / ')} (ΔE ${closest.distance.toFixed(2)})`
   );
+});
+
+test('each large anatomical unit reads as one colour family', () => {
+  const structures = atlasStructures();
+  const byFamily = new Map();
+  for (const metadata of structures.values()) {
+    const key = brainColorKey(metadata);
+    if (!byFamily.has(key)) byFamily.set(key, []);
+    byFamily.get(key).push({ label: metadata.bx_label, hue: labHue(hexToLab(brainColor(metadata))) });
+  }
+
+  // A reader points at the frontal lobe as a whole before they point at one
+  // gyrus, so the gyri have to look like members of one thing. Each family
+  // holds a narrow hue band and separates its members by lightness and
+  // saturation inside it. The palette this replaced put the frontal lobe
+  // across 155° of Lab hue — magenta through to yellow within one lobe — and
+  // its *tightest* family was still 61° wide, so this bound fails all twelve
+  // of them.
+  for (const [key, members] of byFamily) {
+    const withSwatch = [...members.map((member) => member.hue), labHue(hexToLab(BRAIN_PALETTE[key]))];
+    const spread = circularSpread(withSwatch);
+    assert.ok(
+      spread <= 44,
+      `${key} spans ${spread.toFixed(1)}° of hue across ${members.length} structures and its legend swatch`
+    );
+  }
+
+  for (const lobe of CORTICAL_LOBES) {
+    assert.ok(byFamily.get(lobe)?.length, `${lobe} has structures to be a family of`);
+  }
+});
+
+test('the colour map reads as one set, not twelve separate choices', () => {
+  // What made the palette look like a pile rather than a system was chroma,
+  // not hue: designed in HSL, the twelve families came out anywhere between
+  // perceptual chroma 39 and 101. The lobes now ask for one chroma, and this
+  // is the check that they still arrive there — a family quietly moved to a
+  // different colourfulness is the drift nobody notices in a diff and
+  // everybody notices on screen.
+  //
+  // Some hues cannot be that colourful in sRGB at all: teal tops out near 36
+  // where red reaches 62. So the rule is not "every lobe is equally
+  // colourful", which would be a demand on the display rather than on the
+  // palette. It is **every lobe is as colourful as the set, or as colourful
+  // as its hue and lightness permit** — the display's limit is an excuse, and
+  // nothing else is.
+  const perceptual = (hex) => {
+    const [lightness, a, b] = hexToLab(hex);
+    return { lightness, chroma: Math.hypot(a, b), hue: ((Math.atan2(b, a) * 180) / Math.PI + 360) % 360 };
+  };
+  const lobes = CORTICAL_LOBES.map((key) => ({ key, ...perceptual(BRAIN_PALETTE[key]) }));
+  const level = Math.max(...lobes.map((lobe) => lobe.chroma));
+
+  // Consistency alone would be satisfied by twelve equally drab colours, and
+  // that is not a hypothetical: a revision of this palette was reported as
+  // having lost its colour, and every guard was green. So the set has a floor
+  // as well as a shape.
+  assert.ok(level >= 45, `the cortical lobes top out at chroma ${level.toFixed(0)}, which is not a colour map`);
+
+  for (const lobe of lobes) {
+    // What sRGB can give at this lobe's own lightness and hue: ask for far
+    // more than any gamut holds and see what comes back.
+    const ceiling = perceptual(lchToHex(lobe.lightness, 200, lobe.hue)).chroma;
+    const owed = Math.min(level, ceiling);
+    assert.ok(
+      lobe.chroma >= owed - 1.5,
+      `${lobe.key} is at chroma ${lobe.chroma.toFixed(0)} where ${owed.toFixed(0)} was available `
+      + `(the set sits at ${level.toFixed(0)}, and sRGB allows ${ceiling.toFixed(0)} at L${lobe.lightness.toFixed(0)} h${lobe.hue.toFixed(0)})`
+    );
+  }
+});
+
+test('an unreachable chroma comes back as the most the display can give, at the same hue', () => {
+  // The design asks for one chroma per tier and lets sRGB say what it can
+  // afford. That is only safe if running out of gamut costs chroma and
+  // nothing else: a conversion that clipped the channels instead would keep
+  // the number and silently change the hue, which is the kind of drift that
+  // shows up as one lobe looking wrong and no test failing.
+  for (const [lightness, hue] of [[55, 300], [70, 145], [40, 25], [80, 220], [62, 85]]) {
+    const reachable = hexToLab(lchToHex(lightness, 200, hue));
+    const asked = hexToLab(lchToHex(lightness, 20, hue));
+    const angle = (lab) => ((Math.atan2(lab[2], lab[1]) * 180) / Math.PI + 360) % 360;
+    const drift = Math.abs(((angle(reachable) - angle(asked) + 540) % 360) - 180);
+    assert.ok(drift <= 2, `L${lightness} h${hue}: the hue moved ${drift.toFixed(1)}° when the chroma was pulled in`);
+    assert.ok(
+      Math.abs(reachable[0] - lightness) <= 1.5,
+      `L${lightness} h${hue}: the lightness moved to ${reachable[0].toFixed(1)}`
+    );
+    assert.ok(
+      Math.hypot(reachable[1], reachable[2]) > Math.hypot(asked[1], asked[2]),
+      `L${lightness} h${hue}: asking for more chroma gave less`
+    );
+  }
+});
+
+test('the units that touch are told apart, and dichromacy gets what is free', () => {
+  const structures = atlasStructures();
+  const byFamily = new Map();
+  for (const metadata of structures.values()) {
+    const key = brainColorKey(metadata);
+    if (!byFamily.has(key)) byFamily.set(key, []);
+    byFamily.get(key).push(brainColor(metadata));
+  }
+  const closest = (vision, left, right) => {
+    let best = Infinity;
+    for (const a of byFamily.get(left)) {
+      for (const b of byFamily.get(right)) {
+        best = Math.min(best, cie76(hexToLab(simulate(a, vision)), hexToLab(simulate(b, vision))));
+      }
+    }
+    return best;
+  };
+
+  // What a reader traces is the boundary between two units that actually meet,
+  // so that is what is measured — not the average distance between families,
+  // and not every pair in the catalogue. A palette can put the whole set far
+  // apart on average and still lose the central sulcus, which is what happened
+  // when an earlier version spent its separation on colour-vision headroom and
+  // left the frontal and parietal lobes ΔE 18.7 apart.
+  for (const [left, right] of TOUCHING_UNITS) {
+    const apart = closest('normal', left, right);
+    assert.ok(apart >= 28, `${left} and ${right} touch and are only ΔE ${apart.toFixed(1)} apart (floor 28)`);
+  }
+
+  // Colour-vision deficiency is given what is available rather than what it
+  // would cost: the bands lean along blue-yellow and neighbours are given
+  // different lightness where that is free, which lifts the worst pair from
+  // ΔE 0.5 to about 4. **Four is a difference, not a comfortable one.** This
+  // floor is a deliberate partial measure, chosen over a high one that made
+  // the central sulcus unreadable for everyone, and lowered again by about 1
+  // when a saturated red was added — red, orange and brown share the one
+  // chromatic axis these readers have, so they can only be told apart by
+  // lightness. The claim stops at the large units: structures inside one
+  // family are separated by lightness and saturation, which dichromacy
+  // compresses, and nothing here pretends otherwise.
+  for (const vision of ['protan', 'deutan', 'tritan']) {
+    for (let left = 0; left < SURFACE_FAMILIES.length; left += 1) {
+      for (let right = left + 1; right < SURFACE_FAMILIES.length; right += 1) {
+        const apart = closest(vision, SURFACE_FAMILIES[left], SURFACE_FAMILIES[right]);
+        assert.ok(
+          apart >= 3,
+          `under ${vision}, ${SURFACE_FAMILIES[left]} and ${SURFACE_FAMILIES[right]} come within ΔE ${apart.toFixed(1)} (floor 3)`
+        );
+      }
+    }
+  }
 });
 
 test('cingulate terminology distinguishes aMCC from an unavailable ACC mesh', () => {
@@ -780,6 +920,87 @@ function hslOf(mesh) {
 
 function settle(scene) {
   for (let i = 0; i < 240; i += 1) scene.update(1 / 60);
+}
+
+const CORTICAL_LOBES = ['frontal', 'parietal', 'temporal', 'occipital', 'limbic', 'insula'];
+/** The families a reader meets on the outside of the model, before any slider. */
+const SURFACE_FAMILIES = [...CORTICAL_LOBES, 'cerebellum', 'brainstem'];
+
+/**
+ * Units whose surfaces actually meet, so a reader has to see where one ends.
+ * Listed rather than derived: which lobes border which is anatomy, not
+ * something the palette or the mesh names can be asked.
+ */
+const TOUCHING_UNITS = [
+  ['frontal', 'parietal'], ['frontal', 'temporal'], ['parietal', 'temporal'],
+  ['parietal', 'occipital'], ['temporal', 'occipital'], ['frontal', 'limbic'],
+  ['parietal', 'limbic'], ['occipital', 'limbic'], ['temporal', 'limbic'],
+  ['frontal', 'telencephalon'], ['parietal', 'telencephalon'], ['temporal', 'telencephalon'],
+  ['frontal', 'insula'], ['parietal', 'insula'], ['temporal', 'insula'],
+  ['temporal', 'cerebellum'], ['occipital', 'cerebellum'], ['cerebellum', 'brainstem'],
+];
+
+/**
+ * Dichromacy simulation — Machado, Oliveira & Fernandes (2009), severity 1.0,
+ * applied in linear RGB. It is a model of what a dichromat sees, not a
+ * measurement of it; it is here to keep a palette from being separated along
+ * an axis a reader may not have, which is a mistake that is otherwise
+ * invisible to whoever picked the colours.
+ */
+const DICHROMACY = {
+  normal: [[1, 0, 0], [0, 1, 0], [0, 0, 1]],
+  protan: [[0.152286, 1.052583, -0.204868], [0.114503, 0.786281, 0.099216], [-0.003882, -0.048116, 1.051998]],
+  deutan: [[0.367322, 0.860646, -0.227968], [0.280085, 0.672501, 0.047413], [-0.011820, 0.042940, 0.968881]],
+  tritan: [[1.255528, -0.076749, -0.178779], [-0.078411, 0.930809, 0.147602], [0.004733, 0.691367, 0.303900]],
+};
+
+function simulate(hex, vision) {
+  if (vision === 'normal') return hex;
+  const linear = [1, 3, 5]
+    .map((start) => Number.parseInt(hex.slice(start, start + 2), 16) / 255)
+    .map((value) => (value <= 0.04045 ? value / 12.92 : ((value + 0.055) / 1.055) ** 2.4));
+  const seen = DICHROMACY[vision].map((row) => (
+    Math.min(1, Math.max(0, row[0] * linear[0] + row[1] * linear[1] + row[2] * linear[2]))
+  ));
+  return `#${seen
+    .map((value) => (value <= 0.0031308 ? value * 12.92 : 1.055 * value ** (1 / 2.4) - 0.055))
+    .map((value) => Math.round(Math.min(1, Math.max(0, value)) * 255).toString(16).padStart(2, '0'))
+    .join('')}`;
+}
+
+function atlasStructures() {
+  const bytes = readFileSync(new URL('../public/assets/brain/brain.glb', import.meta.url));
+  const jsonLength = bytes.readUInt32LE(12);
+  const gltf = JSON.parse(bytes.subarray(20, 20 + jsonLength).toString());
+  const selectableCategories = new Set([
+    'cortex', 'deep_grey', 'diencephalon', 'white_matter',
+    'ventricles', 'cerebellum', 'brainstem',
+  ]);
+  const structures = new Map();
+  for (const node of gltf.nodes) {
+    const metadata = node.extras;
+    if (metadata && selectableCategories.has(metadata.bx_cat)) {
+      structures.set(`${metadata.bx_cat}:${metadata.bx_label}`, metadata);
+    }
+  }
+  return structures;
+}
+
+/** Where a colour sits on the Lab hue circle, which is what "family" means here. */
+function labHue([, a, b]) {
+  return ((Math.atan2(b, a) * 180) / Math.PI + 360) % 360;
+}
+
+/** The arc a set of hues occupies — the circle minus its largest empty gap. */
+function circularSpread(hues) {
+  if (hues.length < 2) return 0;
+  const sorted = [...hues].sort((left, right) => left - right);
+  let widestGap = 0;
+  for (let index = 0; index < sorted.length; index += 1) {
+    const next = index === sorted.length - 1 ? sorted[0] + 360 : sorted[index + 1];
+    widestGap = Math.max(widestGap, next - sorted[index]);
+  }
+  return 360 - widestGap;
 }
 
 function hexToLab(hex) {

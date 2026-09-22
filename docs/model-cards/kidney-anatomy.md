@@ -73,6 +73,13 @@ position of either kidney relative to the ribs or the vertebrae.
 
 ## 6. Presentation choices
 
+- **The scene opens in Natural** (2026-09-21). It used to open in **Parts**,
+  because that mode is first in the list and the list is ordered by what the
+  scene is for. A reader looking at the landing hero said the heart did not
+  look like an organ, and they were right: colour that carries no anatomical
+  claim is still the first claim a picture makes. Parts is one press away and
+  nothing about it changed. The brain is the exception and still opens in
+  colour — 147 parcels cannot be told apart in tissue colour.
 - **The scene says what frame shape it needs, and what it is about.** The
   framing is set on the two kidneys, not on the tract they drain into: a frame
   that fits the bladder makes the organ the scene is named after a third of the

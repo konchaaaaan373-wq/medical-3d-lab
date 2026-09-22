@@ -118,3 +118,19 @@ test('the disease drive is given its output directory before the scenes', () => 
     'the first argument is the output directory, not the scene list'
   );
 });
+
+test('a disease drive that drove nothing fails instead of printing ok', () => {
+  // Found by running the check against an ordinary `npm run build`: disease
+  // scenes are withheld from a production build, so every slug resolved to a
+  // locked page, no scene was driven — and the closing line printed
+  // `ok    0 scene(s) … 0 export(s)` and exited 0. It also blamed the engine's
+  // encoder for the missing exports, on a run where nothing had been asked of
+  // the encoder at all.
+  const check = readFileSync(new URL('../scripts/check-disease-interaction.mjs', import.meta.url), 'utf8');
+  const zero = check.indexOf('if (report.length === 0) {');
+  assert.ok(zero >= 0, 'the check must notice that it drove no scene');
+  const closing = check.indexOf('scene(s) drove baseline → disease → reset');
+  assert.ok(zero < closing, 'and notice it before the line that would call it ok');
+  assert.match(check.slice(zero, closing), /process\.exit\(1\)/, 'a run that measured nothing is not a pass');
+  assert.match(check.slice(zero, closing), /VITE_ALLOW_PREVIEW=1/, 'and says how to get a build that has the scenes');
+});

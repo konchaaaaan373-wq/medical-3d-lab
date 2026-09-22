@@ -285,15 +285,16 @@ export const DECISION_ROLES = Object.freeze(['engineering', 'anatomy-expert', 'c
 export const BETA_PUBLICATION_DECISIONS = Object.freeze([
   Object.freeze({
     sceneId: 'lung-anatomy',
-    decidedAt: '2026-09-16',
+    decidedAt: '2026-09-21',
     decidedBy: Object.freeze({
-      name: "Repository owner's decision of 2026-09-16; implemented by Claude Opus 5",
+      name:
+        "Repository owner's decision of 2026-09-16 for what this scene names; re-pinned 2026-09-21 by Claude Code (AI engineering agent) after the scene's opening colour mode changed, at the owner's direction",
       role: 'engineering',
     }),
     record: 'docs/beta-publication/lung-anatomy.md',
     /** Procedural geometry: no external asset, so nothing to pin but the scene. */
     assetRevisions: Object.freeze({}),
-    sceneRevision: Object.freeze({ cardRevision: 13, modelDigest: '292c5a43d8b0f2b0' }),
+    sceneRevision: Object.freeze({ cardRevision: 14, modelDigest: '4fc91f9aa37cecc7' }),
     scope: Object.freeze({
       // Re-measured 2026-09-16. These four were measured against a safe-area
       // fit that approximated a perspective camera with an orthographic sum,
@@ -341,14 +342,15 @@ export const BETA_PUBLICATION_DECISIONS = Object.freeze([
   }),
   Object.freeze({
     sceneId: 'liver-anatomy',
-    decidedAt: '2026-09-16',
+    decidedAt: '2026-09-21',
     decidedBy: Object.freeze({
-      name: "Repository owner's decision of 2026-09-16; implemented by Claude Opus 5",
+      name:
+        "Repository owner's decision of 2026-09-16 for what this scene names; re-pinned 2026-09-21 by Claude Code (AI engineering agent) after the scene's opening colour mode changed, at the owner's direction",
       role: 'engineering',
     }),
     record: 'docs/beta-publication/liver-anatomy.md',
     assetRevisions: Object.freeze({}),
-    sceneRevision: Object.freeze({ cardRevision: 13, modelDigest: '34d9a1727ffda583' }),
+    sceneRevision: Object.freeze({ cardRevision: 14, modelDigest: '23d963c1a0bc641a' }),
     scope: Object.freeze({
       // Re-measured 2026-09-16, and the tour changed shape rather than just
       // moving: the safe-area fit stopped approximating a perspective camera,
@@ -391,9 +393,10 @@ export const BETA_PUBLICATION_DECISIONS = Object.freeze([
   }),
   Object.freeze({
     sceneId: 'heart-anatomy',
-    decidedAt: '2026-09-15',
+    decidedAt: '2026-09-21',
     decidedBy: Object.freeze({
-      name: "Repository owner's approval of 2026-09-15; implemented by Claude Opus 5",
+      name:
+        "Repository owner's approval of 2026-09-15 for what this scene names; re-pinned 2026-09-21 by Claude Code (AI engineering agent) after the scene's opening colour mode changed, at the owner's direction",
       role: 'engineering',
     }),
     record: 'docs/beta-publication/heart-anatomy.md',
@@ -410,7 +413,7 @@ export const BETA_PUBLICATION_DECISIONS = Object.freeze([
       'hubmap-vh-m-heart': '46d375e36d8181c161b70e1f0b8f0d778364f0a8414eebce4e4fda1cea73eb3d',
       'hubmap-vh-m-blood-vasculature': 'a95ff0825431953d8fff210cf29d9e65aeed5da55f623717ab613864a9435502',
     }),
-    sceneRevision: Object.freeze({ cardRevision: 24, modelDigest: '60fa8135b9b036d2' }),
+    sceneRevision: Object.freeze({ cardRevision: 26, modelDigest: '20ae31ab7bafd24f' }),
     scope: Object.freeze({
       // The authored tour in `SCENE_POINTS`, not whatever a run measured: four
       // named parts at four recorded points, crossing both adopted files.
@@ -462,17 +465,17 @@ export const BETA_PUBLICATION_DECISIONS = Object.freeze([
   }),
   Object.freeze({
     sceneId: 'brain-anatomy',
-    decidedAt: '2026-09-17',
+    decidedAt: '2026-09-19',
     /** Who, and in what capacity. A role is a claim, and it is checked. */
     decidedBy: Object.freeze({
-      name: 'Claude Code (AI engineering agent), landing the four-round terminology review (PR #125) after the selection-label fix (PR #132)',
+      name: 'Claude Code (AI engineering agent), re-taken for a deeper green parietal lobe and the red it is read against',
       role: 'engineering',
     }),
     record: 'docs/beta-publication/brain-anatomy.md',
     assetRevisions: Object.freeze({
       'brain-atlas-glb': '76a49ea4526a4880613aec7a02756bd7301b0b9d0680d7cae33e197b672c5453',
     }),
-    sceneRevision: Object.freeze({ cardRevision: 25, modelDigest: '7e4825b9b5c3ce58' }),
+    sceneRevision: Object.freeze({ cardRevision: 33, modelDigest: 'd62c3881d2d2905a' }),
     /** What was actually exercised. Not a plan — a list of what was done. */
     scope: Object.freeze({
       // Re-measured on 2026-09-15 and corrected. The first two of the four
@@ -498,6 +501,13 @@ export const BETA_PUBLICATION_DECISIONS = Object.freeze([
       views: Object.freeze([
         'left-lateral (applied by the interaction drive)',
         'all eight named viewpoints rendered in both colour modes at one camera each; the six that existed before this work were rendered before and after it (docs/screenshots/b3-1/)',
+        'for the 2026-09-19 colour re-take: all eight viewpoints re-rendered in colour-map mode and read, with superior and left-lateral also rendered on the previous palette to compare; natural-anatomy mode was not re-rendered because its shades did not change',
+        'for the 2026-09-20 colour-vision re-take: the eight viewpoints re-rendered again, and left-lateral and superior also written out as a deuteranope and a protanope see them (shots:anatomy --cvd) — a simulation, not a reader',
+        'for the 2026-09-20 rebalance: the eight viewpoints re-rendered once more, each also written out under deuteranopia and protanopia, after a reader reported that the parietal lobe edge had stopped reading',
+        'for the 2026-09-21 restoration of red and green: the eight viewpoints re-rendered again with their dichromacy simulations, after a reader reported that the map had lost its colour',
+        'for the 2026-09-21 LCh redesign: the eight viewpoints re-rendered once more with their dichromacy simulations, after a reader reported that the set did not read as one palette',
+        'for the 2026-09-21 red frontal lobe: the eight viewpoints re-rendered again with their dichromacy simulations, the central sulcus being a red-against-green boundary and therefore carried by lightness',
+        'for the 2026-09-21 deeper green: the eight viewpoints re-rendered once more, after a reader read the parietal lobe as mint rather than green; how far the green could be taken was decided by where the central sulcus collapses under simulated protanopia',
       ]),
       interactions: Object.freeze([
         'click pins a structure and the panel names it in both languages',
@@ -567,6 +577,8 @@ export const BETA_PUBLICATION_DECISIONS = Object.freeze([
       'the anatomy/CG quality bar for the beta (B3) is measured only for what the fixed views show; nothing here is an anatomical judgement',
       'whether the cerebellum should show folia was not settled — it is a question about the source mesh (F-38)',
       'the posterior and inferior viewpoints were rendered and read by an engineer; no anatomist has confirmed what they show',
+      'no reader with colour-vision deficiency has used this scene — the palette clears floors measured against a simulation of dichromacy, which is a model of what someone sees rather than a report from one, and those floors are a deliberate partial measure (ΔE 4-5) chosen over higher ones that cost the central sulcus',
+      'inside one colour family the structures are separated by lightness and saturation, which dichromacy compresses: that separation is not claimed for those readers, and anomalous trichromacy at partial severity and monochromacy are unmeasured',
     ]),
   }),
 ]);

@@ -53,6 +53,13 @@ No dimension here is a measurement.
 
 ## 6. Presentation choices
 
+- **The scene opens in Natural** (2026-09-21). It used to open in **Parts**,
+  because that mode is first in the list and the list is ordered by what the
+  scene is for. A reader looking at the landing hero said the heart did not
+  look like an organ, and they were right: colour that carries no anatomical
+  claim is still the first claim a picture makes. Parts is one press away and
+  nothing about it changed. The brain is the exception and still opens in
+  colour — 147 parcels cannot be told apart in tissue colour.
 - **The scene says what frame shape it needs, and what it is about.** The
   gland is the widest subject of the six relative to its height, and the
   framing is set on the gland: the duodenum and spleen beside it are context

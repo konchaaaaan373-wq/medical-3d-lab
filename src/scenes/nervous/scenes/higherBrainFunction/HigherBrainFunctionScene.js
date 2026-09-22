@@ -683,7 +683,7 @@ export class HigherBrainFunctionScene {
    * failing step — and a rendered frame showed it does not read: the marker is
    * the same colour as the line it sits on and a few pixels across, so a front
    * lesion and a back lesion produced two pictures a viewer cannot tell apart
-   * (`docs/follow-ups.md` F-177). The stopping place is a property of the whole
+   * (`docs/follow-ups.md` F-187). The stopping place is a property of the whole
    * route, so the whole route says it.
    *
    * The dim part is **neutral, not the lesion colour**. Those steps are intact;

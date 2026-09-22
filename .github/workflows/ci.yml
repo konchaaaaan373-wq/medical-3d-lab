@@ -56,7 +56,7 @@ jobs:
   # page as a trap. Two of those are this check's. So, for this one check: yes.
   #
   # Chromium only, and `verify:ui` only. `verify:auth`, `verify:anatomy`,
-  # `verify:disease` and `verify:patient`, and Firefox and WebKit, stay at
+  # the full disease matrix and `verify:patient`, and Firefox and WebKit, stay at
   # candidate time in `final-browser-validation.yml`. F-112 records where that
   # line is drawn and what would move it.
   #
@@ -93,6 +93,17 @@ jobs:
       # education guide, and it was invisible because the surface was.
       - run: npm run build:preview
       - run: npm run verify:gated -- --dist dist-preview
+      # F-173: the existing preview build/browser also measures the real
+      # composer's render targets at DPR 2 and decodes one exported sequence.
+      - name: Video export at DPR 2
+        run: npm run verify:disease -- --dist dist-preview --dpr 2 disease-video-dpr2 copd
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: disease-video-dpr2
+          path: disease-video-dpr2/
+          if-no-files-found: ignore
+          retention-days: 3
       - uses: actions/upload-artifact@v4
         if: always()
         with:

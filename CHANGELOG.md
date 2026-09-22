@@ -42,6 +42,20 @@ person: Safari, Firefox, touch and a screen reader.
 - **The sequence's four frame shapes each export as themselves.** A 16:9 file
   used to carry the 9:16 layout — bigger figures, in different places, than the
   ones on screen.
+- **The sequence's controls go quiet while it records.** Changing the frame
+  shape part-way through stretched the rest of the take into the old one and
+  named the file after a shape it was not.
+- **The file is the size the frame shape says it is** — 1080×1920 for 9:16 and
+  so on, rather than whatever size the browser window gave the canvas. A
+  machine that cannot draw that fast records at its own size instead: measured,
+  asking a software renderer for 1080×1920 took the sequence to 2.4 frames a
+  second, and a smaller file that moves is worth more than a larger one that
+  does not.
+- **The sequence's controls are 44px on a phone**, like every other control in
+  the product. They were 25 — nothing had ever measured that surface.
+- **Nothing is downloaded for the export until somebody asks for one.** Every
+  visit was paying 3.5 kB for a recorder, a frame painter and a consent screen
+  that the published models cannot use.
 
 ### Higher cortical function, as the route a lesion cut
 

@@ -13,6 +13,8 @@ import {
   videoExportOffered,
   videoExportProblems,
   videoFileName,
+  recordingSize,
+  RECORDING_FRAME_BUDGET_MS,
 } from '../src/app/videoExport.js';
 import {
   PROHIBITED_USE_COPY,
@@ -34,6 +36,7 @@ import {
   videoRecordingSupported,
 } from '../src/app/videoRecorder.js';
 import { createVideoConsentDialog } from '../src/components/VideoConsentDialog.js';
+import { createReelChrome } from '../src/components/ReelChrome.js';
 import { PUBLIC_SCENES, SCENES } from '../src/catalog/index.js';
 import { PROHIBITED_USE } from '../src/catalog/modelProfiles.js';
 import { PUBLIC_MODELS } from '../src/catalog/publicManifest.js';
@@ -296,6 +299,62 @@ test('the prohibited-use sentence lists the uses rather than their ids', () => {
   assert.match(ja, /診断、治療の選択/);
   assert.ok(!en.includes('{uses}') && !ja.includes('{uses}'), 'the placeholder should be filled');
   assert.ok(!en.includes('treatment-selection'), 'an id is not a sentence');
+});
+
+// --- how big the file is ----------------------------------------------------
+
+test('the declared pixel size is used when the machine can draw it', () => {
+  const declared = { width: 1080, height: 1920 };
+  const canvas = { width: 506, height: 900 };
+  const fast = recordingSize({ declared, canvas, frameMs: 9 });
+  assert.deepEqual({ width: fast.width, height: fast.height }, declared);
+  assert.equal(fast.declared, true);
+});
+
+test('a machine that cannot draw it records its own canvas instead', () => {
+  // Measured: holding the canvas at 1080×1920 on a software rasteriser took
+  // the sequence to 2.4 frames a second. A smaller file that moves is worth
+  // more than a larger one that does not.
+  const declared = { width: 1080, height: 1920 };
+  const canvas = { width: 507, height: 901 };
+  const slow = recordingSize({ declared, canvas, frameMs: 420 });
+  assert.equal(slow.declared, false);
+  // Even, because the encoders behind `video/mp4` reject odd dimensions.
+  assert.deepEqual({ width: slow.width, height: slow.height }, { width: 506, height: 900 });
+  assert.match(slow.reason, /420ms/);
+});
+
+test('the threshold is a frame rate, not a guess', () => {
+  const declared = { width: 1080, height: 1920 };
+  const canvas = { width: 506, height: 900 };
+  assert.equal(recordingSize({ declared, canvas, frameMs: RECORDING_FRAME_BUDGET_MS }).declared, true);
+  assert.equal(recordingSize({ declared, canvas, frameMs: RECORDING_FRAME_BUDGET_MS + 1 }).declared, false);
+  // Roughly 22 frames a second: below that a fifteen-second clip is a slideshow.
+  assert.ok(RECORDING_FRAME_BUDGET_MS >= 30 && RECORDING_FRAME_BUDGET_MS <= 60, 'the budget should be a video frame rate');
+});
+
+test('a canvas already bigger than the declared size is left alone', () => {
+  // A large monitor gives the sequence more pixels than the format asks for.
+  // Shrinking to the declared size would throw them away and measure nothing.
+  const size = recordingSize({
+    declared: { width: 1080, height: 1920 },
+    canvas: { width: 1200, height: 2133 },
+    frameMs: 9,
+  });
+  assert.deepEqual({ width: size.width, height: size.height }, { width: 1200, height: 2132 });
+  assert.equal(size.declared, false);
+});
+
+test('an unmeasurable frame time keeps the declared size', () => {
+  // `performance.now()` differences can come back as NaN in a stubbed
+  // environment; refusing the declared size because a measurement failed would
+  // make every such machine export small files for no reason.
+  const size = recordingSize({
+    declared: { width: 1080, height: 1920 },
+    canvas: { width: 506, height: 900 },
+    frameMs: Number.NaN,
+  });
+  assert.equal(size.declared, true);
 });
 
 // --- the file ---------------------------------------------------------------
@@ -715,12 +774,24 @@ test('a short frame backs the figures, and only where the stylesheet does', () =
   }
 });
 
-test('no format paints the caption under the footer', () => {
-  // The footer is sized in width units; the caption band was placed as a
-  // fraction of the height. Independent of each other, they collided at 16:9 —
-  // and the footer is drawn last and opaque, so what disappeared was the note
-  // that reads "not a diagnosis". Checked at every shape the sequence offers,
-  // because 9:16 alone would never have shown it.
+test('no format paints the caption or the take-home under the footer', () => {
+  // The footer is sized in width units; the bottom-anchored blocks were placed
+  // as a fraction of the height. Independent of each other, they collided at
+  // 16:9 — and the footer is drawn last and opaque, so what disappeared was the
+  // note that reads "not a diagnosis". Checked at every shape the sequence
+  // offers, because 9:16 alone would never have shown it.
+  //
+  // With a caveat long enough to wrap, too. The first version of this test used
+  // a one-line fixture, which is what let the same collision survive on the
+  // take-home after it had been fixed on the caption: a review found it, at
+  // 1920×1080, on the scene whose caveat is longest (L-60).
+  const LONG = {
+    title: '門脈圧亢進症',
+    caveat:
+      '概念的なネットワークモデルです。HVPG ではなく門脈圧較差で、腹水は扱いません。'
+      + '診断には使用できません。数値は代表的な範囲に較正したモデルの出力です。',
+    credit: 'medical-3d-lab · #/portal-hypertension',
+  };
   for (const format of REEL_FORMATS) {
     const ctx = fakeContext();
     const note = 'conceptual model · not a diagnosis';
@@ -732,7 +803,7 @@ test('no format paints the caption under the footer', () => {
       },
       width: format.width,
       height: format.height,
-      provenance: PROVENANCE,
+      provenance: LONG,
     });
     const band = ctx.calls.rects[ctx.calls.rects.length - 1];
     assert.equal(band.width, format.width, `${format.label}: the last rectangle should be the footer band`);
@@ -743,8 +814,57 @@ test('no format paints the caption under the footer', () => {
       painted.y + size <= band.y,
       `${format.label}: the note is painted at ${Math.round(painted.y)} and the opaque footer starts at ${Math.round(band.y)}`
     );
-    const headline = ctx.calls.text.find((call) => call.text.includes('Emptying'));
-    assert.ok(headline.y + size <= band.y, `${format.label}: the take-home runs into the footer`);
+    // The take-home is the sentence the file ends on, and it grows upward from
+    // its own anchor — so it needs the same clamp, measured with its own size.
+    const headline = ctx.calls.text.find((call) => 'Emptying is the problem'.startsWith(call.text.trim()) && call.text.length > 2);
+    assert.ok(headline, `${format.label}: the take-home was not painted`);
+    const headlineSize = Number(/([\d.]+)px/.exec(headline.font)[1]);
+    assert.ok(
+      headline.y + headlineSize <= band.y,
+      `${format.label}: the take-home is painted at ${Math.round(headline.y)} and the opaque footer starts at ${Math.round(band.y)}`
+    );
+    // And above the caption band, not on the same line as it. Clamping both to
+    // the footer gave them the same ceiling, which read as two sentences
+    // printed on top of each other — measured in a 16:9 recording of portal
+    // hypertension, where the take-home sat across the note.
+    assert.ok(
+      headline.y + headlineSize <= painted.y,
+      `${format.label}: the take-home runs to ${Math.round(headline.y + headlineSize)} and the note starts at ${Math.round(painted.y)}`
+    );
+    const captionLine = ctx.calls.text.find(
+      (call) => call.text.length > 2 && 'Each breath starts before the last one finished'.startsWith(call.text.trim())
+    );
+    assert.ok(captionLine, `${format.label}: the caption was not painted`);
+    assert.ok(
+      headline.y + headlineSize <= captionLine.y,
+      `${format.label}: the take-home overlaps the caption`
+    );
+
+    // The state the recording was actually in when the overlap was seen: the
+    // caption has faded and the note has not, so the note alone decides how
+    // much room is left. A ceiling computed from the caption's height only is
+    // right whenever both are up, and wrong exactly here.
+    const noteOnly = fakeContext();
+    paintReelFrame(noteOnly, {
+      frame: {
+        caption: { text: 'Each breath starts before the last one finished', opacity: 0 },
+        note: { text: note, opacity: 1 },
+        title: { text: 'Emptying is the problem', opacity: 1, variant: 'take-home' },
+      },
+      width: format.width,
+      height: format.height,
+      provenance: LONG,
+      format: format.id,
+    });
+    const aloneNote = noteOnly.calls.text.find((call) => call.text === note);
+    const aloneHead = noteOnly.calls.text.find(
+      (call) => call.text.length > 2 && 'Emptying is the problem'.startsWith(call.text.trim())
+    );
+    const aloneSize = Number(/([\d.]+)px/.exec(aloneHead.font)[1]);
+    assert.ok(
+      aloneHead.y + aloneSize <= aloneNote.y,
+      `${format.label}: with the caption faded, the take-home runs to ${Math.round(aloneHead.y + aloneSize)} and the note starts at ${Math.round(aloneNote.y)}`
+    );
   }
 });
 
@@ -799,6 +919,44 @@ test('Japanese wraps by character and English by word', () => {
   assert.ok(japanese.length > 1, 'a Japanese sentence has no spaces to break on');
   assert.ok(japanese.every((line) => line.length <= 11), japanese.join(' | '));
   assert.equal(japanese.join(''), '呼気が時間内に終わらないまま次の吸気が始まります');
+});
+
+// --- the controls inside the sequence ---------------------------------------
+
+test('the whole control row goes quiet while a recording runs', () => {
+  // A recording composites into a canvas sized when it began, so changing the
+  // format part-way stretches the rest of the frames into the old shape — and
+  // the chip that changed it is the one the file would have been named after.
+  // Restart would put the sequence back to zero in the middle of the take.
+  const restore = installFakeDocument();
+  try {
+    const formats = REEL_FORMATS.map((format) => ({ ...format }));
+    const chrome = createReelChrome({
+      formats,
+      currentFormatId: 'reel',
+      onFormat: () => {},
+      onRestart: () => {},
+      onExit: () => {},
+      onDownload: () => {},
+    });
+    const chips = findByClass(chrome.element, 'reel-chip');
+    const exitChip = chips.find((chip) => chip.classList.contains('is-exit'));
+    const quietable = chips.filter((chip) => chip !== exitChip && !chip.classList.contains('is-download'));
+    assert.equal(quietable.length, formats.length + 1, 'every format chip and the restart chip');
+
+    chrome.setDownloadLabel({ en: 'Recording…', ja: '録画中…' }, { busy: true });
+    for (const chip of quietable) {
+      assert.equal(chip.disabled, true, 'a control stayed live during the recording');
+      assert.equal(chip.attributes.get('aria-disabled'), 'true');
+    }
+    // Leaving is always available: a reader is never trapped in a recording.
+    assert.notEqual(exitChip.disabled, true);
+
+    chrome.setDownloadLabel({ en: 'Download video', ja: '動画を保存' }, { busy: false });
+    for (const chip of quietable) assert.equal(chip.disabled, false, 'a control stayed disabled after the recording');
+  } finally {
+    restore();
+  }
 });
 
 // --- the consent screen -----------------------------------------------------
@@ -1089,4 +1247,22 @@ test('the catalogue and the manifest agree about what is public', () => {
   for (const model of PUBLIC_MODELS) {
     assert.ok(PUBLIC_SCENES.some((entry) => entry.id === model.sceneId), `${model.sceneId} is published but not in PUBLIC_SCENES`);
   }
+});
+
+test('recording: leaving while the recorder chunks load cancels rather than re-entering', () => {
+  // The painter and the recorder are fetched on the first export, which on a
+  // slow connection is an asynchronous window the reader can walk out of —
+  // Exit stays enabled on purpose. The check that follows the imports asks
+  // "are we in the sequence?", and a reader who has just left answers no, so
+  // it used to put them back in and record the thing they had cancelled.
+  const source = readFileSync(new URL('../src/app/ReelMode.js', import.meta.url), 'utf8');
+  const body = source.slice(source.indexOf('async function recordVideo('));
+  const imports = body.indexOf('await Promise.all([');
+  const captured = body.indexOf('const startedActive = active;');
+  assert.ok(captured >= 0, 'recordVideo must read whether it was already in the sequence');
+  assert.ok(captured < imports, 'and read it before the first await, or it is reading the answer afterwards');
+  const abort = body.indexOf('if (startedActive && (!active || sessionId !== startedSession))');
+  assert.ok(abort > imports, 'the departure has to be checked after the chunks resolve');
+  assert.ok(abort < body.indexOf('enter();'), 'and before anything re-enters the sequence');
+  assert.match(body.slice(abort, body.indexOf('enter();')), /return \{[^}]*complete: false/, 'an abandoned export returns an unfinished result, never a blob');
 });

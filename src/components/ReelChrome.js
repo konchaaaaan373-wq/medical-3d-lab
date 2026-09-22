@@ -42,9 +42,11 @@ export function createReelChrome({ formats, currentFormatId, onFormat, onRestart
       )
     : null;
 
+  const restartButton = el('button', { class: 'reel-chip', type: 'button', text: '↻', title: 'Restart', on: { click: onRestart } });
+
   const element = el('div', { class: 'reel-chrome' }, [
     el('div', { class: 'reel-chip-row' }, chips),
-    el('button', { class: 'reel-chip', type: 'button', text: '↻', title: 'Restart', on: { click: onRestart } }),
+    restartButton,
     downloadButton,
     el('button', { class: 'reel-chip is-exit', type: 'button', text: 'Exit (Esc)', on: { click: onExit } }),
   ]);
@@ -65,6 +67,18 @@ export function createReelChrome({ formats, currentFormatId, onFormat, onRestart
      * @param {{ busy?: boolean }} [state]
      */
     setDownloadLabel(label, { busy = false } = {}) {
+      // The whole row goes quiet, not only the button that started it.
+      //
+      // A recording composites into a canvas sized when it began. Changing the
+      // format part-way resizes the canvas underneath it, so the rest of the
+      // frames arrive stretched into the old shape — and the chip that changed
+      // it is also the one the file would have been named after. Restart is
+      // here for the same reason: it would put the sequence back to zero in the
+      // middle of the take.
+      for (const chip of [...chips, restartButton]) {
+        chip.disabled = busy;
+        chip.setAttribute('aria-disabled', String(busy));
+      }
       if (!downloadButton) return;
       downloadLabelEn.textContent = label.en;
       downloadLabelJa.textContent = label.ja;
