@@ -738,6 +738,54 @@ for (const slug of SLUGS) {
 async function checkDisclosures(page, slug, outDir) {
   const problems = [];
   const TOUCH = 44;
+
+  // First, at the width the model controls are shown at: a phone hides them
+  // (`.model-controls:not(.is-primary)`), so the coupling between a control and
+  // the read-out has to be driven before the viewport shrinks.
+  // The read-out follows the control.
+  //
+  // A scene whose rows change role when a control changes — the higher-function
+  // read-out moves the traced task into its own section and the previous one
+  // into the folded comparison section — used to leave both where they were
+  // made. The panel then showed the previous task as the headline while the 3D
+  // showed the new one. Driven here by pressing the control a reader presses.
+  const tracedBody = page.locator('.metric-group[data-group="traced"] .metric-group-body');
+  const choices = page.locator('.model-choice-button');
+  if ((await tracedBody.count()) && (await choices.count()) > 1) {
+    const headline = () => tracedBody.locator('.metric.is-key .metric-label .lang-en').allInnerTexts();
+    const compareLabels = () => page
+      .locator('.metric-group[data-group="compare"] .metric-label .lang-en').allInnerTexts();
+    const before = await headline();
+    const comparedBefore = await compareLabels();
+    // The last option of the last choice control: the task control is the one
+    // that reorders the read-out, and it is the one furthest down the panel.
+    const last = choices.last();
+    await last.scrollIntoViewIfNeeded().catch(() => {});
+    await last.click({ force: true });
+    await page.waitForTimeout(700);
+    const after = await headline();
+    if (before.length === 0 || after.length === 0) {
+      problems.push('the read-out has no headline row in its traced section');
+    } else if (before.join() === after.join()) {
+      problems.push(`pressing a task control left the read-out headline at "${before.join()}"`);
+    } else if (!comparedBefore.some((label) => after.includes(label))) {
+      problems.push(`the new headline "${after.join()}" was not one of the comparison rows before`);
+    }
+    const comparedAfter = await compareLabels();
+    if (!comparedAfter.some((label) => before.includes(label))) {
+      problems.push(`the previous headline "${before.join()}" did not move into the comparison rows`);
+    }
+    // And a row cannot be in two places at once.
+    for (const label of after) {
+      if (comparedAfter.includes(label)) problems.push(`"${label}" is the headline and a comparison row`);
+    }
+    console.log(`  ${slug}: the read-out headline followed the control — "${before.join()}" → "${after.join()}"`);
+  } else {
+    // Said out loud, because a check that silently does not run looks exactly
+    // like a check that passed.
+    console.log(`  ${slug}: no traced/compare read-out sections to drive from a control`);
+  }
+
   await page.setViewportSize({ width: 390, height: 844 });
   await page.waitForTimeout(400);
 
@@ -767,35 +815,43 @@ async function checkDisclosures(page, slug, outDir) {
     return true;
   };
 
-  // 1 — the read-out's own detail lists.
+  // 1 — folded sections of the read-out, opened first: a detail control inside
+  // one is in the DOM and not on the screen, and a checker that clicks it
+  // anyway is measuring the DOM rather than the reader's path.
+  const groupToggles = page.locator('.metric-group-toggle[aria-expanded="false"]');
+  const groupCount = await groupToggles.count();
+  for (let index = 0; index < groupCount; index += 1) {
+    const toggle = page.locator('.metric-group-toggle[aria-expanded="false"]').first();
+    if ((await toggle.count()) === 0) break;
+    if (!(await measure(toggle, 'a read-out section heading'))) break;
+    await toggle.scrollIntoViewIfNeeded().catch(() => {});
+    await toggle.click({ force: true });
+    await page.waitForTimeout(120);
+  }
+  const stillFolded = await page.locator('.metric-group-toggle[aria-expanded="false"]').count();
+  if (groupCount > 0 && stillFolded === groupCount) problems.push('a read-out section would not open');
+
+  // 2 — every detail list, opened and read to its last item.
   const detailToggles = page.locator('.metric-details-toggle');
   const detailCount = await detailToggles.count();
+  let opened = 0;
   for (let index = 0; index < detailCount; index += 1) {
     const toggle = detailToggles.nth(index);
     await toggle.scrollIntoViewIfNeeded().catch(() => {});
+    if (!(await toggle.isVisible())) continue;
+    await measure(toggle, 'a read-out detail control');
     await toggle.click({ force: true });
+    opened += 1;
     const list = page.locator('.metric-details').nth(index);
     const items = await list.evaluate((node) => [...node.children]
       .map((item) => (item.querySelector('.lang-ja')?.textContent ?? '').trim()));
     if (items.length === 0) problems.push('a detail control opened an empty list');
     // The last one, by name: reaching the first proves nothing.
-    const last = items.at(-1);
-    if (!last) problems.push('the last item of a detail list is empty');
-    const shown = await list.isVisible();
-    if (!shown) problems.push('a detail list opened and is not visible');
+    if (!items.at(-1)) problems.push('the last item of a detail list is empty');
+    if (!(await list.isVisible())) problems.push('a detail list opened and is not visible');
   }
+  if (detailCount > 0 && opened === 0) problems.push('no read-out detail control could be opened');
   if (detailCount === 0) console.log(`  ${slug}: no read-out detail controls on this scene`);
-
-  // 2 — folded sections of the read-out.
-  const groupToggles = page.locator('.metric-group-toggle[aria-expanded="false"]');
-  const groupCount = await groupToggles.count();
-  for (let index = 0; index < groupCount; index += 1) {
-    const toggle = groupToggles.nth(index);
-    if (!(await measure(toggle, 'a read-out section heading'))) continue;
-    await toggle.click({ force: true });
-  }
-  const stillFolded = await page.locator('.metric-group-toggle[aria-expanded="false"]').count();
-  if (groupCount > 0 && stillFolded === groupCount) problems.push('a read-out section would not open');
 
   // 3 — the reference panel, opened, read, and closed from the keyboard.
   const referenceToggle = page.locator('.reference-toggle');

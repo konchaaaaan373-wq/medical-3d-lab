@@ -57,6 +57,35 @@ person: Safari, Firefox, touch and a screen reader.
   visit was paying 3.5 kB for a recorder, a frame painter and a consent screen
   that the published models cannot use.
 
+### The read-out follows the task you chose, and the line follows your screen
+
+A third review of the same scene found two things the second had not, and one
+the second had found and left open.
+
+- **Choosing a different task left the previous one as the headline.** The
+  read-out builds a row the first time it sees a task and, until now, only ever
+  wrote new values into it: which section it was in, whether it was the headline
+  and whether it survived a narrow screen were all decided by whichever update
+  happened to be first. So tracing a different task put the new one inside a
+  folded comparison section and left the old one at the top, emphasised, while
+  the 3D showed the new one. The panel and the picture disagreed, and the panel
+  is the one that looks authoritative. Everything a row's description carries is
+  written on every update now.
+- **Switching away mid-answer left the answer glowing.** The marker for the word
+  going in and the one for the answer coming back are separate objects from the
+  route line, so a task with no route at all — nothing to draw — inherited the
+  previous task's flash. And a signal stopped dead at the first step was still
+  drawn two per cent of the way along the route, which is a small distance and a
+  large claim: the whole point of showing a stop is that the word did not get
+  past the step that stopped it.
+- **The three line types are now the size they look, not the size they are.**
+  Solid for a tract the atlas carries, long-dashed for a coarse stand-in, dotted
+  for a connection with no anatomy behind it — those were held in the model's own
+  units, so pulling the camera back thinned them until all three were one
+  hairline. In the fifteen-second sequence they always were. They are held as a
+  fraction of the frame's height now, which is the same apparent size in the
+  scene, on a phone and in the exported video.
+
 ### The aphasia model: a band is not a value, and a dim route is not a stop
 
 A second medical review of the same scene found six things the first pass

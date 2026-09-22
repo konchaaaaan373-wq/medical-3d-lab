@@ -272,6 +272,14 @@ severity scale or a test result.
   itself, not its colour. Drawing all three the same way — which this scene did
   — told a reader that a conceptual connection between two processes and the
   arcuate fasciculus were the same kind of claim about a brain.
+- **Those three are sized by how much of the frame they fill, not in world
+  units.** Widths and dash periods are a fraction of the **presented frame
+  height**, so a line is the same apparent size in the scene, on a phone and in
+  the fifteen-second sequence: 3.2px solid, 2.4px with 12px dashes and 8px gaps,
+  1.7px with 2px dots and 8px gaps, quoted against the height the canvas is
+  displayed at. Held in world units instead, the pattern vanished the moment
+  the camera pulled back, which is how the sequence came to show three line
+  types as one hairline. Nothing about the camera reaches the solver.
 - **A schematic position is never read back.** A step with no mesh is drawn
   between its neighbours and pushed out of the brain; `displayAnchor` puts a
   conceptual connection's line along a nearby bundle. Neither reaches the

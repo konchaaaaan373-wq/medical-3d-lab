@@ -7,6 +7,12 @@ import { PATHWAY_STATE } from '../src/models/higherBrainFunction.js';
 import { PALETTE } from '../src/data/higherBrainFunction.js';
 import HigherBrainFunctionScene from '../src/scenes/nervous/scenes/higherBrainFunction/index.js';
 import { fixtureAtlas } from './fixtures/brainAtlas.js';
+import { readFileSync } from 'node:fs';
+
+import { CLAIM_SUPPORT, HIGHER_BRAIN_FUNCTION_EVIDENCE, VERIFICATION } from '../src/models/evidence.js';
+import { FUNCTION_NODES, LESION_SITES, MODULATORY_NETWORKS } from '../src/models/higherBrainFunction.js';
+
+const read = (path) => readFileSync(new URL(`../${path}`, import.meta.url), 'utf8');
 
 /**
  * The third audit's counter-examples: what the *animation* was still saying.
@@ -399,4 +405,92 @@ test('AR3-T17: the camera moving does not churn geometry, and disposal is comple
 
   // Nothing is left behind: every mesh a rebuild replaced is off the group.
   assert.equal(scene.routeGroup.children.filter((child) => child.name.startsWith('route:')).length, segments);
+});
+
+// --- AR3-T18, T19: the records say what was actually done -------------------
+
+test('AR3-T18: nothing claims a source was read here, because none was', () => {
+  const entries = [...HIGHER_BRAIN_FUNCTION_EVIDENCE];
+  const verified = entries.filter((entry) => entry.sourceVerification);
+  assert.ok(verified.length > 10, 'the registry records how far each source was checked');
+
+  // Direct reading is the claim this environment cannot make: every publisher
+  // domain is refused by the egress policy, so no row may sit above
+  // `via-review-material` on the ordering in `src/models/evidence.js`.
+  const direct = [VERIFICATION.PASSAGE, VERIFICATION.FULL_TEXT,
+    VERIFICATION.FULL_TEXT_PASSAGE_UNCHECKED, VERIFICATION.ABSTRACT];
+  for (const entry of verified) {
+    assert.ok(
+      !direct.includes(entry.sourceVerification),
+      `${entry.id} claims ${entry.sourceVerification}, which means somebody here opened the source`
+    );
+    if (entry.sourceVerification === VERIFICATION.DESIGN) continue;
+    assert.ok(entry.claimSupport, `${entry.id} says whether what was read supports the claim`);
+  }
+
+  // The dossier counts the same rows the registry does. Counted, not restated:
+  // the previous version of that section said "eight abstracts" and the
+  // registry said something else.
+  const counts = new Map();
+  for (const entry of verified) {
+    counts.set(entry.sourceVerification, (counts.get(entry.sourceVerification) ?? 0) + 1);
+  }
+  const dossier = read('docs/model-evidence/higher-brain-function.md');
+  const section = dossier.slice(dossier.indexOf('## 0.'), dossier.indexOf('## 1.'));
+  for (const [value, count] of counts) {
+    if (value === VERIFICATION.DESIGN) continue;
+    assert.ok(section.includes(`\`${value}\``), `§0 names ${value}`);
+  }
+  // The two the section states a count for. The textbook rows are described
+  // rather than counted, and a test that demanded a number for them would be
+  // asking the prose to be a table.
+  const spelled = { 1: 'One', 2: 'Two', 3: 'Three', 4: 'Four', 5: 'Five', 6: 'Six', 7: 'Seven', 8: 'Eight' };
+  for (const value of [VERIFICATION.VIA_REVIEW, VERIFICATION.SEARCH_SUMMARY]) {
+    const count = counts.get(value) ?? 0;
+    assert.ok(
+      section.includes(`${spelled[count]} rows`),
+      `§0 says "${spelled[count]} rows" for ${value}, which is how many there are`
+    );
+  }
+  // The first correction of §0 said "six and two", which counted papers where
+  // the registry counts rows — two of the three via-review rows rest on the
+  // same summary. Counted here so the prose cannot drift from the data again.
+  assert.equal(counts.get(VERIFICATION.VIA_REVIEW), 3);
+  assert.equal(counts.get(VERIFICATION.SEARCH_SUMMARY), 5);
+
+  // And the model's own prose agrees with the registry about the one source a
+  // reader meets twice. Checked on that node's note rather than by searching
+  // the file: several other strings in it are *about* not having read things.
+  const node = FUNCTION_NODES.find((candidate) => candidate.id === 'phoneme-grapheme-conversion');
+  assert.match(node.noteJa, /レビュー資料を経由/, 'the note says how the summary was reached');
+  assert.match(node.noteJa, /直接確認していません/, 'and that it was not read here');
+  assert.ok(
+    !/この環境で読めたのは/.test(node.noteJa),
+    'and does not say the summary itself was read from this environment'
+  );
+  assert.match(node.note, /known here through a review/);
+});
+
+test('AR3-T19: the thalamus is explained the way it is implemented', () => {
+  // The implementation moved from the preset to the network. A row that still
+  // described the preset would be a description of code that no longer exists,
+  // sitting next to a summary that is correct — which is the harder kind of
+  // wrong document to notice.
+  const dossier = read('docs/model-evidence/higher-brain-function.md');
+  const row = dossier.split('\n').find((line) => line.includes('the-thalamus-is-not-an-obligatory-gate'));
+  assert.ok(row, 'the dossier carries the row');
+  assert.match(row, /MODULATORY_NETWORKS/, 'it names what actually declares the influence');
+  assert.match(row, /damage map/, 'and what it is matched against');
+  assert.ok(
+    !/the preset declares an uncomputed influence/.test(row),
+    'and does not describe the implementation it replaced'
+  );
+
+  // The code the row describes: no preset carries its own influence, and the
+  // network names both the tasks and the structures.
+  for (const site of LESION_SITES) {
+    assert.equal(site.unmodelledInfluences, undefined, `${site.id} does not carry its own influence`);
+  }
+  const network = MODULATORY_NETWORKS.find((candidate) => candidate.id === 'cortico-thalamic-language');
+  assert.ok(network.structures.length > 0 && network.onTasks.length > 0);
 });

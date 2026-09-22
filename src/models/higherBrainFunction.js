@@ -451,15 +451,16 @@ export const FUNCTION_NODES = Object.freeze([
       'The complementary half of the same case series: four patients with phonological agraphia — '
       + 'nonwords cannot be spelled, real words can. The published summary describes those lesions as '
       + 'involving the supramarginal gyrus **or the insula deep to it**, which is wider than the '
-      + 'one-gyrus assignment this node makes, and the summary is as far as the source has been read '
-      + 'here. The gyrus is where the model puts the process; it is not a claim that the process is '
-      + 'there and nowhere else. It shares the mesh with the praxis formulas, so a supramarginal lesion '
-      + 'takes both.',
+      + 'one-gyrus assignment this node makes. **That summary is known here through a review of this '
+      + 'model that quotes it; nothing of the source has been read from this environment.** The gyrus '
+      + 'is where the model puts the process; it is not a claim that the process is there and nowhere '
+      + 'else. It shares the mesh with the praxis formulas, so a supramarginal lesion takes both.',
     noteJa:
       '同じ症例群の対になる半分で、音韻性失書 4 例（非語が綴れず、実在語は綴れる）です。'
       + '公開されている SUMMARY は、その病変を縁上回**またはその深部の島**を含むものとして'
-      + '記載しており、このノードが行う「1 つの脳回への割り当て」より広い条件です'
-      + '（この環境で読めたのは SUMMARY までで、本文は未取得です）。'
+      + '記載しており、このノードが行う「1 つの脳回への割り当て」より広い条件です。'
+      + '**その SUMMARY の内容は、本モデルへのレビュー資料を経由して参照しています。'
+      + 'この実装環境からは原資料を直接確認していません。**'
       + '脳回はモデルがこの処理を置いた場所であって、そこにしか無いという主張ではありません。'
       + '行為の図式と同じメッシュに載るため、縁上回の病変は両方を奪います。',
     omits: 'The whole supramarginal gyrus, and not the insula the source also describes: a lesion of the '

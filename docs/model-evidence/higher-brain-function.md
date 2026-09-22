@@ -25,11 +25,18 @@ third-party summaries.
 
 The first version recorded eight rows as `abstract-only`. **None of them
 qualified.** `abstract-only` means the publisher's or PubMed's own abstract was
-read, and what was actually read was a search service's paraphrase of it. Six
-rows are `search-summary-only` now. Two are `via-review-material`: a medical
-review of this model quoted the publisher SUMMARY of Roeltgen & Heilman 1984 and
-the PubMed abstract of Gaillard 2006, and **reading somebody's account of a
-source is not reading the source**.
+read, and what was actually read was a search service's paraphrase of it.
+
+**Five rows** are `search-summary-only` now. **Three rows** are
+`via-review-material`: a medical review of this model quoted the publisher
+SUMMARY of Roeltgen & Heilman 1984 and the PubMed abstract of Gaillard 2006, and
+**reading somebody's account of a source is not reading the source**. Two of the
+three rest on the Roeltgen summary — `two-writing-routes` for the dissociation
+and `the-writing-route-localisation-is-not-settled` for where it puts the two
+processes — and the third is `letters-and-objects-dissociate`. The first
+correction of this section said "six and two", counting papers where the
+registry counts rows; `tests/higher-brain-function-ar3.test.js` counts the
+registry now, so the two cannot drift apart again.
 
 So each registry entry carries a `sourceVerification`, from strongest to
 weakest:
@@ -40,8 +47,8 @@ weakest:
 | `full-text` | The paper was read, including tables and figures. **Not used by this dossier.** |
 | `full-text-passage-unchecked` | Full text retrieved, the supporting passage not located in it. **Not used.** |
 | `abstract-only` | The publisher's or PubMed's own abstract was read. **Not used by this dossier.** |
-| `via-review-material` | A review, reading list or correspondence quoting the source was read. Two rows. |
-| `search-summary-only` | A search service's summary, and nothing from the source itself. Six rows. |
+| `via-review-material` | A review, reading list or correspondence quoting the source was read. Three rows. |
+| `search-summary-only` | A search service's summary, and nothing from the source itself. Five rows. |
 | `citation-only` | Bibliographic record matched, no abstract read. |
 | `textbook-account` | A textbook-level description this repository is restating. No primary source retrieved. |
 | `repository-decision` | A choice made here. There is no source to verify. |
@@ -53,7 +60,7 @@ it, so each entry that records verification also records `claimSupport`:
 | Value | Rows |
 | --- | --- |
 | `source-states-it` | The textbook accounts, and the two-writing-routes dissociation |
-| `consistent-with-source` | The six `search-summary-only` rows: what was read is consistent with the claim and does not state it |
+| `consistent-with-source` | The five `search-summary-only` rows: what was read is consistent with the claim and does not state it |
 | `source-is-narrower` | Two rows, named below |
 
 The two `source-is-narrower` rows, and why:
@@ -84,7 +91,7 @@ Consequences that follow and are not hidden anywhere else:
 | `anterior-and-posterior-dissociate` — front takes the output routes, back takes the way in | Standard clinical descriptions (`textbook-account`, `source-states-it`) | Separate nodes for phonological analysis and output planning; the comprehension route uses only the first | That the way in and the way out are separable stages | `physiology: an anterior lesion takes the output routes and a posterior one takes comprehension` |
 | `outside-the-perisylvian-zone-repetition-survives` — the transcortical pattern | Standard clinical descriptions (`textbook-account`, `source-states-it`) | Initiation and meaning are off the repetition routes | That the border-zone structures spare the perisylvian cortex | `physiology: a lesion outside the perisylvian zone leaves the repetition route reaching` |
 | `the-way-in-from-hearing-is-separable` — the auditory way in can go alone | Maffei et al., Cortex 2017;97:240 (`search-summary-only`, `consistent-with-source`) | `auditory-input` is on the comprehension, repetition and dictation routes and on nothing else | That the same language is reached through more than one sense | `physiology: the way in from hearing is separate from the way out and from meaning` |
-| `the-thalamus-is-not-an-obligatory-gate` — word production does not pass through a thalamic gate | Zhang et al., Neurobiology of Language 2026;7 (n=550, chronic phase); Rangus et al., Communications Biology 2024;7:700 (`search-summary-only`, `consistent-with-source`) | No thalamic node on any language route; the preset declares an uncomputed influence instead, carried on every language task it names | That a route model may decline to put a number on a contribution it cannot localise | `physiology: the thalamus is not an obligatory gate, and its absence is not "no effect"` |
+| `the-thalamus-is-not-an-obligatory-gate` — word production does not pass through a thalamic gate | Zhang et al., Neurobiology of Language 2026;7 (n=550, chronic phase); Rangus et al., Communications Biology 2024;7:700 (`search-summary-only`, `consistent-with-source`) | No thalamic node on any language route. `MODULATORY_NETWORKS` declares the influence once and the solver matches it against the **normalised damage map**, so selecting the nucleus by hand and choosing the preset say the same thing; it is carried on every language task the network names, and on none of them when the extent is zero | That a route model may decline to put a number on a contribution it cannot localise | `physiology: the thalamus is not an obligatory gate, and its absence is not "no effect"` |
 | `the-insula-is-not-the-necessary-centre-for-speech-output` | Hillis et al., Brain 2004;127:1479; Dronkers, Nature 1996;384:159 (`search-summary-only`, `consistent-with-source`) | The whole insular mesh is on `speech-motor` with the posterior inferior frontal gyrus, and the preset declares that it is not the restricted anterior region | That this model cannot adjudicate a question about speech quality, having none | `physiology: the insula preset affects the spoken route and claims nothing about speech quality` |
 | `the-gerstmann-tetrad-is-not-produced` | Rusconi et al., Annals of Neurology 2009;66:654 (`search-summary-only`, `consistent-with-source`) | `calculation-and-body-schema` is declared `modelled: false` with no routes, so it reports `not_modeled` and can enter no comparison | That four deficits not separately implemented may not be generated as a set | `physiology: the angular gyrus does not produce a tetrad` |
 | `language-is-left-in-the-representative-right-hander` | Standard accounts; Knecht et al., Brain 2000 for the non-identity of handedness and dominance (`textbook-account`, `source-states-it`) | `dominanceFor('right')`, and every side written relative to it. Any other value is **refused** | The representative case, stated as an assumption of the teaching model | `physiology: language and praxis sit in one hemisphere in a right-handed brain` |
@@ -251,6 +258,15 @@ Two presets outside the eleven also changed and are recorded for completeness:
 | AR2-08 | F-201 was measured without a control | **Fixed.** One checker, two builds, fixed SHAs, same viewports and browser: 53 findings on each, 52 of 54 classes identical, **0 new regressions**. Raw data in `artifacts/ar2-ui-comparison/` |
 | AR2-09 | `abstract-only` claimed for search summaries | **Fixed.** Six verification states, `claimSupport` as a separate axis, and the eight overstated rows corrected — see §0 |
 | AR2-10 | Records | **This section, §0, the model card, `docs/follow-ups.md` F-197…F-203 and `docs/verification-lessons.md` L-98/L-99** |
+
+### AR3 — the third audit
+
+| ID | What it said | Disposition |
+| --- | --- | --- |
+| AR3-01 | The read-out built a row once and then only wrote values into it, so changing which task is traced left the previous one as the emphasised headline and put the new one in a folded section | **Fixed.** `MetricsPanel.update()` writes everything a metric owns on every update — section, `is-key`, `is-essential`, label and order — and moves the row's node when its section changes. `groupOpen` is still read once, so a section the reader opened is not closed behind them. `tests/metrics-panel.test.js` (AR3-T01…T06) drives the real component; the browser side presses the task control and reads which section each row landed in |
+| AR3-02 | Switching to a task with no route left the previous flash lit, and a signal stopped at the first step was still drawn 2% along | **Fixed.** `_clearRunMarkers()` is called from both places that gave up early, and clears opacity as well as visibility; the `Math.max(reach, 0.02)` floor is gone. `tests/higher-brain-function-ar3.test.js` (AR3-T07…T11) asserts the meshes after `_applyCycle`, not the view model |
+| AR3-03 | F-204 was recorded, not closed: the line types were unreadable at the sequence's framing | **Fixed, and F-204 closed.** Widths and dash periods are a fraction of the presented frame height, so they are the same apparent size at every framing and output size; the segment length is measured along the curve rather than end to end; a dash never rounds into a solid line. Images at four conditions in `artifacts/ar3-line-types/` |
+| AR3-04 | The model's own note said the Roeltgen summary had been read here, and the dossier still described the thalamus influence as coming from the preset | **Fixed**, and one more found: §0 said "six and two" where the registry has five and three — it counted papers where the registry counts rows. AR3-T18 counts the registry now |
 
 
 ## 8. Sources consulted and not used
