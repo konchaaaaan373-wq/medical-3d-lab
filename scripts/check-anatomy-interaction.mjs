@@ -154,11 +154,15 @@ const SCENE_POINTS = {
   // it three times and says little. It also crosses both adopted files: the
   // chambers come from VH_M_Heart, the artery and the aorta from
   // VH_M_Blood_Vasculature, so a run proves each of them is drawn and named.
+  // **Re-measured 2026-09-22**, with the brain's and for the same reason: the
+  // opening framing stopped being discarded (F-133), so every scene's model
+  // moved. The heart's fourth point had come to name the left ventricle where
+  // it is authored for the artery that runs across it.
   'heart-anatomy': [
-    [0.22, 0.45, 'Right atrium'],
-    [0.38, 0.50, 'Right ventricle'],
-    [0.4175, 0.38, 'Left anterior descending artery'],
-    [0.30, 0.30, 'Ascending aorta'],
+    [0.253, 0.18, 'Superior vena cava'],
+    [0.365, 0.18, 'Arch of the aorta'],
+    [0.29, 0.275, 'Ascending aorta'],
+    [0.403, 0.275, 'Left atrium'],
   ],
   // The brain's own tour, named — which it was not until 2026-09-15, and the
   // cost of that is the reason these four carry names now.

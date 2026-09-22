@@ -466,12 +466,19 @@ export const BETA_PUBLICATION_DECISIONS = Object.freeze([
     sceneRevision: Object.freeze({ cardRevision: 26, modelDigest: '20ae31ab7bafd24f' }),
     scope: Object.freeze({
       // The authored tour in `SCENE_POINTS`, not whatever a run measured: four
-      // named parts at four recorded points, crossing both adopted files.
+      // named parts at four recorded points, crossing both adopted files —
+      // three great vessels from the vasculature file and a chamber from the
+      // heart one, which the drive prints as their places in the hierarchy.
+      //
+      // Re-measured 2026-09-22, with the brain's and for the same reason: the
+      // opening framing stopped being discarded (F-133), so the model moved.
+      // The old fourth point named the left ventricle where it was authored
+      // for the artery that runs across it.
       structures: Object.freeze([
-        'Right atrium',
-        'Right ventricle',
-        'Left anterior descending artery',
+        'Superior vena cava',
+        'Arch of the aorta',
         'Ascending aorta',
+        'Left atrium',
       ]),
       views: Object.freeze([
         'six authored viewpoints offered and one applied by the drive: anterior, posterior, left and right lateral, from the base, from the apex',
