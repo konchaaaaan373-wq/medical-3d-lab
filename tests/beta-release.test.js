@@ -6,6 +6,7 @@ import { PUBLIC_SCENES, SCENES, sceneById } from '../src/catalog/index.js';
 import { DEFAULT_SCENE_ID } from '../src/catalog/index.js';
 import {
   BETA_ANATOMY_CANDIDATES,
+  BETA_MECHANISM_CANDIDATES,
   BETA_CANDIDATE_STATUS,
   BETA_ORGANS,
   BETA_PUBLICATION_DECISIONS,
@@ -18,6 +19,7 @@ import {
   DECISION_ROLES,
   RELEASE_POLICIES,
   anatomyClaimProblems,
+  mechanismClaimProblems,
   betaPublicationGap,
   betaPublicationProblems,
   publicationDecisionProblems,
@@ -50,9 +52,13 @@ const fileExists = (path) => existsSync(new URL(`../${path}`, import.meta.url));
 /** The brain scene's catalogue entry, cloned so a test can spoil one field. */
 const brain = () => ({ ...sceneById('brain-anatomy') });
 
-test('beta release: the beta is anatomy, and it is not a list of organs', () => {
+test('beta release: two lists, two claim rules, and neither is a list of organs', () => {
   assert.equal(RELEASE_CHANNEL, 'beta');
   assert.deepEqual([...BETA_ANATOMY_CANDIDATES], ['brain-anatomy', 'heart-anatomy', 'lung-anatomy', 'liver-anatomy']);
+  // One name, added by the owner's decision of 2026-09-22
+  // (`docs/architecture/adr-2026-09-22-mechanism-scene-in-beta.md`). A list
+  // rather than a rule, so a second mechanism scene is a deliberate edit here.
+  assert.deepEqual([...BETA_MECHANISM_CANDIDATES], ['cardiac-output']);
   assert.equal(RELEASED_SCENES.length + LOCKED_SCENES.length, SCENES.length);
   assert.equal(
     new Set([...RELEASED_SCENES, ...LOCKED_SCENES].map((scene) => scene.id)).size,
@@ -60,15 +66,38 @@ test('beta release: the beta is anatomy, and it is not a list of organs', () => 
     'a scene is either open or locked, never both and never neither'
   );
 
-  // Every open scene is a named candidate that passed. Both halves are asserted
-  // because either one alone is the bug: a candidate that was never checked, or
-  // a scene that passed a check nobody meant to run on it.
+  // Every open scene is a named candidate that passed, and it passed the rule
+  // of the list it is on. Both halves are asserted because either one alone is
+  // the bug: a candidate that was never checked, or a scene that passed a check
+  // nobody meant to run on it.
   for (const scene of RELEASED_SCENES) {
-    assert.ok(BETA_ANATOMY_CANDIDATES.includes(scene.id), `${scene.id} is open but was never a candidate`);
+    const anatomy = BETA_ANATOMY_CANDIDATES.includes(scene.id);
+    const mechanism = BETA_MECHANISM_CANDIDATES.includes(scene.id);
+    assert.ok(anatomy || mechanism, `${scene.id} is open but was never a candidate`);
+    assert.ok(!(anatomy && mechanism), `${scene.id} is on both lists, so which rule it passed is ambiguous`);
     assert.deepEqual(betaPublicationProblems(scene), [], `${scene.id} is open with problems outstanding`);
-    assert.deepEqual(anatomyClaimProblems(scene), [], `${scene.id} is open and is not an anatomy scene`);
-    assert.equal(scene.disease, null);
-    assert.equal(modelProfileForScene(scene).mechanismLevel, 'none');
+
+    if (anatomy) {
+      // Unchanged, and that is the point: widening the beta did not widen this.
+      assert.deepEqual(anatomyClaimProblems(scene), [], `${scene.id} is on the anatomy list and is not an anatomy scene`);
+      assert.equal(scene.disease, null);
+      assert.equal(modelProfileForScene(scene).mechanismLevel, 'none');
+    } else {
+      assert.deepEqual(mechanismClaimProblems(scene), [], `${scene.id} is on the mechanism list and does not qualify`);
+      // The rule that was not relaxed. A mechanism addressed to a patient still
+      // needs a current clinical review, and this one is not addressed to one.
+      const profile = modelProfileForScene(scene);
+      assert.ok(
+        !profile.intendedUses.includes('patient-explanation'),
+        `${scene.id} explains a mechanism to a patient and is published without a current review`
+      );
+      assert.equal(scene.patient ?? false, false);
+      // And the rest of the gate is still the rest of the gate.
+      assert.equal(profile.personalization, 'representative');
+      for (const use of ['diagnosis', 'treatment-selection', 'dose-selection']) {
+        assert.ok(profile.prohibitedUses.includes(use), `${scene.id} does not prohibit ${use}`);
+      }
+    }
   }
 
   // What the beta actually ships today. Named so that opening or closing one is
@@ -77,8 +106,14 @@ test('beta release: the beta is anatomy, and it is not a list of organs', () => 
   // make hard: an adopted asset, a discharged licence, and a publication
   // decision pinned to both hashes and to the scene revision. The lung and the
   // liver joined on 2026-09-16 — procedural, so no asset and no licence, and
-  // the pin is the scene revision alone.
-  assert.deepEqual(RELEASED_SCENES.map((scene) => scene.id), ['brain-anatomy', 'heart-anatomy', 'lung-anatomy', 'liver-anatomy']);
+  // the pin is the scene revision alone. `cardiac-output` joined on 2026-09-22,
+  // and is the first that is not an atlas.
+  assert.deepEqual(
+    RELEASED_SCENES.map((scene) => scene.id),
+    ['brain-anatomy', 'heart-anatomy', 'cardiac-output', 'lung-anatomy', 'liver-anatomy']
+  );
+  // Unchanged: the mechanism scene is the heart's, and publishing it adds no
+  // organ to the beta.
   assert.deepEqual([...PUBLIC_MANIFEST.organs], ['brain', 'heart', 'lungs', 'liver']);
 });
 
@@ -326,11 +361,13 @@ test('beta release: the public manifest is the projection of the gate, not a sec
     assert.equal(isSceneReleased(sceneById(model.sceneId)), true);
     assert.equal(isRouteReleased(resolveRoute(model.route)), true, model.route);
   }
-  assert.equal(
-    PUBLIC_MANIFEST.models.filter((model) => model.organId === 'heart').length,
-    1,
-    'the heart is published once, as its anatomy scene'
-  );
+  // Two, since 2026-09-22: the anatomy atlas and one mechanism scene. The
+  // rule this used to state — that a disease model never stands in for the
+  // atlas — is now stated where it belongs, as "the atlas is published too",
+  // rather than as a count that a second scene breaks.
+  const heart = PUBLIC_MANIFEST.models.filter((model) => model.organId === 'heart');
+  assert.deepEqual(heart.map((model) => model.sceneId), ['heart-anatomy', 'cardiac-output']);
+  assert.equal(isSceneReleased(sceneById('heart-anatomy')), true, 'the atlas is never substituted for');
   assert.match(PUBLIC_MANIFEST.revision, /^[0-9a-f]{8}$/);
 
   // The manifest is the only public model list. Nobody re-derives it.
@@ -350,7 +387,10 @@ test('release channel: a channel is a name for a policy, and a name alone opens 
   // and that a registered-but-unselected policy publishes nothing by existing.
   assert.equal(RELEASE_CHANNEL, 'beta');
   assert.ok(Object.keys(RELEASE_POLICIES).includes('beta'));
-  assert.deepEqual(RELEASED_SCENES.map((scene) => scene.id), ['brain-anatomy', 'heart-anatomy', 'lung-anatomy', 'liver-anatomy']);
+  assert.deepEqual(
+    RELEASED_SCENES.map((scene) => scene.id),
+    ['brain-anatomy', 'heart-anatomy', 'cardiac-output', 'lung-anatomy', 'liver-anatomy']
+  );
 
   const brain = sceneById('brain-anatomy');
   const disease = sceneById('heart-failure');

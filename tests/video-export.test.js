@@ -38,7 +38,7 @@ import {
 import { createVideoConsentDialog } from '../src/components/VideoConsentDialog.js';
 import { createReelChrome } from '../src/components/ReelChrome.js';
 import { PUBLIC_SCENES, SCENES } from '../src/catalog/index.js';
-import { PROHIBITED_USE } from '../src/catalog/modelProfiles.js';
+import { MODEL_PROFILES, PROHIBITED_USE } from '../src/catalog/modelProfiles.js';
 import { PUBLIC_MODELS } from '../src/catalog/publicManifest.js';
 import { FakeElement, findByClass, installFakeDocument } from './helpers/fake-dom.js';
 
@@ -148,15 +148,47 @@ test('an anatomy atlas is not exportable even if something animates it', () => {
   assert.ok(problems.some((problem) => /no mechanism claim/.test(problem)), problems.join(' | '));
 });
 
-test('nothing the β publishes can produce a file', () => {
+test('what the β publishes may produce a file only on the export rule\'s own terms', () => {
   assert.ok(PUBLIC_MODELS.length > 0, 'the β should publish something for this to mean anything');
+
+  // This test used to assert that *nothing* published could export, and it was
+  // true rather than required: the β published anatomy, anatomy has no
+  // mechanism claim, and `videoExportProblems` refuses one. It was a
+  // coincidence of the release, written as though it were a rule — so when the
+  // release changed (ADR 2026-09-22, a mechanism scene published for the first
+  // time) it failed while nothing it cared about had gone wrong.
+  //
+  // What it cared about is here instead: a file leaves the site and is read
+  // with none of the page around it, so a published scene may hand one out
+  // only if the export rule already says yes — mechanism claim declared, the
+  // three prohibited uses declared, geometry that may be redistributed — and
+  // the frame carries the model's own caveat, which `reelFramePainter` draws
+  // on every frame and the provenance tests above pin.
+  let exportable = 0;
   for (const model of PUBLIC_MODELS) {
     const problems = videoExportProblems(model.sceneId, { animated: true });
-    assert.ok(
-      problems.length > 0,
-      `${model.sceneId} is published and would hand out a video file: ${problems.join(' | ')}`
+    if (problems.length > 0) continue;
+    exportable += 1;
+
+    const scene = SCENES.find((entry) => entry.id === model.sceneId);
+    const profile = MODEL_PROFILES.find((entry) => entry.profileId === scene.modelProfile);
+    assert.notEqual(
+      profile.mechanismLevel,
+      'none',
+      `${model.sceneId} would hand out a video of a model that claims no mechanism`
     );
+    for (const use of ['diagnosis', 'treatment-selection', 'dose-selection']) {
+      assert.ok(
+        profile.prohibitedUses.includes(use),
+        `${model.sceneId} would hand out a file without prohibiting ${use}`
+      );
+    }
   }
+
+  // Today exactly one published scene exports: `cardiac-output`, published on
+  // the decision recorded in `docs/beta-publication/cardiac-output.md`. The
+  // count is asserted so that a second one arriving is a deliberate edit here.
+  assert.equal(exportable, 1, 'a second published scene became exportable without anyone deciding it should');
 });
 
 test('an unknown scene is refused rather than exported', () => {

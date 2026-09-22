@@ -13,7 +13,14 @@ import {
 } from '../src/models/cardiacOutput.js';
 import { myocardialVolumeFor } from '../src/models/cardiacMechanics.js';
 import { SCENE_MANIFEST } from '../src/catalog/scenes.js';
-import { betaPublicationProblems } from '../src/catalog/release.js';
+import {
+  BETA_ANATOMY_CANDIDATES,
+  BETA_MECHANISM_CANDIDATES,
+  BETA_PUBLICATION_DECISIONS,
+  betaPublicationProblems,
+  mechanismClaimProblems,
+} from '../src/catalog/release.js';
+import { MODEL_PROFILES } from '../src/catalog/modelProfiles.js';
 import { CONTROLS, PRESET_OPTIONS } from '../src/data/cardiacOutput.js';
 
 /**
@@ -503,16 +510,42 @@ test('nothing in the scene produces a NaN across the whole domain and the whole 
   }
 });
 
-test('the scene is not a beta candidate and the beta does not open it', () => {
-  // The beta publishes anatomy. This is a pathophysiology model with numbers on
-  // screen, and registering it must not have changed what the public build
-  // hands to a visitor.
+test('the beta opens this scene, and on the record it was decided with', () => {
+  // This test used to assert the opposite, and was right to: the beta
+  // published anatomy, this is a mechanism model with numbers on screen, and
+  // registering it changed nothing about the public build. On 2026-09-22 the
+  // repository owner decided to publish it and to stop the beta being
+  // anatomy-only — see `docs/architecture/adr-2026-09-22-mechanism-scene-in-beta.md`.
+  //
+  // What is asserted now is the thing that decision did **not** include: that
+  // it opened because the gate was satisfied, not because the gate was
+  // removed. Each line below is a condition that would close it again.
   const entry = SCENE_MANIFEST.find((scene) => scene.id === 'cardiac-output');
-  const problems = betaPublicationProblems(entry);
-  assert.ok(problems.length > 0, 'the gate is closed for it');
+  assert.deepEqual(betaPublicationProblems(entry), []);
+  assert.ok(BETA_MECHANISM_CANDIDATES.includes('cardiac-output'), 'named, one at a time');
+  assert.ok(!BETA_ANATOMY_CANDIDATES.includes('cardiac-output'), 'and not by being called anatomy');
+
+  const decision = BETA_PUBLICATION_DECISIONS.find((row) => row.sceneId === 'cardiac-output');
+  assert.ok(decision, 'a publication decision is on file');
+  assert.equal(decision.decidedBy.role, 'engineering', 'not a clinical sign-off, and it does not claim to be');
+  assert.match(decision.record, /^docs\/beta-publication\//);
   assert.ok(
-    problems.some((problem) => /not one of the scenes this release opens/i.test(problem)),
-    `and for the right reason — it is not a candidate at all: ${problems.join('; ')}`
+    decision.unverified.some((line) => /no clinical review/.test(line)),
+    'the record states, in its own words, that no clinician has read the model'
+  );
+
+  // The rule the widening did not touch: a mechanism addressed to a patient
+  // still needs a current clinical review, and this scene is not addressed to
+  // one. Declare `patient-explanation` and the gate closes again.
+  const profile = MODEL_PROFILES.find((row) => row.profileId === entry.modelProfile);
+  assert.ok(!profile.intendedUses.includes('patient-explanation'));
+  assert.deepEqual(
+    mechanismClaimProblems({ ...entry, patient: true }),
+    [
+      'its clinical review is "pending", and it explains a mechanism to a patient, ' +
+        'which a scene cannot do on a review that is not current',
+    ],
+    'a patient view on this scene would close the gate until a clinician had read it'
   );
 });
 
