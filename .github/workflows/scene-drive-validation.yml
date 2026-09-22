@@ -49,7 +49,7 @@ permissions:
   contents: read
 
 jobs:
-  # Which scenes the anatomy drive covers is not written here.
+  # Which scenes each drive covers is not written here.
   #
   # CLAUDE.md forbids copying the published list anywhere: it has been wrong in
   # three places at once before, and a workflow file is the worst place for a
@@ -58,12 +58,21 @@ jobs:
   # A scene that becomes published is covered by the next run without anyone
   # editing this file; one that is withheld stops being driven for the same
   # reason.
+  #
+  # **Published is not the same as anatomy, and for a day this file assumed it
+  # was.** The whole published set went to the anatomy drive, which was right
+  # for exactly as long as the beta published anatomy only. The day a mechanism
+  # scene opened, that drive spent thirty seconds waiting for a part tree the
+  # scene does not have and reported it as the scene failing to open (F-198).
+  # The split below asks the catalogue the same question `release.js` asks —
+  # `anatomyClaimProblems` — instead of assuming the answer.
   published-scenes:
     name: which scenes are published
     runs-on: ubuntu-latest
     timeout-minutes: 10
     outputs:
       scenes: ${{ steps.read.outputs.scenes }}
+      mechanism: ${{ steps.read.outputs.mechanism }}
     steps:
       - name: Validate candidate identity
         env:
@@ -81,16 +90,33 @@ jobs:
           cache: npm
       - run: npm ci
       - id: read
-        name: Read the published scene ids from the catalogue
+        name: Read the published scene ids from the catalogue, and split them by what they claim
+        env:
+          NAMED_DISEASE_SCENES: ${{ inputs.disease_scenes }}
         run: |
-          scenes=$(node --input-type=module -e "
+          split=$(node --input-type=module -e "
             import { PUBLIC_MODELS } from './src/catalog/publicManifest.js';
+            import { anatomyClaimProblems } from './src/catalog/release.js';
+            import { sceneById } from './src/catalog/index.js';
             const ids = PUBLIC_MODELS.map((model) => model.sceneId);
             if (ids.length === 0) throw new Error('the public manifest publishes nothing');
-            process.stdout.write(JSON.stringify(ids));
+            const isAnatomy = (id) => anatomyClaimProblems(sceneById(id)).length === 0;
+            const anatomy = ids.filter(isAnatomy);
+            // Everything published that the anatomy drive cannot drive, minus
+            // whatever the caller already named. A published scene that no
+            // drive covers is the failure this split exists to stop, so the
+            // leftovers are handed to the disease drive rather than dropped.
+            const named = new Set((process.env.NAMED_DISEASE_SCENES ?? '').split(/\s+/).filter(Boolean));
+            const mechanism = ids.filter((id) => !isAnatomy(id) && !named.has(id));
+            if (anatomy.length === 0) throw new Error('nothing published claims anatomy; the anatomy matrix would be empty');
+            process.stdout.write(JSON.stringify({ anatomy, mechanism }));
           ")
+          scenes=$(node -e "process.stdout.write(JSON.stringify(JSON.parse(process.argv[1]).anatomy))" "${split}")
+          mechanism=$(node -e "process.stdout.write(JSON.parse(process.argv[1]).mechanism.join(' '))" "${split}")
           echo "scenes=${scenes}" >> "$GITHUB_OUTPUT"
-          echo "Driving: ${scenes}"
+          echo "mechanism=${mechanism}" >> "$GITHUB_OUTPUT"
+          echo "Anatomy drive: ${scenes}"
+          echo "Published, driven by the disease drive instead: ${mechanism:-none}"
 
   # One job per published scene. Serial inside a scene, parallel across them:
   # the drive uses software GL and saturates the cores it is given, so two
@@ -134,6 +160,7 @@ jobs:
   # resolves its own build directory and does not take a flag for it.
   disease:
     name: disease drive
+    needs: published-scenes
     runs-on: ubuntu-latest
     timeout-minutes: 30
     steps:
@@ -168,10 +195,16 @@ jobs:
       # adds about 25 seconds per such scene, and the artefact below carries
       # the file and the frame pulled out of it, so a reviewer can watch what
       # a reader would have downloaded.
+      #
+      # The named scenes plus every published one the anatomy drive cannot
+      # cover. The second half is what stops a published scene from being
+      # driven by nothing at all when the beta opens something that is not
+      # anatomy — the caller does not have to remember to add it here.
       - name: Drive baseline to disease and back, and export the sequence
         env:
           DISEASE_SCENES: ${{ inputs.disease_scenes }}
-        run: npm run verify:disease -- disease-shots ${DISEASE_SCENES}
+          PUBLISHED_MECHANISM_SCENES: ${{ needs.published-scenes.outputs.mechanism }}
+        run: npm run verify:disease -- disease-shots ${DISEASE_SCENES} ${PUBLISHED_MECHANISM_SCENES}
       - uses: actions/upload-artifact@v4
         if: always()
         with:

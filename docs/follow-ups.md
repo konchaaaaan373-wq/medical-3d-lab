@@ -27,7 +27,7 @@ Last updated: 2026-09-21
   | --- | --- | --- |
   | **F-149〜F-158** | 番号衝突のガードとブロック予約（この PR。使うのは F-149 のみ） | 2026-09-17 |
   | **F-159〜F-168** | 高次脳機能シーン（`higher-brain-function`）の追加。使うのは F-159・F-160・F-162〜F-166（F-161 は監査で解消したので穴） | 2026-09-20 |
-  | **F-197〜F-206 / L-95〜L-104** | `verify:anatomy` が main で赤い件（F-133 / F-179）の修正。使うのは F-197〜F-199 と L-95・L-96。**採番し直し 1 回目**: F-180 から取ったところ、#150 が先に使っていました（下の 15 回目） | 2026-09-22 |
+  | **F-197〜F-206 / L-95〜L-104** | `verify:anatomy` が main で赤い件（F-133 / F-179）の修正。使うのは F-197〜F-199 と L-95〜L-97。**採番し直し 1 回目**: F-180 から取ったところ、#150 が先に使っていました（下の 15 回目） | 2026-09-22 |
   | **F-187〜F-196 / L-81〜L-90** | 心拍出量シーン（`cardiac-output`）の追加。使うのは F-180〜F-184・F-187・F-188 と L-81〜L-94（L-91〜L-94 は予約幅 10 の外側で、main の最大は L-72 なので衝突しません）。**採番し直し 2 回目**: L-64・L-65 → L-71・L-72 → L-81 以降、F-177〜F-186 → 空きを残して F-187 以降。どちらも main が先に取っていました | 2026-09-22 |
 
 - **重複の一覧は [`tests/follow-ups-numbers.test.js`](../tests/follow-ups-numbers.test.js) が持ちます。ここには書き写しません。**
@@ -728,32 +728,6 @@ F-126 の構図比較で腎を 3 状態レンダリングしたときに見え�
 
 ---
 
-
-### F-198 `verify:anatomy` が、解剖ではないシーンに対して回されている — P1（2026-09-22）
-
-`scene-drive-validation.yml` の anatomy matrix は
-**`publicManifest.js` の公開シーンをそのまま**受け取ります。β が解剖だけを
-公開していたあいだはそれで正しかったのですが、#150 が `cardiac-output`
-——病態シーン——を公開したので、**解剖の drive が部位ツリーを持たないシーンを
-開こうとして 30 秒でタイムアウト**します。
-
-```
-Anatomy interaction — cardiac-output, null selectable structures
-  - the drive stopped while opening the scene: page.waitForFunction: Timeout 30000ms exceeded.
-```
-
-- **この branch のものではありません。** `origin/main` を worktree に出して
-  `verify:anatomy --scene cardiac-output --preview` を回し、
-  **同じタイムアウト**を確認しています
-- **なぜ誰も気づいていないか**: このワークフローは `workflow_dispatch` だけで、
-  #150 は一度も回さずにマージされています（F-146 の系列）
-- 直し方: matrix を「公開シーン」ではなく「**公開している解剖シーン**」から
-  作る。一覧を workflow に書き写さない（CLAUDE.md）ので、
-  `publicManifest` を読んでいる既存の job に述語を足すのが筋です
-- 完了の定義: 公開シーンが増減しても、anatomy / disease / patient の
-  どの drive がどのシーンに回るかが**カタログから決まる**こと
-
----
 
 ### F-199 患者説明の検査が、高さ 16px の「帯」に対して位置を測っている — P1（2026-09-22）
 
@@ -3773,6 +3747,19 @@ landmark ビルダー（`buildKidney({ parts: false })`）の `dispose()` を呼
 ---
 
 ## Resolved
+
+- **F-198 `verify:anatomy` が、解剖ではないシーンに対して回されていた** — 解決（2026-09-22）。
+  対象シーンを**公開集合ではなく、`release.js` の `anatomyClaimProblems`**
+  から作ります。**書き写してはいませんでした**——実行時に `publicManifest` を
+  読んでいます。それでも間違っていたのは、**「公開」と「解剖を主張する」が
+  一致していたのが β の当時のルールのあいだだけ**だったからです（L-97）。
+  余りは捨てません: 解剖 drive が扱えない公開シーンは
+  **disease drive に渡します**（`cardiac-output` は実測で緑
+  ——4 controls、baseline → disease → reset、書き出した webm を
+  ブラウザに再生させて 1 フレーム取得まで通過）。
+  ガードは `tests/scene-drive-workflow.test.js` の 2 件で、
+  **ワークフローに埋まっている node の断片を取り出して実行**します。
+  ミューテーション 3 件で赤を確認済み。
 
 - **F-133 / F-179 開いた直後の構図が、reset 後の構図と違った** — 解決（2026-09-22）。
   **所有を「距離」で聞くのをやめました。** 帯が動いたときの再構図は
