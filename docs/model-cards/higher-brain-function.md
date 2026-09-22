@@ -65,12 +65,26 @@ some declared processes have no mesh at all. **A conceptual result is not a
 prediction about any real lesion**, the read-out says so while one is running,
 and the solver throws if it is handed both a lesion and an intervention.
 
-### Three computation states
+### Three computation states, and a band that is not a value
 
-`computed` is a band. `indeterminate` means an eligible route runs through
-something this mode cannot evaluate, so no value is reported. `not_modeled`
-means no route is declared for the task at all — it is absent, which is neither
-normal nor abolished, and it may not be used to tell one picture from another.
+`computed` carries a number and the band it falls in. `indeterminate` means an
+eligible route runs through something this mode cannot evaluate, so **no exact
+value is reported** — and that is now separate from what the arithmetic *does*
+settle. With one route at 0.9 and another unknown, the maximum lies in
+0.9-to-1: `availabilityBounds` carries the interval, and `establishedBand`
+carries the band when every point of the interval is in the same one. Only an
+evaluated route at exactly 1 settles the maximum, because no route can exceed
+it. The audited version returned 0.9 as the task's value in that case, which
+reported a lower bound as a maximum.
+
+`not_modeled` means the task has no eligible route at all, and
+`notModelledReason` says which of the two ways it got there: no route is
+declared for it, or routes are declared and none serves the stimulus it is
+asked with. Either way it is absent, which is neither normal nor abolished, and
+it may not be used to tell one picture from another.
+
+**The bounds are arithmetic on this model's own ordering.** They are not a
+confidence interval, not a prediction interval and not a probability.
 
 ## 3. What it is not
 
@@ -125,20 +139,35 @@ Per task:
 | Field | What it is |
 | --- | --- |
 | `computationStatus` | `computed` / `indeterminate` / `not_modeled` |
-| `availability` | 0–1, or `null` when there is no value |
+| `availability` | 0–1 exactly, or `null` when there is no value. Rounded only by `roundForDisplay` at the edge |
 | `state` | `high` / `intermediate` / `low`, or `null` |
-| `route` | The reported route, in order, with each step's integrity |
+| `availabilityBounds` | `{lower, upper}` — the mathematical interval the maximum lies in |
+| `establishedBand` | The band, when it is the same at both ends of that interval; otherwise `null` |
+| `notModelledReason` | `no-route-declared` / `no-eligible-route`, or `null` |
+| `route` | The reported route, in order, with each step's integrity, mapping and whether it is at a true zero |
+| `routeId` | Which of the eligible routes that is |
+| `routeDeclaredBlock` | True when the reported route has an element at a true zero. **About that route** |
 | `evaluatedRouteIds` | The eligible routes this mode could evaluate |
 | `ineligibleRouteIds` | Routes declared for the task and not eligible for its stimulus |
 | `unevaluatedRouteIds` | Eligible routes this mode cannot evaluate |
 | `limitingSteps` | The steps below the top band on the reported route |
-| `declaredBlock` | True only when every evaluated route has an element at exactly zero |
+| `declaredBlock` | True only when **every eligible route is evaluated** and each has an element at a true zero |
 | `coverageLimitations` | What this value does not settle — a shared mesh, an unmapped process, a deficit the routes do not produce |
 | `unmodelledInfluences` | Influences a chosen lesion declares and this model does not compute |
 | `excludes` | What the task itself is not about |
 
-Plus the structures the lesion touched, by atlas label and side, and the
-uncomputed influences of the chosen lesion.
+Plus the structures the lesion touched, by atlas label and side; the structures
+it named that this model computes nothing from (`outOfScopeStructures` — a limit
+of the model, and **not** "no effect"); the structures that could not be checked
+against an atlas list at all (`uncheckedStructures`); and the uncomputed
+influences the normalised damage matches.
+
+**`unmodelledInfluences` is matched against the damage map, not read off the
+preset.** The audited version took it from `lesion.unmodelledInfluences`, so the
+same thalamus entered by selecting the structure instead of choosing the preset
+came back with no warning. `MODULATORY_NETWORKS` declares it once, the solver
+matches structure and side, and a preset that tries to carry its own is
+refused.
 
 **There is no syndrome field.** Nothing in the solved state carries a name, and
 a test walks every declared lesion to confirm it.
@@ -191,8 +220,16 @@ model could lie:
 - **An unevaluated route is not a blocked one.** If every route this mode could
   evaluate is in the bottom band and an eligible route remains that it cannot
   evaluate, the answer is `indeterminate`.
-- **A known value is not "the best route" while an eligible route is unknown.**
-- **The bottom band is not a blockade.** `declaredBlock` needs a zero.
+- **A known value is not the maximum while an eligible route is unknown.** What
+  is established there is the interval and, sometimes, the band.
+- **The bottom band is not a blockade.** `declaredBlock` needs a **true** zero:
+  an input that destroyed a structure outright or a process switched off by
+  hand. A tiny positive product is not one, and neither is a number that would
+  round to zero on a panel — a structure destroyed to 0.99996 leaves 0.00004,
+  and the model keeps the 0.00004.
+- **An impossible value is refused, not sorted.** An evaluable route carrying
+  NaN, an infinity, a negative or anything over 1 throws rather than being put
+  in a band.
 - Ties go to declaration order, so the same input always explains itself with
   the same route.
 
@@ -226,7 +263,31 @@ severity scale or a test result.
   a crossing — so a disconnection lights the bundle it cuts rather than a gap
   between two gyri. These tract meshes are in the distributed atlas and **no
   scene in this repository had ever drawn them**.
-- The signal travels the route and **stops at the step that stopped it**.
+- **The line is drawn in three types, and the type is a claim about the mesh.**
+  A solid line is a step drawn along a tract mesh the atlas actually carries. A
+  long-dashed line is a coarse stand-in — a real mesh larger than the step it
+  represents. A dotted line is a connection with no structure behind it, placed
+  schematically so the route is not two steps shorter than the one the model
+  solved, and no lesion in this model touches it. The difference is the line
+  itself, not its colour. Drawing all three the same way — which this scene did
+  — told a reader that a conceptual connection between two processes and the
+  arcuate fasciculus were the same kind of claim about a brain.
+- **A schematic position is never read back.** A step with no mesh is drawn
+  between its neighbours and pushed out of the brain; `displayAnchor` puts a
+  conceptual connection's line along a nearby bundle. Neither reaches the
+  solver, and a lesion of the bundle a line is drawn along changes nothing.
+- **The signal stops only at a true zero.** A route carrying 0.2 reaches the far
+  end and answers faintly; a route with an element at zero halts where that
+  element is. The audited version stopped anything below the bottom band and
+  gave it no answer at all, so a weak route, a severed one, a question this
+  model cannot settle and a question it has no route for were one picture. The
+  five states are separate now — carrying, weak, blocked, indeterminate, not
+  modelled — and the read-out writes down which one is on screen, because a
+  picture cannot be relied on to carry the difference by itself.
+- **Faintness has a floor, and the floor is a property of the screen.** A very
+  small positive value is drawn dim rather than absent. That floor is never read
+  back into the model: `availability` is what the model says and brightness is
+  how bright a dot is.
 - **The route itself is lit as far as the signal got, and neutral beyond it.**
   That was a small halted marker until a rendered frame showed it does not
   read — the marker is the colour of the line it sits on — so a front lesion

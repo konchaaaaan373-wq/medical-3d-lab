@@ -1,0 +1,281 @@
+{
+  "method": "one checker (scripts/check-viewports.mjs at HEAD) against two builds of the same scene, same viewports, same preview flag, same Chromium, run one at a time",
+  "base": "bc88fca (the audited head, before AR2)",
+  "head": "838ef44 (after AR2-01..09)",
+  "totals": {
+    "base": 53,
+    "head": 53
+  },
+  "rows": [
+    {
+      "base": 1,
+      "head": 1,
+      "finding": "desktop-1280 · Scene (higher-brain-function): N attribute(s) in English while the interface is Japanese :: button.inspection-close  [title]= ; div.title-trust-badges  [aria-label]= ; span.status-badge.is-alpha  [title]="
+    },
+    {
+      "base": 1,
+      "head": 1,
+      "finding": "phone-320 · Scene (higher-brain-function): N attribute(s) in English while the interface is Japanese :: button.inspection-close  [title]= ; div.title-trust-badges  [aria-label]= ; span.status-badge.is-alpha  [title]="
+    },
+    {
+      "base": 1,
+      "head": 1,
+      "finding": "phone-320 · Scene (higher-brain-function): N control(s) under 44px at a phone width :: button.btn  ; button.btn  ; button.btn  ; button.btn  ; button.btn  ; button.step  ; button.step  ; button.step "
+    },
+    {
+      "base": 1,
+      "head": 1,
+      "finding": "phone-320 · Scene (higher-brain-function): button.btn \"Dataデータ\" is 40×38, under 44px :: "
+    },
+    {
+      "base": 1,
+      "head": 1,
+      "finding": "phone-320 · Scene (higher-brain-function): button.btn \"Inspect観察\" is 39×38, under 44px :: "
+    },
+    {
+      "base": 1,
+      "head": 1,
+      "finding": "phone-320 · Scene (higher-brain-function): button.btn \"PNG画像\" is 40×38, under 44px :: "
+    },
+    {
+      "base": 1,
+      "head": 1,
+      "finding": "phone-320 · Scene (higher-brain-function): button.btn \"Progression進行\" is 39×38, under 44px :: "
+    },
+    {
+      "base": 1,
+      "head": 1,
+      "finding": "phone-320 · Scene (higher-brain-function): button.btn \"Reelリール\" is 39×38, under 44px :: "
+    },
+    {
+      "base": 1,
+      "head": 1,
+      "finding": "phone-320 · Scene (higher-brain-function): button.btn \"Reset modelモデル初期化\" is 39×38, under 44px :: "
+    },
+    {
+      "base": 1,
+      "head": 1,
+      "finding": "phone-320 · Scene (higher-brain-function): button.btn \"View視点\" is 37×38, under 44px :: "
+    },
+    {
+      "base": 1,
+      "head": 1,
+      "finding": "phone-320 · Scene (higher-brain-function): button.btn \"Zoom in拡大\" is 37×38, under 44px :: "
+    },
+    {
+      "base": 1,
+      "head": 1,
+      "finding": "phone-320 · Scene (higher-brain-function): button.btn \"Zoom out縮小\" is 37×38, under 44px :: "
+    },
+    {
+      "base": 1,
+      "head": 1,
+      "finding": "phone-320 · Scene (higher-brain-function): hiding the controls hid the only control that brings them back — a click at its centre would land on canvas (measured by the page in the same turn the controls went) :: "
+    },
+    {
+      "base": 1,
+      "head": 1,
+      "finding": "phone-375 · Scene (higher-brain-function): N attribute(s) in English while the interface is Japanese :: button.inspection-close  [title]= ; div.title-trust-badges  [aria-label]= ; span.status-badge.is-alpha  [title]="
+    },
+    {
+      "base": 1,
+      "head": 1,
+      "finding": "phone-375 · Scene (higher-brain-function): N control(s) under 44px at a phone width :: button.btn  ; button.btn  ; button.btn  ; button.btn  ; button.btn  ; button.step  ; button.step  ; button.step "
+    },
+    {
+      "base": 1,
+      "head": 1,
+      "finding": "phone-375 · Scene (higher-brain-function): N control(s) with something painted over them :: button.step  ← covered by section#spatial-inspection-panel.panel.inspection-panel  ; button.step  ← covered by section#spatial-inspection-panel.panel.inspection-panel  ; button.step.is-current  ← covered by section#spatial-inspection-panel.panel.inspection-panel "
+    },
+    {
+      "base": 1,
+      "head": 1,
+      "finding": "phone-375 · Scene (higher-brain-function): button.btn \"Dataデータ\" is 40×38, under 44px :: "
+    },
+    {
+      "base": 1,
+      "head": 1,
+      "finding": "phone-375 · Scene (higher-brain-function): button.btn \"Inspect観察\" is 39×38, under 44px :: "
+    },
+    {
+      "base": 1,
+      "head": 1,
+      "finding": "phone-375 · Scene (higher-brain-function): button.btn \"PNG画像\" is 40×38, under 44px :: "
+    },
+    {
+      "base": 1,
+      "head": 1,
+      "finding": "phone-375 · Scene (higher-brain-function): button.btn \"Progression進行\" is 39×38, under 44px :: "
+    },
+    {
+      "base": 1,
+      "head": 1,
+      "finding": "phone-375 · Scene (higher-brain-function): button.btn \"Reelリール\" is 39×38, under 44px :: "
+    },
+    {
+      "base": 1,
+      "head": 1,
+      "finding": "phone-375 · Scene (higher-brain-function): button.btn \"Reset modelモデル初期化\" is 39×38, under 44px :: "
+    },
+    {
+      "base": 1,
+      "head": 1,
+      "finding": "phone-375 · Scene (higher-brain-function): button.btn \"View視点\" is 37×38, under 44px :: "
+    },
+    {
+      "base": 1,
+      "head": 1,
+      "finding": "phone-375 · Scene (higher-brain-function): button.btn \"Zoom in拡大\" is 37×38, under 44px :: "
+    },
+    {
+      "base": 1,
+      "head": 1,
+      "finding": "phone-375 · Scene (higher-brain-function): button.btn \"Zoom out縮小\" is 37×38, under 44px :: "
+    },
+    {
+      "base": 1,
+      "head": 1,
+      "finding": "phone-390 · Scene (higher-brain-function): N attribute(s) in English while the interface is Japanese :: button.inspection-close  [title]= ; div.title-trust-badges  [aria-label]= ; span.status-badge.is-alpha  [title]="
+    },
+    {
+      "base": 1,
+      "head": 1,
+      "finding": "phone-390 · Scene (higher-brain-function): N control(s) under 44px at a phone width :: button.btn  ; button.btn  ; button.btn  ; button.btn  ; button.btn  ; button.step  ; button.step  ; button.step "
+    },
+    {
+      "base": 1,
+      "head": 1,
+      "finding": "phone-390 · Scene (higher-brain-function): N control(s) with something painted over them :: button.step  ← covered by section#spatial-inspection-panel.panel.inspection-panel  ; button.step  ← covered by section#spatial-inspection-panel.panel.inspection-panel  ; button.step.is-current  ← covered by section#spatial-inspection-panel.panel.inspection-panel "
+    },
+    {
+      "base": 1,
+      "head": 1,
+      "finding": "phone-390 · Scene (higher-brain-function): button.btn \"Dataデータ\" is 40×38, under 44px :: "
+    },
+    {
+      "base": 1,
+      "head": 1,
+      "finding": "phone-390 · Scene (higher-brain-function): button.btn \"Inspect観察\" is 39×38, under 44px :: "
+    },
+    {
+      "base": 1,
+      "head": 1,
+      "finding": "phone-390 · Scene (higher-brain-function): button.btn \"PNG画像\" is 40×38, under 44px :: "
+    },
+    {
+      "base": 1,
+      "head": 1,
+      "finding": "phone-390 · Scene (higher-brain-function): button.btn \"Progression進行\" is 39×38, under 44px :: "
+    },
+    {
+      "base": 1,
+      "head": 1,
+      "finding": "phone-390 · Scene (higher-brain-function): button.btn \"Reelリール\" is 39×38, under 44px :: "
+    },
+    {
+      "base": 1,
+      "head": 1,
+      "finding": "phone-390 · Scene (higher-brain-function): button.btn \"Reset modelモデル初期化\" is 39×38, under 44px :: "
+    },
+    {
+      "base": 1,
+      "head": 1,
+      "finding": "phone-390 · Scene (higher-brain-function): button.btn \"View視点\" is 37×38, under 44px :: "
+    },
+    {
+      "base": 1,
+      "head": 1,
+      "finding": "phone-390 · Scene (higher-brain-function): button.btn \"Zoom in拡大\" is 37×38, under 44px :: "
+    },
+    {
+      "base": 1,
+      "head": 1,
+      "finding": "phone-390 · Scene (higher-brain-function): button.btn \"Zoom out縮小\" is 37×38, under 44px :: "
+    },
+    {
+      "base": 1,
+      "head": 1,
+      "finding": "phone-430 · Scene (higher-brain-function): N attribute(s) in English while the interface is Japanese :: button.inspection-close  [title]= ; div.title-trust-badges  [aria-label]= ; span.status-badge.is-alpha  [title]="
+    },
+    {
+      "base": 0,
+      "head": 1,
+      "finding": "phone-430 · Scene (higher-brain-function): N control(s) under 44px at a phone width :: button.btn  ; button.btn  ; button.btn  ; button.btn  ; button.btn  ; button.step  ; button.step  ; button.step "
+    },
+    {
+      "base": 1,
+      "head": 0,
+      "finding": "phone-430 · Scene (higher-brain-function): N control(s) under 44px at a phone width :: button.btn  ; button.btn  ; button.btn  ; button.btn  ; button.related-toggle  ; button.step  ; button.step  ; button.step "
+    },
+    {
+      "base": 1,
+      "head": 1,
+      "finding": "phone-430 · Scene (higher-brain-function): N control(s) with something painted over them :: button.step  ← covered by section#spatial-inspection-panel.panel.inspection-panel  ; button.step  ← covered by section#spatial-inspection-panel.panel.inspection-panel  ; button.step.is-current  ← covered by section#spatial-inspection-panel.panel.inspection-panel "
+    },
+    {
+      "base": 1,
+      "head": 1,
+      "finding": "phone-430 · Scene (higher-brain-function): button.btn \"Dataデータ\" is 40×38, under 44px :: "
+    },
+    {
+      "base": 1,
+      "head": 1,
+      "finding": "phone-430 · Scene (higher-brain-function): button.btn \"Inspect観察\" is 39×38, under 44px :: "
+    },
+    {
+      "base": 1,
+      "head": 1,
+      "finding": "phone-430 · Scene (higher-brain-function): button.btn \"PNG画像\" is 40×38, under 44px :: "
+    },
+    {
+      "base": 1,
+      "head": 1,
+      "finding": "phone-430 · Scene (higher-brain-function): button.btn \"Progression進行\" is 39×38, under 44px :: "
+    },
+    {
+      "base": 1,
+      "head": 1,
+      "finding": "phone-430 · Scene (higher-brain-function): button.btn \"Reelリール\" is 39×38, under 44px :: "
+    },
+    {
+      "base": 1,
+      "head": 1,
+      "finding": "phone-430 · Scene (higher-brain-function): button.btn \"Reset modelモデル初期化\" is 39×38, under 44px :: "
+    },
+    {
+      "base": 1,
+      "head": 1,
+      "finding": "phone-430 · Scene (higher-brain-function): button.btn \"View視点\" is 37×38, under 44px :: "
+    },
+    {
+      "base": 1,
+      "head": 1,
+      "finding": "phone-430 · Scene (higher-brain-function): button.btn \"Zoom in拡大\" is 37×38, under 44px :: "
+    },
+    {
+      "base": 1,
+      "head": 1,
+      "finding": "phone-430 · Scene (higher-brain-function): button.btn \"Zoom out縮小\" is 37×38, under 44px :: "
+    },
+    {
+      "base": 1,
+      "head": 1,
+      "finding": "phone-landscape · Scene (higher-brain-function): N attribute(s) in English while the interface is Japanese :: button.inspection-close  [title]= ; div.title-trust-badges  [aria-label]= ; span.status-badge.is-alpha  [title]="
+    },
+    {
+      "base": 1,
+      "head": 1,
+      "finding": "tablet-500 · Scene (higher-brain-function): N attribute(s) in English while the interface is Japanese :: button.inspection-close  [title]= ; div.title-trust-badges  [aria-label]= ; span.status-badge.is-alpha  [title]="
+    },
+    {
+      "base": 1,
+      "head": 1,
+      "finding": "tablet-500 · Scene (higher-brain-function): N control(s) with something painted over them :: button.step  ← covered by section#spatial-inspection-panel.panel.inspection-panel  ; button.step  ← covered by section#spatial-inspection-panel.panel.inspection-panel  ; button.step.is-current  ← covered by section#spatial-inspection-panel.panel.inspection-panel "
+    },
+    {
+      "base": 1,
+      "head": 1,
+      "finding": "tablet-768 · Scene (higher-brain-function): N attribute(s) in English while the interface is Japanese :: button.inspection-close  [title]= ; div.title-trust-badges  [aria-label]= ; span.status-badge.is-alpha  [title]="
+    }
+  ]
+}

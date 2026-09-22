@@ -57,6 +57,59 @@ person: Safari, Firefox, touch and a screen reader.
   visit was paying 3.5 kB for a recorder, a frame painter and a consent screen
   that the published models cannot use.
 
+### The aphasia model: a band is not a value, and a dim route is not a stop
+
+A second medical review of the same scene found six things the first pass
+reported as done and had not finished. Each of them is a place where the model
+or the picture said something it had no warrant for.
+
+- **A lower bound was being returned as a maximum.** With one route computed at
+  0.9 and another the model cannot evaluate, the answer used to be "0.9". What
+  is actually settled there is that the maximum lies between 0.9 and 1 — an
+  interval, every point of which is in the top band. The read-out says "at least
+  available — exact value unknown"; the exact value is withheld unless a route
+  comes out at exactly 1, which nothing can beat.
+- **A route carrying 0.2 was drawn as a severed one.** The picture had two
+  states, "gets through" and "stops", and everything else fell into the second:
+  a weak route, a cut one, a question the model cannot settle and a question it
+  has no route for were one animation. There are five now, a positive route
+  reaches the far end and answers faintly however dim it is, and only a true
+  zero halts the signal where it happens. The read-out writes down which of the
+  five is on screen, because a picture should not be asked to carry that alone.
+- **The same lesion said different things depending on how you entered it.**
+  The warning that this model does not compute the thalamus's contribution to
+  language was attached to the *preset*. Selecting the nucleus by hand produced
+  the same numbers with no warning at all. The declaration lives on the network
+  now and is matched against the damage, so the two agree by construction.
+- **Two connections borrowed a bundle they had no business depending on.** The
+  line from meaning to whole-word spelling was anchored in the posterior
+  thalamic radiation because it was the nearest named mesh — the radiation is
+  the visual relay, so destroying it stopped a reader from spelling a word they
+  were thinking of. Where the model has no bundle it now says so, and the mesh
+  the line is *drawn* along cannot change a number.
+- **The classical syndromes had no way in.** They existed as a data file with
+  tests and nothing on screen. There is a panel: eight syndromes and three
+  pictures described as not aphasia, one at a time, each with what this model
+  cannot evaluate about it. No match score, no ranking, no probability — that
+  would be the classifier this scene removed, wearing a different hat.
+- **Three kinds of line were drawn the same way.** The arcuate fasciculus and a
+  connection between two processes with no anatomy behind it were the same
+  tube. Solid for a tract mesh the atlas carries, long-dashed for a coarse
+  stand-in, dotted for a connection with no structure — in the line itself, not
+  in its colour.
+
+Two defects in the shared chrome turned up while checking this in a browser,
+and both are fixed: a read-out row that a scene stopped sending stayed on the
+panel with its last value (so resetting left "nothing of Broca's area is left"
+over an intact brain), and the new reference panel, having passed every
+touch-target check, turned out to be a column the width of the words on a
+phone.
+
+**What is still not done**: no full text of any source has been read from this
+environment, and the localisation of the two writing routes rests on a
+publisher summary quoted in a review. A clinician has not reviewed any of it.
+The scene is not published.
+
 ### The aphasia model stopped giving a diagnosis
 
 - **It named the syndrome, and it should not have.** The higher-function scene
