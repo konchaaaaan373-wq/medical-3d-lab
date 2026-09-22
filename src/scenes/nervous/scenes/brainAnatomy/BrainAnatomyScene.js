@@ -1078,8 +1078,11 @@ export class BrainAnatomyScene {
   }
 
   getInspectionModes() {
+    // The colour-map swatch is drawn from the lobe bands themselves. A picked
+    // hex here would keep promising last season's palette after the bands move.
+    const { frontal, parietal, insula, occipital, temporal } = BRAIN_PALETTE;
     const previews = {
-      detail: 'conic-gradient(from 30deg, #d9826b, #d8b35f, #54b6a4, #5f93c8, #9b78c8, #d9826b)',
+      detail: `conic-gradient(from 30deg, ${frontal}, ${parietal}, ${insula}, ${occipital}, ${temporal}, ${frontal})`,
       anatomical: 'radial-gradient(circle at 32% 27%, #ead7cf 0 13%, #c6aaa3 38%, #a4847e 72%, #705b58 100%)',
     };
     return BRAIN_COLOR_MODES.map((mode) => ({ ...mode, preview: previews[mode.id] }));

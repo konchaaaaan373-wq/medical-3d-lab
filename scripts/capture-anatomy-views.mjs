@@ -38,6 +38,8 @@
  *   --height <px>    viewport height (default: 720)
  *   --layer <0..1>   set the anatomical-layer slider before rendering
  *   --no-labels      turn the structure labels off before rendering
+ *   --cvd <kind>     also write what a dichromat sees of the same frame
+ *                    (protan / deutan / tritan, repeatable; `--cvd all`)
  *   --preview        unlock the build (needs VITE_ALLOW_PREVIEW=1 at build time)
  *   --headed         show the browser
  */
@@ -69,10 +71,65 @@ const onlyRecipes = values('--recipe');
 const width = Number(value('--width', '1280'));
 const height = Number(value('--height', '720'));
 
+/**
+ * What a dichromat sees of the same frame.
+ *
+ * Machado, Oliveira & Fernandes (2009), severity 1.0, applied in linear RGB.
+ * It belongs here rather than in a script of its own because the question it
+ * answers — "do the parts still read apart?" — is the one this tool already
+ * renders for, and a palette can pass a swatch-level audit while the lit
+ * surface it is painted on does not. A simulation is a model of what someone
+ * sees, not a measurement of it: it can show a collapse, and it cannot
+ * certify that there is none.
+ */
+const DICHROMACY = {
+  protan: [[0.152286, 1.052583, -0.204868], [0.114503, 0.786281, 0.099216], [-0.003882, -0.048116, 1.051998]],
+  deutan: [[0.367322, 0.860646, -0.227968], [0.280085, 0.672501, 0.047413], [-0.011820, 0.042940, 0.968881]],
+  tritan: [[1.255528, -0.076749, -0.178779], [-0.078411, 0.930809, 0.147602], [0.004733, 0.691367, 0.303900]],
+};
+
 const die = (message) => {
   console.error(message);
   process.exit(1);
 };
+
+const askedForCvd = values('--cvd');
+const dichromacies = askedForCvd.includes('all') ? Object.keys(DICHROMACY) : askedForCvd;
+for (const kind of dichromacies) {
+  if (!DICHROMACY[kind]) die(`--cvd takes ${Object.keys(DICHROMACY).join(' / ')} or all, not "${kind}"`);
+}
+
+/** Re-renders one captured frame through a dichromacy matrix, in the page. */
+async function simulateFrame(page, bytes, kind) {
+  const dataUrl = await page.evaluate(async ({ source, matrix }) => {
+    const image = new Image();
+    await new Promise((resolve, reject) => {
+      image.onload = resolve;
+      image.onerror = () => reject(new Error('the captured frame did not decode'));
+      image.src = source;
+    });
+    const canvas = document.createElement('canvas');
+    canvas.width = image.width;
+    canvas.height = image.height;
+    const context = canvas.getContext('2d');
+    context.drawImage(image, 0, 0);
+    const frame = context.getImageData(0, 0, canvas.width, canvas.height);
+    const pixels = frame.data;
+    const toLinear = (v) => (v <= 0.04045 ? v / 12.92 : ((v + 0.055) / 1.055) ** 2.4);
+    const toSrgb = (v) => Math.round(255 * (v <= 0.0031308 ? v * 12.92 : 1.055 * v ** (1 / 2.4) - 0.055));
+    for (let i = 0; i < pixels.length; i += 4) {
+      const linear = [toLinear(pixels[i] / 255), toLinear(pixels[i + 1] / 255), toLinear(pixels[i + 2] / 255)];
+      for (let channel = 0; channel < 3; channel += 1) {
+        const row = matrix[channel];
+        const seen = row[0] * linear[0] + row[1] * linear[1] + row[2] * linear[2];
+        pixels[i + channel] = toSrgb(Math.min(1, Math.max(0, seen)));
+      }
+    }
+    context.putImageData(frame, 0, 0);
+    return canvas.toDataURL('image/png');
+  }, { source: `data:image/png;base64,${bytes.toString('base64')}`, matrix: DICHROMACY[kind] });
+  return Buffer.from(dataUrl.slice(dataUrl.indexOf(',') + 1), 'base64');
+}
 
 if (!existsSync(join(distDir, 'index.html'))) die(`No build at "${distDir}" — run \`npm run build\` first.`);
 mkdirSync(outDir, { recursive: true });
@@ -330,6 +387,9 @@ try {
         closest = closest === null ? differing : Math.min(closest, differing);
         if (differing <= settledPixels(box) && (await paintedFraction(bytes)) > PAINTED_FRACTION) {
           writeFileSync(path, bytes);
+          for (const kind of dichromacies) {
+            writeFileSync(path.replace(/\.png$/, `--${kind}.png`), await simulateFrame(page, bytes, kind));
+          }
           return attempt;
         }
       }

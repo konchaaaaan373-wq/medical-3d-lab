@@ -6,41 +6,106 @@
  * browser or a WebGL context.
  */
 
-export const BRAIN_PALETTE = {
-  frontal: '#d9826b',
-  parietal: '#d8b35f',
-  temporal: '#9b78c8',
-  occipital: '#5f93c8',
-  limbic: '#d56f8f',
-  insula: '#54b6a4',
-  telencephalon: '#b9957d',
-  deep: '#58bca8',
-  whiteMatter: '#d9ceb9',
-  ventricles: '#4ab8d2',
-  cerebellum: '#b9788d',
-  brainstem: '#9c7b65',
+/**
+ * The colour map, defined in CIE LCh rather than HSL.
+ *
+ * HSL was the wrong room to design this in. Its "saturation" is not
+ * colourfulness and its "lightness" is not brightness, so twelve families set
+ * to sensible-looking HSL numbers came out at wildly different perceptual
+ * chroma — the temporal lobe at 101 and the insula at 39, a 2.6x spread — and
+ * the set read as a pile of unrelated colours rather than one system. LCh is
+ * perceptual: `lightness` is L*, `chroma` is colourfulness, `hue` is an angle
+ * on the Lab circle where equal steps look equal. `lchToHex` pulls the chroma
+ * in until the colour fits sRGB, so a band can ask for more than the display
+ * can give and get the most it can.
+ *
+ * The design, in the order the decisions were made:
+ *
+ *  1. **One chroma per tier.** The large cortical lobes ask for C 62, the
+ *     supporting families lower, the two neutrals lowest. This is what makes
+ *     them look like one set. Where a family lands below its tier — the
+ *     occipital lobe, the cingulate, the insula — it is because sRGB runs out
+ *     at that hue and lightness, not because it was designed differently, and
+ *     the test asks for the gamut limit rather than the tier there.
+ *  2. **A lightness rhythm that alternates across every boundary a reader
+ *     traces.** Red 50, green 61, violet 44, blue 64: the central sulcus and
+ *     the lateral sulcus each have a value step as well as a hue step, and so
+ *     does the edge of the cerebellum. How deep the green may go is set by
+ *     where that step stops working for a protanope, not by taste — below
+ *     L* 58 the central sulcus collapses for them.
+ *  3. **Hue carries the group.** Each family keeps a narrow band — under 20°
+ *     of Lab hue across all of its structures — and its members are
+ *     separated by lightness and chroma inside it, so a lobe reads as one
+ *     thing before its gyri read as individuals.
+ *  4. **Red and green are used.** What colour-vision deficiency rules out is
+ *     making red-versus-green the only difference between two things a reader
+ *     must tell apart, not the hues themselves.
+ *
+ * The floors are in `tests/brain-anatomy.test.js`, member to member, and are
+ * what this file must keep rather than what it currently measures — a number
+ * copied into prose goes stale the next time a band moves, and this comment
+ * had already gone stale once. Every pair of units that touch stays at least
+ * ΔE 28 apart; every pair of the eight families on the outside of the model
+ * stays at least ΔE 3 apart under simulated protanopia, deuteranopia and
+ * tritanopia; all 147 structures stay at least ΔE 3.8 apart from each other,
+ * and the cortical lobes stay at chroma 45 or above. **The colour-vision
+ * floor is a partial measure**: it is a difference, not a comfortable one,
+ * and the promise stops at the large units — structures inside one family are
+ * separated by lightness and chroma, which dichromacy compresses.
+ *
+ * The lightness rhythm had to be chosen in the simulated space, not by eye: a
+ * violet loses most of its luminance for a protanope and lands on a blue, so
+ * the violet and the blue are further apart here than a trichromat would ask.
+ *
+ * Each family carries its own `seed` because the placement inside a band is a
+ * deterministic hash. The seed is not solved separately from the band — a
+ * seed chosen only to spread one family's members moves those members into
+ * another family — so both are searched together against all four visions.
+ */
+const DETAIL_COLOR_FAMILY = {
+  // Red, at a lightness well below the parietal lobe it borders. The central
+  // sulcus is a red-against-green boundary, which is the one pair a
+  // protanope and a deuteranope cannot separate by hue at all, so the value
+  // step across it is sized for them rather than for the eye.
+  frontal: { hue: 42, hueSpan: 12, chroma: 62, chromaSpan: 30, lightness: 50, lightnessSpan: 30, seed: 'frontal-v67335' },
+  parietal: { hue: 151, hueSpan: 12, chroma: 62, chromaSpan: 20, lightness: 61, lightnessSpan: 22, seed: 'parietal-v54167' },
+  temporal: { hue: 311, hueSpan: 12, chroma: 62, chromaSpan: 26, lightness: 44, lightnessSpan: 26, seed: 'temporal-v60699' },
+  occipital: { hue: 267, hueSpan: 10, chroma: 62, chromaSpan: 20, lightness: 64, lightnessSpan: 20, seed: 'occipital-v172674' },
+  // The cingulate sits on the cool side because the warm sector is full: a
+  // third warm family beside the red frontal lobe and the amber insula
+  // could only be told from them by lightness. Teal cannot reach the
+  // cortical chroma — sRGB runs out at about 36 here — and the test knows
+  // to ask for the gamut limit rather than the tier.
+  limbic: { hue: 192, hueSpan: 10, chroma: 54, chromaSpan: 18, lightness: 58, lightnessSpan: 18, seed: 'limbic-v192227' },
+  insula: { hue: 84, hueSpan: 8, chroma: 62, chromaSpan: 10, lightness: 70, lightnessSpan: 8, seed: 'insula-v167007' },
+  // Cortex the atlas does not place in a lobe. Chroma 9 says so — it is the
+  // one cortical family deliberately left almost colourless.
+  telencephalon: { hue: 258, hueSpan: 16, chroma: 9, chromaSpan: 14, lightness: 62, lightnessSpan: 32, seed: 'telencephalon-v94451' },
+  deep: { hue: 152, hueSpan: 20, chroma: 40, chromaSpan: 38, lightness: 64, lightnessSpan: 46, seed: 'deep-v88341' },
+  whiteMatter: { hue: 102, hueSpan: 10, chroma: 14, chromaSpan: 14, lightness: 86, lightnessSpan: 18, seed: 'whiteMatter-v26772' },
+  ventricles: { hue: 217, hueSpan: 10, chroma: 36, chromaSpan: 14, lightness: 73, lightnessSpan: 16, seed: 'ventricles-v161965' },
+  cerebellum: { hue: 355, hueSpan: 12, chroma: 48, chromaSpan: 30, lightness: 63, lightnessSpan: 32, seed: 'cerebellum-v55244' },
+  brainstem: { hue: 57, hueSpan: 12, chroma: 26, chromaSpan: 26, lightness: 30, lightnessSpan: 34, seed: 'brainstem-v8834' },
 };
+
+/**
+ * The legend swatch for each family, and the answer to "what colour is the
+ * frontal lobe?" now that the question has one. It is the centre of the band
+ * rather than a hand-picked hex, so a swatch cannot drift away from the
+ * meshes it stands for.
+ */
+export const BRAIN_PALETTE = Object.fromEntries(
+  Object.entries(DETAIL_COLOR_FAMILY).map(([key, family]) => [
+    key,
+    lchToHex(family.lightness, family.chroma, family.hue),
+  ])
+);
 
 /** Two deliberately different readings of the same, unmoved geometry. */
 export const BRAIN_COLOR_MODES = [
   { id: 'detail', label: 'Colour map', labelJa: 'カラー' },
   { id: 'anatomical', label: 'Natural anatomy', labelJa: '通常解剖色' },
 ];
-
-const DETAIL_COLOR_FAMILY = {
-  frontal: { hue: 14, hueSpan: 80, saturation: 66, saturationSpan: 38, lightness: 59, lightnessSpan: 34 },
-  parietal: { hue: 44, hueSpan: 75, saturation: 68, saturationSpan: 38, lightness: 58, lightnessSpan: 34 },
-  temporal: { hue: 272, hueSpan: 85, saturation: 60, saturationSpan: 38, lightness: 60, lightnessSpan: 34 },
-  occipital: { hue: 210, hueSpan: 80, saturation: 65, saturationSpan: 38, lightness: 58, lightnessSpan: 34 },
-  limbic: { hue: 337, hueSpan: 75, saturation: 65, saturationSpan: 38, lightness: 59, lightnessSpan: 34 },
-  insula: { hue: 164, hueSpan: 55, saturation: 60, saturationSpan: 32, lightness: 55, lightnessSpan: 30 },
-  telencephalon: { hue: 24, hueSpan: 90, saturation: 58, saturationSpan: 36, lightness: 58, lightnessSpan: 34 },
-  deep: { hue: 151, hueSpan: 130, saturation: 62, saturationSpan: 40, lightness: 55, lightnessSpan: 36 },
-  whiteMatter: { hue: 41, hueSpan: 35, saturation: 31, saturationSpan: 18, lightness: 75, lightnessSpan: 18 },
-  ventricles: { hue: 190, hueSpan: 65, saturation: 68, saturationSpan: 34, lightness: 55, lightnessSpan: 30 },
-  cerebellum: { hue: 329, hueSpan: 130, saturation: 56, saturationSpan: 40, lightness: 57, lightnessSpan: 36 },
-  brainstem: { hue: 26, hueSpan: 110, saturation: 50, saturationSpan: 36, lightness: 53, lightnessSpan: 34 },
-};
 
 /**
  * A low-saturation gross-anatomy palette. Small, deterministic lightness
@@ -726,24 +791,31 @@ export function brainColor(metadata = {}, mode = 'detail') {
   // Natural tones occupy a deliberately narrow range, so use independent
   // deterministic hash streams. This avoids two named structures collapsing
   // to the same rounded RGB value without introducing conspicuous colour jumps.
-  // Keep the detail palette versioned: its seed is locked by the all-label
-  // perceptual-distance audit so nearby atlas structures remain distinguishable.
+  // The detail palette seeds per family, not once for the whole atlas: each
+  // band is narrow enough that its own seed is what decides whether the
+  // structures inside it stay apart, and the all-label perceptual-distance
+  // audit is what locked each of them.
   const hash = stableHash(
-    natural ? `anatomical:h:${key}:${label}` : `${key}:palette-v38601:${label}`
+    natural ? `anatomical:h:${key}:${label}` : `${key}:${family.seed}:${label}`
   );
-  const saturationHash = natural
+  const secondHash = natural
     ? stableHash(`anatomical:s:${key}:${label}`)
     : Math.imul(hash ^ 0x85ebca6b, 0xc2b2ae35) >>> 0;
   const lightnessHash = natural
     ? stableHash(`anatomical:l:${key}:${label}`)
     : Math.imul(hash ^ 0x27d4eb2f, 0x165667b1) >>> 0;
-  const hueUnit = (hash & 0xffff) / 0xffff - 0.5;
-  const saturationUnit = (saturationHash & 0xffff) / 0xffff - 0.5;
-  const lightnessUnit = (lightnessHash & 0xffff) / 0xffff - 0.5;
-  return hslToHex(
-    family.hue + hueUnit * family.hueSpan,
-    family.saturation + saturationUnit * family.saturationSpan,
-    family.lightness + lightnessUnit * family.lightnessSpan
+  const unit = (value) => (value & 0xffff) / 0xffff - 0.5;
+  if (natural) {
+    return hslToHex(
+      family.hue + unit(hash) * family.hueSpan,
+      family.saturation + unit(secondHash) * family.saturationSpan,
+      family.lightness + unit(lightnessHash) * family.lightnessSpan
+    );
+  }
+  return lchToHex(
+    family.lightness + unit(lightnessHash) * family.lightnessSpan,
+    family.chroma + unit(secondHash) * family.chromaSpan,
+    family.hue + unit(hash) * family.hueSpan
   );
 }
 
@@ -901,6 +973,54 @@ function stableHash(value) {
     hash = Math.imul(hash, 16777619);
   }
   return hash >>> 0;
+}
+
+/**
+ * CIE LCh(ab) to an sRGB hex, with the chroma pulled in until it fits.
+ *
+ * The colour map is designed in this space and the natural-anatomy mode is
+ * not, which is why both conversions live here. Natural anatomy is a narrow
+ * band of hand-picked tissue tones where HSL is as good a handle as any; the
+ * colour map is a categorical system of twelve families that has to look like
+ * one set, and only a perceptual space can promise that.
+ *
+ * Out-of-gamut is resolved by binary search on chroma at fixed lightness and
+ * hue — the hue and the lightness are the design, the chroma is what the
+ * display can afford.
+ */
+export function lchToHex(lightness, chroma, hue) {
+  const L = Math.max(0, Math.min(100, lightness));
+  const radians = (hue * Math.PI) / 180;
+  const linearFor = (c) => {
+    const a = c * Math.cos(radians);
+    const b = c * Math.sin(radians);
+    const fy = (L + 16) / 116;
+    const expand = (t) => (t ** 3 > 216 / 24389 ? t ** 3 : (116 * t - 16) / (24389 / 27));
+    const x = expand(fy + a / 500) * 0.95047;
+    const y = (L > 8 ? ((L + 16) / 116) ** 3 : L / (24389 / 27));
+    const z = expand(fy - b / 200) * 1.08883;
+    return [
+      x * 3.2404542 + y * -1.5371385 + z * -0.4985314,
+      x * -0.969266 + y * 1.8760108 + z * 0.041556,
+      x * 0.0556434 + y * -0.2040259 + z * 1.0572252,
+    ];
+  };
+  const fits = (rgb) => rgb.every((value) => value >= -0.0001 && value <= 1.0001);
+  let reachable = 0;
+  let tooFar = Math.max(0, chroma);
+  if (fits(linearFor(tooFar))) reachable = tooFar;
+  else {
+    for (let step = 0; step < 24; step += 1) {
+      const middle = (reachable + tooFar) / 2;
+      if (fits(linearFor(middle))) reachable = middle;
+      else tooFar = middle;
+    }
+  }
+  return `#${linearFor(reachable)
+    .map((value) => Math.max(0, Math.min(1, value)))
+    .map((value) => (value <= 0.0031308 ? value * 12.92 : 1.055 * value ** (1 / 2.4) - 0.055))
+    .map((value) => Math.round(Math.max(0, Math.min(1, value)) * 255).toString(16).padStart(2, '0'))
+    .join('')}`;
 }
 
 function hslToHex(hue, saturation, lightness) {
