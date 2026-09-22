@@ -1960,8 +1960,13 @@ export function resolveTaskResult({ routes, ineligibleRouteIds = [] }) {
     (winner, route) => (route.availability > winner.availability ? route : winner),
     evaluated[0]
   );
+  // An unknown sibling route makes the maximum unknown too, *unless* the best
+  // evaluated route already reaches the top band: an unknown route can only be
+  // equal or better, so "there is a way through" survives not knowing. Anything
+  // below that — 0.6 with an unknown sibling — is 0.6 of one route and is not
+  // reported as the task's value.
   const settled = unevaluatedRouteIds.length === 0
-    || evaluated.some((route) => route.availability >= AVAILABILITY_LOW);
+    || evaluated.some((route) => route.availability >= AVAILABILITY_HIGH);
   if (!settled) {
     return Object.freeze({
       ...empty,

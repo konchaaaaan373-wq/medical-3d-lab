@@ -802,3 +802,91 @@ test('scene: the route is lit as far as the word got, and neutral past it', () =
   front.dispose();
   behind.dispose();
 });
+
+test('scene: the two modes do not leak into each other', () => {
+  const scene = buildScene({ lesion: 'dominant-perisylvian' });
+  assert.equal(scene.solved.mode, MODE.ATLAS_LESION);
+  assert.ok(scene.solved.affectedStructures.length > 0, 'the lesion is on the atlas');
+  const lesionColour = new THREE.Color(PALETTE.lesion).getHex();
+  const drawnAsLesion = () => [...scene.meshesByStructure.values()]
+    .flat().filter((mesh) => mesh.material.color.getHex() === lesionColour).length;
+  assert.ok(drawnAsLesion() > 0, 'and drawn on it');
+
+  // Into conceptual mode: the lesion leaves the model and leaves the screen.
+  // The failure this prevents is the worst one available to a two-mode scene —
+  // a knockout result shown over a brain still painted with a lesion.
+  scene.setModelControl('mode', MODE.CONCEPTUAL);
+  scene.setModelControl('intervention', 'orthographic-visual-form');
+  assert.equal(scene.solved.mode, MODE.CONCEPTUAL);
+  assert.equal(scene.solved.affectedStructures.length, 0, 'no structure is damaged');
+  assert.equal(drawnAsLesion(), 0, 'and none is painted as one');
+  // The read-out says which mode it is, without being asked.
+  const conceptualRows = new Map(scene.getMetrics().map((row) => [row.id, row]));
+  assert.match(conceptualRows.get('mode').valueJa, /遮断/);
+  assert.ok(conceptualRows.get('conceptual-note'), 'and says what it is not');
+
+  // And back: the knockout leaves the model, and the lesion comes back.
+  scene.setModelControl('mode', MODE.ATLAS_LESION);
+  assert.equal(scene.solved.mode, MODE.ATLAS_LESION);
+  assert.deepEqual(scene.solved.interventions, []);
+  assert.ok(drawnAsLesion() > 0, 'the lesion is drawn again');
+  const atlasRows = new Map(scene.getMetrics().map((row) => [row.id, row]));
+  assert.match(atlasRows.get('mode').valueJa, /アトラス上の病変/);
+  assert.equal(atlasRows.get('conceptual-note'), undefined, 'and the conceptual note is gone');
+  scene.dispose();
+});
+
+test('scene: only the control the current mode reads is offered', () => {
+  const scene = buildScene();
+  const ids = () => scene.getModelControls().map((control) => control.id);
+  assert.ok(ids().includes('lesion'), 'atlas mode offers the lesion');
+  assert.ok(!ids().includes('intervention'), 'and not the knockout');
+
+  scene.setModelControl('mode', MODE.CONCEPTUAL);
+  assert.ok(ids().includes('intervention'));
+  assert.ok(!ids().includes('lesion'), 'a lesion cannot sit selected while a knockout runs');
+
+  // Every offered knockout is a process the model declares, so a control can
+  // never ask for something the solver will refuse.
+  const offered = scene.getModelControls().find((control) => control.id === 'intervention');
+  for (const option of offered.options) {
+    assert.doesNotThrow(
+      () => solveHigherBrainFunction({ mode: MODE.CONCEPTUAL, interventions: [option.value] }),
+      `${option.value} is a declared process`
+    );
+    assert.ok(option.effectJa, `${option.value} says what it shows`);
+  }
+  scene.dispose();
+});
+
+test('scene: a reset returns to one defined state from either mode', () => {
+  const scene = buildScene();
+  const baseline = JSON.stringify(scene.getMetrics());
+
+  scene.setModelControl('mode', MODE.CONCEPTUAL);
+  scene.setModelControl('intervention', 'graphemic-buffer');
+  scene.setModelControl('task', 'writing-from-meaning');
+  scene.resetModelControls();
+  assert.equal(scene.controls.mode, MODE.ATLAS_LESION);
+  assert.equal(scene.solved.affectedStructures.length > 0, true, 'the default lesion is back');
+  assert.equal(JSON.stringify(scene.getMetrics()), baseline, 'and the read-out with it');
+  scene.dispose();
+});
+
+test('scene: the read-out never shows a value for a task that has none', () => {
+  // Leaving a row blank, or filling it from the last task that had a value, is
+  // how "not modelled" turns into "normal" on a screen.
+  const scene = buildScene({ lesion: 'dominant-angular' });
+  const rows = new Map(scene.getMetrics().map((row) => [row.id, row]));
+  for (const task of scene.solved.tasks) {
+    const row = rows.get(task.id);
+    assert.ok(row.valueJa.length > 0, `${task.id} has something in its value`);
+    if (task.computationStatus === COMPUTATION.NOT_MODELLED) {
+      assert.match(row.valueJa, /対象外/, `${task.id} says it is out of scope`);
+    }
+    if (task.computationStatus === COMPUTATION.INDETERMINATE) {
+      assert.match(row.valueJa, /判定不能/, `${task.id} says it cannot be determined`);
+    }
+  }
+  scene.dispose();
+});
