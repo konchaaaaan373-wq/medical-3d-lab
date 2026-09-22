@@ -114,6 +114,17 @@ const page = await browser.newPage({ viewport: { width: 1440, height: 900 }, dev
 console.log(`deviceScaleFactor: ${dpr}`);
 
 /**
+ * Anything the page threw, kept for the report.
+ *
+ * An uncaught error inside the render loop stops the loop, and everything
+ * downstream of it — a lesson step that advances from `tick()`, the reel, the
+ * export — then fails as "nothing happened" rather than as "this threw". That
+ * cost a day once already (L-86). One listener is the whole fix.
+ */
+const pageErrors = [];
+page.on('pageerror', (error) => pageErrors.push(String(error?.message ?? error)));
+
+/**
  * Whether this engine can make a WebGL2 context *here*.
  *
  * Every scene in this check is a 3D scene, so an engine that cannot is not a
@@ -385,32 +396,79 @@ for (const slug of SLUGS) {
       }
     };
 
-    let steps = 0;
+    /**
+     * Which step the lesson is on, by its own kicker.
+     *
+     * The walk needs this because a click that *failed* looks exactly like a
+     * click that worked if all you count is clicks — and on a slow runner
+     * Playwright's own stability wait times out rather than pressing. Counting
+     * attempts said "4 steps" for a walk that had not left the first one, and
+     * the report then blamed the lesson for having no table. What is counted
+     * here is where the lesson actually got to.
+     */
+    const kicker = async () =>
+      (await page
+        .locator('.learn-step .learn-kicker .lang-en')
+        .first()
+        .textContent()
+        .catch(() => null)) ?? '';
+
+    const trail = [await kicker()];
     // `idle` is the tween, not a stuck lesson: apply disables itself and the
     // step only advances once the manipulation has been driven into the model,
     // which for a scene with `settleModel` is a dozen breaths rather than a
     // second. Waiting is how this walk tells the two apart.
+    //
+    // The budget is generous on purpose. The tween is timed on the wall clock
+    // but only advanced from the render loop, and the render loop is what a
+    // high device pixel ratio slows down: at `--dpr 2` on software GL this
+    // scene's manipulate step took longer than a ten-second budget, and the
+    // walk reported it as a lesson with no table. Waiting is cheap and only
+    // paid by a lesson that really is stuck.
+    const IDLE_WAIT_MS = 1500;
+    const IDLE_LIMIT = 30;
     let idle = 0;
-    for (let guard = 0; guard < 26 && idle < 6; guard += 1) {
+    let clicked = 0;
+    let refused = 0;
+    const note = async () => {
+      const now = await kicker();
+      if (now && now !== trail[trail.length - 1]) trail.push(now);
+    };
+    for (let guard = 0; guard < 44 && idle < IDLE_LIMIT; guard += 1) {
       await readTable();
       const target = await pressable();
       if (!target) {
         idle += 1;
-        await page.waitForTimeout(1200);
+        await page.waitForTimeout(IDLE_WAIT_MS);
         if (!(await page.locator('.learn-body').count())) break;
+        await note();
         continue;
       }
       idle = 0;
-      await target.click({ timeout: 4000 }).catch(() => {});
-      steps += 1;
+      // A refusal is recorded, not swallowed. `.catch(() => {})` alone is how
+      // a walk that pressed nothing reported four steps.
+      const pressed = await target
+        .click({ timeout: 6000 })
+        .then(() => true)
+        .catch(() => false);
+      if (pressed) clicked += 1;
+      else refused += 1;
       // The manipulation is tweened into the model over about a second and a
       // half, and the transfer step solves the model four times.
       await page.waitForTimeout(1700);
       if (!(await page.locator('.learn-body').count())) break;
+      await note();
       await readTable();
     }
-    if (steps < 4) problems.push(`the lesson stopped after ${steps} step(s)`);
-    if (!sawRows) problems.push('the lesson never showed a before/after row');
+    // Steps reached, not buttons pressed. `Predict → Manipulate → Observe →
+    // Explain` is the loop this project's lessons are built on; a lesson that
+    // ships `Transfer` adds a fifth.
+    const steps = trail.filter(Boolean).length;
+    const walked = `walked ${trail.filter(Boolean).join(' → ') || 'nowhere'}`
+      + `, ${clicked} press(es)${refused ? `, ${refused} refused` : ''}`
+      + `${idle >= IDLE_LIMIT ? `, then nothing to press for ${(IDLE_LIMIT * IDLE_WAIT_MS) / 1000}s` : ''}`;
+    if (steps < 4) problems.push(`the lesson stopped after ${steps} step(s) — ${walked}`);
+    if (!sawRows) problems.push(`the lesson never showed a before/after row — ${walked}`);
     if (blank) problems.push('the lesson read `undefined` into its own table');
     if (!shot) await page.screenshot({ path: join(outDir, `${slug}-lesson.png`) });
 
@@ -617,6 +675,15 @@ for (const slug of SLUGS) {
     await page.screenshot({ path: join(outDir, `${slug}-after-reel.png`) });
   } else if (shouldOffer) {
     problems.push('the rule offers a video file but the scene has no sequence to record');
+  }
+
+  // Said once per scene, and said even on a green run: a page that threw and
+  // carried on is a finding, and a page that threw and stopped is the reason
+  // everything after it looks like "nothing happened".
+  if (pageErrors.length) {
+    const unique = [...new Set(pageErrors)];
+    problems.push(`the page threw: ${unique.slice(0, 3).join(' · ')}`);
+    pageErrors.length = 0;
   }
 
   report.push({ slug, controlCount, problems, baseline, diseased });
