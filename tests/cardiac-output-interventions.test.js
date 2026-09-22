@@ -135,39 +135,67 @@ test('volume loading buys output, and the filling pressure is what it charges', 
   }
 });
 
-test('the two modes keep their own state, and neither leaks into the other', () => {
-  // The failure this is written against: a reader sets a condition by hand,
-  // picks an intervention, clears it, and finds their condition gone — or
-  // worse, finds the drug's effect still in the numbers with nothing on screen
-  // saying so.
+test('clearing an intervention always lands on this preset’s starting condition', () => {
+  // One rule, and the same one before and after a round trip.
+  //
+  // It used to land on whatever the reader had set by hand before choosing the
+  // intervention. That is nicer, and it was a piece of state nothing on screen
+  // showed and nothing could restore: `captureSessionState` carries the control
+  // values and nothing else, so after a sequence that condition was gone and
+  // "clear" quietly meant something different from what it had meant a minute
+  // earlier. A reviewer found it. State that cannot survive a round trip and
+  // that a reader cannot see is worse than a simpler rule.
   const session = new ExperimentSession({ presetId: PRESET_IDS.REDUCED_CONTRACTILITY });
+  const start = { ...session.baseline.input };
   session.setControl('heartRatePerMin', 92);
   session.setControl('fillingVolumeMl', 780);
-  const byHand = { ...session.input };
 
   session.selectIntervention(INTERVENTION_IDS.DOBUTAMINE);
   assert.equal(session.interventionId, INTERVENTION_IDS.DOBUTAMINE);
-  assert.notDeepEqual({ ...session.input }, byHand);
-  // The intervention is computed from the preset's starting condition, not from
-  // the hand-set one — so the hand-set rate is not carried into it.
-  assert.equal(session.input.heartRatePerMin, session.baseline.input.heartRatePerMin);
+  // Computed from the baseline, never from the hand-set condition — which is
+  // what makes a drug effect impossible to stack on top of a manual change.
+  assert.equal(session.input.heartRatePerMin, start.heartRatePerMin);
+  assert.equal(session.input.fillingVolumeMl, start.fillingVolumeMl);
 
   session.selectIntervention(INTERVENTION_IDS.NONE);
-  assert.deepEqual({ ...session.input }, byHand, 'the reader is back on their own condition');
+  assert.deepEqual({ ...session.input }, start, 'clearing goes to the starting condition');
   assert.equal(session.interventionId, INTERVENTION_IDS.NONE);
 
-  // Moving a slider while an intervention is selected takes manual control
-  // back: the intervention is cleared and the reader's own condition returns
-  // with that one control moved. Nothing of the drug survives into it.
+  // Moving a control while one is selected lands in the same place, with that
+  // one control moved — so there is nowhere for a drug's effect to survive.
   session.selectIntervention(INTERVENTION_IDS.VOLUME_LOADING);
   session.setControl('heartRatePerMin', 64);
   assert.equal(session.interventionId, INTERVENTION_IDS.NONE);
-  assert.deepEqual({ ...session.input }, { ...byHand, heartRatePerMin: 64 });
-  assert.equal(
-    session.input.fillingVolumeMl,
-    byHand.fillingVolumeMl,
-    'and the filling the intervention had raised is not left behind in it'
-  );
+  assert.deepEqual({ ...session.input }, { ...start, heartRatePerMin: 64 });
+});
+
+test('there is no state an intervention leaves behind that nothing can restore', () => {
+  // The general form of the defect: every field the session keeps has to be
+  // either derivable from the controls the snapshot carries, or the same for
+  // every reader. A private condition that is neither is one a round trip
+  // silently changes the meaning of.
+  const session = new ExperimentSession({ presetId: PRESET_IDS.REDUCED_CONTRACTILITY });
+  session.setControl('fillingVolumeMl', 780);
+  session.selectIntervention(INTERVENTION_IDS.DOBUTAMINE);
+
+  const recoverable = new Set(['_presetId', '_intervention', '_input', '_baseline', '_view',
+    '_applied', '_problems', '_cache', '_warmStart', '_revision', 'solverOptions']);
+  const held = Object.keys(session).filter((key) => key.startsWith('_') || key === 'solverOptions');
+  for (const key of held) {
+    assert.ok(
+      recoverable.has(key),
+      `the session holds "${key}", which the control snapshot cannot carry — see the review that removed _directInput`
+    );
+  }
+
+  // And the behaviour a reader depends on is identical whichever way they got
+  // here: hand-set then drug, or straight to drug.
+  const direct = new ExperimentSession({ presetId: PRESET_IDS.REDUCED_CONTRACTILITY });
+  direct.selectIntervention(INTERVENTION_IDS.DOBUTAMINE);
+  assert.deepEqual({ ...session.input }, { ...direct.input });
+  session.selectIntervention(INTERVENTION_IDS.NONE);
+  direct.selectIntervention(INTERVENTION_IDS.NONE);
+  assert.deepEqual({ ...session.input }, { ...direct.input });
 });
 
 test('reset clears the intervention as well as the sliders', () => {
@@ -186,6 +214,20 @@ test('switching preset clears the intervention too', () => {
   session.selectPreset(PRESET_IDS.REFERENCE);
   assert.equal(session.interventionId, INTERVENTION_IDS.NONE);
   assert.deepEqual({ ...session.input }, presetInput(PRESET_IDS.REFERENCE));
+});
+
+test('the “no intervention” label says where the button actually goes', () => {
+  // The label is a claim about behaviour, and behaviour moved under it: it read
+  // "the condition as you left it" after clearing stopped returning there. A
+  // stale label on a control is worse than no label, because a reader believes it.
+  const none = INTERVENTION_OPTIONS.find((option) => option.value === INTERVENTION_IDS.NONE);
+  const session = new ExperimentSession({ presetId: PRESET_IDS.REDUCED_CONTRACTILITY });
+  session.setControl('fillingVolumeMl', 820);
+  session.selectIntervention(INTERVENTION_IDS.DOBUTAMINE);
+  session.selectIntervention(INTERVENTION_IDS.NONE);
+  assert.deepEqual({ ...session.input }, { ...session.baseline.input });
+  assert.match(none.effect, /starting condition/i, `"${none.effect}" does not say where it goes`);
+  assert.match(none.effectJa, /操作前の条件/, `"${none.effectJa}" does not say where it goes`);
 });
 
 test('the copy offers exactly the interventions the model has', () => {

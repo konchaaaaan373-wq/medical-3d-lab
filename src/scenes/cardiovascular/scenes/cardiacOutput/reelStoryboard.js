@@ -61,6 +61,9 @@ const SLOW_BEAT = { from: 9.4, until: 11.6, rate: 0.34 };
 
 const frac = (v) => v - Math.floor(v);
 
+/** Where the beat has got to when the slowed segment takes over. */
+const PHASE_AT_SLOW_START = frac(SLOW_BEAT.from * BEAT_RATE);
+
 /**
  * Anything meant to survive to the final frame is given a window that ends past
  * the sequence, so a recording held at 15.0 s shows the take-home rather than
@@ -81,8 +84,19 @@ const HOLD_PAST_END = REEL_DURATION + 1.5;
  */
 export function cardiacPhaseAt(t) {
   if (t < SLOW_BEAT.from) return frac(t * BEAT_RATE);
-  if (t < SLOW_BEAT.until) return frac((t - SLOW_BEAT.from) * SLOW_BEAT.rate);
-  const atSlowEnd = frac((SLOW_BEAT.until - SLOW_BEAT.from) * SLOW_BEAT.rate);
+  // Seeded with the phase the beat had reached, not restarted from zero.
+  //
+  // Restarting is what the heart-failure sequence does, deliberately — its slow
+  // beat is announced as "one beat, slowed down" and begins at end-diastole. This
+  // one is not announced: it is the same beat continuing, so a reader watching
+  // the ventricle sees it decelerate. Without the seed the phase went 0.81 → 0.00
+  // in one frame, a step forty times an ordinary one, skipping late diastole and
+  // snapping the chamber, the valves and the blood at exactly the moment the
+  // close-up on the residual blood begins.
+  if (t < SLOW_BEAT.until) {
+    return frac(PHASE_AT_SLOW_START + (t - SLOW_BEAT.from) * SLOW_BEAT.rate);
+  }
+  const atSlowEnd = frac(PHASE_AT_SLOW_START + (SLOW_BEAT.until - SLOW_BEAT.from) * SLOW_BEAT.rate);
   return frac(atSlowEnd + (t - SLOW_BEAT.until) * BEAT_RATE);
 }
 

@@ -243,6 +243,32 @@ test('the beat is a pure function of time, and the emphasis is presentation only
   const outside = cardiacPhaseAt(5.5) - cardiacPhaseAt(5.0);
   assert.ok(Math.abs(during) < Math.abs(outside), 'the slowed beat is slower');
 
+  // And it decelerates rather than restarting. A reviewer found the seam: the
+  // slow segment began at phase 0 while the beat had reached 0.81, so every
+  // playback and every exported file skipped late diastole and snapped the
+  // chamber, the valves and the blood — a step forty times an ordinary one, at
+  // exactly the moment the close-up begins. "Slower" was asserted; continuous
+  // was not.
+  const STEP = 1 / 240;
+  const ordinary = 1.15 * STEP;
+  let worst = 0;
+  let worstAt = 0;
+  let previous = cardiacPhaseAt(0);
+  for (let t = STEP; t <= REEL_DURATION; t += STEP) {
+    const now = cardiacPhaseAt(t);
+    let delta = now - previous;
+    if (delta < -0.5) delta += 1; // an ordinary wrap through end of cycle
+    if (Math.abs(delta) > worst) {
+      worst = Math.abs(delta);
+      worstAt = t;
+    }
+    previous = now;
+  }
+  assert.ok(
+    worst <= ordinary * 1.5,
+    `the beat jumps ${worst.toFixed(4)} at t=${worstAt.toFixed(2)}s, against an ordinary step of ${ordinary.toFixed(4)}`
+  );
+
   for (const t of [0, 5, 9.5, 10.5, 11.7, 15]) {
     const value = residualEmphasisAt(t);
     assert.ok(value >= 0 && value <= 1, `emphasis ${value} at ${t}`);

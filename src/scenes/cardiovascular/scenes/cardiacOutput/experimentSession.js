@@ -71,17 +71,10 @@ export class ExperimentSession {
     this._applied = true;
     this._problems = [];
     /**
-     * Which intervention is selected, and the condition the reader had set by
-     * hand before choosing one.
-     *
-     * Two states, kept apart. While an intervention is selected the sliders show
-     * what *it* did to the inputs; clearing it puts the reader back on the
-     * condition they had built, rather than on whatever the drug left behind.
-     * A hidden drug effect added on top of a manual change is the failure this
-     * separation exists to make impossible — there is nothing to add it to.
+     * Which intervention is selected. There is no second condition stored
+     * beside it, and that is deliberate — see `selectIntervention`.
      */
     this._intervention = INTERVENTION_IDS.NONE;
-    this._directInput = null;
     this.selectPreset(presetId);
   }
 
@@ -143,7 +136,6 @@ export class ExperimentSession {
   selectPreset(presetId) {
     this._presetId = presetId;
     this._intervention = INTERVENTION_IDS.NONE;
-    this._directInput = null;
     this._input = freezeInput(presetInput(presetId));
     // Solve the starting condition first: it is both what is on screen and the
     // snapshot everything is compared against, and they must be one solve.
@@ -164,22 +156,19 @@ export class ExperimentSession {
   setControl(id, value) {
     if (!CONTROL_IDS.includes(id)) throw new RangeError(`unknown control: ${id}`);
     // Setting a control to the value it already has is not moving it, and must
-    // not do anything. This is not a micro-optimisation: `restoreSessionState`
-    // puts a reader back by replaying every control at its captured value, and
-    // with an intervention selected those values *are* the intervention's. A
-    // replay that counted as four manual moves handed the reader back the right
-    // numbers with the intervention silently deselected — the sliders holding a
-    // drug's condition under a chip reading "none", which is a state nobody
-    // could have reached by hand.
+    // not do anything. `restoreSessionState` puts a reader back by replaying
+    // every control at its captured value, and with an intervention selected
+    // those values *are* the intervention's; a replay that counted as four
+    // manual moves handed back the right numbers with the chip silently reading
+    // "none".
     if (this._input[id] === value) return this._view;
 
-    // Moving one is taking manual control back. The intervention is cleared and
-    // the reader's own condition comes back with this control moved — so nothing
-    // of the drug survives into a hand-set state, which is the only way a hidden
-    // effect could ever be added on top of a manual one.
-    const from = this._intervention === INTERVENTION_IDS.NONE ? this._input : this._directInput;
+    // Moving one is taking manual control back, and it lands in the same place
+    // clearing the intervention does: this preset's starting condition, with
+    // this control moved. See `selectIntervention` for why there is nowhere
+    // else for it to land.
+    const from = this._intervention === INTERVENTION_IDS.NONE ? this._input : this._baseline.input;
     this._intervention = INTERVENTION_IDS.NONE;
-    this._directInput = null;
     this._input = freezeInput({ ...from, [id]: value });
     return this._apply(this._input);
   }
@@ -193,23 +182,33 @@ export class ExperimentSession {
    * preset first rather than being offered on a circulation it was never
    * observed in.
    *
+   * ## Clearing one lands on the preset's starting condition, always
+   *
+   * It used to land on whatever the reader had set by hand before choosing the
+   * intervention, which is nicer — and it was a piece of state nothing on screen
+   * showed and nothing could restore. `captureSessionState` carries the control
+   * values and nothing else, so after a sequence or a lesson that hidden
+   * condition was gone and "clear" quietly meant something different from what
+   * it had meant a minute earlier. State that cannot survive a round trip and
+   * that a reader cannot see is worse than a simpler rule.
+   *
+   * So the rule is one sentence, it is the same before and after a round trip,
+   * and the preset chip on screen says where "clear" goes. What it still cannot
+   * do is add a drug's effect on top of a hand-set condition: there is nothing
+   * to add it to, because every intervention is computed from the baseline.
+   *
    * @param {string} interventionId
    */
   selectIntervention(interventionId) {
     if (interventionId === INTERVENTION_IDS.NONE) {
       if (this._intervention === INTERVENTION_IDS.NONE) return this._view;
       this._intervention = INTERVENTION_IDS.NONE;
-      this._input = this._directInput ?? this._baseline.input;
-      this._directInput = null;
+      this._input = this._baseline.input;
       return this._apply(this._input);
     }
 
     const required = interventionPreset(interventionId);
     if (required && required !== this._presetId) this.selectPreset(required);
-
-    // The reader's own condition is kept aside the first time, and not
-    // overwritten when they move from one intervention to another.
-    if (this._intervention === INTERVENTION_IDS.NONE) this._directInput = this._input;
     this._intervention = interventionId;
 
     const applied = applyIntervention(this._baseline.input, interventionId);
@@ -244,7 +243,6 @@ export class ExperimentSession {
    */
   reset() {
     this._intervention = INTERVENTION_IDS.NONE;
-    this._directInput = null;
     this._input = this._baseline.input;
     this._view = this._baseline;
     this._applied = true;

@@ -66,7 +66,10 @@ multiplier on anything below them.
 | Dobutamine (representative) | elastance ×1.5, resistance ×0.85 | **rate**, filling |
 
 Both are computed from the preset's starting condition, so choosing the same
-one twice produces the same condition twice. An effect that falls outside the
+one twice produces the same condition twice — and clearing one, or moving a
+slider, returns there. There is no second condition remembered behind the
+scenes: a state a reader cannot see and a snapshot cannot carry is a state whose
+meaning changes silently across a sequence or a lesson. An effect that falls outside the
 verified range is refused rather than clamped — dobutamine from the reference
 heart is, which is why it is offered on the condition its evidence comes from.
 
@@ -220,6 +223,28 @@ resistance", which is the misconception rather than the teaching.
 ## 15. Review status
 
 **Catalog status:** `alpha`
+
+### Revision 5 — the hidden undo target, and the beat that jumped
+
+Two findings from an automated reviewer on the pull request, both real.
+
+Clearing an intervention used to return to whatever the reader had set by hand
+before choosing it. Nothing on screen showed that condition and
+`captureSessionState` could not carry it, so after a sequence or a lesson it was
+gone and "clear" quietly meant something else than it had a minute earlier. The
+condition is no longer remembered at all: clearing an intervention, or moving a
+slider while one is selected, lands on the preset's starting condition — one
+rule, the same before and after a round trip, and the preset chip on screen says
+where it goes. What the change does not alter is the thing that matters: an
+intervention is still computed from the baseline, so a drug's effect cannot be
+added on top of a hand-set condition.
+
+And the fifteen-second sequence restarted its slowed beat from phase zero while
+the beat had reached 0.81 — a step forty times an ordinary one, skipping late
+diastole and snapping the chamber, the valves and the blood at exactly the
+moment the close-up on the residual blood begins. It now decelerates from where
+it had got to. The tests asserted that the slow beat was slower; they did not
+assert that it was continuous, and now they do.
 
 ### Revision 4 — a claim in §2 that was not true of one path
 

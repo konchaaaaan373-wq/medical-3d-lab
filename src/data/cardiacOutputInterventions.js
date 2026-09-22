@@ -14,8 +14,8 @@ export const INTERVENTION_OPTIONS = [
     value: INTERVENTION_IDS.NONE,
     label: 'No intervention',
     labelJa: '介入なし',
-    effect: 'the condition as you left it',
-    effectJa: '自分で設定した条件のまま',
+    effect: 'back to this preset’s starting condition',
+    effectJa: 'このプリセットの操作前の条件へ戻す',
   },
   {
     value: INTERVENTION_IDS.VOLUME_LOADING,
@@ -42,9 +42,9 @@ export const INTERVENTION_OPTIONS = [
  */
 export const INTERVENTION_NOTE = {
   text:
-    'One at a time, applied to this preset’s starting condition — so pressing the same one twice changes nothing further. These are not doses and the screen is not a time course.',
+    'One at a time, applied to this preset’s starting condition — so pressing the same one twice changes nothing further, and clearing one returns there. These are not doses and the screen is not a time course.',
   textJa:
-    '1 つずつ、そのプリセットの操作前の条件に適用します（同じものを 2 回押しても、それ以上は変わりません）。用量ではなく、画面は時間経過でもありません。',
+    '1 つずつ、そのプリセットの操作前の条件に適用します（同じものを 2 回押しても、それ以上は変わりません。解除すると、その条件に戻ります）。用量ではなく、画面は時間経過でもありません。',
 };
 
 /**
