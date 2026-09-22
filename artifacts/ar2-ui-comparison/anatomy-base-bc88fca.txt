@@ -1,0 +1,13 @@
+built
+  note: retry by Space: recovered to 271 structures, then selected 59
+  note: 844x390: the retry button is on screen and uncovered without opening the sheet
+  note: 375x667: the retry button is on screen and uncovered without opening the sheet
+  note: 1280x800: zoom holds its anchor (subject 0px, pointer 0px, round trip 0px)
+  note: 390x844: zoom holds its anchor (subject 0px, pointer 0px, round trip 0px)
+
+3 problem(s):
+  - the scene opens framed differently from how it resets: across the frame's middle row the model spans 0.26..0.5 of the frame at first and 0.2..0.54 after "reset the display", with nothing moved in between. The reader sees the first one.
+  - the tour's point (0.215, 0.465) should be on "Orbital part of inferior frontal gyrus" and named "Orbital gyri"
+  - "上側頭回（外側部）" is still labelled after turning to the other side of the head
+
+[exited with code 0]
