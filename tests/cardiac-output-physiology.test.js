@@ -191,7 +191,7 @@ test('no fall in output with rate at any sampled point — a characterization te
   //
   // The card used to assert the opposite — that a condition existed inside the
   // range where raising the rate lowered output — and nothing had measured it
-  // (L-95). The first correction then overshot and called the model
+  // (L-105). The first correction then overshot and called the model
   // "monotonic", which a finite sweep cannot establish. So what is asserted
   // here is bounded the way the card's wording is: no fall **at these points**,
   // with nothing claimed about the conditions between them and nothing claimed

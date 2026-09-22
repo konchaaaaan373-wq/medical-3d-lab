@@ -168,7 +168,7 @@ process.exitCode = failures.length > 0 && !probe ? 1 : 0;
  *
  * The model card once asserted that somewhere inside the declared range,
  * raising the heart rate lowered cardiac output. Nothing had measured it, and
- * measuring it found no such point (L-95). The first correction then
+ * measuring it found no such point (L-105). The first correction then
  * overshot in the other direction and said output "is monotonically
  * increasing in rate" — which is a statement about the whole continuous
  * domain, and a finite sweep cannot make it.

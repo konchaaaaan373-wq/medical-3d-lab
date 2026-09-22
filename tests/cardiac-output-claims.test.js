@@ -11,7 +11,7 @@ import { readFileSync } from 'node:fs';
  * through a publication decision, that somewhere inside the declared range
  * raising the heart rate lowered cardiac output. It was reasoned from the
  * shape of the physics, never measured, and measuring it found no such point
- * (L-95).
+ * (L-105).
  *
  * So the two kinds of check are kept apart on purpose. A numeric test that
  * goes red tells you the model changed. A test in this file that goes red

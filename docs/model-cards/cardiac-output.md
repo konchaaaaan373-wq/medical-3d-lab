@@ -276,7 +276,7 @@ supports is refusing to publish the reduction.
 
   An earlier version of this section claimed the opposite — that a condition
   inside the range existed where raising the rate lowered output. Nothing had
-  measured it, and measuring it found none (L-95).
+  measured it, and measuring it found none (L-105).
 - **Two conditions shown side by side look like a before and an after.** They
   are two settled states. The time between them on screen is the time the
   browser took.
@@ -410,7 +410,7 @@ publication decision stays pinned to revision 5 — this is a correction to what
 the card said about a model that is unchanged, not a change to the model.
 
 Found while writing an external-review request that quoted the card back at
-itself and checked the quote. L-95.
+itself and checked the quote. L-105.
 
 ### Revision 5 — the hidden undo target, and the beat that jumped
 
@@ -505,7 +505,7 @@ to it.
   `node --test tests/cardiac-output-claims.test.js` — a string-level check on
   this card, because a sentence it does not support is invisible to every
   numeric test in this list. It exists because §14 carried one for four days
-  (L-95).
+  (L-105).
 - **Does the step size change the answer:** `npm run sweep:cardiac-output -- --steps`
   — 81 conditions solved to steady state **independently** at 240, 480 and 960
   steps per beat, compared against the finest on absolute *and* relative
