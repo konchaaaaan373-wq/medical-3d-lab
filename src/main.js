@@ -153,7 +153,10 @@ async function boot() {
     // throw away the pre-paint veil for the one route it exists for.
     document.getElementById('boot-veil')?.remove();
 
-    const { mountDocumentSurface } = await import('./app/documentSurfaces.js');
+    // One import, not two awaited in turn. `shellNavigation.js` already imports
+    // the mount table, so fetching it separately here only added a serial
+    // round-trip in front of every reading surface's first paint — and with it
+    // the skip link, which is the first thing a keyboard user reaches for.
     const { installShellNavigation } = await import('./app/shellNavigation.js');
     await installShellNavigation({
       ui,
@@ -161,7 +164,6 @@ async function boot() {
       open,
       accountButton: access.accountButton,
       observe,
-      mountDocumentSurface,
       language: readUiLanguagePreference(),
       onRendererFailure: (error, context) => {
         context?.observability?.reporter?.captureRendererFailure(error, {

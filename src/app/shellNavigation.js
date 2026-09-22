@@ -1,5 +1,5 @@
 import { installDeparture, needsDocumentUnlessClosed } from './departure.js';
-import { isDocumentSurface } from './documentSurfaces.js';
+import { isDocumentSurface, mountDocumentSurface as mountSurface } from './documentSurfaces.js';
 import { destinationSubject, openingMessage } from './destinationName.js';
 import { resolveRoute, sameRoute } from './router.js';
 import { routeOpen } from './releaseGate.js';
@@ -130,7 +130,8 @@ function focusSurfaceStart(ui) {
  * @param {boolean} options.open whether the release gate opens that route
  * @param {HTMLElement|null} options.accountButton
  * @param {(options: object) => Promise<any>} options.observe
- * @param {Function} options.mountDocumentSurface
+ * @param {Function} [options.mountDocumentSurface] the real one by default;
+ *   injected only by tests, which drive the swap without building a surface
  * @param {'en'|'ja'} [options.language]
  * @param {(error: Error, context: object) => void} [options.onRendererFailure]
  * @param {Window} [options.windowRef]
@@ -142,7 +143,7 @@ export async function installShellNavigation({
   open,
   accountButton,
   observe,
-  mountDocumentSurface,
+  mountDocumentSurface = mountSurface,
   language = 'ja',
   onRendererFailure = () => {},
   windowRef = globalThis.window,

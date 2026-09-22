@@ -578,7 +578,15 @@ test('beta release: a locked route never downloads the scene it is refusing to s
   const gate = main.indexOf('const open = routeOpen(route);');
   assert.ok(gate > 0, 'main.js has to decide before it routes');
   assert.ok(gate < main.indexOf("import('./app/App.js')"), 'the gate runs before the scene app loads');
-  assert.ok(gate < main.indexOf("import('./app/documentSurfaces.js')"), 'and before any surface loads');
+  // `shellNavigation.js` is the single import that pulls in the mount table and,
+  // through it, every surface module. Nothing may be fetched before `open` is
+  // known.
+  assert.ok(gate < main.indexOf("import('./app/shellNavigation.js')"), 'and before any surface loads');
+  assert.doesNotMatch(
+    main,
+    /import\('\.\/app\/documentSurfaces\.js'\)/,
+    'the mount table is reached through the shell, not fetched separately in front of it'
+  );
   assert.match(main, /if \(open && route\.kind === 'scene'\) recordSceneVisit/);
   // A gated route is rendered as `locked`, whatever it was going to be.
   assert.match(main, /isDocumentSurface\(open \? route : \{ kind: 'locked' \}\)/);

@@ -494,6 +494,75 @@ try {
     await context.close();
   }
 
+  // ------------------------------------------- the shell outlives the surfaces
+  //
+  // A swap replaces the page inside a document that keeps running. Everything
+  // the *shell* owns has to survive that: the account dialog (which lives in
+  // `#ui` for the life of the page), the feedback panel, the language toggle,
+  // and the one account button that is moved from surface to surface rather
+  // than rebuilt.
+  //
+  // Checked after ten navigations rather than one, because the failure this
+  // guards against is cumulative — a teardown that removes one node too many,
+  // or a mount that leaves one behind, shows up as a second feedback button on
+  // the third navigation and a missing sign-in dialog on the tenth.
+  {
+    const context = await browser.newContext();
+    const page = await context.newPage();
+    await page.goto(`${origin}/`, { waitUntil: 'networkidle' });
+    await sleep(2000);
+
+    for (const hash of ['#/trust', '#/organs', '#/terms', '#/', '#/privacy',
+                        '#/trust', '#/organs', '#/', '#/support', '#/trust']) {
+      await page.evaluate((next) => { window.location.hash = next; }, hash);
+      await sleep(500);
+    }
+    await sleep(1200);
+
+    const counted = await ask(page, `(() => ({
+      accountModals: document.querySelectorAll('.access-modal').length,
+      accountButtons: document.querySelectorAll('.account-trigger').length,
+      feedbackTriggers: document.querySelectorAll('.feedback-trigger').length,
+      feedbackOverlays: document.querySelectorAll('.feedback-overlay').length,
+      skipLinks: document.querySelectorAll('.skip-link').length,
+      shellHeaders: document.querySelectorAll('.shell-header').length,
+      announcers: document.querySelectorAll('[role="status"][aria-live="polite"]').length,
+      roots: document.querySelectorAll('#ui > main').length,
+    }))()`);
+    const singles = Object.entries(counted).filter(([key]) => key !== 'unreadable');
+    const duplicated = singles.filter(([, howMany]) => howMany !== 1);
+    record(
+      'ten swaps later there is still exactly one of everything the shell owns',
+      duplicated.length === 0,
+      duplicated.length
+        ? duplicated.map(([what, howMany]) => `${what}: ${howMany}`).join(', ')
+        : singles.map(([what]) => what).join(', ')
+    );
+
+    // And they still work, which is a different question from being present.
+    await page.click('.account-trigger').catch(() => {});
+    await sleep(900);
+    const signIn = await ask(page, `(() => {
+      const modal = document.querySelector('.access-modal');
+      return { open: !!(modal && !modal.hidden) };
+    })()`);
+    record('the sign-in dialog still opens after them', signIn.open === true, `open ${signIn.open}`);
+    await page.keyboard.press('Escape').catch(() => {});
+    await sleep(400);
+
+    const before = await ask(page, `document.getElementById('ui').dataset.lang`);
+    await page.click('.shell-actions .ui-toggle').catch(() => {});
+    await sleep(700);
+    const after = await ask(page, `document.getElementById('ui').dataset.lang`);
+    record(
+      'the language toggle still changes the language after them',
+      typeof after === 'string' && after !== before,
+      `${before} -> ${after}`
+    );
+    await shot(page, 'after-ten-swaps');
+    await context.close();
+  }
+
   // ------------------------------------------------- the veil says where to
   {
     const context = await browser.newContext();
