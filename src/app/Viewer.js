@@ -32,6 +32,8 @@ export class Viewer {
     this.clock = new THREE.Clock();
     this.frameHandlers = new Set();
     this.afterFrameHandlers = new Set();
+    /** A drawing-buffer size held for a recording, or null. */
+    this.heldSize = null;
     this.resizeHandlers = new Set();
     this.running = false;
     this.qualityHandlers = new Set();
@@ -155,6 +157,12 @@ export class Viewer {
   }
 
   resize() {
+    // A held buffer wins: something is being recorded at an exact size, and
+    // the window moving is not a reason to change the file.
+    if (this.heldSize) {
+      this._applyHeldSize();
+      return;
+    }
     const width = this.container.clientWidth || window.innerWidth;
     const height = this.container.clientHeight || window.innerHeight;
     this._syncDeviceClass();
@@ -351,6 +359,78 @@ export class Viewer {
     this._notifyResize();
     this.composer.render();
     return url;
+  }
+
+  /**
+   * Hold the drawing buffer at an exact pixel size until the returned function
+   * is called.
+   *
+   * `snapshot` does this for one frame when it is handed a size, which is what
+   * a PNG needs. A recording needs it for fifteen seconds: the export captured
+   * the canvas at whatever size the browser window gave it — 506×900 on a
+   * laptop — and call the result a 9:16 export. The frame shapes the sequence
+   * offers are declared in pixels (1080×1920 and the rest), so a file that
+   * claims one should be that many pixels.
+   *
+   * `updateStyle: false`, so the element keeps its CSS box and nothing on
+   * screen moves; only the buffer behind it changes. `resize()` re-applies the
+   * held size rather than overwriting it, because a window resize during a
+   * recording must not change what is being recorded.
+   *
+   * @param {{ width: number, height: number }} size
+   * @returns {() => void} release, restoring the size the viewer had
+   */
+  captureSize({ width, height }) {
+    const previous = {
+      size: this.renderer.getSize(new THREE.Vector2()),
+      aspect: this.camera.aspect,
+      fov: this.camera.fov,
+    };
+    this.heldSize = { width, height };
+    this._applyHeldSize();
+    return () => {
+      if (!this.heldSize) return;
+      this.heldSize = null;
+      // The budget is asked again rather than restoring the ratio the viewer
+      // happened to have when the recording started. A fifteen-second
+      // recording at an exact size is expensive enough to move the frame
+      // budget while it runs, and `resize()` below does not recompute the
+      // ratio unless the device class changes — so putting the old one back
+      // would leave the interactive scene at a quality the monitor has since
+      // decided this machine cannot hold, for the rest of the session, while
+      // reporting the reduced tier.
+      const ratio = this._budgetedPixelRatio();
+      this.renderer.setPixelRatio(ratio);
+      this.composer.setPixelRatio?.(ratio);
+      this.renderer.setSize(previous.size.x, previous.size.y, false);
+      this.composer.setSize(previous.size.x, previous.size.y);
+      this.bloomPass?.setSize(previous.size.x, previous.size.y);
+      this.camera.aspect = previous.aspect;
+      this.camera.fov = previous.fov;
+      this.camera.updateProjectionMatrix();
+      this._notifyResize();
+    };
+  }
+
+  _applyHeldSize() {
+    const { width, height } = this.heldSize;
+    // Pixel ratio 1 on the renderer *and* on the composer: both multiply by
+    // their own copy, and the size asked for here is the size the file has to
+    // be. The composer's copy is fixed at construction from whatever the
+    // renderer's ratio was then, so setting only the renderer's leaves the
+    // passes drawing 2160×3840 for a 1080×1920 export on a 2× display — four
+    // times the pixels, and four times the pixels is also what the probe in
+    // `recordVideo` would be timing, which is how a machine that could
+    // sustain the declared size gets told it cannot.
+    this.renderer.setPixelRatio(1);
+    this.composer.setPixelRatio?.(1);
+    this.renderer.setSize(width, height, false);
+    this.composer.setSize(width, height);
+    this.bloomPass?.setSize(width, height);
+    this.camera.aspect = width / height;
+    this.camera.fov = fovForAspect(this.camera.aspect);
+    this.camera.updateProjectionMatrix();
+    this._notifyResize();
   }
 
   dispose() {

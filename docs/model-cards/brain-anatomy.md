@@ -663,7 +663,7 @@ pair of colour families. Most of those pairs are never on screen together, and
 the budget they took came out of the ones that are: the central sulcus — the
 frontal-to-parietal boundary — fell to ΔE 18.7, from 23.5 in revision 26 and
 25.8 before that, and a reader reported it as unreadable. Every guard was
-green while that happened, which is recorded as L-65 in
+green while that happened, which is recorded as L-72 in
 `docs/verification-lessons.md`.
 
 The objective and the constraint are now the other way round. What is
@@ -718,7 +718,7 @@ touching-boundary floor rises from 22 to 28. The all-label audit improves to
 changed again (147/147). Of the three mutations that prove the guards,
 one is the defect reported against revision 27 and one fails the
 colour-vision assertion alone. Two of them had been silently failing to apply
-at all, which is recorded as L-64 in `docs/verification-lessons.md` and is why
+at all, which is recorded as L-71 in `docs/verification-lessons.md` and is why
 `scripts/mutate-colour-family.py` now refuses an edit that changes nothing.
 Colour still aids identification and grouping and does not show real tissue
 colour, functional localisation, vascular territory, exact boundaries or
@@ -850,9 +850,12 @@ has a floor as well as a shape (chroma 45), and desaturating all six lobes to
 30 fails it.
 
 Also on merge: this branch's follow-up and lesson numbers collided with
-`main`, which had taken F-159–F-168 and L-52–L-55 while it was in flight. They
-move to F-177/F-178 and L-64/L-65, with their cross-references, and the
-collision is recorded in `docs/follow-ups.md` as the thirteenth of its kind.
+`main` twice. First `main` took F-159–F-168 and L-52–L-55 while the branch was
+in flight; then, after the renumbering, it took L-64–L-70 as well. The items
+are now F-177/F-178 and L-71/L-72, with their cross-references, and both
+collisions are recorded in `docs/follow-ups.md` as the thirteenth and
+fourteenth of their kind. The F numbers survived the second round because they
+had a reserved block; the L numbers, which have no such table, did not.
 
 Sources in scope: `src/data/brainAnatomy.js`,
 `src/scenes/nervous/scenes/brainAnatomy/BrainAnatomyScene.js`.
