@@ -1,4 +1,5 @@
 import { el, skipLink } from '../utils/dom.js';
+import { createShellHeader } from '../components/ShellHeader.js';
 import { inLanguage } from '../utils/language.js';
 import { createLanguageToggle } from '../components/LanguageToggle.js';
 import { createExplorerSearchControls } from '../components/ExplorerSearchControls.js';
@@ -10,7 +11,6 @@ import {
   EXPLORER_ROUTE,
   LAB_ROUTE,
   LAB_SCENES,
-  LANDING_ROUTE,
   PUBLIC_SCENES,
   organById,
   sceneById,
@@ -339,21 +339,11 @@ export function createExplorer({
     searchControls?.setLanguage(mode);
   });
 
-  const headerActions = el('div', { class: 'explorer-header-actions' }, [
-    el('a', { class: 'explorer-shell-link', href: LANDING_ROUTE }, [
-      el('span', { class: 'lang-en', text: 'Home' }),
-      el('span', { class: 'lang-ja', text: 'ホーム' }),
-    ]),
-    // Lab is a locked route during the beta, so it is not offered from here.
-    beta
-      ? null
-      : el('a', { class: 'explorer-shell-link', href: isLab ? EXPLORER_ROUTE : LAB_ROUTE }, [
-          el('span', { class: 'lang-en', text: isLab ? 'Public models' : 'Lab' }),
-          el('span', { class: 'lang-ja', text: isLab ? '公開モデル' : '実験室' }),
-        ]),
+  const shellHeader = createShellHeader({
+    current: isLab ? 'lab' : 'models',
     accountButton,
-    languageToggle.element,
-  ]);
+    languageToggle: languageToggle.element,
+  });
 
   const jump = el(
     'nav',
@@ -529,6 +519,7 @@ export function createExplorer({
   // through the header. The skip link targets the first catalogue section
   // rather than this element, so it lands past the search and the jump links.
   const element = el('main', { class: `explorer${isLab ? ' is-lab' : ' is-public'}` }, [
+    shellHeader,
     el('header', { class: 'panel explorer-header' }, [
       el('p', { class: 'eyebrow', text: 'medical-3d-lab' }),
       el('h1', { class: 'title' }, [
@@ -543,7 +534,6 @@ export function createExplorer({
       useLanes,
       search.element,
       jump,
-      headerActions,
     ]),
     libraryShelf,
     noResults,

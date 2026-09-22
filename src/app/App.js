@@ -7,6 +7,7 @@ import { betaUnlocked, sceneOpen } from './releaseGate.js';
 import { structureOf } from './router.js';
 import { hasDataOnlySurface } from './dataView.js';
 import { installDeparture } from './departure.js';
+import { openingMessage } from './destinationName.js';
 import { Playback } from '../utils/Playback.js';
 import { damp } from '../utils/math.js';
 import { ZOOM_RANGE, clampZoom, steppedZoom, zoomedDistance as zoomed } from './zoom.js';
@@ -1952,6 +1953,23 @@ export async function createApp({ stage, ui, onRetryModel = null }) {
   installDeparture({
     shownHash: window.location.hash,
     language: ui.dataset.lang === 'en' ? 'en' : 'ja',
+    // What is opening, not that something is. The arriving document paints the
+    // same sentence from the same function, so the two halves of a model
+    // switch read as one wait rather than as a false start.
+    describe: (hash) => openingMessage(hash, ui.dataset.lang === 'en' ? 'en' : 'ja'),
+    // This scene renders until its document goes away. On a model switch that
+    // leaves the outgoing model drawing frames nobody can see while the
+    // incoming document builds a second WebGL context and a second atlas.
+    // Measured on the built site: 5977→4760, 4353→3539, 3527→3010 ms.
+    //
+    // Undoable, and undone by `installDeparture` if the reader comes back to
+    // this route before the reload commits — otherwise Back would land on a
+    // model that had quietly stopped moving.
+    onDepart: () => {
+      if (!viewer?.running) return undefined;
+      viewer.stop();
+      return () => viewer.start();
+    },
   });
 
   // Exposed for debugging and for automated screenshots.

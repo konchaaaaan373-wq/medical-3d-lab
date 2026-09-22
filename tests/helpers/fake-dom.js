@@ -69,6 +69,11 @@ export class FakeElement {
     this.style = new FakeStyle();
     this.hidden = false;
     this.disabled = false;
+    // Real form controls always have one, and code that reads `.value` before
+    // anybody has typed is normal rather than defensive. Leaving it `undefined`
+    // made a `value.trim()` throw inside a component that works in a browser,
+    // which is the fake disagreeing with the DOM rather than a bug being found.
+    this.value = '';
     this.textContent = '';
     this.parentElement = null;
   }

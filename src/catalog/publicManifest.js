@@ -73,7 +73,12 @@ function revisionOf(models) {
  * @property {string} route         where a link must actually go: `#/<slug>`
  * @property {string|null} posterPath  build-relative link-preview image
  * @property {'link-preview-card'} posterKind  what that image actually is
- * @property {string} modelInfoRoute   in-app route for sources and review state
+ * @property {string} modelInfoRoute   in-app route for **this model's** sources
+ *   and review state. It carries `?model=<slug>`, which opens that model's own
+ *   record rather than the top of a page with seventy on it. It used to be the
+ *   bare route for every model, which is how a link labelled "model
+ *   information", followed from a model, arrived somewhere that said nothing
+ *   about it.
  * @property {string|null} modelCard   repository-relative model card, if one exists
  */
 
@@ -89,7 +94,7 @@ const rowFor = (scene) => {
     route: sceneRoute(scene),
     posterPath: posterPathFor(scene),
     posterKind: 'link-preview-card',
-    modelInfoRoute: MODEL_INFO_ROUTE,
+    modelInfoRoute: `${MODEL_INFO_ROUTE}?model=${scene.slug}`,
     modelCard: modelCardForScene(scene) ?? scene.modelCard ?? null,
   });
 };

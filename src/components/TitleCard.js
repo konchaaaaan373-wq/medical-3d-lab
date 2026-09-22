@@ -93,8 +93,13 @@ export function createTitleCard(meta) {
   const modelInfoLink =
     review &&
     el('a', { class: 'title-trust-link', href: `#/trust?model=${encodeURIComponent(meta.id)}` }, [
-      el('span', { class: 'lang-en', text: 'Model information →' }),
-      el('span', { class: 'lang-ja', text: 'モデル情報 →' }),
+      // Named for what it opens: *this* model's record. "Model information",
+      // pressed with a model on screen, promised something about that model and
+      // arrived at a ledger of seventy — the same words appeared four times on
+      // the landing page pointing at the same ledger, which is how the label
+      // came to mean nothing in particular.
+      el('span', { class: 'lang-en', text: 'Sources & limits of this model →' }),
+      el('span', { class: 'lang-ja', text: 'このモデルの根拠と限界 →' }),
     ]);
 
   const trustBadges =

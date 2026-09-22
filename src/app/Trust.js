@@ -1,11 +1,11 @@
 import { clinicalReviewPresentation } from '../catalog/clinicalReview.js';
 import { inLanguage } from '../utils/language.js';
-import { EXPLORER_ROUTE, LANDING_ROUTE, PUBLIC_SCENES, sceneRoute, statusById } from '../catalog/index.js';
+import { PUBLIC_SCENES, sceneRoute, statusById } from '../catalog/index.js';
 import { isSceneReleased } from '../catalog/release.js';
 import { betaUnlocked } from './releaseGate.js';
 import { createLanguageToggle } from '../components/LanguageToggle.js';
 import { el, skipLink } from '../utils/dom.js';
-import { prefersReducedMotion } from '../utils/motion.js';
+import { createShellHeader } from '../components/ShellHeader.js';
 
 /**
  * The notes that go with each review state.
@@ -99,7 +99,7 @@ const cardIdFor = (scene) => `trust-${scene.slug}`;
  * One model, `scene` paired with its already-computed review presentation and
  * the id its card and TOC entry share.
  *
- * Built once and handed to both `trustToc` and `trustCard` so the two agree by
+ * Built once and handed to both the filter and `trustCard` so the two agree by
  * construction — there is no second place that could list a different set of
  * models, or spell an id differently than the card that has to match it.
  *
@@ -112,109 +112,138 @@ const trustEntry = (scene) => ({
 });
 
 /**
- * A model's row in the table of contents.
+ * The control that narrows the records, replacing the list that duplicated them.
  *
- * Clicking it does two things a plain anchor cannot: it opens the `<details>`
- * the reader is jumping into (closed sections have no content to land in
- * otherwise) and it moves focus to the summary, so a keyboard reader ends up
- * *in* the record rather than merely scrolled past its top. `preventDefault`
- * keeps the hash itself untouched — `#trust-<slug>` never becomes the
- * document's hash, so there is nothing for the router's `hashchange` handler
- * to (mis)read as a navigation; `router.isInPageAnchor` already treats any
- * hash without a leading `/` this way, this simply never writes one.
- */
-function trustTocItem({ scene, id, review }) {
-  return el('li', { class: 'trust-toc-item' }, [
-    el(
-      'a',
-      {
-        class: 'trust-toc-link',
-        href: `#${id}`,
-        on: {
-          click: (event) => {
-            const target = document.getElementById(id);
-            if (!target) return;
-            event.preventDefault();
-            target.open = true;
-            target.scrollIntoView?.({
-              behavior: prefersReducedMotion() ? 'auto' : 'smooth',
-              block: 'start',
-            });
-            target.querySelector?.('summary')?.focus?.();
-          },
-        },
-      },
-      [
-        el('span', { class: 'trust-toc-title' }, [
-          el('span', { class: 'lang-en', text: scene.titleEn }),
-          el('span', { class: 'lang-ja', text: scene.titleJa }),
-        ]),
-        reviewBadge(review),
-      ]
-    ),
-  ]);
-}
-
-/**
- * A shared-section row in the table of contents (Overview, Legal & support).
+ * ## What was here
  *
- * A plain `href="#content"` is a native fragment navigation: the browser
- * would replace the document's hash — `#/trust` — with `#content`, and
- * `#content` is not a route `resolveRoute` knows. A reload, a shared link or
- * history restoring that address lands `main.js` on an unknown hash, which
- * resolves to the default 3D model, not back on Trust. `skipLink()` in
- * `utils/dom.js` solved this exact problem for the same reason; this follows
- * its own pattern rather than inventing a second one: `preventDefault`, move
- * focus to the target itself, then scroll it into view.
- */
-function sharedTocLink(targetId, en, ja) {
-  return el('li', {}, [
-    el(
-      'a',
-      {
-        class: 'trust-toc-shared-link',
-        href: `#${targetId}`,
-        on: {
-          click: (event) => {
-            const target = document.getElementById(targetId);
-            if (!target) return;
-            event.preventDefault();
-            target.focus({ preventScroll: true });
-            target.scrollIntoView({ block: 'start' });
-          },
-        },
-      },
-      [
-        el('span', { class: 'lang-en', text: en }),
-        el('span', { class: 'lang-ja', text: ja }),
-      ]
-    ),
-  ]);
-}
-
-/**
- * The table of contents: one row per model Trust renders, plus the short
- * shared sections that sit outside any `<details>`.
+ * A table of contents: seventy chips, each the name of a model and its review
+ * badge, above seventy cards carrying the same name and the same badge. Two
+ * structures for one set. A reader looking for the heart scanned seventy chips,
+ * pressed one, and arrived at a card that repeated what the chip had said —
+ * and a reader who did not already know what they were looking for had no
+ * purchase on either list, because seventy names in review order is not an
+ * index, it is the data with a heading on it.
  *
- * `entries` is the same list `createTrust` builds the cards from — this
- * function invents no model of its own, so the two cannot drift apart. That
- * is also what keeps a scene name out of this file: nothing here is written
- * per model, only mapped over whatever the catalogue currently publishes.
+ * ## What is here instead
+ *
+ * One structure, narrowed in place. A text field matches a model's name in
+ * either language, and a two-way split separates the models that can be opened
+ * today from the ones still being built — which is the one distinction a
+ * visitor can act on, and the one the page never made. Review state stays on
+ * each record, where it belongs, instead of being the axis the whole page is
+ * organised by.
+ *
+ * It is a filter rather than a second navigation on purpose. Adding search
+ * *beside* a jump list would have made three structures for one set. And it is
+ * the shape that survives the catalogue growing: at seventy models the jump
+ * list was already unusable, and nothing about it would have been better at two
+ * hundred.
  *
  * @param {ReturnType<typeof trustEntry>[]} entries
+ * @param {Map<string, HTMLElement>} cardsById
  */
-function trustToc(entries) {
-  return el('nav', { class: 'trust-toc', 'aria-label': inLanguage('On this page', 'このページの目次') }, [
-    el('p', { class: 'trust-toc-label' }, [
-      el('span', { class: 'lang-en', text: `Jump to a model (${entries.length})` }),
-      el('span', { class: 'lang-ja', text: `モデルへ移動（${entries.length}件）` }),
+function trustFilter(entries, cardsById) {
+  const field = el('input', {
+    class: 'trust-filter-field',
+    type: 'search',
+    id: 'trust-filter',
+    autocomplete: 'off',
+    placeholder: inLanguage('Model name', 'モデル名'),
+  });
+
+  const SCOPES = [
+    { id: 'all', en: 'All', ja: 'すべて' },
+    { id: 'open', en: 'Published', ja: '公開中' },
+    { id: 'building', en: 'In development', ja: '開発中' },
+  ];
+  let scope = 'all';
+
+  const count = el('p', {
+    class: 'trust-filter-count',
+    role: 'status',
+    'aria-live': 'polite',
+  });
+
+  const buttons = SCOPES.map((item) =>
+    el(
+      'button',
+      {
+        class: 'trust-filter-scope',
+        type: 'button',
+        'aria-pressed': String(item.id === scope),
+        on: {
+          click: () => {
+            scope = item.id;
+            for (const [id, button] of pressed) button.setAttribute('aria-pressed', String(id === scope));
+            apply();
+          },
+        },
+      },
+      [
+        el('span', { class: 'lang-en', text: item.en }),
+        el('span', { class: 'lang-ja', text: item.ja }),
+      ]
+    )
+  );
+  const pressed = new Map(SCOPES.map((item, index) => [item.id, buttons[index]]));
+
+  function apply() {
+    const needle = field.value.trim().toLowerCase();
+    let shown = 0;
+    for (const entry of entries) {
+      const card = cardsById.get(entry.id);
+      if (!card) continue;
+      // `isSceneReleased`, not "can this reader open it". The split describes
+      // the *model's* publication state, which is what this page is about; a
+      // preview unlock changes what a developer may open and must not change
+      // what the ledger says is published, or the control reads 70/0 for
+      // exactly the people who need it to be honest.
+      const published = isSceneReleased(entry.scene);
+      const inScope = scope === 'all' || (scope === 'open') === published;
+      const matches =
+        !needle ||
+        entry.scene.titleEn.toLowerCase().includes(needle) ||
+        entry.scene.titleJa.toLowerCase().includes(needle) ||
+        entry.scene.slug.includes(needle);
+      const visible = inScope && matches;
+      card.hidden = !visible;
+      if (visible) shown += 1;
+    }
+    count.replaceChildren(
+      el('span', { class: 'lang-en', text: `${shown} of ${entries.length} models` }),
+      el('span', { class: 'lang-ja', text: `${entries.length}件中 ${shown}件` })
+    );
+  }
+
+  field.addEventListener('input', apply);
+  apply();
+
+  return {
+    element: el('div', { class: 'trust-filter' }, [
+      el('label', { class: 'trust-filter-label', for: 'trust-filter' }, [
+        el('span', { class: 'lang-en', text: 'Find a model' }),
+        el('span', { class: 'lang-ja', text: 'モデルを探す' }),
+      ]),
+      field,
+      el(
+        'div',
+        {
+          class: 'trust-filter-scopes',
+          role: 'group',
+          'aria-label': inLanguage('Availability', '公開状態'),
+        },
+        buttons
+      ),
+      count,
     ]),
-    el('ol', { class: 'trust-toc-list' }, entries.map(trustTocItem)),
-    el('ul', { class: 'trust-toc-shared' }, [
-      sharedTocLink('content', 'Overview', '概要'),
-      sharedTocLink('trust-legal', 'Legal & support', '規約・サポート'),
-    ]),
-  ]);
+    /** Undo any narrowing, so a deep link to one record is never filtered out. */
+    reset() {
+      field.value = '';
+      scope = 'all';
+      for (const [id, button] of pressed) button.setAttribute('aria-pressed', String(id === 'all'));
+      apply();
+    },
+  };
 }
 
 /**
@@ -294,7 +323,7 @@ function trustCard({ scene, id, review }, { open }) {
  * @param {HTMLElement} options.ui
  * @param {HTMLElement|null} [options.accountButton]
  * @param {string|null} [options.focusId] a scene id or slug the route named
- *   (`#/trust?model=<id>`, e.g. from a scene's "Model information" link) —
+ *   (`#/trust?model=<id>`, e.g. from a scene's "sources & limits" link) —
  *   that model's section opens instead of starting collapsed, and the page
  *   lands scrolled to it.
  */
@@ -308,26 +337,19 @@ export function createTrust({ ui, accountButton = null, focusId = null }) {
     ? entries.findIndex((entry) => entry.scene.id === focusId || entry.scene.slug === focusId)
     : -1;
   const cards = entries.map((entry, index) => trustCard(entry, { open: index === focusIndex }));
+  const cardsById = new Map(entries.map((entry, index) => [entry.id, cards[index]]));
+  const filter = trustFilter(entries, cardsById);
 
   const element = el('main', { class: 'trust-page' }, [
-    el('header', { class: 'trust-nav' }, [
-      el('a', { class: 'trust-brand', href: LANDING_ROUTE, text: 'Medical 3D Lab' }),
-      el('nav', { class: 'trust-nav-links', 'aria-label': inLanguage('Trust navigation', '出典と根拠のナビゲーション') }, [
-        el('a', { href: EXPLORER_ROUTE }, [
-          el('span', { class: 'lang-en', text: 'Models' }),
-          el('span', { class: 'lang-ja', text: 'モデル' }),
-        ]),
-        el('a', { href: LANDING_ROUTE }, [
-          el('span', { class: 'lang-en', text: 'Home' }),
-          el('span', { class: 'lang-ja', text: 'ホーム' }),
-        ]),
-      ]),
-      el('div', { class: 'trust-nav-actions' }, [accountButton, languageToggle.element]),
-    ]),
+    createShellHeader({
+      current: 'trust',
+      accountButton,
+      languageToggle: languageToggle.element,
+    }),
     el('section', { class: 'trust-hero', id: 'content', tabindex: '-1', 'data-skip-target': '' }, [
       el('p', { class: 'trust-kicker' }, [
-        el('span', { class: 'lang-en', text: 'Model information' }),
-        el('span', { class: 'lang-ja', text: 'モデル情報' }),
+        el('span', { class: 'lang-en', text: 'Publication & review' }),
+        el('span', { class: 'lang-ja', text: '公開とレビュー' }),
       ]),
       el('h1', {}, [
         el('span', { class: 'lang-en', text: 'Model status and medical review' }),
@@ -349,7 +371,7 @@ export function createTrust({ ui, accountButton = null, focusId = null }) {
         bilingual('Evidence: sources, tests and limitations', '根拠：出典、テスト、限界'),
       ]),
     ]),
-    trustToc(entries),
+    filter.element,
     el('section', { class: 'trust-grid' }, cards),
     // `tabindex="-1"` so the shared-section jump above can move focus here,
     // the same reason `.trust-hero` (`id="content"`) already carries one.
@@ -386,9 +408,14 @@ export function createTrust({ ui, accountButton = null, focusId = null }) {
   // id, so it works the moment the element exists and does not depend on the
   // document having actually mounted `element` yet.
   if (focusIndex >= 0) {
+    // The filter starts wide open, but a future default — or a remembered one
+    // — must not be able to hide the record the route asked for. Asking for it
+    // explicitly is one line; discovering that a deep link silently showed an
+    // empty page is a bug report.
+    filter.reset();
     cards[focusIndex].scrollIntoView?.({ block: 'start' });
     cards[focusIndex].querySelector?.('summary')?.focus?.();
   }
 
-  return { element };
+  return { element, filter };
 }

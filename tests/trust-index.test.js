@@ -4,6 +4,7 @@ import { readFileSync } from 'node:fs';
 
 import { createTrust } from '../src/app/Trust.js';
 import { PUBLIC_SCENES } from '../src/catalog/index.js';
+import { isSceneReleased } from '../src/catalog/release.js';
 import { isInPageAnchor, resolveRoute } from '../src/app/router.js';
 import { FakeElement, findByClass, installFakeDocument } from './helpers/fake-dom.js';
 
@@ -35,50 +36,115 @@ const mountTrust = (options = {}) => {
   return element;
 };
 
-test('Trust: the table of contents lists exactly the models Trust renders, in the same order', () => {
+/**
+ * What replaced the table of contents.
+ *
+ * Trust listed seventy models twice: a jump list of seventy chips, each with a
+ * name and a review badge, above seventy cards with the same name and the same
+ * badge. Two structures for one set, and neither of them an index — seventy
+ * names in review order is the data with a heading on it.
+ *
+ * The tests below are the old TOC tests' replacements, not their deletion: the
+ * thing they were protecting (a reader can find one model among seventy, and
+ * doing so never turns into a hash navigation that throws them out of the page)
+ * still has to hold. It now has to hold for one control instead of two lists.
+ */
+
+test('Trust: the filter narrows the records themselves — there is no second list', () => {
   withFakeBrowser(() => {
     const element = mountTrust();
     const cards = findByClass(element, 'trust-card');
-    const tocLinks = findByClass(element, 'trust-toc-link');
+    assert.equal(cards.length, PUBLIC_SCENES.length, 'one record per model');
 
-    assert.equal(cards.length, PUBLIC_SCENES.length);
-    assert.equal(tocLinks.length, PUBLIC_SCENES.length, 'one TOC entry per model, no more and no fewer');
+    // The duplication itself, asserted gone. A second structure listing the
+    // same models is what this change removed, and re-adding one beside the
+    // filter would make three.
+    assert.equal(findByClass(element, 'trust-toc').length, 0);
+    assert.equal(findByClass(element, 'trust-toc-link').length, 0);
 
-    const cardIds = cards.map((card) => card.getAttribute('id'));
-    const tocTargets = tocLinks.map((link) => link.getAttribute('href').replace(/^#/, ''));
-    assert.deepEqual(tocTargets, cardIds, 'the TOC names the cards in the order Trust renders them');
-
-    // Every card id is derived from the scene the catalogue currently
-    // publishes — nobody could have hand-listed a stale or invented one.
-    assert.deepEqual(cardIds, PUBLIC_SCENES.map((scene) => `trust-${scene.slug}`));
+    assert.equal(findByClass(element, 'trust-filter').length, 1, 'exactly one control');
+    assert.equal(findByClass(element, 'trust-filter-field').length, 1);
   });
 });
 
-test('Trust: every TOC link targets an id that actually exists on the page', () => {
+test('Trust: the filter starts showing everything, and says how many that is', () => {
   withFakeBrowser(() => {
     const element = mountTrust();
-    const knownIds = new Set();
-    const collectIds = (node) => {
-      const id = node.getAttribute?.('id');
-      if (id) knownIds.add(id);
-      for (const child of node.children ?? []) collectIds(child);
-    };
-    collectIds(element);
-
-    const tocLinks = findByClass(element, 'trust-toc-link');
-    assert.ok(tocLinks.length > 0);
-    for (const link of tocLinks) {
-      const target = link.getAttribute('href').replace(/^#/, '');
-      assert.ok(knownIds.has(target), `TOC link "#${target}" has no matching id on the page`);
+    for (const card of findByClass(element, 'trust-card')) {
+      assert.equal(card.hidden, false, `${card.getAttribute('id')} must start visible`);
     }
+    const count = findByClass(element, 'trust-filter-count')[0];
+    assert.ok(count, 'the count is how a reader knows the filter did anything');
+    // A live region: narrowing a list without saying so leaves a screen-reader
+    // user with no signal that anything happened.
+    assert.equal(count.getAttribute('role'), 'status');
+    assert.equal(count.getAttribute('aria-live'), 'polite');
+  });
+});
 
-    // The two shared-section links (overview, legal & support) are real
-    // in-page anchors too, not routes the hash router would try to resolve.
-    for (const link of findByClass(element, 'trust-toc-shared-link')) {
-      const href = link.getAttribute('href');
-      assert.ok(isInPageAnchor(href), `"${href}" must not look like a route`);
-      assert.ok(knownIds.has(href.replace(/^#/, '')), `"${href}" has no matching id on the page`);
-    }
+test('Trust: typing a model name hides every record but the matches', () => {
+  withFakeBrowser(() => {
+    const element = mountTrust();
+    const field = findByClass(element, 'trust-filter-field')[0];
+    const cards = findByClass(element, 'trust-card');
+    const target = PUBLIC_SCENES[0];
+
+    field.value = target.titleJa;
+    field.dispatchEvent({ type: 'input' });
+
+    const shown = cards.filter((card) => !card.hidden).map((card) => card.getAttribute('id'));
+    assert.deepEqual(shown, [`trust-${target.slug}`]);
+
+    // And clearing it brings them all back — a filter a reader cannot undo is
+    // a page that has lost most of itself.
+    field.value = '';
+    field.dispatchEvent({ type: 'input' });
+    assert.equal(cards.filter((card) => !card.hidden).length, PUBLIC_SCENES.length);
+  });
+});
+
+test('Trust: the availability split is the one distinction a visitor can act on', () => {
+  withFakeBrowser(() => {
+    const element = mountTrust();
+    const cards = findByClass(element, 'trust-card');
+    const scopes = findByClass(element, 'trust-filter-scope');
+    assert.equal(scopes.length, 3, 'all / published / in development');
+
+    const published = new Set(PUBLIC_SCENES.filter(isSceneReleased).map((scene) => `trust-${scene.slug}`));
+    assert.ok(published.size > 0, 'the beta publishes something');
+    assert.ok(published.size < PUBLIC_SCENES.length, 'and holds something back');
+
+    scopes[1].dispatchEvent({ type: 'click' });
+    const open = cards.filter((card) => !card.hidden).map((card) => card.getAttribute('id'));
+    assert.deepEqual(new Set(open), published, 'published shows exactly what the release opened');
+    assert.equal(scopes[1].getAttribute('aria-pressed'), 'true');
+    assert.equal(scopes[0].getAttribute('aria-pressed'), 'false');
+
+    scopes[2].dispatchEvent({ type: 'click' });
+    const building = cards.filter((card) => !card.hidden).map((card) => card.getAttribute('id'));
+    assert.equal(building.length, PUBLIC_SCENES.length - published.size);
+    assert.equal(
+      building.some((id) => published.has(id)),
+      false,
+      'the two halves must not overlap'
+    );
+  });
+});
+
+test('Trust: a record the route named is never left hidden by a filter', () => {
+  // The failure this exists for: a deep link from a model's "sources & limits"
+  // arrives at a page that has narrowed itself, and the one record the reader
+  // asked for is the one that is hidden. It cannot happen today — the filter
+  // starts wide — and `createTrust` asks for a reset anyway, because the cost
+  // of being wrong here is a link that silently shows nothing.
+  withFakeBrowser(() => {
+    const focused = PUBLIC_SCENES[PUBLIC_SCENES.length - 1];
+    const element = mountTrust({ focusId: focused.id });
+    const card = findByClass(element, 'trust-card')
+      .find((node) => node.getAttribute('id') === `trust-${focused.slug}`);
+    assert.ok(card);
+    assert.equal(card.hidden, false, 'the record the route named must be on screen');
+    assert.equal(card.getAttribute('open'), '', 'and open');
   });
 });
 
@@ -142,68 +208,6 @@ test('Trust: a focus id also matches by slug, and an unknown focus id opens noth
     const unknown = mountTrust({ focusId: 'not-a-real-scene' });
     const openUnknown = findByClass(unknown, 'trust-card').filter((card) => card.getAttribute('open') === '');
     assert.deepEqual(openUnknown, []);
-  });
-});
-
-test('Trust: clicking a TOC entry opens its card and does not turn into a navigation', () => {
-  withFakeBrowser(() => {
-    const element = mountTrust();
-    const cards = findByClass(element, 'trust-card');
-    // `installFakeDocument`'s getElementById only serves ids registered at
-    // init time; the click handler looks a live card up by id, so this
-    // stands in for the real document's live lookup.
-    document.getElementById = (id) => cards.find((card) => card.getAttribute('id') === id) ?? null;
-
-    const link = findByClass(element, 'trust-toc-link')[0];
-    const target = cards[0];
-    assert.equal(target.getAttribute('open'), null);
-
-    let prevented = false;
-    link.dispatchEvent({ type: 'click', preventDefault: () => { prevented = true; } });
-
-    assert.ok(prevented, 'the click must not become a hash navigation');
-    assert.equal(target.open, true, 'the card the reader jumped to must open');
-  });
-});
-
-test('Trust: shared-section TOC links move focus and never turn into a hash navigation', () => {
-  // A plain `href="#content"` is a native fragment jump: the browser would
-  // replace the document's hash (`#/trust`) with `#content`, which is not a
-  // route — a reload or a shared/restored URL then opens the default 3D
-  // model instead of Trust. This is the same failure the skip link already
-  // had to solve; the shared links must follow the same fix (preventDefault,
-  // move focus, then scroll), not a native anchor.
-  withFakeBrowser(() => {
-    const element = mountTrust();
-    const withId = [];
-    const collect = (node) => {
-      if (node.getAttribute?.('id')) withId.push(node);
-      for (const child of node.children ?? []) collect(child);
-    };
-    collect(element);
-    document.getElementById = (id) => withId.find((node) => node.getAttribute('id') === id) ?? null;
-
-    const sharedLinks = findByClass(element, 'trust-toc-shared-link');
-    assert.equal(sharedLinks.length, 2, 'overview and legal & support');
-
-    for (const link of sharedLinks) {
-      const targetId = link.getAttribute('href').replace(/^#/, '');
-      assert.ok(isInPageAnchor(link.getAttribute('href')), `"${link.getAttribute('href')}" must not look like a route`);
-      const target = document.getElementById(targetId);
-      assert.ok(target, `no element with id "${targetId}"`);
-
-      let focusedWith = null;
-      let scrolledWith = null;
-      target.focus = (opts) => { focusedWith = opts; };
-      target.scrollIntoView = (opts) => { scrolledWith = opts; };
-
-      let prevented = false;
-      link.dispatchEvent({ type: 'click', preventDefault: () => { prevented = true; } });
-
-      assert.ok(prevented, `"#${targetId}" must not become a hash navigation`);
-      assert.deepEqual(focusedWith, { preventScroll: true }, `"#${targetId}" should move focus, like skipLink()`);
-      assert.deepEqual(scrolledWith, { block: 'start' });
-    }
   });
 });
 

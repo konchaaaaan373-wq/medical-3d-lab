@@ -1,8 +1,7 @@
-import { EXPLORER_ROUTE, LANDING_ROUTE } from '../catalog/index.js';
-import { inLanguage } from '../utils/language.js';
 import { LEGAL_DOCUMENTS, LEGAL_UPDATED, legalDocument } from '../data/legal.js';
 import { createLanguageToggle } from '../components/LanguageToggle.js';
 import { el, skipLink } from '../utils/dom.js';
+import { createShellHeader } from '../components/ShellHeader.js';
 
 /**
  * Terms, privacy, commercial disclosure and support.
@@ -92,20 +91,14 @@ export function createLegal({ ui, docId = 'terms', accountButton = null }) {
   );
 
   const element = el('main', { class: 'legal-page' }, [
-    el('header', { class: 'legal-nav' }, [
-      el('a', { class: 'legal-brand', href: LANDING_ROUTE, text: 'Medical 3D Lab' }),
-      el('nav', { class: 'legal-nav-links', 'aria-label': inLanguage('Site navigation', 'サイトナビゲーション') }, [
-        el('a', { href: EXPLORER_ROUTE }, [
-          el('span', { class: 'lang-en', text: 'Models' }),
-          el('span', { class: 'lang-ja', text: 'モデル' }),
-        ]),
-        el('a', { href: '#/trust' }, [
-          el('span', { class: 'lang-en', text: 'Model information' }),
-          el('span', { class: 'lang-ja', text: 'モデル情報' }),
-        ]),
-      ]),
-      el('div', { class: 'legal-nav-actions' }, [accountButton, languageToggle.element]),
-    ]),
+    createShellHeader({
+      // A legal document is not one of the product's destinations, so nothing
+      // in the header is marked current. Saying "you are in Models" on the
+      // terms page would be a lie told in an ARIA attribute.
+      current: 'legal',
+      accountButton,
+      languageToggle: languageToggle.element,
+    }),
     tabs,
     el('article', { class: 'legal-doc', id: 'content', tabindex: '-1', 'data-skip-target': '' }, [
       el('h1', { class: 'legal-title' }, [

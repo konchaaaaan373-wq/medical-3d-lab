@@ -1503,8 +1503,12 @@ html[data-route='landing'] {
     min-width: 0;
   }
 
+  /* Was 32 px. `phone-touch-targets.css` raises it back to 44 anyway — this
+     was one of the six compactions that file exists to outrank — and leaving a
+     number here that the last sheet has to undo is how the next compaction
+     pass talks itself into lowering it again. */
   .landing-model-info-link {
-    min-height: 32px;
+    min-height: 44px;
   }
 }
 

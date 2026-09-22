@@ -1,3 +1,4 @@
+import { MODEL_INFO_ROUTE } from '../catalog/publicManifest.js';
 import { organById, sceneById, sceneRoute } from '../catalog/index.js';
 import { HERO_ROTATION, featuredHeroOrgan } from '../data/landingHero.js';
 import { el } from '../utils/dom.js';
@@ -63,6 +64,19 @@ export function createLandingOrganHero({
       ? 'landing-demo-link landing-cta'
       : 'landing-button primary landing-cta landing-model-action',
     href: '#/',
+  });
+  /**
+   * The record for the organ the hero is *currently* showing.
+   *
+   * It follows the selection for the same reason `openLink` does. The landing
+   * page used to sit a fixed "model information" link beside a hero the reader
+   * could change: select the heart, press it, and arrive at the brain's record
+   * — or, before the manifest carried the model, at the top of a page listing
+   * seventy of them. A link beside a model has to be about that model.
+   */
+  const infoLink = el('a', {
+    class: 'landing-demo-info landing-model-info-link',
+    href: MODEL_INFO_ROUTE,
   });
 
   /**
@@ -497,6 +511,16 @@ export function createLandingOrganHero({
       `${nameJa}を見る`
     ));
 
+    const infoSlug = scene?.slug ?? selected.sceneId ?? null;
+    infoLink.setAttribute(
+      'href',
+      infoSlug ? `${MODEL_INFO_ROUTE}?model=${infoSlug}` : MODEL_INFO_ROUTE
+    );
+    infoLink.replaceChildren(...dual(
+      `How the ${nameEn.toLowerCase()} model was made`,
+      `${nameJa}モデルの根拠と限界`
+    ));
+
     for (const [organId, button] of buttons) {
       const isSelected = organId === selected.organ;
       button.setAttribute('aria-pressed', String(isSelected));
@@ -609,6 +633,7 @@ export function createLandingOrganHero({
       return selected.organ;
     },
     actionElement: openLink,
+    infoElement: infoLink,
     setOrgan: select,
     mount,
     destroy() {

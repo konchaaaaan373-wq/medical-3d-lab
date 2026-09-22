@@ -400,6 +400,131 @@ try {
     await context.close();
   }
 
+  // ------------------------------------------------- what a transition costs
+  //
+  // The rest of this file is about the veil: that it goes up, and that every
+  // way out of it works. This section is about the transitions that no longer
+  // raise one.
+  //
+  // Reading surfaces — the landing page, the model index, the publication
+  // record, the legal documents — used to cost a full document load each,
+  // which tore `#ui` down to nothing in the middle of every one. They are
+  // swapped in place now. That is a claim with three halves, and all three are
+  // easy to lose to a later change: no new document, no frame with nothing on
+  // screen, and the page that ends up on screen matching the address bar.
+  //
+  // Measured here rather than in `node --test` because the failure is a real
+  // browser's: the unit tests drive the policy with a stand-in `window`, and a
+  // stand-in cannot tell you that a document was replaced.
+  {
+    const context = await browser.newContext();
+    const page = await context.newPage();
+    let documents = 0;
+    page.on('load', () => { documents += 1; });
+    await page.goto(`${origin}/#/organs`, { waitUntil: 'networkidle' });
+    await page.waitForTimeout(1500);
+
+    /** Follow a hash and report what the reader saw on the way. */
+    const move = async (hash) => {
+      const before = documents;
+      const started = Date.now();
+      await page.evaluate((next) => { window.location.hash = next; }, hash);
+      let blank = false;
+      for (let i = 0; i < 100; i += 1) {
+        await sleep(60);
+        const state = await ask(page, `(() => ({
+          ui: document.getElementById('ui') ? document.getElementById('ui').children.length : 0,
+          veil: !!document.querySelector('.loading:not(.is-done)'),
+          busy: document.documentElement.hasAttribute('data-navigating'),
+        }))()`, 4000);
+        if (state.unreadable) continue;
+        if (state.ui === 0 && !state.veil) blank = true;
+        if (state.ui > 0 && !state.veil && !state.busy) break;
+      }
+      const settled = Date.now() - started;
+      const after = await ask(page, `(() => ({
+        hash: location.hash,
+        route: document.documentElement.dataset.route || null,
+      }))()`);
+      return { reloaded: documents > before, blank, settled, ...after };
+    };
+
+    const READING = [
+      ['#/trust', 'trust'],
+      ['#/terms', 'legal'],
+      ['#/', 'landing'],
+      ['#/organs', 'explorer'],
+    ];
+    const costs = [];
+    let clean = true;
+    let detail = '';
+    for (const [hash, expected] of READING) {
+      const seen = await move(hash);
+      costs.push(`${hash} ${seen.settled}ms`);
+      if (seen.reloaded) { clean = false; detail = `${hash} replaced the document`; break; }
+      if (seen.blank) { clean = false; detail = `${hash} showed an empty #ui`; break; }
+      if (seen.route !== expected) {
+        clean = false;
+        detail = `${hash} settled on data-route="${seen.route}", expected "${expected}"`;
+        break;
+      }
+      if (seen.hash !== hash) {
+        clean = false;
+        detail = `the address bar says ${seen.hash} but the page rendered ${hash}`;
+        break;
+      }
+    }
+    record(
+      'reading surfaces swap in place: no new document, no blank frame',
+      clean,
+      clean ? costs.join(', ') : detail
+    );
+
+    // And the other half of the same rule: a model still gets its own
+    // document, because `App.js` owns a WebGL context with no teardown to
+    // trust. If this ever stops reloading, something has started carrying a
+    // renderer across a route change.
+    const toScene = await move('#/brain-anatomy');
+    record(
+      'a model still gets a document of its own',
+      toScene.reloaded === true && toScene.route === 'scene',
+      `reloaded ${toScene.reloaded}, route ${toScene.route}, ${toScene.settled}ms`
+    );
+    await shot(page, 'transition-scene');
+    await context.close();
+  }
+
+  // ------------------------------------------------- the veil says where to
+  {
+    const context = await browser.newContext();
+    const page = await openScene(context);
+    // Raised, and read before the reload commits.
+    await page.evaluate(() => { window.location.hash = '#/heart-anatomy'; });
+    await sleep(160);
+    const during = await ask(page, VEIL);
+    const named = typeof during.veilText === 'string' && during.veilText.includes('心臓');
+    record(
+      'the veil names the model it is opening, not just that it is opening one',
+      named,
+      `veil said ${JSON.stringify(during.veilText)}`
+    );
+
+    // And the arriving document says the same thing, from `index.html`, before
+    // the bundle has run. Two documents, one sentence: a veil that changed its
+    // wording half a second in reads as a false start.
+    await page.waitForTimeout(900);
+    const arriving = await ask(page, `(() => {
+      const veil = document.querySelector('.loading');
+      return { text: veil ? veil.innerText.replace(/\\s+/g, ' ').trim() : null };
+    })()`);
+    record(
+      'the arriving document carries the same sentence',
+      typeof arriving.text === 'string' && arriving.text.includes('心臓'),
+      `arriving veil said ${JSON.stringify(arriving.text)}`
+    );
+    await context.close();
+  }
+
   // ------------------------------------------------------------- report
   const failed = results.filter((entry) => entry.ok === false);
   const skipped = results.filter((entry) => entry.ok === null);
@@ -407,7 +532,7 @@ try {
   console.log('\nStill only a person can do these, on real hardware:');
   console.log('  - Safari and Firefox — this run drove Chromium.');
   console.log('  - A reload interrupted by the reader closing the tab.');
-  console.log('  - Whether "移動しています" is the right thing to read for two seconds.\n');
+  console.log('  - Whether the sentence the veil shows is the right thing to read for five seconds.\n');
 
   if (skipped.length) {
     // Loud, and not a failure by default. A path this browser will not enter is

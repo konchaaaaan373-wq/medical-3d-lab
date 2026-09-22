@@ -12,7 +12,7 @@ const GUIDANCE = Object.freeze({
     kickerEn: '3D is unavailable in this browser',
     kickerJa: 'この環境では3D表示を開始できません',
     helpEn: 'Use a current browser with WebGL and hardware acceleration available. You can still browse model information without retrying repeatedly.',
-    helpJa: 'WebGLとハードウェアアクセラレーションを利用できる最新ブラウザで開いてください。繰り返し再試行しなくても、モデル情報や公開モデル一覧は利用できます。',
+    helpJa: 'WebGLとハードウェアアクセラレーションを利用できる最新ブラウザで開いてください。繰り返し再試行しなくても、公開とレビューやモデル一覧は利用できます。',
     retry: false,
     retryEn: null,
     retryJa: null,

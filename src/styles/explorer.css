@@ -1094,7 +1094,13 @@ html[data-route='explorer'] .public-models-actions .landing-model-action {
 }
 
 .public-models-footer {
-  padding: 24px 4px 0;
+  /* The bottom padding is the floating feedback trigger's room. It is
+     `position: fixed` at the bottom right (`telemetry.css`), and the footer's
+     links run to the same corner — at 768 px "Support" ended up underneath it,
+     which `npm run verify:ui` reports as a control with something painted over
+     it. Reserving the space is the fix that does not depend on how many links
+     the footer happens to have this month. */
+  padding: 24px 4px 72px;
   border-top: 1px solid var(--explorer-rule);
   background: transparent;
   box-shadow: none;
@@ -1114,8 +1120,15 @@ html[data-route='explorer'] .public-models-actions .landing-model-action {
 }
 
 .public-models-footer-links {
+  /* Right-aligned, in the same corner the floating feedback trigger is fixed
+     to. The bottom padding on `.public-models-footer` keeps the *rows* clear
+     of it, and this keeps the last row's right end clear as well, so the
+     collision cannot come back at whatever scroll position and link count
+     happen to line up. `.public-models-actions` above reserves the same gutter
+     for the same reason. */
   justify-content: flex-end;
   gap: 4px 16px;
+  padding-right: 72px;
 }
 
 .public-models-footer-links .explorer-shell-link {

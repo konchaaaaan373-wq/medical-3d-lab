@@ -1,0 +1,340 @@
+/* ==========================================================================
+   The shared product shell — one header, one reading ground
+   ==========================================================================
+
+   Four surfaces built four headers and, between them, four palettes:
+
+     landing   near-black #05080d, red accent
+     models    pale blue  #edf3f5, teal accent
+     record    warm cream #f5f3ee, brown accent
+     legal     whatever base.css gave it
+
+   Moving between them read as moving between products, which is the one thing
+   a shell is for stopping. This file holds what they now share.
+
+   Two grounds, not one. "Make everything dark" and "make everything light" are
+   both answers to the wrong question: the landing page is a front door and the
+   reading surfaces are a workbench, and the 3D scene itself is pale because a
+   neutral studio backdrop is what specimen colour is judged against — that is a
+   medical decision recorded in `inspection.js`, not a style. So the grounds stay
+   different where the *kind of place* is different, and everything else —
+   chrome, type scale, spacing, the link set and its wording — is identical, so
+   the reader can see that it is one product without having to read it.
+   ========================================================================== */
+
+:root {
+  /* The reading ground, shared by every document surface that is not the
+     landing page. Taken from the explorer's clinical-atlas palette, which was
+     the most developed of the four and the closest to the scene's own studio
+     backdrop — arriving at a model from a reading surface is now a change of
+     brightness rather than an inversion. */
+  --reading-bg: #edf3f5;
+  --reading-surface: #ffffff;
+  --reading-surface-raised: #f5f9fa;
+  --reading-ink: #102f3a;
+  --reading-muted: #49656f;
+  --reading-faint: #6e848c;
+  --reading-rule: rgba(16, 47, 59, 0.13);
+  --reading-rule-strong: rgba(16, 47, 59, 0.25);
+  --reading-accent: #087383;
+  --reading-accent-strong: #045564;
+
+  /* The shell's own chrome, resolved per surface below. Declared here so that
+     every rule in this file reads from one name rather than from a selector. */
+  --shell-ink: var(--reading-ink);
+  --shell-muted: var(--reading-muted);
+  --shell-rule: var(--reading-rule);
+  --shell-accent: var(--reading-accent);
+  --shell-ground: transparent;
+  --shell-height: 60px;
+}
+
+/* The landing page keeps its dark ground, and the header keeps its structure.
+   Only the four colours change. */
+html[data-route='landing'] {
+  --shell-ink: #eaf2ff;
+  --shell-muted: #a7b6ce;
+  --shell-rule: rgba(176, 198, 229, 0.18);
+  --shell-accent: #f04f69;
+}
+
+/* ---------------------------------------------------------------- the header */
+
+.shell-header {
+  position: relative;
+  z-index: 3;
+  display: flex;
+  align-items: center;
+  gap: clamp(12px, 3vw, 32px);
+  min-height: var(--shell-height);
+  padding: 8px clamp(16px, 3vw, 28px);
+  border-bottom: 1px solid var(--shell-rule);
+  background: var(--shell-ground);
+  color: var(--shell-ink);
+}
+
+.shell-brand {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  color: inherit;
+  text-decoration: none;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  white-space: nowrap;
+  /* The wordmark is the way home on every surface, so it has to be a thumb
+     target on every surface too. */
+  min-height: 44px;
+  padding-right: 4px;
+}
+
+.shell-brand-mark {
+  display: inline-flex;
+  align-items: center;
+  gap: 1px;
+  padding: 3px 6px;
+  border: 1px solid var(--shell-accent);
+  border-radius: 6px;
+  font-size: 0.72rem;
+  font-weight: 700;
+  line-height: 1;
+  color: var(--shell-accent);
+}
+
+.shell-brand-mark i {
+  display: inline-block;
+  width: 1px;
+  height: 11px;
+  background: currentColor;
+  transform: rotate(18deg);
+  opacity: 0.7;
+}
+
+.shell-brand-name {
+  font-size: 0.95rem;
+}
+
+.shell-nav {
+  display: flex;
+  align-items: center;
+  /* Wraps rather than compressing. At 390 px the old landing header squeezed
+     three links into two lines each — 「3Dモデ/ル」「モデル情/報」— which is
+     what a nav looks like when it is allowed to shrink but not to wrap. */
+  flex-wrap: wrap;
+  gap: 2px clamp(4px, 1.5vw, 10px);
+  margin-right: auto;
+}
+
+.shell-nav-link {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  min-height: 44px;
+  padding: 0 10px;
+  border-radius: 8px;
+  color: var(--shell-muted);
+  font-size: 0.88rem;
+  text-decoration: none;
+  white-space: nowrap;
+}
+
+.shell-nav-link:hover {
+  color: var(--shell-ink);
+  background: color-mix(in srgb, var(--shell-ink) 8%, transparent);
+}
+
+/* Where you are, said on screen and not only in the address bar. An underline
+   under the label rather than a filled chip: a filled chip reads as a button
+   that has not been pressed yet, which is the opposite of what this means. */
+.shell-nav-link[aria-current='page'],
+.shell-brand[aria-current='page'] {
+  color: var(--shell-ink);
+  font-weight: 600;
+}
+
+.shell-nav-link[aria-current='page']::after {
+  content: '';
+  position: absolute;
+  left: 10px;
+  right: 10px;
+  bottom: 6px;
+  height: 2px;
+  border-radius: 2px;
+  background: var(--shell-accent);
+}
+
+.shell-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-shrink: 0;
+}
+
+.shell-header :focus-visible {
+  outline: 2px solid var(--shell-accent);
+  outline-offset: 2px;
+}
+
+@media (max-width: 620px) {
+  /* Two rows, not one wrapped one. A single flex row at 390 px put the three
+     destinations on three lines *beside* the wordmark, which pushed the
+     wordmark into the vertical middle of a 160 px header and left the nav
+     reading as a list that had fallen over. Identity and account on top, where
+     they are on every phone app; destinations underneath, on one line. */
+  .shell-header {
+    display: grid;
+    grid-template-columns: 1fr auto;
+    grid-template-areas:
+      'brand actions'
+      'nav   nav';
+    align-items: center;
+    gap: 2px 8px;
+    padding: 4px 12px 0;
+  }
+
+  .shell-brand { grid-area: brand; }
+  .shell-actions { grid-area: actions; }
+
+  .shell-nav {
+    grid-area: nav;
+    margin-right: 0;
+    /* One line that scrolls, rather than several that wrap: with the row to
+       itself there is room for the set the beta actually ships, and a fourth
+       destination arrives as a scroll rather than as a taller header. */
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    scrollbar-width: none;
+    overscroll-behavior-x: contain;
+  }
+
+  .shell-nav::-webkit-scrollbar { display: none; }
+
+  .shell-nav-link {
+    padding: 0 8px;
+    font-size: 0.84rem;
+  }
+}
+
+@media (max-width: 380px) {
+  /* Below this the wordmark's name and the two destinations cannot both have
+     the top row. The mark stays: it is still recognisable and still the way
+     home. */
+  .shell-brand-name {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+  }
+}
+
+/* ------------------------------------------------- one ground for documents */
+
+html[data-route='explorer'],
+html[data-route='explorer'] body,
+html[data-route='trust'],
+html[data-route='trust'] body,
+html[data-route='legal'],
+html[data-route='legal'] body,
+html[data-route='locked'],
+html[data-route='locked'] body {
+  background: var(--reading-bg);
+  color: var(--reading-ink);
+}
+
+/* ------------------------------------------------- the controls in the header
+
+   The account button and the language toggle are made once, by the shell, and
+   handed to whichever surface is on screen. Their appearance was not: five
+   stylesheets declared their own version of the same two rules, so the same
+   button was a 40 px transparent chip on the landing page, a 32 px filled one
+   on the explorer, and unstyled on the surfaces nobody had got to. The button
+   that never changes is the last thing that should change appearance between
+   pages. */
+
+.shell-actions .account-trigger,
+.shell-actions .ui-toggle {
+  position: static;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  /* The 44 px touch floor `phone-touch-targets.css` owns for phone widths,
+     kept here at every width: these are the two controls a reader reaches for
+     with a thumb while holding the device in one hand. */
+  min-height: 44px;
+  min-width: 44px;
+  padding: 0 12px;
+  border: 1px solid transparent;
+  border-radius: 8px;
+  background: transparent;
+  color: var(--shell-muted);
+  font: inherit;
+  font-size: 0.84rem;
+  font-weight: 600;
+  cursor: pointer;
+  backdrop-filter: none;
+  white-space: nowrap;
+}
+
+.shell-actions .account-trigger:hover,
+.shell-actions .ui-toggle:hover {
+  border-color: var(--shell-rule);
+  background: color-mix(in srgb, var(--shell-ink) 7%, transparent);
+  color: var(--shell-ink);
+}
+
+.shell-actions .account-trigger:focus-visible,
+.shell-actions .ui-toggle:focus-visible {
+  outline: 2px solid var(--shell-accent);
+  outline-offset: 2px;
+}
+
+/* ---------------------------------------------- a swap that is taking a while
+
+   Moving between reading surfaces replaces the surface without replacing the
+   document, so there is no veil and no blank — the page the reader is on stays
+   up until the next one is ready. That is right, and on its own it means a
+   press whose chunk takes a second does visibly nothing, and the reader's next
+   move is to press again.
+
+   `shellNavigation.js` sets this only once a swap has already outlasted a
+   transition anybody would read as instant (160 ms), so a fast one shows
+   nothing at all rather than flashing. */
+
+html[data-navigating] {
+  cursor: progress;
+}
+
+html[data-navigating] body::after {
+  content: '';
+  position: fixed;
+  inset: 0 0 auto;
+  height: 2px;
+  z-index: 60;
+  background: linear-gradient(
+    90deg,
+    transparent,
+    var(--shell-accent, #087383) 45%,
+    var(--shell-accent, #087383) 55%,
+    transparent
+  );
+  animation: shell-navigating 1.1s ease-in-out infinite;
+  pointer-events: none;
+}
+
+@keyframes shell-navigating {
+  0% { transform: translateX(-100%); }
+  100% { transform: translateX(100%); }
+}
+
+/* A moving bar is exactly the kind of motion a reader can ask not to see. The
+   bar stays — it is the only signal that the press registered — and stops
+   travelling. */
+@media (prefers-reduced-motion: reduce) {
+  html[data-navigating] body::after {
+    animation: none;
+    background: var(--shell-accent, #087383);
+    opacity: 0.55;
+  }
+}

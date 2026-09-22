@@ -57,9 +57,30 @@ test('anchors: no shell can forget the check, because no shell makes it', () => 
     assert.match(source, /installDeparture\(/, `${name} never installs the shared departure`);
   }
 
-  // Every surface `main.js` can render, each returning right after it installs.
-  const installs = main.match(/leaveOnRouteChange\(\);/g) ?? [];
-  assert.ok(installs.length >= 6, `expected one per surface, found ${installs.length}`);
+  // There is now one installation for all the document surfaces, rather than
+  // one per branch: `shellNavigation.js` installs the door once and keeps it
+  // across route changes, because a route change between reading surfaces no
+  // longer replaces the document. Counting call sites would therefore be
+  // counting the wrong thing — what matters is that every surface is behind
+  // one, and that nobody opened a side door.
+  const shell = read('src/app/shellNavigation.js');
+  assert.match(shell, /installDeparture\(\{/, 'the document surfaces share one door');
+  assert.doesNotMatch(
+    shell,
+    /addEventListener\('hashchange'/,
+    'shellNavigation.js decides for itself what a hash change means'
+  );
+
+  // The scene keeps its own, because it owns a document of its own; the
+  // fallback keeps one for the same reason. Two, and both are the shared one.
+  assert.match(main, /leaveOnRouteChange\(\);/, 'the scene-failure surface is covered');
+  assert.match(app, /installDeparture\(\{/, 'the scene is covered');
+
+  // No surface may route by hand. `documentSurfaces.js` builds pages and must
+  // never grow an opinion about navigation.
+  const surfaces = read('src/app/documentSurfaces.js');
+  assert.doesNotMatch(surfaces, /addEventListener\('hashchange'/);
+  assert.doesNotMatch(surfaces, /location\.reload/);
 });
 
 test('anchors: the scene view is covered by the same door, because a reload there costs the session', () => {
