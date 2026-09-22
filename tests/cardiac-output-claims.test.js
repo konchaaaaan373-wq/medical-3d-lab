@@ -194,6 +194,11 @@ test('claims: the documents quote the measurements that are on file', () => {
     [CARD]: read(CARD),
     'docs/beta-publication/cardiac-output.md': read('docs/beta-publication/cardiac-output.md'),
     'docs/model-cards/heart-failure.md': read('docs/model-cards/heart-failure.md'),
+    // The publication decision states the same change, in a comment, and is
+    // where the retracted figure survived longest: the three documents were
+    // corrected and `release.js` still said "up to 1.4 mmHg ... nothing else
+    // moved" (L-108). A claim in a comment is a claim.
+    'src/catalog/release.js': read('src/catalog/release.js'),
   };
 
   // The rate walk, in the card that quotes it.

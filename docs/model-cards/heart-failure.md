@@ -82,7 +82,10 @@ The scene predates the current versioned Clinical Review standard. This model ca
 
 ## 10. Revision history
 
-### Revision 5 — the filling pressure this scene shows moved, and why
+### Revisions 5–6 — the filling pressure this scene shows moved, and why
+
+*One change, two adoptions, for the reason the cardiac-output card gives at the
+same revision: the registry pins 6.*
 
 **A displayed number changed, by up to 2.186 mmHg.** End-diastolic pressure is
 now read at mitral-valve closure instead of at the sample where

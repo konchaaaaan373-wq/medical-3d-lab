@@ -903,6 +903,36 @@ L-95 と L-96 は「別件を直したら、触っていない検査が赤くな
 
 ---
 
+### L-108 訂正は 3 つの文書に届いて、同じことを言っているコードのコメントに届かなかった
+
+- **症状**: 「充満圧は最大 **1.4 mmHg** 下がり、全部下向き」という取り下げ済みの数字が、
+  model card 2 つと公開判断記録で訂正されたあとも
+  **`src/catalog/release.js` の公開判断コメントに 1 か所だけ生き残って**いました。
+  正しくは 32 欄中 1 欄が 30 件**全部**で動き、**29 件が下・1 件が上**、最大
+  **2.186 mmHg**。同じコメントは `Revision 7` と書きながら
+  **`cardRevision: 9` を pin** していて、**card 側の見出しも `Revision 7` で止まって**いました
+  （heart-failure も同じで、card は `Revision 5`・registry は 6）。
+- **どう見つかったか**: push 前に `git diff origin/main...HEAD` を自分で読み返したとき。
+  **テストは 1 つも赤くありません**——文書の主張を測定ファイルに突き合わせる検査を
+  書いた当人が、**検査する文書の一覧に `.js` を入れていなかった**ためです。
+  取り下げた数字を探す検査も、同じ 3 件しか見ていませんでした。
+- **いま何が捕まえるか**: 2 つ。
+  `tests/cardiac-output-claims.test.js` の文書一覧に `src/catalog/release.js` を追加
+  ——取り下げ済みの数字を主張として書き戻すと赤（確認済み）。
+  `tests/model-revisions.test.js` の
+  「a card that numbers its revisions is numbered up to the one it is pinned at」
+  ——番号付きの改訂見出しを持つ card は、**その最大番号が registry の `cardRevision`**
+  でなければ赤。cardiac-output を `Revision 7` に戻すと赤、
+  heart-failure を `Revision 5` に戻すと赤（どちらも確認済み）。
+  番号を振らない card（大多数）には何も要求しません。
+- **一般形**: **「文書」の一覧を、拡張子で決めない。** 主張は `.md` にしかない、
+  という前提がこの穴を作りました。**公開判断・pin・定数の隣のコメントは、
+  文書と同じ強さの主張**です——しかも**訂正のとき最後に思い出される場所**なので、
+  取り下げた数字が最後まで残るのはここです。
+  検査を書くときは「この主張は他にどこに書き写されているか」を**先に grep する**。
+
+---
+
 ### L-107 証拠ファイルが「何と比べたか」に、読む人が開けない道を書いていた
 
 - **症状**: `docs/model-evidence/cardiac-output-measurements.json` の

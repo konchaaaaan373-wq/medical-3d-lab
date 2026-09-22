@@ -675,15 +675,25 @@ export const BETA_PUBLICATION_DECISIONS = Object.freeze([
     // the same balance over a twenty-fourth of the beat, which is what catches
     // a mis-wired loop). Every figure was bit-identical.
     //
-    // **Revision 7 changed a displayed number**, and that is why this comment
-    // is longer than the last one. End-diastolic pressure is now read at
-    // mitral-valve closure instead of at the sample of highest volume. The old
-    // definition was ill-conditioned where it is used — volume on a plateau,
-    // pressure on the isovolumic upstroke — and did not converge: 17.67 /
-    // 16.25 / 15.69 / 15.46 mmHg at 240 / 480 / 960 / 1920 steps per beat at
-    // one corner, still moving. Read at closure the same four give 15.275 to
-    // 15.295. Filling pressure fell by up to 1.4 mmHg across the scene's
-    // range, and by 0.009 mmHg at the reference; nothing else moved.
+    // **Revisions 7–9 changed a displayed number**, and that is why this
+    // comment is longer than the last one. End-diastolic pressure is now read
+    // at mitral-valve closure instead of at the sample of highest volume. The
+    // old definition was ill-conditioned where it is used — volume on a
+    // plateau, pressure on the isovolumic upstroke — and did not converge:
+    // 17.67 / 16.25 / 15.69 / 15.46 mmHg at 240 / 480 / 960 / 1920 steps per
+    // beat at one corner, still moving. Read at closure the same four give
+    // 15.275 to 15.295.
+    //
+    // What moved, re-aggregated over every number the shared fixture stores
+    // rather than a field picked by hand: one field of 32, in all 30 cases,
+    // 29 of them lower and **one higher**; largest 2.186 mmHg. At this scene's
+    // own reference condition, 7.2120 → 7.2108. The figures are in
+    // `docs/model-evidence/cardiac-output-measurements.json`, which
+    // `tests/cardiac-output-claims.test.js` holds the documents to.
+    //
+    // An earlier version of this comment said "up to 1.4 mmHg … nothing else
+    // moved", from an intermediate definition and a partial comparison. The
+    // count is right; the size was not, and one case rises.
     //
     // This is a correction to a figure a reader is shown, not a presentation
     // change, so the decision record says what moved and by how much rather

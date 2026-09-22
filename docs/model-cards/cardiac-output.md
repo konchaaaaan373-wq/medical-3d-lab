@@ -289,7 +289,13 @@ supports is refusing to publish the reduction.
 
 **Catalog status:** `alpha`
 
-### Revision 7 — end-diastole is an event, not the tallest sample
+### Revisions 7–9 — end-diastole is an event, not the tallest sample
+
+*One change, three adoptions: `npm run revisions:adopt` ran again each time the
+model files moved while this was being measured, so the registry pins 9. The
+heading carries the range rather than the first of them, because a card whose
+newest heading is lower than the revision it is pinned at reads as a card that
+stopped being updated.*
 
 **A displayed number changed.** End-diastolic pressure is read at mitral-valve
 closure instead of at the sample where left-ventricular volume is highest.
