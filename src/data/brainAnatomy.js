@@ -28,24 +28,29 @@
  *     at that hue and lightness, not because it was designed differently, and
  *     the test asks for the gamut limit rather than the tier there.
  *  2. **A lightness rhythm that alternates across every boundary a reader
- *     traces.** Gold 66, green 50, violet 45, blue 67: the central sulcus and
+ *     traces.** Red 50, green 61, violet 44, blue 64: the central sulcus and
  *     the lateral sulcus each have a value step as well as a hue step, and so
- *     does the edge of the cerebellum.
- *  3. **Hue carries the group.** Each family keeps a narrow band — at most
- *     34° of Lab hue across all of its structures — and its members are
+ *     does the edge of the cerebellum. How deep the green may go is set by
+ *     where that step stops working for a protanope, not by taste — below
+ *     L* 58 the central sulcus collapses for them.
+ *  3. **Hue carries the group.** Each family keeps a narrow band — under 20°
+ *     of Lab hue across all of its structures — and its members are
  *     separated by lightness and chroma inside it, so a lobe reads as one
  *     thing before its gyri read as individuals.
  *  4. **Red and green are used.** What colour-vision deficiency rules out is
  *     making red-versus-green the only difference between two things a reader
  *     must tell apart, not the hues themselves.
  *
- * What is measured, member to member, in `tests/brain-anatomy.test.js`: every
- * pair of units that touch is at least ΔE 34 apart; every pair of the eight
- * families on the outside of the model is at least ΔE 4.3 apart under
- * simulated protanopia, deuteranopia and tritanopia; all 147 structures are
- * at least ΔE 4.0 apart from each other. **The colour-vision figure is a
- * partial measure**: four is a difference, not a comfortable one, and the
- * promise stops at the large units — structures inside one family are
+ * The floors are in `tests/brain-anatomy.test.js`, member to member, and are
+ * what this file must keep rather than what it currently measures — a number
+ * copied into prose goes stale the next time a band moves, and this comment
+ * had already gone stale once. Every pair of units that touch stays at least
+ * ΔE 28 apart; every pair of the eight families on the outside of the model
+ * stays at least ΔE 3 apart under simulated protanopia, deuteranopia and
+ * tritanopia; all 147 structures stay at least ΔE 3.8 apart from each other,
+ * and the cortical lobes stay at chroma 45 or above. **The colour-vision
+ * floor is a partial measure**: it is a difference, not a comfortable one,
+ * and the promise stops at the large units — structures inside one family are
  * separated by lightness and chroma, which dichromacy compresses.
  *
  * The lightness rhythm had to be chosen in the simulated space, not by eye: a

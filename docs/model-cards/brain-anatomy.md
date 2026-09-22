@@ -827,3 +827,32 @@ exact boundaries or positional accuracy (§6).
 
 Sources in scope: `src/data/brainAnatomy.js`,
 `src/scenes/nervous/scenes/brainAnatomy/BrainAnatomyScene.js`.
+
+**Revision 32 → 33 (2026-09-21) — review corrections before merge.** No
+colour changed: every shade, every band and every seed is exactly as revision
+32 left them, and this entry exists because reviewing the branch against
+`main` found two faults in it.
+
+The first was in this file's own source. The header comment of
+`src/data/brainAnatomy.js` still described the lightness rhythm from two
+revisions earlier — "Gold 66, green 50, violet 45, blue 67" where the frontal
+lobe is red at 50 and the parietal green at 61 — and quoted measurements
+(ΔE 34, 4.3, 4.0) that the bands had since moved past. It now states the
+**floors the file must keep** rather than what it happened to measure on the
+day, because a measurement copied into prose goes stale the next time a band
+moves, which is exactly what had happened.
+
+The second was in the guard. `the colour map reads as one set` compared the
+cortical lobes against each other, so twelve equally drab colours would have
+passed it — and that is not hypothetical: a revision of this palette was
+reported as having lost its colour while every guard was green. The set now
+has a floor as well as a shape (chroma 45), and desaturating all six lobes to
+30 fails it.
+
+Also on merge: this branch's follow-up and lesson numbers collided with
+`main`, which had taken F-159–F-168 and L-52–L-55 while it was in flight. They
+move to F-177/F-178 and L-64/L-65, with their cross-references, and the
+collision is recorded in `docs/follow-ups.md` as the thirteenth of its kind.
+
+Sources in scope: `src/data/brainAnatomy.js`,
+`src/scenes/nervous/scenes/brainAnatomy/BrainAnatomyScene.js`.

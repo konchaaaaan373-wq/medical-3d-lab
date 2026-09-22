@@ -497,6 +497,13 @@ test('the colour map reads as one set, not twelve separate choices', () => {
   };
   const lobes = CORTICAL_LOBES.map((key) => ({ key, ...perceptual(BRAIN_PALETTE[key]) }));
   const level = Math.max(...lobes.map((lobe) => lobe.chroma));
+
+  // Consistency alone would be satisfied by twelve equally drab colours, and
+  // that is not a hypothetical: a revision of this palette was reported as
+  // having lost its colour, and every guard was green. So the set has a floor
+  // as well as a shape.
+  assert.ok(level >= 45, `the cortical lobes top out at chroma ${level.toFixed(0)}, which is not a colour map`);
+
   for (const lobe of lobes) {
     // What sRGB can give at this lobe's own lightness and hue: ask for far
     // more than any gamut holds and see what comes back.
