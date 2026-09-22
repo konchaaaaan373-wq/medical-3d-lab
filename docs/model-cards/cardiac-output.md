@@ -167,6 +167,16 @@ stenosis.
 - A warm start from a distant condition is rescaled to the requested conserved
   volume, which is a numerical initialisation and not a physiological
   redistribution.
+- **End-diastolic pressure was sampled where the step grid decided, not at an
+  event.** It was read at the sample of highest left-ventricular volume, and at
+  end-diastole the volume is on a plateau while the pressure is on the
+  isovolumic upstroke — so the figure depended on which sample happened to hold
+  the maximum. It did not converge: at Ees 2.74 / filling 980 mL / SVR 1.8 /
+  50 min⁻¹ it read 17.67, 16.25, 15.69 and 15.46 mmHg at 240, 480, 960 and 1920
+  steps per beat, while the **volume** agreed to 0.002 mL. It is now read at
+  mitral-valve closure, which is what end-diastole is, and the same four
+  resolutions give 15.275 to 15.295. Fixed 2026-09-22; found by the step study
+  in §16.
 - **One of the boundary's own checks measures nothing, and now says so.**
   `systemicOhmRelative` compares mean flow × resistance with the mean systemic
   gradient. The systemic flow *is* defined as (P_sa − P_sv) / R, and R is
@@ -187,10 +197,17 @@ is no right atrium in this model.
 
 And specifically of the interventions: reading either as a dose, combining
 them, reading the volume intervention as a fluid bolus, or reading the
-dobutamine response as what a person would do. **Noradrenaline is absent on
-purpose** — it cannot be represented as a resistance change alone, and a model
-with no venous capacitance would reduce it to "the drug that raises
-resistance", which is the misconception rather than the teaching.
+dobutamine response as what a person would do.
+
+**Noradrenaline is absent on purpose, and the reason is not that there is no
+venous compartment** — there is one, with a compliance. What is missing is a
+way for a *drug* to act on it: no venous tone, no change in unstressed volume,
+no redistribution between compartments. Without that, noradrenaline reduces to
+"the drug that raises resistance", and the observed response is not that: in
+septic shock with life-threatening hypotension, early noradrenaline has been
+reported to raise preload and cardiac output as well. Neither that study's
+population nor its effect sizes transfer here, and none is claimed; what it
+supports is refusing to publish the reduction.
 
 ## 13. Uncertainty
 
@@ -264,6 +281,35 @@ resistance", which is the misconception rather than the teaching.
 ## 15. Review status
 
 **Catalog status:** `alpha`
+
+### Revision 7 — end-diastole is an event, not the tallest sample
+
+**A displayed number changed.** End-diastolic pressure is read at mitral-valve
+closure instead of at the sample where left-ventricular volume is highest.
+
+The old definition is ill-conditioned exactly where it is used. At end-diastole
+dV/dt → 0 while dP/dt is large, so the sample that happens to hold the maximum
+volume decides the pressure, and the answer moves with the step size without
+converging: 17.67 / 16.25 / 15.69 / 15.46 mmHg at 240 / 480 / 960 / 1920 steps
+per beat at one corner, still falling at the finest. End-diastolic *volume*
+agreed to 0.002 mL across the same four. Read at valve closure: 15.275 /
+15.286 / 15.292 / 15.295.
+
+**What moved.** Filling pressure only — every other figure in the fixture is
+unchanged. At this scene's reference condition, 7.212 → 7.203 mmHg. Across the
+heart-failure progression, which shares this solver, up to 1.4 mmHg at
+mid-progression under loading, all downward: the old reading had crept into the
+isovolumic upstroke. `docs/model-cards/heart-failure.md` carries its own note.
+
+`tests/cardiac-output-model.test.js` now requires the figure to agree between
+240 and 960 steps per beat, which the old definition fails by 3.5 mmHg. The
+fixture that pins the shared solver has a recorder,
+`scripts/record-cardiac-fixture.mjs`, so that accepting a deliberate change is
+a command with a printed diff rather than thirty rows of hand-edited JSON.
+
+Found by the step study an external reviewer asked for. Nothing in the scene's
+own tests could have found it: they compared the model against itself at one
+resolution.
 
 ### Revision 6 — two checks that measure something, and one that never did
 
@@ -422,6 +468,15 @@ to it.
   this card, because a sentence it does not support is invisible to every
   numeric test in this list. It exists because §14 carried one for four days
   (L-95).
+- **Does the step size change the answer:** `npm run sweep:cardiac-output -- --steps`
+  — 81 conditions solved to steady state **independently** at 240, 480 and 960
+  steps per beat, compared against the finest on absolute *and* relative
+  tolerances together. Checking a 240-step solution with a 960-step closing
+  beat only establishes that the 240-step state is periodic, which is a
+  different question; an external reviewer pointed that out, and asking this
+  one found the end-diastolic pressure defect in §11. As of 2026-09-22 every
+  other figure agrees to better than 0.03%: cardiac output 4.6×10⁻⁴ L/min,
+  stroke volume 5.9×10⁻³ mL, mean arterial pressure 1.4×10⁻² mmHg.
 - **The range itself:** `npm run sweep:cardiac-output`, `--probe` to see where
   it gives way outside, and `--rate` for the rate axis walked and reported as
   the finite grid it is.

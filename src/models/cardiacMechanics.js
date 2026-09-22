@@ -291,7 +291,26 @@ function recordCycle(volumes, p, cycleLength, dt, stepsPerBeat, samples, scratch
 
     if (volumes[LV] > edv) {
       edv = volumes[LV];
-      // End-diastolic pressure is read at the moment of maximum filling.
+    }
+    // End-diastolic pressure is read at **mitral-valve closure**, which is the
+    // last instant the valve is still carrying flow.
+    //
+    // It used to be read at the sample of maximum volume, and that definition
+    // is ill-conditioned exactly where it is used: at end-diastole the volume
+    // is on a plateau (dV/dt → 0) while the pressure is on the isovolumic
+    // upstroke (dP/dt large), so which sample happens to hold the maximum
+    // decides the pressure. Measured 2026-09-22 at Ees 2.74, filling 980 mL,
+    // SVR 1.8, 50/min: end-diastolic **volume** agreed to 0.002 mL across
+    // 240/480/960/1920 steps per beat, while the pressure read this way ran
+    // 17.67 / 16.25 / 15.69 / 15.46 mmHg — still moving at 1920, because the
+    // quantity being sampled has no limit at the sample grid, only at the
+    // event. Read at valve closure the same four resolutions give 15.275 /
+    // 15.286 / 15.292 / 15.295: converged to 0.02 mmHg.
+    //
+    // The physiology agrees with the numerics here, which is why this is a
+    // correction and not a trade: end-diastole *is* mitral closure, and the
+    // pressure a moment later is the start of isovolumic contraction.
+    if (q.mitral > 0) {
       endDiastolicPressure = pressures.lv;
     }
     if (volumes[LV] < esv) {

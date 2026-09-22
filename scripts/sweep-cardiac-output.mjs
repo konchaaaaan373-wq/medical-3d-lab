@@ -5,6 +5,7 @@
  *   node scripts/sweep-cardiac-output.mjs             # the declared domain
  *   node scripts/sweep-cardiac-output.mjs --probe     # wider, to find the edge
  *   node scripts/sweep-cardiac-output.mjs --rate      # the rate axis, walked
+ *   node scripts/sweep-cardiac-output.mjs --steps     # does the step size matter
  *
  * This is where `CONTROL_DOMAIN` came from. The ranges in
  * `src/models/cardiacOutput.js` are not a judgement about what a reader should
@@ -29,6 +30,7 @@ import {
 
 const probe = process.argv.includes('--probe');
 const rateWalk = process.argv.includes('--rate');
+const stepStudy = process.argv.includes('--steps');
 
 /** Deterministic sampler: a survey that differs between runs cannot be cited. */
 function seededRandom(seed) {
@@ -228,4 +230,114 @@ if (rateWalk) {
       '\nnothing about the points between them, and nothing about why.'
   );
   if (decreases.length > 0) process.exitCode = 1;
+}
+
+
+/**
+ * Does the answer depend on how finely it was integrated?
+ *
+ * The boundary walks a **closing** beat at 960 steps to check periodicity, and
+ * an external reviewer pointed out that this establishes less than it looks
+ * like: checking a 240-step solution with a 960-step pass says the 240-step
+ * state is periodic, not that the figures it produced are converged. Those are
+ * different questions and only one of them was being asked.
+ *
+ * So this solves each condition to steady state **independently** at each
+ * resolution and compares what a reader would be shown. Absolute and relative
+ * together, because stroke volume and filling pressure do not share a scale
+ * and a relative tolerance on a quantity near zero says nothing.
+ */
+if (stepStudy) {
+  const RESOLUTIONS = [240, 480, 960];
+  const WATCHED = [
+    { key: 'cardiacOutputLMin', absolute: 0.05, relative: 0.01 },
+    { key: 'strokeVolumeMl', absolute: 0.5, relative: 0.01 },
+    { key: 'ejectionFraction', absolute: 0.005, relative: 0.01 },
+    { key: 'meanArterialPressureMmHg', absolute: 0.5, relative: 0.01 },
+    { key: 'endDiastolicPressureMmHg', absolute: 0.5, relative: 0.02 },
+    { key: 'meanPulmonaryVenousPressureMmHg', absolute: 0.5, relative: 0.02 },
+    { key: 'edvMl', absolute: 0.5, relative: 0.01 },
+    { key: 'esvMl', absolute: 0.5, relative: 0.01 },
+    { key: 'ejectionStartPhase', absolute: 0.01, relative: 0.05 },
+    { key: 'ejectionEndPhase', absolute: 0.01, relative: 0.05 },
+  ];
+  // Corners and centre, so the cases where the integrator has most to do are
+  // in it rather than a comfortable middle.
+  const cases = [];
+  for (const contractilityEesMmHgPerMl of [0.8, 2.74, 4.0])
+    for (const fillingVolumeMl of [540, 710, 980])
+      for (const systemicResistanceMmHgSPerMl of [0.7, 1.1, 1.8])
+        for (const heartRatePerMin of [50, 70, 110])
+          cases.push({
+            contractilityEesMmHgPerMl,
+            fillingVolumeMl,
+            systemicResistanceMmHgSPerMl,
+            heartRatePerMin,
+          });
+
+  const worst = new Map(WATCHED.map((w) => [w.key, { absolute: 0, relative: 0, at: null }]));
+  const outside = [];
+  let solved = 0;
+  let refused = 0;
+
+  for (const input of cases) {
+    const byResolution = RESOLUTIONS.map((stepsPerBeat) =>
+      solveCardiacOutput(input, { stepsPerBeat, diagnosticSteps: stepsPerBeat * 4 })
+    );
+    solved += byResolution.length;
+    if (byResolution.some((result) => result.status !== RESULT_STATUS.VALID)) {
+      refused += 1;
+      const which = byResolution
+        .map((result, i) => (result.status === RESULT_STATUS.VALID ? null : `${RESOLUTIONS[i]}: ${result.status}`))
+        .filter(Boolean);
+      outside.push({ input, key: 'status', note: which.join(', ') });
+      continue;
+    }
+    // Against the finest, which is the best answer available here — not
+    // against each other, which would hide a drift that is monotonic.
+    const finest = byResolution[byResolution.length - 1].metrics;
+    for (const { key, absolute, relative } of WATCHED) {
+      for (let i = 0; i < RESOLUTIONS.length - 1; i++) {
+        const value = byResolution[i].metrics[key];
+        const reference = finest[key];
+        const absoluteGap = Math.abs(value - reference);
+        const relativeGap = Math.abs(reference) > 0 ? absoluteGap / Math.abs(reference) : 0;
+        const record = worst.get(key);
+        if (absoluteGap > record.absolute) {
+          record.absolute = absoluteGap;
+          record.relative = relativeGap;
+          record.at = { ...input, steps: RESOLUTIONS[i] };
+        }
+        // Outside only when **both** are exceeded: an absolute gap on a small
+        // quantity and a relative gap on a large one are each fine alone.
+        if (absoluteGap > absolute && relativeGap > relative) {
+          outside.push({ input, key, note: `${RESOLUTIONS[i]} steps: ${value} vs ${reference} at 960` });
+        }
+      }
+    }
+  }
+
+  console.log('\n--- does the step size change the answer ---');
+  console.log(`resolutions: ${RESOLUTIONS.join(', ')} steps per beat, each solved to steady state on its own`);
+  console.log(`conditions : ${cases.length} (corners and centre of all four axes), ${solved} solves`);
+  console.log(`refused    : ${refused}`);
+  console.log('worst gap against the 960-step solve, per figure:');
+  for (const { key } of WATCHED) {
+    const record = worst.get(key);
+    const at = record.at
+      ? ` at ${record.at.steps} steps, Ees ${record.at.contractilityEesMmHgPerMl}, ` +
+        `filling ${record.at.fillingVolumeMl}, SVR ${record.at.systemicResistanceMmHgSPerMl}, ` +
+        `${record.at.heartRatePerMin}/min`
+      : '';
+    console.log(
+      `  ${key.padEnd(34)} ${record.absolute.toExponential(2)} absolute, ` +
+        `${(record.relative * 100).toFixed(4)}%${at}`
+    );
+  }
+  console.log(`\noutside both tolerances: ${outside.length}`);
+  for (const row of outside.slice(0, 12)) {
+    const where = CONTROL_IDS.map((id) => `${id}=${row.input[id]}`).join(' ');
+    console.log(`  ${row.key}  ${where}\n      ${row.note}`);
+  }
+  if (outside.length > 0) process.exitCode = 1;
 }

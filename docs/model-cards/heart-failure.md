@@ -82,6 +82,41 @@ The scene predates the current versioned Clinical Review standard. This model ca
 
 ## 10. Revision history
 
+### Revision 5 — the filling pressure this scene shows moved, and why
+
+**A displayed number changed, by up to 1.4 mmHg.** End-diastolic pressure is
+now read at mitral-valve closure instead of at the sample where
+left-ventricular volume is highest.
+
+This scene did not ask for the change and is not the reason for it: the defect
+was found by a step-size study run against `cardiac-output`, which shares this
+solver. But it is this scene's number too, and raised filling pressure is what
+this scene is about, so it is recorded here rather than only there.
+
+The old definition does not converge. At end-diastole the ventricle's volume is
+on a plateau while its pressure is on the isovolumic upstroke, so which sample
+holds the maximum decides the figure: 17.67 / 16.25 / 15.69 / 15.46 mmHg at
+240 / 480 / 960 / 1920 steps per beat at one condition, still moving at the
+finest, while the **volume** agreed to 0.002 mL throughout. Read at valve
+closure the same four give 15.275 to 15.295.
+
+**What this means for the progression.** Filling pressure is lower than it was
+at every point, most at mid-progression under loading (afterloadMin at 0.42:
+15.41 → 14.06 mmHg) and by 0.009 mmHg at progress 0. Nothing else moved: the
+fixture that pins every figure this circulation produces, at every authored
+stage under every loading, reports `endDiastolicPressureMmHg` and no other
+field. The congestion the scene draws is unchanged.
+
+The direction is the one to expect — the old reading had crept into the start
+of contraction, so it was high — and the stage wording, which describes filling
+pressure rising with the progression rather than quoting a value, is unchanged
+and still accurate.
+
+`tests/cardiac-output-model.test.js` now requires the figure to agree between
+240 and 960 steps per beat. `scripts/record-cardiac-fixture.mjs` re-records
+this scene's fixture and prints what moved, so the next deliberate change to
+the shared solver is accepted with its diff visible.
+
 ### Revision 4 — the solver says whether it settled
 
 **No claim in this card changed, and no number in this model moved.** Two

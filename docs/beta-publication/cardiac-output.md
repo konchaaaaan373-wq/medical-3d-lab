@@ -19,13 +19,45 @@ rather than left to be inferred from the fact that the page opens.
 | **Decided by** | Repository owner's decision to publish this scene and to stop the beta being anatomy-only; carried out and recorded by Claude Code (AI engineering agent) |
 | **Role** | `engineering` — software behaviour and agreement with the model, not physiological or clinical judgement |
 | **Assets** | none. The geometry is **procedural**, so there is no external file, no licence obligation and no hash to pin |
-| **Scene revision** | model card revision **5**, source digest `9482474ed50d1090` |
+| **Scene revision** | model card revision **7**, source digest `62aa45633791a39c` (re-pinned twice on 2026-09-22 — see below) |
 
 The decision is pinned to that scene revision in
 [`src/catalog/release.js`](../../src/catalog/release.js). Change what the model
 solves or what a control does and `npm run revisions:check` fails until the card
 is revised, which moves the revision and closes this record until it is taken
 again.
+
+## Re-pinned twice on 2026-09-22, and once a displayed number moved
+
+The gate closed on this decision twice while an external review was being acted
+on, which is the mechanism working: it cannot tell a new diagnostic from a
+changed model, so it stops and asks.
+
+**Revision 6 — measurement only.** Two checks were added to the boundary (a
+per-compartment flow balance, and the same balance over a twenty-fourth of the
+beat, which is what catches a mis-wired loop) and one existing check was
+demoted: `systemicOhmRelative` is an identity, returning machine epsilon
+regardless of the integration, and is no longer counted as numerical evidence.
+**Every figure was bit-identical** to what the original decision was taken
+against.
+
+**Revision 7 — a figure a reader is shown changed.** End-diastolic pressure is
+read at mitral-valve closure instead of at the sample where left-ventricular
+volume is highest. The old definition did not converge: 17.67 / 16.25 / 15.69 /
+15.46 mmHg at 240 / 480 / 960 / 1920 steps per beat at one corner, still moving
+at the finest, while the volume agreed to 0.002 mL. Read at closure, the same
+four give 15.275 to 15.295.
+
+What that changed on screen: **filling pressure, and nothing else.** 7.212 →
+7.203 mmHg at this scene's reference condition; up to 1.4 mmHg lower at
+mid-range conditions, all downward. The `heart-failure` scene shares this solver
+and its fixture reports the same single field; its model card carries its own
+note.
+
+**This decision is re-taken on that basis rather than re-pinned mechanically.**
+The engineering acceptance below still holds — what the scene shows is what the
+model solved — and the figure it now shows is the one that does not depend on
+the integration step. No clinician has read either value.
 
 ## The claim this scene makes, and the ones it does not
 
@@ -77,6 +109,18 @@ Driven in a real browser (Chromium, 1440×900, software GL) by
 
 Numerically:
 
+- **Step-size dependence** (`npm run sweep:cardiac-output -- --steps`) — 81
+  conditions solved to steady state independently at 240, 480 and 960 steps per
+  beat. Every displayed figure agrees with the finest to better than 0.03%
+  except end-diastolic pressure, which did not converge at all and is the
+  reason for revision 7.
+- **Every compartment's books balance**, over the beat (worst 0.0162 mL,
+  tolerance 0.5) and over a twenty-fourth of it (0.29 mL wired correctly,
+  18.3 mL with the systemic veins on the pulmonic valve, tolerance 3).
+- **The displayed mean arterial pressure** against the same integral taken four
+  times finer: worst 0.027 mmHg. It is **not** checked against `DBP + PP/3`,
+  which sits 5 to 9 mmHg below the integral here and is an estimate resting on
+  assumptions this model does not make.
 - [`scripts/sweep-cardiac-output.mjs`](../../scripts/sweep-cardiac-output.mjs) —
   865 conditions across the declared domain. Worst periodicity residual
   0.075 mL against a 0.5 mL tolerance; worst disagreement between stroke volume

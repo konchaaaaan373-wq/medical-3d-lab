@@ -19,17 +19,20 @@ export const INTERVENTION_OPTIONS = [
   },
   {
     value: INTERVENTION_IDS.VOLUME_LOADING,
-    label: 'More circulating filling',
-    labelJa: '循環充満を増やす',
-    effect: 'stressed volume up · a schematic step, not a fluid dose',
-    effectJa: 'stressed volume ↑・模式的な 1 段階で、輸液量ではありません',
+    label: 'More circulating filling (model input)',
+    labelJa: '循環充満量を増やす（モデル入力）',
+    effect: 'a step in the model’s filling quantity — not a fluid volume',
+    effectJa: 'モデル内の充満量を 1 段階上げます。輸液量ではありません',
   },
   {
+    // "A schematic example of dobutamine's action, heart rate held" — the
+    // name carries the assumption, because the assumption is the thing most
+    // likely to be read as a fact about the drug.
     value: INTERVENTION_IDS.DOBUTAMINE,
-    label: 'Dobutamine (representative)',
-    labelJa: 'ドブタミン（代表的な作用）',
-    effect: 'elastance up · resistance down · rate unchanged',
-    effectJa: 'エラスタンス ↑・血管抵抗 ↓・心拍数は変えません',
+    label: 'Dobutamine, a schematic example (rate held)',
+    labelJa: 'ドブタミン作用の模式例（心拍数は固定）',
+    effect: 'elastance up · resistance down · rate held, to separate the two',
+    effectJa: 'エラスタンス ↑・血管抵抗 ↓・心拍数は固定（2 つの作用を分けて見るため）',
   },
 ];
 
@@ -60,15 +63,15 @@ export const INTERVENTION_SCOPE = [
   },
   {
     text:
-      '**Dobutamine here is a direction, not a dose.** Elastance rises and systemic resistance falls; **heart rate is deliberately held**, because the one study this repository has read reports no change in heart rate over 2.5–10 µg/kg/min in thirteen patients with cardiomyopathic heart failure. At higher doses and in other populations dobutamine is chronotropic and arrhythmogenic, and neither is modelled.',
+      '**Holding the heart rate is a choice made for this scene, not a property of the drug.** It is held so that the elastance and the resistance can be read apart. Dobutamine’s manufacturer’s labelling describes both cases: output rising without a marked increase in rate, and rate rising, with tachycardia among the adverse reactions. One study this repository has read — thirteen patients with cardiomyopathic heart failure, 2.5–10 µg/kg/min — reports no change in rate, and one study in one population is not a general rule. Read the fixed rate as this scene’s condition.',
     textJa:
-      '**ここでのドブタミンは向きであって用量ではありません。** エラスタンスが上がり体血管抵抗が下がります。**心拍数は意図的に据え置き**です——このリポジトリが読んだ唯一の研究が、心筋症性心不全 13 例・2.5〜10 µg/kg/min で心拍数に変化なしと報告しているためです。より高用量・他の集団では変時作用と不整脈がありますが、どちらもモデルにありません。',
+      '**心拍数を固定しているのは、このシーンのための条件であって、薬剤の性質ではありません。** エラスタンスと血管抵抗の作用を分けて読むために固定しています。製造販売元の添付文書には、著明な心拍数増加を伴わずに拍出が増える場合と、心拍数増加・頻脈が起こり得ることの**両方**が記載されています。このリポジトリが読んだ研究（心筋症性心不全 13 例・2.5〜10 µg/kg/min）は心拍数に変化なしと報告していますが、**1 つの集団の 1 つの研究は一般則ではありません。**',
   },
   {
     text:
-      'The response sizes are illustrative. The cited study’s own effect sizes are not transferable to this model’s parameters, and nothing here claims them.',
+      '**The response sizes were chosen for this scene.** The directions come from the cited source; ×1.5 on elastance and ×0.85 on resistance do not — they are not derived from any dose-response relationship and no coefficient is fitted to the study. The figures the model then produces are model outputs, not predictions about a person given a drug.',
     textJa:
-      '反応の大きさは説明用です。引用した研究の効果量はこのモデルのパラメータへ移せるものではなく、ここでは主張していません。',
+      '**反応の大きさは、このシーンのために選んだ値です。** 向きは出典に基づきますが、エラスタンス ×1.5・抵抗 ×0.85 は違います——用量反応から導いたものではなく、引用研究に係数を較正してもいません。そこからモデルが出す数値は**モデルの計算値**であって、実際に投与された人についての予測ではありません。',
   },
 ];
 

@@ -96,15 +96,23 @@ export const PRESET_OPTIONS = [
  */
 export const CONTROLS = [
   {
+    // "Circulating filling, in the model" rather than "stressed volume".
+    // The conserved quantity is not a physiological stressed blood volume and
+    // must not be compared with one: it is the passive compartments' stressed
+    // volumes plus the *whole* volume of the three chambers, which is a sum
+    // over two different zero-pressure references. See MODEL_SCOPE.
     id: 'fillingVolumeMl',
-    label: 'Circulating filling · stressed volume, mL',
-    labelJa: '循環充満 ・ stressed volume（mL）',
+    label: 'Circulating filling, in the model · mL',
+    labelJa: '循環充満量（モデル内）・ mL',
     unit: '',
   },
   {
+    // "the model's lumped resistance" — it is not a calibrated SVR, and the
+    // pressure it is measured across is this model's systemic venous pressure,
+    // which is not a central venous pressure.
     id: 'systemicResistanceMmHgSPerMl',
-    label: 'Systemic vascular resistance · mmHg·s/mL',
-    labelJa: '体血管抵抗 ・ mmHg·s/mL',
+    label: 'Systemic resistance · the model’s lumped resistance · mmHg·s/mL',
+    labelJa: '体血管抵抗（モデルの集中抵抗）・ mmHg·s/mL',
     unit: '',
   },
   {
@@ -114,9 +122,13 @@ export const CONTROLS = [
     unit: '',
   },
   {
+    // The clause is on the control, not only in the model card: a reader who
+    // moves this and watches output rise is one sentence away from taking
+    // "faster is more" home, and nothing in the declared range contradicts
+    // them (see §14 of the card).
     id: 'heartRatePerMin',
-    label: 'Heart rate · beats per minute',
-    labelJa: '心拍数 ・ /min',
+    label: 'Heart rate · /min · only the rate changes; not a model of tachycardia',
+    labelJa: '心拍数 ・ /min ・ 変わるのは心拍数だけ。頻脈の評価ではありません',
     unit: '',
   },
 ];
@@ -396,18 +408,38 @@ export const MODEL_SCOPE = {
       textJa: '酸素供給・消費、乳酸、不整脈、弁膜症、右心そのもの、薬物の時間経過。',
     },
     {
-      text: 'Central venous pressure — there is no right atrium in this model.',
-      textJa: '中心静脈圧。このモデルに右房区画はありません。',
+      text: 'Central venous pressure — there is no right atrium in this model. The systemic venous pressure shown is this model’s reservoir pressure and nothing more.',
+      textJa: '中心静脈圧。このモデルに右房区画はありません。表示している体静脈圧は、このモデルのリザーバの圧であってそれ以上のものではありません。',
+    },
+    {
+      text: 'Pulmonary capillary wedge pressure. The pulmonary venous compartment’s pressure is not a wedge pressure and not a capillary pressure, and no threshold in it is read as oedema.',
+      textJa: '肺動脈楔入圧。肺静脈区画の圧は楔入圧でも毛細血管圧でもなく、その閾値から肺水腫を判定することもありません。',
     },
   ],
   cautions: [
     {
-      text: '**“Circulating filling” is stressed volume, not blood volume and not a volume of fluid to give.** There is nowhere in this model for fluid to leave to.',
-      textJa: '**「循環充満」は stressed volume であって、総血液量でも投与する輸液量でもありません。** このモデルに液体が出ていく先はありません。',
+      text: '**“Circulating filling” is a quantity inside this model, not a blood volume and not a volume of fluid to give.** It is the passive compartments’ stressed volumes plus the whole volume of the three chambers — a sum over two different zero-pressure references — so it has no direct correspondence to a measured stressed blood volume. There is nowhere in this model for fluid to leave to.',
+      textJa: '**「循環充満量」はこのモデル内部の量であって、総血液量でも投与する輸液量でもありません。** 受動血管区画の stressed volume と、心腔 3 つの全容積の和です——基準の異なる 2 種類の容積を足しているので、実測の stressed blood volume と直接対応しません。このモデルに液体が出ていく先はありません。',
     },
     {
-      text: '**Raising the rate shortens systole and diastole equally here.** A real heart shortens systole proportionally less, so the loss of filling time with tachycardia is under-represented.',
-      textJa: '**このモデルは心拍数を上げると収縮期と拡張期が同じ比率で短縮します。** 実際の心臓では収縮期の短縮はより小さいので、頻脈で失われる充満時間は過小評価されています。',
+      text: '**The resistance is this model’s lumped systemic resistance, and the pressure it works against is this model’s systemic venous pressure.** That is not a central venous pressure — there is no right atrium here — so the number is not a calibrated SVR and not a normal range.',
+      textJa: '**この抵抗はモデルの集中抵抗で、その下流はモデルの体静脈圧です。** 中心静脈圧ではありません（右房区画がありません）ので、臨床で測る SVR に較正された値でも、正常範囲の代表でもありません。',
+    },
+    {
+      text: '**Raising the rate shortens systole and diastole equally here.** A real heart shortens systole proportionally less, so the loss of filling time with tachycardia is under-represented. Across the grid that has been swept, output never fell as the rate rose — so this scene will not contradict a reader who concludes “faster is more”, and it is not evidence for it.',
+      textJa: '**このモデルは心拍数を上げると収縮期と拡張期が同じ比率で短縮します。** 実際の心臓では収縮期の短縮はより小さいので、頻脈で失われる充満時間は過小評価されています。掃引した範囲では心拍数を上げて拍出が下がった条件はありません——**この画面は「速いほど多い」を否定しません。肯定する根拠でもありません。**',
+    },
+    {
+      text: '**Holding one input fixed does not hold the outputs fixed.** Move the rate and the filling volume stays where it was; end-diastolic volume, filling pressure and arterial pressure all move, because they are what the loop settled on.',
+      textJa: '**1 つの入力を固定することは、出力まで固定することではありません。** 心拍数を動かしても循環充満量はそのままですが、拡張末期容積・充満圧・動脈圧は動きます——それらは閉ループが落ち着いた結果だからです。',
+    },
+    {
+      text: '**A larger output is not an improvement.** Nothing here measures oxygen delivery or consumption, and filling pressure can rise with it. Read both.',
+      textJa: '**拍出が増えることは「改善」ではありません。** 酸素の需給はこのモデルにありませんし、充満圧が一緒に上がることもあります。両方を読んでください。',
+    },
+    {
+      text: '**A change in ejection fraction is not a change in contractility, and not a diagnosis.** It moves when filling or resistance moves, with elastance untouched.',
+      textJa: '**駆出率の変化は収縮力の変化ではなく、診断でもありません。** エラスタンスを触らずに充満や抵抗を動かしても変わります。',
     },
     {
       text: '**The reduced-contractility preset is one parameter lowered, not the heart-failure syndrome** — no remodelling, no fluid retention, no neurohormonal activation.',

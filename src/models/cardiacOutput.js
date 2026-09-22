@@ -263,6 +263,23 @@ export const DIAGNOSTIC_TOLERANCES = Object.freeze({
    * Three sits between them with room on both sides.
    */
   compartmentWindowMl: 3,
+  /**
+   * Largest allowed gap between the mean arterial pressure this scene
+   * **displays** and the same integral taken four times finer.
+   *
+   * The displayed figure is the solver's own 240-step beat; the closing beat
+   * runs at 960. Both are time integrals of the arterial pressure, so the
+   * difference is the quadrature error in the number a reader is shown.
+   * Measured 2026-09-22 over the declared domain: worst 0.027 mmHg, which is
+   * a twentieth of the last displayed digit.
+   *
+   * This is the check that answers "does the displayed mean match the
+   * waveform". It is not a comparison with `DBP + PP/3`, which is an estimate
+   * built on assumptions this model does not make — measured here at 5 to 9
+   * mmHg below the integral, and **not** something to rewrite the model to
+   * agree with.
+   */
+  displayedMeanPressureMmHg: 0.25,
   /** Any backward flow through an ideal one-way valve at all, in mL/s. */
   valveBackflowMlPerS: 0,
   /**
@@ -697,6 +714,13 @@ export function solveCardiacOutput(input, options = {}) {
       `stroke volume and aortic throughput differ by ${strokeVolumeMismatchMl.toFixed(3)} mL`
     );
   }
+  const displayedMeanGapMmHg = Math.abs(cycle.meanArterialPressure - measured.meanArterialPressureMmHg);
+  if (displayedMeanGapMmHg > DIAGNOSTIC_TOLERANCES.displayedMeanPressureMmHg) {
+    failures.push(
+      `the displayed mean arterial pressure is ${displayedMeanGapMmHg.toFixed(3)} mmHg from the ` +
+        'same integral taken four times finer'
+    );
+  }
   if (measured.windowResidualMl > DIAGNOSTIC_TOLERANCES.compartmentWindowMl) {
     failures.push(
       `${measured.worstWindowCompartment}'s flows and its volume change differ by ` +
@@ -735,6 +759,8 @@ export function solveCardiacOutput(input, options = {}) {
     worstBalanceCompartment: measured.worstBalanceCompartment,
     windowResidualMl: measured.windowResidualMl,
     worstWindowCompartment: measured.worstWindowCompartment,
+    displayedMeanGapMmHg,
+    fineMeanArterialPressureMmHg: measured.meanArterialPressureMmHg,
     beatFlowsMl: Object.freeze({ ...measured.integrals }),
     stepsPerBeat,
     diagnosticSteps,
