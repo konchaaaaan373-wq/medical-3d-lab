@@ -72,32 +72,75 @@ export function functionNoteForSelection(selection) {
   // Most of the atlas is not in this model, and saying nothing is the right
   // answer for all of it. A panel section that appeared everywhere and said
   // "no function recorded" would read as a claim about the structure.
-  if (!found.carries) return null;
+  //
+  // A structure that only *modulates* is the exception: nothing routes through
+  // the anterior thalamus in this model and it is not therefore a structure
+  // with no part in language. It gets a note that says which of the two it is.
+  if (!found.carries && !found.modulatesOnly) return null;
 
   const names = found.tasks.map((task) => shortLabel(task.id));
   const lowered = [...found.ifLost.low, ...found.ifLost.intermediate].map(shortLabel);
+  const unsettled = found.ifLost.indeterminate.map(shortLabel);
 
   // No syndrome name here, and not because it would not fit: naming one from a
   // single destroyed structure is the diagnosis this model does not make. What
   // it can say is which declared routes stop reaching, and it says that.
-  const ifLost = lowered.length === 0
+  //
+  // "Nothing came back lowered" and "every route was evaluated and still
+  // reaches" are different sentences, and the first was being printed as the
+  // second. When a task could not be settled at all, that is what is said.
+  const stillReaching = unsettled.length === 0
     ? {
       text: 'This one structure gone leaves every declared route still reaching — the model has another way round.',
       textJa: 'この構造だけを失っても、宣言したどの経路も届きます（モデルには別の経路があります）。',
     }
     : {
+      text: 'Nothing came back lowered — and these could not be evaluated at all, so "every route still '
+        + `reaches" is not what that means: ${unsettled.map((task) => task.label).join(', ')}`,
+      textJa: '下がったものはありませんでした。ただし次の課題は**評価そのものができていない**ので、'
+        + `「どの経路も届く」という意味ではありません：${unsettled.map((task) => task.labelJa).join('・')}`,
+    };
+  const ifLost = lowered.length === 0
+    ? stillReaching
+    : {
       text: `This one structure gone, these routes stop reaching as well: ${lowered.map((task) => task.label).join(', ')}`,
       textJa: `この構造だけを失うと、次の経路が届きにくくなります：${lowered.map((task) => task.labelJa).join('・')}`,
     };
 
+  // Involvement this model declares and does not put a number on. Separate
+  // from `carries` on purpose: a reader must not take it for a computed one.
+  const modulates = found.modulates.length === 0 ? null : {
+    text: `Declared and not computed: ${found.modulates.map((network) => network.label).join(', ')}. `
+      + found.modulates.map((network) => network.whatIsNotComputed).join(' '),
+    textJa: `宣言していて計算していない関与：${found.modulates.map((network) => network.labelJa).join('・')}。`
+      + found.modulates.map((network) => network.whatIsNotComputedJa).join(''),
+  };
+
+  // Declared by a task, and not a route that task may take for the stimulus it
+  // is asked with. Kept, and kept apart: it is the answer to "why is this
+  // structure lit and not in the list".
+  const byIneligibleRoute = found.tasksByIneligibleRoute.length === 0 ? null : {
+    text: 'Declared here by a route these tasks may not take for the stimulus they are asked with: '
+      + found.tasksByIneligibleRoute.map((task) => shortLabel(task.id).label).join(', '),
+    textJa: '次の課題は、**その刺激では使えない経路**によってここを通ると宣言しています（利用経路ではありません）：'
+      + found.tasksByIneligibleRoute.map((task) => shortLabel(task.id).labelJa).join('・'),
+  };
+
   return {
     title: 'What this structure is for',
     titleJa: 'この部位が関わる高次脳機能',
-    carries: {
-      text: `Routes through it: ${names.map((task) => task.label).join(', ')}`,
-      textJa: `ここを通る課題：${names.map((task) => task.labelJa).join('・')}`,
-    },
+    carries: names.length === 0
+      ? {
+        text: 'No route of this model runs through it. That is not "no involvement" — see below.',
+        textJa: 'このモデルのどの経路もここを通りません。「関与が無い」ということではありません（下記）。',
+      }
+      : {
+        text: `Routes through it: ${names.map((task) => task.label).join(', ')}`,
+        textJa: `ここを通る課題：${names.map((task) => task.labelJa).join('・')}`,
+      },
     ifLost,
+    modulates,
+    byIneligibleRoute,
     source: {
       text: 'Route availability read from the higher cortical function model — a representative '
         + 'right-handed brain. Not a syndrome, not a diagnosis, and not a lesion localiser.',

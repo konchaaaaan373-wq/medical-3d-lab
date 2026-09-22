@@ -3,7 +3,8 @@ import * as THREE from 'three';
 import {
   DISCLAIMER, DISCLAIMER_JA, DISCLAIMER_SHORT, DISCLAIMER_SHORT_JA,
   LEGEND, LESION_NOTES, MODEL_CONTROLS_COPY, MODEL_SCOPE, PALETTE,
-  COMPUTATION_NOTE, COMPUTATION_TEXT, CONCEPTUAL_INTERVENTIONS, MODE_COPY,
+  BAND_ONLY_TEXT, COMPUTATION_NOTE, COMPUTATION_TEXT, CONCEPTUAL_INTERVENTIONS, MODE_COPY,
+  NOT_MODELLED_TEXT, ROUTE_DISPLAY_TEXT,
   PROGRESS_LABEL, RANGE, RELATED, STAGES, STATE_TEXT, STRUCTURE_NAMES_JA, TASK_PROBES,
   TASK_READOUT_LABELS, TRACEABLE_TASKS, VISUAL_MAPPING,
 } from '../../../../data/higherBrainFunction.js';
@@ -1086,31 +1087,39 @@ export class HigherBrainFunctionScene {
     return { centre: box.getCenter(new THREE.Vector3()), corners, coverage: 0.8 };
   }
 
+  /** One row's value: the band when there is one, and what is established when there is not. */
+  static readingOf(task) {
+    if (task.computationStatus === COMPUTATION.COMPUTED) return STATE_TEXT[task.state];
+    // Indeterminate, with a band the arithmetic does settle anyway. A band is
+    // not a number and this says which of the two it is.
+    if (task.computationStatus === COMPUTATION.INDETERMINATE && task.establishedBand) {
+      return BAND_ONLY_TEXT[task.establishedBand] ?? COMPUTATION_TEXT[task.computationStatus];
+    }
+    return COMPUTATION_TEXT[task.computationStatus];
+  }
+
+  /**
+   * The read-out, in sections.
+   *
+   * Order: what is being changed, then the task being traced, then the rest of
+   * the tasks for comparison, then what none of it settles. Twenty-six rows in
+   * one flat column is a list a reader scrolls past; the sections that carry
+   * the caveats stay open, and the comparison rows fold.
+   *
+   * The tasks this model has no route for are **not** folded away. "There is no
+   * value here" is a finding, and hiding it is how a reader comes to believe
+   * the model answered a question it never had.
+   */
   getMetrics() {
     const traced = this.tracedTask();
     const conceptual = this.solved.mode === MODE.CONCEPTUAL;
-    /** One row's value: the band when there is one, and why not when there is not. */
-    const valueOf = (task) => {
-      if (task.computationStatus === COMPUTATION.COMPUTED) return STATE_TEXT[task.state];
-      return COMPUTATION_TEXT[task.computationStatus];
-    };
-    const rows = this.solved.tasks.map((task) => {
-      const value = valueOf(task);
-      return {
-        id: task.id,
-        label: TASK_READOUT_LABELS[task.id]?.label ?? task.label,
-        labelJa: TASK_READOUT_LABELS[task.id]?.labelJa ?? task.labelJa,
-        value: value.label + (task.unmodelledInfluences.length ? ' (＋)' : ''),
-        valueJa: value.labelJa + (task.unmodelledInfluences.length ? '（＋未計算）' : ''),
-        unit: '',
-        emphasis: false,
-      };
-    });
+    const display = this.routeDisplay();
 
+    const rows = [];
     // What is being changed, first: a result from a switched-off process and a
     // result from a lesion are different kinds of statement, and a reader must
     // be able to tell which one they are looking at from the read-out alone.
-    rows.unshift({
+    rows.push({
       id: 'mode',
       label: 'What is being changed',
       labelJa: '操作しているもの',
@@ -1131,78 +1140,226 @@ export class HigherBrainFunctionScene {
       });
     }
 
+    // --- the traced task ----------------------------------------------------
+    const traceGroup = {
+      group: 'traced',
+      groupLabel: 'The task being traced',
+      groupLabelJa: '辿っている課題',
+      groupOpen: true,
+    };
     const probe = TASK_PROBES[traced?.id] ?? { text: '', textJa: '' };
     rows.push({
+      ...traceGroup,
       id: 'probe',
-      label: 'The traced task, asked as',
-      labelJa: '辿っている課題の試し方',
+      label: 'Asked as',
+      labelJa: '試し方',
       value: probe.text,
       valueJa: probe.textJa,
       unit: '',
     });
-
-    // Where the traced route is held down — and only ever as a statement about
-    // the route that was reported, never as "the responsible lesion".
-    const limiting = traced?.route?.filter((step) => step.integrity < AVAILABILITY_HIGH) ?? [];
-    rows.push({
-      id: 'limiting',
-      label: 'What holds the traced route down',
-      labelJa: '辿った経路を抑えているもの',
-      // A connection's label names both ends, so listing a connection next to
-      // the process it leads into read as the same name twice — "音韻の分析 →
-      // 音韻—文字変換 → 音韻—文字変換". Each step says which kind it is instead.
-      value: traced?.computationStatus === COMPUTATION.COMPUTED
-        ? (limiting.length
-          ? limiting.map((step) => (step.kind === 'connection' ? `${step.label} (connection)` : step.label)).join('; ')
-          : 'Nothing on it')
-        : (COMPUTATION_NOTE[traced?.computationStatus]?.text ?? ''),
-      valueJa: traced?.computationStatus === COMPUTATION.COMPUTED
-        ? (limiting.length
-          ? limiting.map((step) => (step.kind === 'connection' ? `${step.labelJa}（連絡）` : step.labelJa)).join('／')
-          : 'この経路上には何もありません')
-        : (COMPUTATION_NOTE[traced?.computationStatus]?.textJa ?? ''),
-      unit: '',
-    });
-
-    // The limits of this result, next to the result. Not a footnote: a high
-    // value on a route that passes through a shared mesh, or through a process
-    // no lesion can reach, is a narrower statement than it looks.
-    if (traced?.coverageLimitations?.length) {
-      // One limitation, and a count when there are more. Joining them all put
-      // 215 characters into a value cell in a 190px rail — which is not a
-      // limitation a reader reads, it is a limitation a reader scrolls past.
-      // The full list is on the model's scope panel.
-      const more = (list) => (list.length > 1 ? `（${list.length} 件のうち 1 件）` : '');
+    if (traced) {
+      const reading = HigherBrainFunctionScene.readingOf(traced);
       rows.push({
+        ...traceGroup,
+        // Keyed by the task, not by "the traced one": every task in the model
+        // is a row under its own id, wherever the sections put it.
+        id: traced.id,
+        label: TASK_READOUT_LABELS[traced.id]?.label ?? traced.label,
+        labelJa: TASK_READOUT_LABELS[traced.id]?.labelJa ?? traced.labelJa,
+        value: reading.label,
+        valueJa: reading.labelJa,
+        unit: '',
+        emphasis: true,
+      });
+      if (traced.computationStatus === COMPUTATION.NOT_MODELLED) {
+        const why = NOT_MODELLED_TEXT[traced.notModelledReason];
+        rows.push({
+          ...traceGroup,
+          id: 'traced-absent',
+          label: 'Why there is no value',
+          labelJa: '値が無い理由',
+          value: `${why?.text ?? ''} ${COMPUTATION_NOTE.not_modeled.text}`.trim(),
+          valueJa: `${why?.textJa ?? ''}${COMPUTATION_NOTE.not_modeled.textJa}`,
+          unit: '',
+        });
+      }
+      // What the picture is saying, in words, so that a reader who cannot tell
+      // a dim line from a stopped one has it written down.
+      rows.push({
+        ...traceGroup,
+        id: 'route-state',
+        label: 'What the drawn route shows',
+        labelJa: '描かれている経路が示していること',
+        value: ROUTE_DISPLAY_TEXT[display.kind].label,
+        valueJa: ROUTE_DISPLAY_TEXT[display.kind].labelJa,
+        unit: '',
+      });
+      if (display.stop) {
+        rows.push({
+          ...traceGroup,
+          id: 'route-stop',
+          label: 'Where it stops, and why',
+          labelJa: '止まる場所と、その理由',
+          value: `${display.stop.label}${display.stop.kind === 'connection' ? ' (connection)' : ''}: `
+            + 'nothing of it is left. This is about this route, not about a person.',
+          valueJa: `${display.stop.labelJa}${display.stop.kind === 'connection' ? '（連絡）' : ''}：`
+            + 'ここが残っていません。この経路についての記述で、人についてではありません。',
+          unit: '',
+        });
+      }
+      // A route is not the task. The audited version drew one route and let a
+      // reader take its stopping place for the task's answer.
+      if (display.otherRoutes > 0 || display.unknownRoutes > 0) {
+        rows.push({
+          ...traceGroup,
+          id: 'other-routes',
+          label: 'Other routes this task declares',
+          labelJa: 'この課題が宣言している他の経路',
+          value: `${display.otherRoutes} evaluated, ${display.unknownRoutes} this mode cannot evaluate. `
+            + 'The drawn route is one of them.',
+          valueJa: `評価済み ${display.otherRoutes} 本、このモードでは評価できないもの ${display.unknownRoutes} 本。`
+            + '描いているのはそのうちの 1 本です。',
+          unit: '',
+        });
+      }
+      // Where the traced route is held down — and only ever as a statement
+      // about the route that was reported, never as "the responsible lesion".
+      const limiting = traced.route?.filter((step) => step.integrity < AVAILABILITY_HIGH) ?? [];
+      rows.push({
+        ...traceGroup,
+        id: 'limiting',
+        label: 'What holds the traced route down',
+        labelJa: '辿った経路を抑えているもの',
+        // A connection's label names both ends, so listing a connection next to
+        // the process it leads into read as the same name twice — "音韻の分析 →
+        // 音韻—文字変換 → 音韻—文字変換". Each step says which kind it is instead.
+        value: traced.route
+          ? (limiting.length
+            ? limiting.map((step) => (step.kind === 'connection' ? `${step.label} (connection)` : step.label)).join('; ')
+            : 'Nothing on it')
+          : (COMPUTATION_NOTE[traced.computationStatus]?.text ?? ''),
+        valueJa: traced.route
+          ? (limiting.length
+            ? limiting.map((step) => (step.kind === 'connection' ? `${step.labelJa}（連絡）` : step.labelJa)).join('／')
+            : 'この経路上には何もありません')
+          : (COMPUTATION_NOTE[traced.computationStatus]?.textJa ?? ''),
+        unit: '',
+      });
+    }
+
+    // --- the limits of this result -----------------------------------------
+    const limitGroup = {
+      group: 'limits',
+      groupLabel: 'What this result does not settle',
+      groupLabelJa: 'この結果が決めていないこと',
+      groupOpen: true,
+    };
+    // Not a footnote: a high value on a route that passes through a shared
+    // mesh, or through a process no lesion can reach, is a narrower statement
+    // than it looks. One line in the rail, and **all of them** behind the
+    // control the panel draws from `details`.
+    if (traced?.coverageLimitations?.length) {
+      const all = traced.coverageLimitations;
+      const allJa = traced.coverageLimitationsJa;
+      rows.push({
+        ...limitGroup,
         id: 'coverage',
         label: 'What this value does not settle',
         labelJa: 'この値が決めていないこと',
-        value: `${traced.coverageLimitations[0]}${traced.coverageLimitations.length > 1 ? ` (1 of ${traced.coverageLimitations.length})` : ''}`,
-        valueJa: `${more(traced.coverageLimitationsJa)}${traced.coverageLimitationsJa[0]}`,
+        value: `${all[0]}${all.length > 1 ? ` (1 of ${all.length})` : ''}`,
+        valueJa: `${allJa.length > 1 ? `（${allJa.length} 件のうち 1 件）` : ''}${allJa[0]}`,
         unit: '',
+        details: [...all],
+        detailsJa: [...allJa],
+      });
+    }
+    if (display.assumed) {
+      rows.push({
+        ...limitGroup,
+        id: 'assumed',
+        label: 'Taken as available, not found to be',
+        labelJa: '「利用可能」としているだけで、確かめてはいないもの',
+        value: 'A step of this route has no atlas structure. It is fixed at available, no lesion can '
+          + 'reach it, and its anatomical sparing has not been evaluated.',
+        valueJa: 'この経路には、アトラス上の構造を持たない段階があります。利用可能に固定してあり、'
+          + 'どの病変も届かず、その解剖学的な温存は評価していません。',
+        unit: '',
+        emphasis: true,
       });
     }
     if (traced?.unmodelledInfluences?.length) {
       rows.push({
+        ...limitGroup,
         id: 'unmodelled',
         label: 'Influences this model does not compute',
         labelJa: 'このモデルが計算していない影響',
-        value: traced.unmodelledInfluences.join(' / '),
-        valueJa: traced.unmodelledInfluences.join(' / '),
+        value: traced.unmodelledInfluences.map((influence) => influence.what).join(' / '),
+        valueJa: traced.unmodelledInfluences.map((influence) => influence.whatJa).join('／'),
         unit: '',
         emphasis: true,
+        details: traced.unmodelledInfluences.map((influence) => influence.whatIsNotComputed),
+        detailsJa: traced.unmodelledInfluences.map((influence) => influence.whatIsNotComputedJa),
+      });
+    }
+    // A structure the input named and this model computes nothing from. Not
+    // "no effect": a limit of the model, said as one.
+    if (this.solved.outOfScopeStructures?.length) {
+      rows.push({
+        ...limitGroup,
+        id: 'out-of-scope',
+        label: 'Named, and outside what this model computes',
+        labelJa: '指定されたが、このモデルの計算対象外の構造',
+        value: `${this.solved.outOfScopeStructures.join(', ')} — this model computes nothing from them, `
+          + 'which is not the same as their being unaffected.',
+        valueJa: `${this.solved.outOfScopeStructures.join('、')}——このモデルはここから何も計算しません。`
+          + 'それは「影響が無い」ということではありません。',
+        unit: '',
+        details: [...this.solved.outOfScopeStructures],
       });
     }
     // What the task itself is not about. The rows a reader over-reads are the
     // ones whose names are shorter than their meaning.
     if (traced?.excludesJa?.length) {
       rows.push({
+        ...limitGroup,
         id: 'excludes',
         label: 'Not evaluated by this task',
         labelJa: 'この課題が評価していないもの',
         value: traced.excludes.join(' / '),
         valueJa: traced.excludesJa.join('／'),
         unit: '',
+        details: [...traced.excludes],
+        detailsJa: [...traced.excludesJa],
+      });
+    }
+
+    // --- the other tasks ----------------------------------------------------
+    const compare = {
+      group: 'compare',
+      groupLabel: 'The other tasks, for comparison',
+      groupLabelJa: '比較のための他の課題',
+      groupOpen: false,
+    };
+    // Open, always: "this model has no route for that" is a finding, and a
+    // reader who never unfolds it is a reader who thinks the model answered.
+    const absent = {
+      group: 'absent',
+      groupLabel: 'Tasks this model has no route for',
+      groupLabelJa: 'このモデルが経路を持たない課題',
+      groupOpen: true,
+    };
+    for (const task of this.solved.tasks) {
+      if (task.id === traced?.id) continue;
+      const reading = HigherBrainFunctionScene.readingOf(task);
+      rows.push({
+        ...(task.computationStatus === COMPUTATION.NOT_MODELLED ? absent : compare),
+        id: task.id,
+        label: TASK_READOUT_LABELS[task.id]?.label ?? task.label,
+        labelJa: TASK_READOUT_LABELS[task.id]?.labelJa ?? task.labelJa,
+        value: reading.label + (task.unmodelledInfluences.length ? ' (＋)' : ''),
+        valueJa: reading.labelJa + (task.unmodelledInfluences.length ? '（＋未計算）' : ''),
+        unit: '',
+        emphasis: false,
       });
     }
     return rows;
@@ -1251,15 +1408,24 @@ export class HigherBrainFunctionScene {
         target.renderAtSeconds(runTimeAt(t, HigherBrainFunctionScene.CYCLE_SECONDS));
       },
 
-      /** The rows this sequence is about, from the solved state. */
+      /**
+       * The rows this sequence is about, from the solved state.
+       *
+       * Through the same reading the read-out uses, so that a band the panel
+       * reports as established-but-not-exact cannot come out of the video as a
+       * value. `(＋)` marks a task the model declares an influence for and does
+       * not compute — the same mark, for the same reason, in both places.
+       */
       readMetrics(target = scene) {
         const rows = {};
         for (const id of REEL_ROWS) {
           const task = target.solved.tasks.find((candidate) => candidate.id === id);
-          const text = task.computationStatus === COMPUTATION.COMPUTED
-            ? STATE_TEXT[task.state]
-            : COMPUTATION_TEXT[task.computationStatus];
-          rows[id] = { en: text.label, ja: text.labelJa };
+          const text = HigherBrainFunctionScene.readingOf(task);
+          const flagged = task.unmodelledInfluences.length > 0;
+          rows[id] = {
+            en: text.label + (flagged ? ' (＋)' : ''),
+            ja: text.labelJa + (flagged ? '（＋未計算）' : ''),
+          };
         }
         return rows;
       },

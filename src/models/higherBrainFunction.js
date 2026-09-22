@@ -288,8 +288,12 @@ export const FUNCTION_NODES = Object.freeze([
     labelJa: '一次聴覚野（横側頭回）',
     substrate: NODE_SUBSTRATE.PAIRED,
     structures: Object.freeze(bilateral('Transverse temporal gyri')),
-    note: 'Each ear reaches both sides, so one-sided damage here takes nothing away.',
-    noteJa: '片耳の入力は両側に届くので、片側だけの障害では何も失われません。',
+    note: 'Each ear reaches both sides, so **in this model** one-sided damage here lowers no route: the '
+      + 'other side carries it. What a person would notice from a unilateral auditory cortex lesion — '
+      + 'sound localisation, listening in noise, dichotic performance — is not among the tasks here.',
+    noteJa: '片耳の入力は両側に届くので、**このモデルでは**片側だけの障害でどの経路も下がりません'
+      + '（反対側が運びます）。片側の聴覚野病変で実際に問題になること——音源定位、雑音下聴取、'
+      + '両耳分離聴——は、ここにある課題に含まれていません。',
   },
   {
     id: 'phonological-analysis',

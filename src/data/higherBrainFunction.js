@@ -112,14 +112,18 @@ export const STAGES = [
     at: 0.5,
     focus: ['lesion', 'carrying'],
     summary:
-      'A route is no better than its worst step. With the lesion half taken, tasks that share the damaged step weaken together, and tasks that avoid it do not weaken at all.',
+      'A route is no better than its worst step. With the lesion half taken, the declared routes that '
+      + 'share the damaged step weaken together, and the declared routes that avoid it are unchanged — '
+      + 'in this model, which computes route availability and nothing else about the tasks.',
     summaryJa:
-      '経路は、その中で最も弱い段階以上には良くなりません。病変が半分のとき、その段階を共有する課題はそろって弱くなり、そこを通らない課題はまったく弱くなりません。',
+      '経路は、その中で最も弱い段階以上には良くなりません。病変が半分のとき、その段階を共有する'
+      + '**宣言した経路**はそろって弱くなり、そこを通らない宣言経路は変わりません'
+      + '——このモデルの中での話で、計算しているのは経路の利用可能性だけです。',
   },
   {
     id: 'complete',
-    name: 'The step is gone, and the pattern is the finding',
-    nameJa: '段階が失われ、その組み合わせが所見になる',
+    name: 'The step is gone. What is left is which routes still reach',
+    nameJa: '段階が失われた。残るのは「どの経路がまだ届くか」だけ',
     at: 1,
     focus: ['blocked', 'lesion'],
     // This used to end "and the pattern has a name", pointing at a syndrome
@@ -305,6 +309,69 @@ export const COMPUTATION_TEXT = {
   computed: { label: 'Computed', labelJa: '計算した' },
   indeterminate: { label: 'Cannot be determined', labelJa: '判定不能' },
   not_modeled: { label: 'Not modelled here', labelJa: '対象外（このモデルにありません）' },
+};
+
+/**
+ * What is established when the exact maximum is not.
+ *
+ * An eligible route the model cannot evaluate leaves the task's maximum
+ * unknown, and sometimes leaves the *band* known anyway: 0.9-to-1 is the top
+ * band at every point of it. Saying "0.9" there would be a number the model
+ * does not have; saying nothing would throw away something it does.
+ */
+export const BAND_ONLY_TEXT = {
+  high: {
+    label: 'At least available — exact value unknown',
+    labelJa: '少なくとも通る（正確な値は不明）',
+  },
+  intermediate: {
+    label: 'At least partly available — exact value unknown',
+    labelJa: '少なくとも部分的には通る（正確な値は不明）',
+  },
+  low: { label: 'Cannot be determined', labelJa: '判定不能' },
+};
+
+/** Why a task has no route at all, which is not the same as having a bad one. */
+export const NOT_MODELLED_TEXT = {
+  'no-route-declared': {
+    text: 'No route is declared for this task.',
+    textJa: 'この課題には経路を宣言していません。',
+  },
+  'no-eligible-route': {
+    text: 'Routes are declared, and none of them serves the stimulus this task is asked with.',
+    textJa: '経路は宣言していますが、この課題が使う刺激に適格な経路がありません。',
+  },
+};
+
+/**
+ * What the drawn route is saying, in words.
+ *
+ * Five states, written down, because a picture cannot be relied on to
+ * distinguish them on its own and a reader who mistakes a dim line for a
+ * severed one has been told something false. The keys are
+ * `HigherBrainFunctionScene.DISPLAY`.
+ */
+export const ROUTE_DISPLAY_TEXT = {
+  carrying: {
+    label: 'The route carries the task the whole way.',
+    labelJa: 'この経路は課題を最後まで運んでいます。',
+  },
+  weak: {
+    label: 'The route still reaches the end, weakly. A low value is not a stop.',
+    labelJa: 'この経路は弱いながら最後まで届いています。**低い値は「止まった」ではありません**。',
+  },
+  blocked: {
+    label: 'A step of this route is at zero, so the route stops there. That is about this route.',
+    labelJa: 'この経路の 1 段階が 0 なので、そこで止まります。**この経路についての記述**です。',
+  },
+  indeterminate: {
+    label: 'This model cannot settle this route. Nothing here is a stop that was observed.',
+    labelJa: 'このモデルはこの経路を決められません。**止まるところを見たのではありません**。',
+  },
+  'not-modelled': {
+    label: 'There is no route to draw. Nothing is asked and nothing travels.',
+    labelJa: '描く経路がありません。問いかけも、移動も起きていません。',
+  },
 };
 
 /** The one line that has to sit next to a result, per computation status. */

@@ -487,11 +487,20 @@
 }
 
 .anatomy-function-line,
+.anatomy-function-aside,
 .anatomy-function-lost {
   margin: 5px 0 0;
   color: var(--ink-dim);
   font-size: 12px;
   line-height: 1.45;
+}
+
+/* Declared and not computed, or declared by a route this stimulus may not
+   take. Set apart from the reading above it so that neither is read as one. */
+.anatomy-function-aside {
+  padding-left: 8px;
+  border-left: 2px solid rgb(255 255 255 / 14%);
+  color: var(--ink-faint);
 }
 
 .anatomy-function-lost {
@@ -1049,6 +1058,84 @@
   flex-direction: column;
   gap: 6px;
   min-width: 176px;
+}
+
+/* ---------- read-out grouping ----------
+   A read-out with twenty-six rows is a list a reader scrolls past. Sections
+   with a heading that folds, and the sections a reader must not miss stay open.
+   Every size here is at the 12px floor: `npm run type-floor` only shrinks. */
+.metric-group {
+  border-top: 1px solid rgb(255 255 255 / 10%);
+  margin-top: 4px;
+  padding-top: 4px;
+}
+
+.metric-group-toggle {
+  display: block;
+  width: 100%;
+  min-height: 32px;
+  background: none;
+  border: 0;
+  color: var(--ink-faint);
+  font: inherit;
+  font-size: 12px;
+  letter-spacing: 0.04em;
+  text-align: left;
+  padding: 4px 0;
+  cursor: pointer;
+}
+
+.metric-group-toggle::after {
+  content: '＋';
+  float: right;
+}
+
+.metric-group.is-open > .metric-group-toggle::after {
+  content: '−';
+}
+
+.metric-group-toggle:hover,
+.metric-group-toggle:focus-visible {
+  color: var(--ink);
+}
+
+.metric-details-toggle {
+  display: inline-block;
+  min-height: 32px;
+  background: none;
+  border: 0;
+  padding: 4px 0;
+  color: var(--ink-faint);
+  font: inherit;
+  font-size: 12px;
+  text-decoration: underline;
+  cursor: pointer;
+}
+
+.metric-details-toggle:hover,
+.metric-details-toggle:focus-visible {
+  color: var(--ink);
+}
+
+.metric-details {
+  margin: 2px 0 4px;
+  padding-left: 14px;
+  list-style: none;
+}
+
+.metric-details li {
+  position: relative;
+  font-size: 12px;
+  line-height: 1.45;
+  color: var(--ink-dim);
+  padding-bottom: 4px;
+}
+
+.metric-details li::before {
+  content: '·';
+  position: absolute;
+  left: -10px;
+  color: var(--ink-faint);
 }
 
 .metric {

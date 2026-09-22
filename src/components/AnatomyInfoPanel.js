@@ -96,11 +96,20 @@ export function createAnatomyInfoPanel(
   const carriesJa = el('p', { class: 'anatomy-function-line lang-ja', text: '' });
   const ifLostEn = el('p', { class: 'anatomy-function-lost lang-en', text: '' });
   const ifLostJa = el('p', { class: 'anatomy-function-lost lang-ja', text: '' });
+  // Involvement the model declares and does not compute, and routes a task
+  // declares but may not take for the stimulus it is asked with. Both are
+  // hidden when empty, and neither may be read as a computed result — which is
+  // why they are their own lines rather than more of the sentence above.
+  const modulatesEn = el('p', { class: 'anatomy-function-aside lang-en', text: '' });
+  const modulatesJa = el('p', { class: 'anatomy-function-aside lang-ja', text: '' });
+  const ineligibleEn = el('p', { class: 'anatomy-function-aside lang-en', text: '' });
+  const ineligibleJa = el('p', { class: 'anatomy-function-aside lang-ja', text: '' });
   const functionSourceEn = el('p', { class: 'anatomy-function-source lang-en', text: '' });
   const functionSourceJa = el('p', { class: 'anatomy-function-source lang-ja', text: '' });
   const functionSection = el('section', { class: 'anatomy-function' }, [
     functionTitleEn, functionTitleJa, carriesEn, carriesJa,
-    ifLostEn, ifLostJa, functionSourceEn, functionSourceJa,
+    ifLostEn, ifLostJa, modulatesEn, modulatesJa, ineligibleEn, ineligibleJa,
+    functionSourceEn, functionSourceJa,
   ]);
   functionSection.hidden = true;
 
@@ -142,6 +151,14 @@ export function createAnatomyInfoPanel(
     carriesJa.textContent = note.carries.textJa;
     ifLostEn.textContent = note.ifLost.text;
     ifLostJa.textContent = note.ifLost.textJa;
+    const aside = (en, ja, entry) => {
+      en.textContent = entry?.text ?? '';
+      ja.textContent = entry?.textJa ?? '';
+      en.hidden = !entry;
+      ja.hidden = !entry;
+    };
+    aside(modulatesEn, modulatesJa, note.modulates);
+    aside(ineligibleEn, ineligibleJa, note.byIneligibleRoute);
     functionSourceEn.textContent = note.source.text;
     functionSourceJa.textContent = note.source.textJa;
   };

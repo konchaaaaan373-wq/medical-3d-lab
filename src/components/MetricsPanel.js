@@ -10,6 +10,80 @@ import { el } from '../utils/dom.js';
 export function createMetricsPanel() {
   const element = el('div', { class: 'panel metrics' });
   const rows = new Map();
+  /** @type {Map<string, {section: HTMLElement, body: HTMLElement, toggle: HTMLElement}>} */
+  const groups = new Map();
+
+  /**
+   * The section a row belongs in, made on first sight.
+   *
+   * Optional, and every scene that does not ask for one keeps the flat list it
+   * had. The higher-function read-out is twenty-six rows — the traced task, ten
+   * more for comparison, the limits, the influences nobody computed — and a
+   * flat column of twenty-six is a list a reader scrolls rather than reads.
+   * `open: false` starts a section folded; the rows a reader must not miss
+   * (what is being changed, what this result does not settle, the tasks this
+   * model has no route for) belong in an open one or in no section at all.
+   */
+  const groupFor = (metric) => {
+    if (!metric.group) return element;
+    let group = groups.get(metric.group);
+    if (group) return group.body;
+    const body = el('div', { class: 'metric-group-body' });
+    const toggle = el('button', {
+      class: 'metric-group-toggle',
+      type: 'button',
+      'aria-expanded': String(metric.groupOpen !== false),
+    }, [
+      el('span', { class: 'lang-en', text: metric.groupLabel ?? metric.group }),
+      el('span', { class: 'lang-ja', text: metric.groupLabelJa ?? metric.groupLabel ?? metric.group }),
+    ]);
+    body.hidden = metric.groupOpen === false;
+    toggle.addEventListener('click', () => {
+      const open = body.hidden;
+      body.hidden = !open;
+      toggle.setAttribute('aria-expanded', String(open));
+      section.classList.toggle('is-open', open);
+    });
+    const section = el('section', {
+      class: `metric-group${metric.groupOpen === false ? '' : ' is-open'}`,
+      'data-group': metric.group,
+    }, [toggle, body]);
+    element.append(section);
+    group = { section, body, toggle };
+    groups.set(metric.group, group);
+    return body;
+  };
+
+  /**
+   * Everything a row has to say, behind one control.
+   *
+   * The read-out shows one limitation and a count — "(1 of 4)" — because four
+   * of them joined together is two hundred characters in a 190px rail, which is
+   * not a limitation a reader reads. The other three were reachable only by
+   * opening the repository. They are a button away now, and the button says how
+   * many.
+   */
+  const detailsFor = (metric, node) => {
+    const items = metric.details ?? [];
+    const itemsJa = metric.detailsJa ?? items;
+    if (items.length === 0) return null;
+    const list = el('ul', { class: 'metric-details' }, items.map((text, index) => el('li', {}, [
+      el('span', { class: 'lang-en', text }),
+      el('span', { class: 'lang-ja', text: itemsJa[index] ?? text }),
+    ])));
+    list.hidden = true;
+    const toggle = el('button', { class: 'metric-details-toggle', type: 'button', 'aria-expanded': 'false' }, [
+      el('span', { class: 'lang-en', text: `All ${items.length}` }),
+      el('span', { class: 'lang-ja', text: `${items.length} 件すべて` }),
+    ]);
+    toggle.addEventListener('click', () => {
+      const open = list.hidden;
+      list.hidden = !open;
+      toggle.setAttribute('aria-expanded', String(open));
+    });
+    node.append(toggle, list);
+    return { list, toggle };
+  };
 
   return {
     element,
@@ -56,9 +130,25 @@ export function createMetricsPanel() {
             ]),
             el('span', { class: 'metric-figure' }, [reference, value, valueJa, unit, change]),
           ]);
-          element.append(node);
+          groupFor(metric).append(node);
           row = { value, valueJa, reference, unit, change, node };
+          row.details = detailsFor(metric, node);
           rows.set(metric.id, row);
+        }
+        // A row whose detail list changed length is rebuilt rather than
+        // patched: the count is on the button, and a stale count is a lie
+        // about how much a reader has not seen.
+        const wanted = metric.details ?? [];
+        if ((row.details?.list.children.length ?? 0) !== wanted.length) {
+          row.details?.toggle.remove();
+          row.details?.list.remove();
+          row.details = detailsFor(metric, row.node);
+        } else if (row.details) {
+          const itemsJa = metric.detailsJa ?? wanted;
+          [...row.details.list.children].forEach((item, index) => {
+            item.querySelector('.lang-en').textContent = wanted[index];
+            item.querySelector('.lang-ja').textContent = itemsJa[index] ?? wanted[index];
+          });
         }
         row.value.textContent = String(metric.value);
         if (row.valueJa) row.valueJa.textContent = String(metric.valueJa);
