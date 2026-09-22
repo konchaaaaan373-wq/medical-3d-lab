@@ -154,11 +154,15 @@ const SCENE_POINTS = {
   // it three times and says little. It also crosses both adopted files: the
   // chambers come from VH_M_Heart, the artery and the aorta from
   // VH_M_Blood_Vasculature, so a run proves each of them is drawn and named.
+  // **Re-measured 2026-09-22**, with the brain's and for the same reason: the
+  // opening framing stopped being discarded (F-133), so every scene's model
+  // moved. The heart's fourth point had come to name the left ventricle where
+  // it is authored for the artery that runs across it.
   'heart-anatomy': [
-    [0.22, 0.45, 'Right atrium'],
-    [0.38, 0.50, 'Right ventricle'],
-    [0.4175, 0.38, 'Left anterior descending artery'],
-    [0.30, 0.30, 'Ascending aorta'],
+    [0.253, 0.18, 'Superior vena cava'],
+    [0.365, 0.18, 'Arch of the aorta'],
+    [0.29, 0.275, 'Ascending aorta'],
+    [0.403, 0.275, 'Left atrium'],
   ],
   // The brain's own tour, named — which it was not until 2026-09-15, and the
   // cost of that is the reason these four carry names now.
@@ -185,11 +189,25 @@ const SCENE_POINTS = {
   // the points carry the names they must resolve to. Three of the four were
   // wrong and two of those had come to name the same structure, so the tour
   // would have shown three distinct parts while claiming four.
+  // **Re-measured 2026-09-22**, by `points:anatomy --dense`, because the
+  // opening pose moved: the scene had been opening at a framing it abandoned
+  // as soon as anything re-framed it (F-133), and it now opens at the one it
+  // resets to. The fourth point was the one that showed it — it had been
+  // reading "Orbital gyri" where it is authored for the orbital part of the
+  // inferior frontal gyrus, its neighbour.
+  //
+  // Worth recording because the first reading of that failure was wrong: it
+  // was written up as a consequence of the framing, to come back on its own
+  // once the framing was fixed. Measured, it did not — the point misses under
+  // both framings, because it was last measured in #112 and three framing
+  // changes have happened since. The framing fix is what makes re-measuring
+  // the right answer rather than a nudge: the pose these are read against is
+  // now the pose a reader is actually given.
   'brain-anatomy': [
-    [0.29, 0.275, 'Precentral gyrus'],
-    [0.365, 0.37, 'Supramarginal gyrus'],
-    [0.515, 0.37, 'Angular gyrus'],
-    [0.215, 0.465, 'Orbital part of inferior frontal gyrus'],
+    [0.328, 0.227, 'Middle frontal gyrus'],
+    [0.44, 0.227, 'Superior parietal lobule'],
+    [0.215, 0.323, 'Inferior frontal sulcus'],
+    [0.365, 0.323, 'Supramarginal gyrus'],
   ],
   // Two lungs, a lobe of each, and the airway between them — measured, not
   // assumed. The fourth point used to sit at (0.50, 0.44) and **hit nothing**,
@@ -453,6 +471,8 @@ const notes = [];
  * clicks in it. The cost of knowing which is one assignment per step.
  */
 let step = 'opening the scene';
+/** Thrown by `--framing-only` to leave the drive early; see the catch. */
+const STOPPED_AFTER_FRAMING = Symbol('stopped after framing');
 const at = (what) => { step = what; };
 const observed = { structures: [], tour: [], views: [], colorModes: [], selectableCount: null, treeRows: null, labels: [], openingFraming: null };
 
@@ -886,6 +906,61 @@ try {
   //    valid poses, the scene is not broken, and the only symptom is that the
   //    first thing a reader sees is not the composition the scene meant.
   const openingSpan = await modelSpan(0.45);
+  /**
+   * Where the camera is, and what the bands it was fitted to are doing.
+   *
+   * The span above says the two framings differ; it cannot say why, and the
+   * two causes want opposite fixes. Either the camera never moved to the
+   * settled framing — a re-frame that did not happen — or it moved and the
+   * bands themselves are different at the two moments, in which case the
+   * framing is right both times and something is still resizing. Reading the
+   * distance and the three band rects at both moments separates them, and it
+   * costs one evaluate per moment.
+   */
+  const pose = () =>
+    page.evaluate(() => {
+      const app = window.__app;
+      if (!app) return null;
+      const round = (n) => Math.round(n * 10) / 10;
+      const rect = (selector) => {
+        const element = document.getElementById('ui')?.querySelector(selector);
+        if (!element) return null;
+        const box = element.getBoundingClientRect();
+        if (!box.width || !box.height) return null;
+        return [round(box.left), round(box.top), round(box.right), round(box.bottom)];
+      };
+      const camera = app.viewer.camera;
+      const target = app.viewer.controls.target;
+      // The subject the framing was fitted to, as the framing asks for it.
+      // Same bands and a different distance means the box moved, and the box
+      // is the scene's answer about what it is currently drawing — so it is
+      // read here rather than inferred from the distance.
+      const subject = app.scene.getSubjectBounds?.() ?? null;
+      const box = subject?.corners?.length
+        ? subject.corners.reduce(
+            (acc, corner) => ({
+              min: [Math.min(acc.min[0], corner.x), Math.min(acc.min[1], corner.y), Math.min(acc.min[2], corner.z)],
+              max: [Math.max(acc.max[0], corner.x), Math.max(acc.max[1], corner.y), Math.max(acc.max[2], corner.z)],
+            }),
+            { min: [Infinity, Infinity, Infinity], max: [-Infinity, -Infinity, -Infinity] }
+          )
+        : null;
+      return {
+        distance: Math.round(camera.position.distanceTo(target) * 1000) / 1000,
+        target: [round(target.x), round(target.y), round(target.z)],
+        subject: box
+          ? {
+              size: box.max.map((high, axis) => Math.round((high - box.min[axis]) * 100) / 100),
+              centre: box.max.map((high, axis) => Math.round((high + box.min[axis]) * 50) / 100),
+            }
+          : null,
+        console: rect('.console'),
+        rail: rect('.rail'),
+        nav: rect('.global-scene-nav'),
+      };
+    });
+  const openingPose = await pose();
+
 
   // Off unless asked for, and taken **after** the row above rather than before
   // it. Measured: the sweep is about three hundred pointer moves, each one a
@@ -935,6 +1010,7 @@ try {
           Math.abs(resetSpan[1] - openingSpan[1])
         );
         observed.openingFraming = { opening: openingSpan, reset: resetSpan };
+        observed.openingPose = { opening: openingPose, reset: await pose() };
         // Two sweep steps: a step is 2% of the frame, so anything the sweep can
         // see at all is at least one, and this is the smallest difference that
         // cannot be the grid's own resolution.
@@ -948,6 +1024,16 @@ try {
         }
       }
     }
+  }
+
+  // Everything below drives the scene. `--framing-only` stops here, for the one
+  // question the block above answers — the brain alone is ten minutes and a
+  // framing fix is iterated on, not measured once. It is not a run of this
+  // check: it says so in the output, and it is never what `verify:anatomy`
+  // does.
+  if (flag('--framing-only')) {
+    notes.push('framing only: nothing below the opening-framing check was driven, so this is not a verify:anatomy run');
+    throw STOPPED_AFTER_FRAMING;
   }
 
   // 1. A click on the model names a structure, in both languages, with a path.
@@ -1491,7 +1577,14 @@ try {
       await page.waitForTimeout(300);
     at('turning to the other side of the head');
       await otherSide.click({ noWaitAfter: true });
-      await page.waitForTimeout(2500);
+      // Waited out as a state, not as a duration. A fixed 2500ms was enough
+      // while the scene opened at a framing it had already abandoned: the turn
+      // to the other side started closer to where it was going. Once the
+      // opening framing actually applied (F-133), the same turn had further to
+      // travel and this read the labels mid-flight, reporting a label that had
+      // not gone yet as one that never goes. That is L-14 in the one file that
+      // quotes it, and it was green for as long as the framing was wrong.
+      await settle(8, 250);
       const afterTurn = await labelTexts();
       if (afterTurn.includes(pinnedForLabel)) {
         problems.push(`"${pinnedForLabel}" is still labelled after turning to the other side of the head`);
@@ -2117,6 +2210,56 @@ try {
         subject: to(bounds.centre),
         pinned: pinned ? to(pinned.centre) : null,
         distance: viewer.camera.position.distanceTo(viewer.controls.target),
+        // The floor and ceiling the shared orbit limits impose. A dolly that
+        // is clamped still applies the pan its anchor asked for, so the anchor
+        // breaks exactly when the reader reaches a limit — and a run that only
+        // prints the drift cannot tell that apart from an anchor that is gone.
+        limits: [viewer.controls.minDistance, viewer.controls.maxDistance],
+        // Everything the screen position of a point is made of, so a drift can
+        // be attributed rather than guessed at: the camera, the orbit centre,
+        // and the canvas's own place on the page. A subject that slides while
+        // the camera holds still is the page moving under it, and the three
+        // wrong explanations tried for one such drift cost more than this line.
+        camera: viewer.camera.position.toArray().map((value) => Math.round(value * 1000) / 1000),
+        centre: viewer.controls.target.toArray().map((value) => Math.round(value * 1000) / 1000),
+        canvas: [rect.left, rect.top, rect.width, rect.height].map((value) => Math.round(value * 10) / 10),
+        // Whether the camera turned, and the anchor the controls last used.
+        // A translation along the pointer ray holds the point under the pointer
+        // by construction, so a subject that slides while the camera has not
+        // turned means the anchor was not where the pointer was.
+        facing: viewer.camera.quaternion.toArray().map((value) => Math.round(value * 10000) / 10000),
+        anchorNdc: viewer.controls._mouse
+          ? [Math.round(viewer.controls._mouse.x * 1000) / 1000, Math.round(viewer.controls._mouse.y * 1000) / 1000]
+          : null,
+        // The subject's centre in the world. `getSubjectBounds()` is computed
+        // from the meshes that are currently drawn, so it is a yardstick that
+        // can move on its own — and a yardstick that moves between two readings
+        // reports the drift of whatever it was measuring.
+        centreWorld: bounds.centre.toArray().map((value) => Math.round(value * 1000) / 1000),
+        // The ray the controls actually dollied along, and the one the pointer
+        // asks for. A cursor zoom is a translation along the pointer ray, so
+        // these two being different is the whole of an anchor that does not
+        // hold — and reading both is the difference between knowing that and
+        // guessing at fov, aspect, damping and the page in turn.
+        dollyDir: viewer.controls._dollyDirection
+          ? viewer.controls._dollyDirection.toArray().map((value) => Math.round(value * 10000) / 10000)
+          : null,
+        fov: viewer.camera.fov,
+        aspect: Math.round(viewer.camera.aspect * 10000) / 10000,
+        // What the controls still owe the camera. A dolly is a move along the
+        // pointer ray; a pan moves camera and orbit centre together, which is
+        // the other shape a subject can slide in, and the two are told apart
+        // here rather than by elimination.
+        panOwed: viewer.controls._panOffset
+          ? viewer.controls._panOffset.toArray().map((value) => Math.round(value * 10000) / 10000)
+          : null,
+        spinOwed: viewer.controls._sphericalDelta
+          ? [
+              Math.round(viewer.controls._sphericalDelta.theta * 10000) / 10000,
+              Math.round(viewer.controls._sphericalDelta.phi * 10000) / 10000,
+            ]
+          : null,
+        drawn: app.scene._drawnMeshes ? app.scene._drawnMeshes().length : null,
         visible:
           (over(box.left, box.right, band.left, band.right) *
             over(box.top, box.bottom, band.top, band.bottom)) / area,
@@ -2173,7 +2316,45 @@ try {
 
     // (1) The pointer on the subject: zooming must not translate it.
     await settle();
+    // Who writes the orbit centre during the gesture. `OrbitControls` sets it
+    // to (0, 0, -1) before turning it into a direction; the app's camera tween
+    // sets it to a world point. Both go through the same method, so the
+    // argument is what tells them apart — and "the app tweened the camera
+    // during a zoom" and "the controls anchored badly" are different bugs that
+    // look identical from the outside.
     const start = await read();
+    // One notch first, and reported whatever it reads. Four notches that end
+    // 20px out can be an anchor that is wrong by 5px each time or one that is
+    // right until the notches start arriving faster than the frames, and those
+    // are different bugs in different code. The run should not make the reader
+    // guess which — under software GL the second is the likely one, and it is
+    // the one a fast scroll on a slow machine actually produces.
+    await zoomPage.mouse.move(start.subject[0], start.subject[1]);
+    await zoomPage.mouse.wheel(0, -120);
+    // Once straight after the wheel and once after the camera has stopped.
+    // **Both are after `end`** — `OrbitControls` dispatches `start`, handles
+    // the wheel and dispatches `end` in the one synchronous call, so there is
+    // no reading that precedes what the app does on `end`. The pair separates
+    // a dolly from a tween that is still running, not the app from the
+    // controls.
+    const midNotch = await read();
+    await settle();
+    const oneNotch = await read();
+    notes.push(
+      `${size}: one notch moves the subject ${Math.round(drift(midNotch.subject, start.subject))}px ` +
+        `straight after the wheel and ${Math.round(drift(oneNotch.subject, start.subject))}px once it has stopped ` +
+        `(distance ${start.distance.toFixed(2)} -> ${oneNotch.distance.toFixed(2)}, fov ${start.fov}, ` +
+        `aspect ${start.aspect}; dolly ray ${oneNotch.dollyDir ? oneNotch.dollyDir.join(',') : 'unread'}` +
+        `; pan owed ${midNotch.panOwed ? midNotch.panOwed.join(',') : 'unread'} then ` +
+        `${oneNotch.panOwed ? oneNotch.panOwed.join(',') : 'unread'}` +
+        `; spin owed ${midNotch.spinOwed ? midNotch.spinOwed.join(',') : 'unread'}` +
+        `; camera ${start.camera.join(',')} -> ${oneNotch.camera.join(',')}` +
+        `; centre ${start.centre.join(',')} -> ${oneNotch.centre.join(',')})`,
+    );
+    // Back the one notch out again, at the same point, so the four-notch
+    // measurement below starts where `start` was read rather than one notch in.
+    await wheelAt(oneNotch.subject[0], oneNotch.subject[1], 1, 1);
+    await settle();
     await wheelAt(start.subject[0], start.subject[1], 4, -1);
     const zoomedIn = await read();
     if (zoomedIn.distance >= start.distance) {
@@ -2260,15 +2441,45 @@ try {
         );
       }
       notes.push(
-        `${size}: zoom holds its anchor (subject ${Math.round(drift(zoomedIn.subject, start.subject))}px, ` +
+        `${size}: zoom anchor — subject ${Math.round(drift(zoomedIn.subject, start.subject))}px, ` +
           `pointer ${Math.round(drift(afterPointer.pinned, beforePointer.pinned))}px, ` +
-          `round trip ${Math.round(drift(returned.subject, start.subject))}px)`,
+          `round trip ${Math.round(drift(returned.subject, start.subject))}px` +
+          ` — distance ${start.distance.toFixed(2)} to ${zoomedIn.distance.toFixed(2)}` +
+          `, limits ${start.limits.map((limit) => limit.toFixed(2)).join('..')}` +
+          // The share of the subject's box that is inside the band, before and
+          // after zooming in. The app rescues a subject it judges lost below a
+          // share of this shape, and a rescue is a pan — so a drift reported
+          // here is either a broken anchor or a rescue, and this is the number
+          // that says which.
+          `, subject in band ${(start.visible * 100).toFixed(0)}% then ${(zoomedIn.visible * 100).toFixed(0)}%`,
       );
+      // Only when something moved that should not have. Attribution is long,
+      // and a run where the anchor holds does not need it.
+      if (drift(zoomedIn.subject, start.subject) > DRIFT_PX || drift(returned.subject, start.subject) > DRIFT_PX) {
+        notes.push(
+          `${size}: what moved — camera ${start.camera.join(',')} -> ${zoomedIn.camera.join(',')}; ` +
+            `orbit centre ${start.centre.join(',')} -> ${zoomedIn.centre.join(',')}; ` +
+            `canvas ${start.canvas.join(',')} -> ${zoomedIn.canvas.join(',')}; ` +
+            `subject on screen ${start.subject.map((value) => Math.round(value)).join(',')} -> ` +
+            `${zoomedIn.subject.map((value) => Math.round(value)).join(',')}; ` +
+            `facing ${start.facing.join(',')} -> ${zoomedIn.facing.join(',')}; ` +
+            `anchor ndc ${zoomedIn.anchorNdc ? zoomedIn.anchorNdc.join(',') : 'unread'}; ` +
+            `subject centre ${start.centreWorld.join(',')} -> ${zoomedIn.centreWorld.join(',')} ` +
+            `(from ${start.drawn} drawn meshes then ${zoomedIn.drawn})`,
+        );
+      }
     }
     if (shotsDir) await zoomPage.screenshot({ path: join(shotsDir, `brain-zoom-${size}.png`) });
     await context.close();
   }
 } catch (error) {
+  // `--framing-only` leaves by this door, because the drive below is one long
+  // sequence rather than a list of steps to skip. It is the caller asking to
+  // stop, not a step that failed, so it collects no finding — the note already
+  // says the run is partial.
+  if (error === STOPPED_AFTER_FRAMING) {
+    // nothing: the caller asked to stop here.
+  } else {
   // A step that cannot complete is a finding, not a reason to throw away the
   // findings collected before it. Breaking the modal boundary made a later
   // click time out, and the timeout discarded the sentence that said why — so
@@ -2288,6 +2499,7 @@ try {
   // for — covered, out of view, still moving — and that is the part somebody
   // reading this needs.
   console.error(`\nwhile ${step}:\n${error.message}`);
+  }
 } finally {
   await browser.close();
   closeServer();
@@ -2330,6 +2542,19 @@ if (observed.openingFraming) {
       // every default run, as a note the reader has failed to find.
       `${observed.silhouette ? "for the scene's width see the silhouette note" : "for the scene's width pass --silhouette"})`
   );
+  // Printed on every run, not only a failing one: the two numbers are what
+  // says whether a framing that *matches* matches because both moments agree
+  // about the bands, or because neither of them has settled yet.
+  if (observed.openingPose?.opening && observed.openingPose?.reset) {
+    const { opening: a, reset: b } = observed.openingPose;
+    const band = (rect) => (rect ? rect.join(',') : 'absent');
+    const subject = (pose) => (pose.subject ? `${pose.subject.size.join('x')} at ${pose.subject.centre.join(',')}` : 'unbounded');
+    console.log(
+      `    camera ${a.distance} when it opens, ${b.distance} after the reset; ` +
+        `subject ${subject(a)} then ${subject(b)}; ` +
+        `console ${band(a.console)} then ${band(b.console)}; rail ${band(a.rail)} then ${band(b.rail)}`
+    );
+  }
 }
 console.log(
   `  group hidden in one press: ${
@@ -2346,6 +2571,11 @@ if (problems.length) {
   process.exit(1);
 }
 console.log(
-  '  ok    the model and the tree name one structure; drag is not click; isolate hides and restores; ' +
-    'display choices do not move the selection'
+  flag('--framing-only')
+    // Naming only what ran. The full sentence under `--framing-only` is the
+    // shape of green this repo keeps catching itself in: a check that reports
+    // what it would have verified rather than what it did.
+    ? '  ok    the scene opens at the framing it resets to — and nothing else was driven'
+    : '  ok    the model and the tree name one structure; drag is not click; isolate hides and restores; ' +
+      'display choices do not move the selection'
 );
