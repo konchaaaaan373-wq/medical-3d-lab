@@ -4,11 +4,22 @@ import {
   CONTROL_DOMAIN,
   DIAGNOSTIC_TOLERANCES,
   PRESET_IDS,
+  RESULT_STATUS,
   presetInput,
   referenceInput,
   solveCardiacOutput,
 } from '../src/models/cardiacOutput.js';
 import { walkBeat } from '../src/models/cardiacMechanics.js';
+import {
+  INTERVENTION_IDS,
+  applyIntervention,
+  unchangedInputs,
+} from '../src/models/cardiacInterventions.js';
+import { LEARNING_MODULES } from '../src/data/cardiacOutput.js';
+
+/** The two conditions the intervention and lesson claims are made about. */
+const reduced = () => presetInput(PRESET_IDS.REDUCED_CONTRACTILITY);
+const at = (overrides) => solveCardiacOutput({ ...referenceInput(), ...overrides });
 
 /**
  * External physiology for the cardiac-output experiment.
@@ -211,4 +222,80 @@ test('mean pulmonary venous pressure is never labelled as a central venous press
     'and so does the systemic one'
   );
   assert.equal(result.metrics.centralVenousPressureMmHg, undefined, 'no such quantity is reported');
+});
+
+test('dobutamine reproduces the directions the cited study reports', () => {
+  // Leier et al. 1978, thirteen patients with cardiomyopathic heart failure,
+  // 2.5–10 µg/kg/min: cardiac output rises *because stroke volume rises*,
+  // systemic and pulmonary resistance fall, filling pressure falls — and heart
+  // rate does not change. Read here as the published abstract only.
+  //
+  // Directions, not magnitudes. The study's effect sizes are not transferable
+  // to this model's parameters and nothing here claims them.
+  const base = solve(reduced());
+  const applied = applyIntervention(reduced(), INTERVENTION_IDS.DOBUTAMINE);
+  const after = solve(applied.input);
+  assert.equal(after.status, RESULT_STATUS.VALID);
+
+  assert.ok(after.metrics.strokeVolumeMl > base.metrics.strokeVolumeMl, 'stroke volume rises');
+  assert.ok(after.metrics.cardiacOutputLMin > base.metrics.cardiacOutputLMin, 'and so does cardiac output');
+  assert.ok(
+    after.metrics.systemicResistanceMmHgSPerMl < base.metrics.systemicResistanceMmHgSPerMl,
+    'systemic resistance falls'
+  );
+  assert.ok(
+    after.metrics.meanPulmonaryVenousPressureMmHg < base.metrics.meanPulmonaryVenousPressureMmHg,
+    'and the pressure behind the left ventricle falls with them'
+  );
+
+  // The one that matters most, because the obvious thing to implement for a
+  // β-agonist is the opposite of it.
+  assert.equal(after.metrics.heartRatePerMin, base.metrics.heartRatePerMin, 'the rate is not changed');
+  assert.ok(unchangedInputs(INTERVENTION_IDS.DOBUTAMINE).includes('heartRatePerMin'));
+
+  // The output rose because each beat carried more, not because there were more
+  // beats — which is the study's own account of the mechanism.
+  const fromRate = (after.metrics.heartRatePerMin - base.metrics.heartRatePerMin) / base.metrics.heartRatePerMin;
+  assert.equal(fromRate, 0);
+
+  // Legible at the precision the panel shows.
+  assert.notEqual(Math.round(after.metrics.strokeVolumeMl), Math.round(base.metrics.strokeVolumeMl));
+  assert.notEqual(after.metrics.cardiacOutputLMin.toFixed(1), base.metrics.cardiacOutputLMin.toFixed(1));
+});
+
+test('the resistance lesson teaches what the model actually does', () => {
+  const module = LEARNING_MODULES[0];
+  const before = at({ systemicResistanceMmHgSPerMl: module.setup.systemicResistanceMmHgSPerMl });
+  const after = at({ systemicResistanceMmHgSPerMl: module.manipulation.to });
+
+  // The stored answer, re-derived. The lesson says stroke volume falls, so the
+  // model had better make it fall.
+  const direction = after.metrics.strokeVolumeMl < before.metrics.strokeVolumeMl ? 'down' : 'up';
+  assert.equal(direction, module.question.answer, 'the lesson answer disagrees with the model');
+
+  // Each watched row has to move, in the direction the explanation describes,
+  // or the observation table shows a change the explanation does not account for.
+  assert.ok(before.metrics.strokeVolumeMl - after.metrics.strokeVolumeMl > 1, 'stroke volume falls visibly');
+  assert.ok(after.metrics.esvMl > before.metrics.esvMl + 1, 'end-systolic volume rises visibly');
+  assert.ok(
+    after.metrics.meanArterialPressureMmHg > before.metrics.meanArterialPressureMmHg + 1,
+    'mean arterial pressure rises visibly'
+  );
+
+  // The claim in the explanation: the pressure rises *because* resistance rose
+  // by more than flow fell. Checked as arithmetic rather than taken on trust.
+  const flowRatio = after.metrics.cardiacOutputLMin / before.metrics.cardiacOutputLMin;
+  const resistanceRatio =
+    after.metrics.systemicResistanceMmHgSPerMl / before.metrics.systemicResistanceMmHgSPerMl;
+  assert.ok(flowRatio < 1, 'flow fell');
+  assert.ok(resistanceRatio > 1 / flowRatio, 'and resistance rose by more than flow fell');
+
+  // The footnote says less blood leaves each beat while the pressure reads
+  // higher. Both halves, at the precision the panel shows.
+  assert.notEqual(Math.round(after.metrics.strokeVolumeMl), Math.round(before.metrics.strokeVolumeMl));
+  assert.notEqual(
+    Math.round(after.metrics.meanArterialPressureMmHg),
+    Math.round(before.metrics.meanArterialPressureMmHg)
+  );
+  assert.ok(after.metrics.cardiacOutputLMin < before.metrics.cardiacOutputLMin);
 });

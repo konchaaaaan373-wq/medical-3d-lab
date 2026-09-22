@@ -58,10 +58,11 @@
     "card": "docs/model-cards/cardiac-output.md",
     "modelSources": [
       "src/models/cardiacOutput.js",
+      "src/models/cardiacInterventions.js",
       "src/models/cardiacMechanics.js"
     ],
-    "cardRevision": 2,
-    "modelDigest": "4998782d1a048478",
+    "cardRevision": 3,
+    "modelDigest": "6458e86e5b091681",
     "cardUpdatedAt": "2026-09-22"
   },
   {

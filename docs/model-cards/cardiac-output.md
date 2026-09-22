@@ -3,9 +3,9 @@
 | | |
 | --- | --- |
 | **Scene** | `cardiac-output` |
-| **Model** | [`src/models/cardiacOutput.js`](../../src/models/cardiacOutput.js) on [`src/models/cardiacMechanics.js`](../../src/models/cardiacMechanics.js) |
+| **Model** | [`src/models/cardiacOutput.js`](../../src/models/cardiacOutput.js) and [`src/models/cardiacInterventions.js`](../../src/models/cardiacInterventions.js), on [`src/models/cardiacMechanics.js`](../../src/models/cardiacMechanics.js) |
 | **Evidence** | [`docs/model-evidence/cardiac-output.md`](../model-evidence/cardiac-output.md) |
-| **Tests** | [`tests/cardiac-output-model.test.js`](../../tests/cardiac-output-model.test.js), [`tests/cardiac-output-physiology.test.js`](../../tests/cardiac-output-physiology.test.js) |
+| **Tests** | [`tests/cardiac-output-model.test.js`](../../tests/cardiac-output-model.test.js), [`tests/cardiac-output-physiology.test.js`](../../tests/cardiac-output-physiology.test.js), [`tests/cardiac-output-interventions.test.js`](../../tests/cardiac-output-interventions.test.js), [`tests/cardiac-output-learning.test.js`](../../tests/cardiac-output-learning.test.js) |
 | **Status** | see [`src/catalog/scenes.js`](../../src/catalog/scenes.js) |
 
 ## 1. What question this model answers
@@ -55,6 +55,26 @@ An input outside its range is **refused**, not clamped, and a refusal produces
 no numbers. The same check runs whether the input came from a slider, an
 intervention, a lesson or the video sequence.
 
+### Interventions
+
+Two, mutually exclusive, each a change to the inputs above rather than a
+multiplier on anything below them.
+
+| Intervention | Changes | Deliberately does not change |
+| --- | --- | --- |
+| More circulating filling | stressed volume, +120 mL | resistance, elastance, rate |
+| Dobutamine (representative) | elastance ×1.5, resistance ×0.85 | **rate**, filling |
+
+Both are computed from the preset's starting condition, so choosing the same
+one twice produces the same condition twice. An effect that falls outside the
+verified range is refused rather than clamped — dobutamine from the reference
+heart is, which is why it is offered on the condition its evidence comes from.
+
+**Dobutamine holds the heart rate, and that is the finding rather than a
+simplification.** The one study read for this reports no change in heart rate
+over 2.5–10 µg/kg/min in thirteen patients with cardiomyopathic heart failure.
+The magnitudes are illustrative; see §9.
+
 ## 5. Outputs
 
 EDV, ESV, stroke volume, ejection fraction, cardiac output, heart rate, mean /
@@ -99,6 +119,24 @@ the magnitude.
 Reading the model's `Ees` against a clinically derived end-systolic elastance
 would be reading a fitted constant as a finding.
 
+## 9.5 The lesson and the sequence
+
+One lesson — raising systemic vascular resistance — and one fifteen-second
+sequence of the same manipulation. Both drive the model through the same public
+controls the sliders use and read their figures out of the same read-out, so
+neither can show a number the interactive page would not, and neither has a
+private path into the model.
+
+Every stored answer in the lesson is re-derived from the solver by
+`tests/cardiac-output-learning.test.js`, including the transfer claim that the
+fractional loss of stroke volume is larger in the lower-elastance ventricle. The
+sequence's copy contains no measurement at all; a test fails if a digit with a
+unit on it appears in it.
+
+The sequence compares two settled conditions. The seconds between them are the
+camera's, and every frame carries a note saying so, because any one second of it
+will travel on its own as a screenshot.
+
 ## 10. What is exaggerated for visibility, and what is not
 
 Nothing medical. The controls span a wider range than a resting adult moves
@@ -134,6 +172,13 @@ manipulation would do to a patient. Estimating a fluid requirement. Reading the
 circulating stressed volume as a blood volume or as a volume of fluid to give.
 Reading the mean systemic venous pressure as a central venous pressure — there
 is no right atrium in this model.
+
+And specifically of the interventions: reading either as a dose, combining
+them, reading the volume intervention as a fluid bolus, or reading the
+dobutamine response as what a person would do. **Noradrenaline is absent on
+purpose** — it cannot be represented as a resistance change alone, and a model
+with no venous capacitance would reduce it to "the drug that raises
+resistance", which is the misconception rather than the teaching.
 
 ## 13. Uncertainty
 
@@ -176,6 +221,14 @@ is no right atrium in this model.
 
 **Catalog status:** `alpha`
 
+### Revision 2 — interventions, a lesson and a sequence
+
+Adds `src/models/cardiacInterventions.js` (two interventions as input
+transforms), one lesson and one fifteen-second sequence. No claim in revision 1
+changed and no parameter moved. The one new primary citation is Leier et al.
+1978, read as its published abstract, for the direction of the dobutamine
+response — including the heart rate it does **not** change.
+
 No clinical review has been carried out on this scene. The model layer, the
 evidence dossier, this card and the scope panel are in place; the fourth
 condition for `reviewed` — a clinician's reading — has not happened, and the
@@ -188,11 +241,20 @@ to it.
 ## 16. How to check it
 
 - **External physiology:** `node --test tests/cardiac-output-physiology.test.js`
-  — the mean is a mean, ΔP = Q·R, the valve window is the flow window, and the
-  three directional claims with the conditions they hold under.
+  — the mean is a mean, ΔP = Q·R, the valve window is the flow window, the
+  directional claims with the conditions they hold under, the dobutamine
+  directions against the cited study, and the lesson's own claim.
 - **Model integrity:** `node --test tests/cardiac-output-model.test.js` — the
   definitions, the units both ways, refusal outside the range, route
   independence, and the whole declared domain settling into a periodic beat.
 - **The range itself:** `node scripts/sweep-cardiac-output.mjs`, and
   `--probe` to see where it gives way outside.
+- **Interventions and the lesson:** `node --test tests/cardiac-output-interventions.test.js
+  tests/cardiac-output-learning.test.js` — inputs only, no accumulation, refusal
+  rather than clamping, the two modes' state, and every stored answer re-derived.
+- **In a browser:** `VITE_ALLOW_PREVIEW=1 npm run build` then
+  `npm run verify:disease -- <dir> cardiac-output`, which drives baseline →
+  manipulation → reset, opens Data view and asks each plot whether anything was
+  drawn on it, turns the comparison on, walks the lesson to the end and checks
+  the model came back, and records the sequence and plays the file back.
 - **Evidence governance:** `node --test tests/evidence.test.js`.

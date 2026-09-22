@@ -27,6 +27,11 @@ Nothing here has been reviewed by a clinician. The scene is `alpha`.
 | `afterload-lowers-stroke-volume` — with filling, contractility and rate held, raising resistance lowers SV and raises the pressure the ventricle must generate | Time-varying elastance framework; Suga & Sagawa 1974 (**thin** — record confirmed, full text not read, nothing fitted to it) | `modelParameters()` passes `systemicResistanceMmHgSPerMl` straight through as `systemicResistance` | No reflex response; the direction is claimed, the magnitude is not | `raising afterload alone lowers stroke volume and raises ventricular pressure` |
 | `contractility-raises-residual-volume` — lowering Ees alone leaves more blood at end systole, lowers EF and raises filling pressure | As above (**thin**) | `PRESET_OVERRIDES['reduced-contractility']` changes `contractilityEesMmHgPerMl` and nothing else | The preset is a lower-contractility ventricle, not the heart-failure syndrome | `a ventricle with lower contractility ejects less from the same filling conditions` |
 | `filling-costs-pressure` — each further increment of filling buys less output and costs more filling pressure | Shape of the non-linear EDPVR; the curvature constant `edpvrB` is this repository's | `chamberPressure()` blends `edpvrA·(exp(edpvrB·ΔV) − 1)` with the elastance term | The shape is claimed. Where a person's useful limit lies is not, and this is not a fluid-responsiveness test | `filling more raises filling pressure faster than it raises output` |
+| `intervention-is-an-input-change` — an intervention changes inputs; the solver produces what follows | A property of the implementation, and the rule `cardiacInterventions.js` exists to hold | `applyIntervention()` returns an input object; nothing writes an output | A multiplier on an output cannot be wrong, so it would not be worth testing; an input change can be | `an intervention changes inputs, and nothing else in the pipeline` |
+| `dobutamine-direction-and-rate` — output up via stroke volume, resistance down, filling pressure down, **rate unchanged** at 2.5–10 µg/kg/min | Leier et al., Circulation 1978;58:466–475 — thirteen patients with cardiomyopathic heart failure, crossover (**thin** — published abstract only, full text not obtained) | `INTERVENTION_PROFILES.dobutamine`: elastance ×1.5, resistance ×0.85, `heartRatePerMin` declared unchanged | Directions at one dose range in one cohort. The unchanged rate is the study's finding there; at higher doses and in other populations dobutamine is chronotropic and arrhythmogenic, and neither is modelled | `dobutamine reproduces the directions the cited study reports` |
+| `intervention-response-sizes` — **illustrative** | No source; chosen so the contrast between the two interventions is legible | `INTERVENTION_PROFILES` | Not doses, not combinable, never a response a person would have | `volume loading buys output, and the filling pressure is what it charges` |
+| `volume-intervention-is-not-fluid` — **approximation** | Standard lumped treatment of stressed volume, in a loop with no interstitium, lymphatics or venous tone | `INTERVENTION_PROFILES['volume-loading']`: +120 mL of stressed volume | Nowhere for fluid to leave to, so it cannot say how much anyone should be given, at what rate, or whether | — |
+| `resistance-lesson-direction` — resistance up → stroke volume and output down while pressure rises; the fractional loss is larger in the lower-elastance ventricle | Follows from the elastance framework, not from a measurement | `LEARNING_MODULES[0]`; the stored answers are re-derived from the solver on every run | Filling, contractility and rate are all held. Under a reflex, or with filling free to move, the same manipulation does something else | `the resistance lesson teaches what the model actually does` |
 | `settled-beat-or-no-numbers` — a condition is reported only when all seven compartments repeat, volume closes, no valve reversed and aortic throughput is the stroke volume | Definition of a periodic steady state and of conservation in a closed loop | `measureBeat()` walks one further beat at 960 steps from the solved volumes; `solveCardiacOutput()` returns `metrics: null` unless every check passes | The tolerances in `DIAGNOSTIC_TOLERANCES` are chosen against the displayed precision, not against machine epsilon | `every condition in the declared domain settles into a genuinely periodic beat` |
 | `resistance-unit-conversion` — mmHg·s/mL and dyn·s·cm⁻⁵ are one quantity | Unit definitions | `units.js`: `DYN_S_CM5_PER_MMHG_S_ML = 1333.22` | Checked against the independent bedside route SVR = 80·(MAP−CVP)/CO rather than by calling the conversion twice | `resistance converts between the model unit and the clinical one, checked two ways` |
 | `reference-heart-parameters` — **calibration** | Chosen so a reference case lands where the textbooks put a normal adult. The same values the heart-failure model starts from | `CONTROL_DOMAIN[*].default`, `FIXED_CIRCULATION`, `FIXED_LEFT_VENTRICLE` | Nobody measured these. The elastance is not a clinically derived Ees | `the fixed circulation is the heart-failure model's, number for number` |
@@ -78,6 +83,37 @@ meaning one thing. The declared range stops well short of it, and the
 diagnostic that caught it is the one the boundary runs on every solve.
 
 ---
+
+## The interventions, and what was read for them
+
+`dobutamine-direction-and-rate` is the one row here with a primary study behind
+it, and what it cost is worth recording. The obvious thing to implement for a
+β-agonist is a rise in heart rate. The study this repository cites reports **no
+change in heart rate** over 2.5–10 µg/kg/min in that cohort, so the
+intervention holds the rate — and that is the finding rather than a
+simplification. Checking before implementing is what stopped a plausible,
+wrong effect going in.
+
+What was read: the published abstract, twice, through two independent search
+results. **The full text was not obtained** (the publisher and PubMed are both
+unreachable from this environment), so the row is marked thin and no
+coefficient is fitted to it. What is claimed is the direction of four
+quantities in one cohort at one dose range. What is not claimed: any effect
+size, any other dose, any other population, any statement that dobutamine
+should be given to anyone.
+
+Dobutamine is offered only on the reduced-contractility preset, which is the
+condition its evidence comes from. Applying it to the reference heart would
+extrapolate a heart-failure cohort onto a normal circulation — and would also
+push elastance outside the swept range, where the boundary refuses it rather
+than clamping it back in.
+
+**Noradrenaline is deliberately absent.** It cannot be represented as a
+resistance change alone: the primary literature this repository has seen
+reports it *raising* cardiac preload and output in selected septic patients, so
+a model with no venous capacitance to change would have to reduce it to "the
+drug that raises resistance", which is the misconception rather than the
+teaching. It needs venous capacitance in the solver first, as its own change.
 
 ## What this dossier does not cover
 

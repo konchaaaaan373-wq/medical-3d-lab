@@ -81,6 +81,9 @@ const ANIMATED_SCENES = [
   // carries a licence credit — so its consent screen has four clauses where
   // the others have three.
   'higher-brain-function',
+  // And this one the same way, on the next branch: a sequence whose subject is
+  // one manipulation of one circulation rather than a disease progressing.
+  'cardiac-output',
 ];
 
 // --- who may export at all --------------------------------------------------

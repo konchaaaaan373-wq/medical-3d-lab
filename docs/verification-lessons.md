@@ -509,6 +509,53 @@
 
 ---
 
+### L-76 「型は合っている」が、毎フレーム投げていた——症状は「録画が終わらない」だった
+
+- **症状**: `cardiac-output` のリールを録画すると **90 秒待ってもファイルが来ない**。
+  検査が報告したのは `no file arrived within 90s of agreeing` で、
+  録画機構の問題に見えます。実際は `reelStoryboard.js` の `cameraAt(t, base)` が
+  `{ position, target }` を返していたこと。`ReelMode` が渡すのは
+  `{ distance, targetX, targetY, targetZ }` で、読み返すのも同じ 4 つです。
+  `base.target.clone()` が毎フレーム
+  `Cannot read properties of undefined` を投げ、レンダリングループが止まり、
+  録画は開始したまま 1 フレームも進みませんでした。
+  **JSDoc は自分で書いた嘘の形を説明していたので、読んでも気づけません。**
+- **どう見つかったか**: `page.on('pageerror')` を付けた 20 行の probe。
+  スクリーンショットにも出ません（画面は最後に描けたフレームのまま）。
+  検査のメッセージは正しいのに、**原因から 3 段離れた場所**を指していました。
+- **いま何が捕まえるか**: `tests/cardiac-output-learning.test.js` の
+  「the camera returns the description the shell reads, not a pose」が、
+  `ReelMode` が渡す形を渡し、返ってきた 4 つのフィールドが有限であることを
+  確かめます。`scripts/check-disease-interaction.mjs` の録画フェーズは、
+  この症状そのもの（ファイルが来ない）で赤くなります。
+- **一般形**: **呼び出し側が読むフィールドを、呼び出し側のコードで確かめる。**
+  自分の JSDoc は自分の思い込みの写しです。そして——
+  **「出力が出てこない」という症状は、出力機構の問題とは限りません。**
+  `pageerror` を拾うのは 3 行で、それが無いと 3 段離れた場所を疑い続けます。
+
+---
+
+### L-77 「用語を禁止する」チェックが、その用語を**否定する**文まで禁止した
+
+- **症状**: 介入のラベルに用量が混ざらないよう
+  `/\bmL\b|µg|mcg|\bdose\b/` を禁止したところ、
+  **「not a fluid dose」（＝まさに書くべき否定）で赤**。同じことが
+  リールの文言でも起きました——`/\d/` を禁止したら
+  「変えるのは **1** つだけ」が落ちます。
+- **どう見つかったか**: 自分で書いたガードが、正しい文言に対して最初から赤かった。
+- **いま何が捕まえるか**: `tests/cardiac-output-interventions.test.js` の
+  「the copy offers exactly the interventions the model has」と
+  `tests/cardiac-output-learning.test.js` の
+  「the sequence quotes no number of its own」。どちらも **「数値＋単位」**
+  を探す形に書き直してあります（`/\d[\d.,]*\s*(mmHg|L\/min|mL|%|\/min)/` など）。
+  危険なのは「dose」という語ではなく**量の主張**なので、
+  検査する対象が主張そのものになりました。
+- **一般形**: **禁止するのは語ではなく主張。** 語の禁止は、
+  その語を使った**注意書き**を巻き添えにします——そして注意書きは、
+  たいてい一番書いておきたい文です。
+
+---
+
 ### L-67 ブランチだけを測った緑は、CI が測る木を測っていなかった
 
 - **症状**: F-167〜F-172 を解消した PR を「`npm test` 2782 緑」で出し、CI は赤。

@@ -188,9 +188,12 @@ test('the preset comes first in the controls, because restoring replays them in 
   // would find their condition gone. Ordering is the whole guard.
   const scene = await buildScene();
   const controls = scene.getModelControls();
-  assert.equal(controls[0].id, 'preset');
-  assert.deepEqual(controls.slice(1).map((c) => c.id), CONTROLS.map((c) => c.id));
-  assert.deepEqual(controls.slice(1).map((c) => c.id).sort(), [...CONTROL_IDS].sort());
+  assert.equal(controls[0].id, 'preset', 'the preset resets everything, so it lands first');
+  assert.equal(controls[1].id, 'intervention', 'the intervention is computed from the preset, so it lands next');
+  // And the sliders last, which is right: a slider position is a manual
+  // condition and clears any intervention anyway, so it has to win.
+  assert.deepEqual(controls.slice(2).map((c) => c.id), CONTROLS.map((c) => c.id));
+  assert.deepEqual(controls.slice(2).map((c) => c.id).sort(), [...CONTROL_IDS].sort());
 
   // And replaying a captured snapshot in that order really does restore it.
   scene.setModelControl('preset', PRESET_IDS.REDUCED_CONTRACTILITY);
@@ -207,7 +210,7 @@ test('the preset comes first in the controls, because restoring replays them in 
 
 test('every control offered is one the model declares, at the model’s own range', async () => {
   const scene = await buildScene();
-  for (const control of scene.getModelControls().slice(1)) {
+  for (const control of scene.getModelControls().slice(2)) {
     const domain = CONTROL_DOMAIN[control.id];
     assert.ok(domain, `${control.id} is a model input`);
     assert.equal(control.min, domain.min);

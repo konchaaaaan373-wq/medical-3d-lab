@@ -8,6 +8,11 @@ import {
   pressureVolumeCurves,
   solveCardiacOutput,
 } from '../../../../models/cardiacOutput.js';
+import {
+  INTERVENTION_IDS,
+  applyIntervention,
+  interventionPreset,
+} from '../../../../models/cardiacInterventions.js';
 
 /**
  * One reader's experiment: which condition they are on, what it was before
@@ -66,7 +71,24 @@ export class ExperimentSession {
     /** Whether the most recently requested condition is the one on screen. */
     this._applied = true;
     this._problems = [];
+    /**
+     * Which intervention is selected, and the condition the reader had set by
+     * hand before choosing one.
+     *
+     * Two states, kept apart. While an intervention is selected the sliders show
+     * what *it* did to the inputs; clearing it puts the reader back on the
+     * condition they had built, rather than on whatever the drug left behind.
+     * A hidden drug effect added on top of a manual change is the failure this
+     * separation exists to make impossible — there is nothing to add it to.
+     */
+    this._intervention = INTERVENTION_IDS.NONE;
+    this._directInput = null;
     this.selectPreset(presetId);
+  }
+
+  /** The intervention currently applied, or `none`. */
+  get interventionId() {
+    return this._intervention;
   }
 
   /** The preset the reader is on. */
@@ -121,6 +143,8 @@ export class ExperimentSession {
    */
   selectPreset(presetId) {
     this._presetId = presetId;
+    this._intervention = INTERVENTION_IDS.NONE;
+    this._directInput = null;
     this._input = freezeInput(presetInput(presetId));
     // Solve the starting condition first: it is both what is on screen and the
     // snapshot everything is compared against, and they must be one solve.
@@ -140,7 +164,52 @@ export class ExperimentSession {
    */
   setControl(id, value) {
     if (!CONTROL_IDS.includes(id)) throw new RangeError(`unknown control: ${id}`);
-    this._input = freezeInput({ ...this._input, [id]: value });
+    // Touching a slider is taking manual control back. The intervention is
+    // cleared and the reader's own condition comes back with this one control
+    // moved — so nothing of the drug survives into a hand-set state, which is
+    // the only way a hidden effect could ever be added on top of a manual one.
+    const from = this._intervention === INTERVENTION_IDS.NONE ? this._input : this._directInput;
+    this._intervention = INTERVENTION_IDS.NONE;
+    this._directInput = null;
+    this._input = freezeInput({ ...from, [id]: value });
+    return this._apply(this._input);
+  }
+
+  /**
+   * Applies one intervention, or clears it.
+   *
+   * Always computed from this preset's starting condition, so choosing the same
+   * one twice produces the same condition twice: there is no accumulator to add
+   * to. An intervention whose evidence belongs to one preset switches to that
+   * preset first rather than being offered on a circulation it was never
+   * observed in.
+   *
+   * @param {string} interventionId
+   */
+  selectIntervention(interventionId) {
+    if (interventionId === INTERVENTION_IDS.NONE) {
+      if (this._intervention === INTERVENTION_IDS.NONE) return this._view;
+      this._intervention = INTERVENTION_IDS.NONE;
+      this._input = this._directInput ?? this._baseline.input;
+      this._directInput = null;
+      return this._apply(this._input);
+    }
+
+    const required = interventionPreset(interventionId);
+    if (required && required !== this._presetId) this.selectPreset(required);
+
+    // The reader's own condition is kept aside the first time, and not
+    // overwritten when they move from one intervention to another.
+    if (this._intervention === INTERVENTION_IDS.NONE) this._directInput = this._input;
+    this._intervention = interventionId;
+
+    const applied = applyIntervention(this._baseline.input, interventionId);
+    if (!applied.input) {
+      this._applied = false;
+      this._problems = applied.problems;
+      return this._view;
+    }
+    this._input = freezeInput(applied.input);
     return this._apply(this._input);
   }
 
@@ -165,6 +234,8 @@ export class ExperimentSession {
    * re-solving it could only introduce a difference.
    */
   reset() {
+    this._intervention = INTERVENTION_IDS.NONE;
+    this._directInput = null;
     this._input = this._baseline.input;
     this._view = this._baseline;
     this._applied = true;

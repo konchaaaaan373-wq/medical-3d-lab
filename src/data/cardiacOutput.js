@@ -183,6 +183,157 @@ export const LEARNING_LABEL = {
  *
  * `compact: false` drops a label on a phone, where three is the limit.
  */
+/**
+ * The first lesson: one factor, one question.
+ *
+ * Systemic vascular resistance, because it is where the two quantities this
+ * scene is about come apart. Raise it and the pressure goes up while the output
+ * goes down, at the same moment, on the same screen — which is the thing a
+ * reader cannot get from memorising "cardiac output" and "blood pressure" as
+ * two separate facts.
+ *
+ * **Every stored answer here is re-derived from the model by
+ * `tests/cardiac-output-learning.test.js`.** The lesson is a claim about the
+ * circulation, so the claim is checked; if the physics ever stopped producing
+ * it, the build fails rather than the page teaching something false.
+ */
+export const LEARNING_MODULES = [
+  {
+    id: 'resistance-pressure-and-flow',
+    title: 'Resistance: pressure up, flow down',
+    titleJa: '血管抵抗 — 圧は上がり、流れは減る',
+    /** Where the model starts. The reader's own condition is restored on exit. */
+    setup: { progress: 0, preset: PRESET_IDS.REFERENCE, systemicResistanceMmHgSPerMl: 1.1 },
+
+    question: {
+      text: 'Raise systemic vascular resistance, and leave filling, contractility and rate alone. What happens to stroke volume?',
+      textJa: '体血管抵抗だけを上げて、充満・収縮力・心拍数はそのままにします。1回拍出量はどうなりますか？',
+      options: [
+        { id: 'up', label: '↑  It rises', labelJa: '↑  増える' },
+        { id: 'same', label: '→  Unchanged', labelJa: '→  変わらない' },
+        { id: 'down', label: '↓  It falls', labelJa: '↓  減る' },
+      ],
+      answer: 'down',
+    },
+
+    manipulation: {
+      control: 'systemicResistanceMmHgSPerMl',
+      to: 1.6,
+      seconds: 1.4,
+      text: 'Raise the resistance and watch the pressure and the stroke volume at the same time.',
+      textJa: '体血管抵抗を上げて、血圧と 1回拍出量を同時に見てください。',
+      action: 'Raise resistance to 1.6',
+      actionJa: '体血管抵抗を 1.6 にする',
+      hint: 'You can drag the resistance slider yourself instead.',
+      hintJa: '自分で体血管抵抗のスライダーを動かしても構いません。',
+    },
+
+    /** Rows to show before and after, and to highlight in the read-out. */
+    watch: ['sv', 'map', 'esv'],
+    observation: {
+      text: 'Two of these moved in opposite directions.',
+      textJa: '2 つが逆向きに動きました。',
+    },
+
+    explanation: {
+      text:
+        'A higher resistance means the ventricle has to reach a higher pressure before the ' +
+        'aortic valve opens, and keeps working against a higher pressure while it is open. ' +
+        'With contractility unchanged it cannot empty as far, so more blood is left at end ' +
+        'systole and stroke volume falls. Mean arterial pressure rises all the same, because ' +
+        'pressure is flow times resistance and the resistance rose by more than the flow fell.',
+      textJa:
+        '抵抗が上がると、大動脈弁が開くまでに心室が到達しなければならない圧が高くなり、開いてからも ' +
+        'より高い圧に逆らって押し出すことになります。収縮力が同じなら、そこまで小さくなれません。' +
+        '収縮末期に残る血液が増え、1回拍出量は減ります。それでも平均動脈圧は上がります——' +
+        '圧は血流と抵抗の積で、抵抗の上がり幅が血流の下がり幅を上回るからです。',
+      footnote:
+        'So a rising blood pressure here is not a circulation doing better. The same screen ' +
+        'is showing less blood leaving the heart each beat.',
+      footnoteJa:
+        'つまり、ここで血圧が上がったことは循環が良くなったことではありません。同じ画面が、' +
+        '1 拍ごとに心臓から出ていく血液が減ったことを示しています。',
+    },
+
+    transfer: {
+      /** The same rise, on the ventricle whose elastance is lower. */
+      atPreset: PRESET_IDS.REDUCED_CONTRACTILITY,
+      controls: { preset: PRESET_IDS.REDUCED_CONTRACTILITY },
+      /** The row the comparison is measured on. */
+      metric: 'sv',
+      text: 'On the reduced-contractility heart, does the same rise in resistance cost more stroke volume or less?',
+      textJa: '収縮力を下げた心臓では、同じ抵抗上昇で失う 1回拍出量は多い？ 少ない？',
+      options: [
+        { id: 'larger', label: 'More', labelJa: '多い' },
+        { id: 'same', label: 'About the same', labelJa: '同じくらい' },
+        { id: 'smaller', label: 'Less', labelJa: '少ない' },
+      ],
+      answer: 'larger',
+      explanation: {
+        text:
+          'The weaker the ventricle, the larger the share of its stroke volume the same rise in ' +
+          'resistance takes. Nothing in the model encodes that — it falls out of a lower ' +
+          'end-systolic elastance, which is the only thing this preset changed.',
+        textJa:
+          '収縮力（Ees）が低い心室ほど、同じ抵抗上昇で失う 1回拍出量の割合は大きくなります。' +
+          'これはモデルに書き込まれた挙動ではなく、Ees が低いことだけから出てくる帰結です——' +
+          'このプリセットが変えているのは Ees だけです。',
+      },
+    },
+
+    outro: {
+      text: 'Now try the filling control, and watch what the end-diastolic pressure charges you for the output it buys.',
+      textJa: '次は循環充満を動かして、増えた拍出量の代わりに拡張末期圧が何を要求するか見てください。',
+    },
+  },
+];
+
+/**
+ * What the fifteen-second sequence says.
+ *
+ * **No number is written here.** `{co}`, `{map}` and the card figures are
+ * interpolated from the scene's own read-out every frame, so a video cannot
+ * quote a figure the interactive page would not show. A hand-written number in
+ * this file would be a second source of truth with no test behind it, and it
+ * would still be there after the model moved.
+ */
+export const REEL_COPY = {
+  hook: {
+    title: 'Same heart. One thing changes.',
+    titleJa: '同じ心臓。変えるのは 1 つだけ。',
+    subtitle: 'Systemic vascular resistance goes up — and nothing else.',
+    subtitleJa: '上げるのは体血管抵抗だけ。他は何も変えません。',
+  },
+  cards: {
+    before: { label: 'Before', labelJa: '操作前' },
+    after: { label: 'Resistance raised', labelJa: '抵抗を上げたあと' },
+  },
+  raise: {
+    caption: 'Raising the resistance',
+    captionJa: '体血管抵抗を上げています',
+  },
+  compare: {
+    caption: 'Pressure up. Output down. At the same moment.',
+    captionJa: '血圧は上がり、拍出は減る。同じ瞬間に。',
+  },
+  residual: {
+    label: 'Blood left behind at end systole',
+    labelJa: '収縮末期に残る血液',
+  },
+  release: {
+    caption: 'Put the resistance back, and both return.',
+    captionJa: '抵抗を戻すと、どちらも戻ります。',
+  },
+  takeHome: {
+    title: 'A higher blood pressure can mean less blood leaving the heart.',
+    titleJa: '血圧が高いことは、心臓から出ていく血液が減っていることでもありえる。',
+  },
+  note: {
+    text: 'Educational model · two settled conditions, not a treatment over time',
+    textJa: '教育用モデル ・ 落ち着いた 2 条件の比較であって、治療の経過ではありません',
+  },
+};
+
 export const ANNOTATIONS = [
   { id: 'cavity', text: 'Left ventricular cavity', sub: '左室内腔', anchor: 'cavity', lead: [-190, 40] },
   { id: 'aorta', text: 'Out to the body', sub: '体循環へ', anchor: 'aorta', lead: [140, -60] },

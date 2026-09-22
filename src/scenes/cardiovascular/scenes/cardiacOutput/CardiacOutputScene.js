@@ -6,6 +6,15 @@ import { BloodField } from '../heartFailure/BloodField.js';
 import { ANATOMY, ANCHORS, buildCavityBlood } from '../heartFailure/anatomy.js';
 import { APEX_PINNING, TORSION_ILLUSTRATIVE_MAX, VENTRICLE_SHAPING } from '../heartFailure/geometry/ventricleGeometry.js';
 import { ARTERIAL_PATH, RETURN_PATH, buildCircuit } from './circuit.js';
+import {
+  REEL_CUES,
+  REEL_DURATION,
+  cameraAt,
+  cardiacPhaseAt,
+  overlayAt,
+  residualEmphasisAt,
+  resistanceAt,
+} from './reelStoryboard.js';
 import { ExperimentSession } from './experimentSession.js';
 import {
   CONTROL_DOMAIN,
@@ -20,10 +29,15 @@ import {
   myocardialVolumeFor,
   ventricleShape,
 } from '../../../../models/cardiacMechanics.js';
+import { INTERVENTION_IDS } from '../../../../models/cardiacInterventions.js';
+import { INTERVENTION_OPTIONS } from '../../../../data/cardiacOutputInterventions.js';
 import {
   ANNOTATIONS,
   COMPARISON_LABEL,
   CONTROLS,
+  LEARNING_LABEL,
+  LEARNING_MODULES,
+  REEL_LABEL,
   DISCLAIMER,
   DISCLAIMER_JA,
   DISCLAIMER_SHORT,
@@ -97,6 +111,8 @@ export class CardiacOutputScene {
     modelControls: MODEL_CONTROLS,
     modelScope: MODEL_SCOPE,
     comparison: COMPARISON_LABEL,
+    learning: LEARNING_LABEL,
+    reel: REEL_LABEL,
     pressureVolume: PRESSURE_VOLUME_LABEL,
     pressureWave: PRESSURE_WAVE_LABEL,
     disclaimer: DISCLAIMER,
@@ -325,6 +341,19 @@ export class CardiacOutputScene {
         value: this.session.presetId,
         options: PRESET_OPTIONS,
       },
+      {
+        // After the preset and before the sliders, which is also the order a
+        // restore replays them in: the preset resets everything, the
+        // intervention is computed from the preset's own starting condition,
+        // and the sliders land last and win — which is right, because a slider
+        // position is a manual condition and clears any intervention anyway.
+        id: 'intervention',
+        kind: 'choice',
+        label: 'Intervention',
+        labelJa: '介入',
+        value: this.session.interventionId,
+        options: INTERVENTION_OPTIONS,
+      },
       ...CONTROLS.map((control) => {
         const domain = CONTROL_DOMAIN[control.id];
         return {
@@ -348,16 +377,109 @@ export class CardiacOutputScene {
   setModelControl(id, value) {
     if (id === 'preset') {
       this.session.selectPreset(String(value));
+    } else if (id === 'intervention') {
+      this.session.selectIntervention(String(value));
     } else {
       this.session.setControl(id, Number(value));
     }
     this._applyState();
   }
 
-  /** Back to the starting condition of the preset the reader is on. */
+  /**
+   * Back to the starting condition of the preset the reader is on.
+   *
+   * Both saved states go: the hand-set condition and any intervention. A reset
+   * that put the sliders back and left a drug selected would be a reset in name
+   * only.
+   */
   resetModelControls() {
     this.session.reset();
     this._applyState();
+  }
+
+  /**
+   * Guided lessons.
+   *
+   * Pure data. The lesson has no private path into the model: it moves the same
+   * controls the sliders move, through `setModelControl`, and reads its figures
+   * out of `getMetrics()`. So it cannot show a number the rest of the screen
+   * disagrees with, and cannot teach a relationship the model does not have —
+   * `tests/cardiac-output-learning.test.js` re-derives every stored answer.
+   */
+  getLearningModules() {
+    return LEARNING_MODULES;
+  }
+
+  /**
+   * The fifteen-second sequence.
+   *
+   * Everything specific to the content is in `reelStoryboard.js`; `ReelMode`
+   * supplies the machinery — framing, formats, the overlay, the consent screen
+   * and the recorder — and knows nothing about circulations.
+   *
+   * The sequence drives the model through `setModelControl`, the same path the
+   * sliders take, so the condition it records is one a reader can reproduce by
+   * dragging the resistance themselves. Its figures come out of `getMetrics()`,
+   * so a file cannot quote a number the page would not.
+   */
+  getReel() {
+    return {
+      durationSeconds: REEL_DURATION,
+      cues: REEL_CUES,
+      viewDirection: VIEW_DIRECTION.clone(),
+      // The comparison is the sequence: the right-hand heart is the condition
+      // being driven and the left-hand one is where it started.
+      comparison: true,
+      framing: {
+        // Wider than the pair actually is, so the opening dolly has somewhere
+        // to come in from.
+        halfWidth: 12.6,
+        halfHeight: 7.2,
+        minimumDistance: 20,
+        target: new THREE.Vector3(0, -1.8, 0.2),
+      },
+      cameraAt,
+      overlayAt,
+
+      /** What the scene is told at each instant. */
+      driveAt: (t, scene) => {
+        scene.setCardiacPhase(cardiacPhaseAt(t));
+        scene.setModelControl('systemicResistanceMmHgSPerMl', resistanceAt(t));
+        scene.setBeatEmphasis({ residual: residualEmphasisAt(t) });
+      },
+
+      /**
+       * The figures the copy interpolates, read out of the scene's own panel so
+       * a video can never quote something the interactive page would not.
+       */
+      readMetrics: (scene) => {
+        const rows = Object.fromEntries(scene.getMetrics().map((row) => [row.id, row]));
+        const pair = (id) => ({ before: rows[id].reference, now: rows[id].value });
+        return { map: pair('map'), co: pair('co'), sv: pair('sv') };
+      },
+
+      /** Hand the beat to the sequence, and hand it back on the way out. */
+      onEnter: (scene) => {
+        scene.setCardiacPhaseDriven(true);
+      },
+      onExit: (scene) => {
+        scene.setCardiacPhaseDriven(false);
+        scene.setBeatEmphasis({ residual: 0 });
+      },
+    };
+  }
+
+  /**
+   * Presentation emphasis on the blood that did not leave.
+   *
+   * Visualization only: no model value changes, and both hearts get the same
+   * treatment so a comparison stays a comparison.
+   *
+   * @param {{ ejection?: number, residual?: number }} emphasis
+   */
+  setBeatEmphasis(emphasis) {
+    this.blood?.setEmphasis(emphasis);
+    this.reference?.blood.setEmphasis(emphasis);
   }
 
   // -------------------------------------------------------------------------

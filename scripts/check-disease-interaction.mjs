@@ -313,6 +313,76 @@ for (const slug of SLUGS) {
     await page.waitForTimeout(900);
   }
 
+  // --- the lesson, end to end ---------------------------------------------
+  //
+  // A lesson is content that makes a claim about the model, and its tests check
+  // the claim. What they cannot check is that a reader can get through it: the
+  // panel drives the model through the scene's own setters, and a lesson that
+  // names a control the scene does not have, or a row the read-out does not
+  // carry, renders a dead button or a table of `undefined` and throws nothing.
+  // The pulmonary-oedema scene shipped a lesson that failed on the first click.
+  //
+  // So this walks it — predict, apply, and on to the end — and then checks the
+  // thing only a browser can: that leaving it puts the model back where the
+  // reader had it.
+  const learnButton = page.locator('button[data-control="learn"]');
+  if (await learnButton.count()) {
+    const before = await state();
+    await learnButton.first().click();
+    await page.waitForSelector('.learn-body', { timeout: 5000 });
+    await page.waitForTimeout(600);
+
+    /**
+     * The first control on this step a reader could actually press.
+     *
+     * Asked for by visibility rather than by presence: a step keeps the
+     * previous step's nodes in the DOM, and clicking a hidden one waits thirty
+     * seconds and then fails as a timeout rather than as "the lesson is stuck",
+     * which is a worse report of the same fact.
+     */
+    const pressable = async () => {
+      for (const selector of ['.learn-step .learn-choice', '.learn-step .learn-action', '.learn-nav button']) {
+        const all = page.locator(selector);
+        for (let i = await all.count(); i > 0; i -= 1) {
+          const candidate = all.nth(await all.count() - i);
+          if (await candidate.isVisible().catch(() => false)) return candidate;
+        }
+      }
+      return null;
+    };
+
+    let steps = 0;
+    for (let guard = 0; guard < 14; guard += 1) {
+      const target = await pressable();
+      if (!target) break;
+      await target.click({ timeout: 4000 }).catch(() => {});
+      steps += 1;
+      // The manipulation is tweened into the model over about a second and a
+      // half, and the transfer step solves the model four times.
+      await page.waitForTimeout(1700);
+      if (!(await page.locator('.learn-body').count())) break;
+    }
+    if (steps < 4) problems.push(`the lesson stopped after ${steps} step(s)`);
+    const tableRows = await page.locator('.learn-row-label').count();
+    if (!tableRows) problems.push('the lesson never showed a before/after row');
+    const blank = await page.evaluate(() =>
+      [...document.querySelectorAll('.learn-row-figure')].some((node) => /undefined|NaN/.test(node.textContent))
+    );
+    if (blank) problems.push('the lesson read `undefined` into its own table');
+    await page.screenshot({ path: join(outDir, `${slug}-lesson.png`) });
+
+    const close = page.locator('.learn-close');
+    if (await close.count()) await close.first().click();
+    await page.waitForTimeout(1200);
+    const reset = page.locator('.model-control-reset');
+    if (await reset.count()) await reset.first().click();
+    await page.waitForTimeout(1500);
+    const back = await state();
+    if (back.controls !== before.controls) {
+      problems.push(`after the lesson and a reset the controls are ${back.controls}, not ${before.controls}`);
+    }
+  }
+
   // --- the sequence as a file ---------------------------------------------
   //
   // `videoExportOffered` is the product's own rule, imported rather than
