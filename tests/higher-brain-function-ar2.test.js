@@ -453,6 +453,22 @@ test('AR2-T23: an element with a missing or invalid mapping is refused, not comp
   assert.equal(new Set(ids).size, ids.length);
 });
 
+test('AR2-T07b: a positive value that rounds to zero says so, rather than reading as zero', () => {
+  const scene = buildScene({ task: 'repetition-nonword' });
+  // A near-total lesion of the arcuate, entered as a raw structure so the
+  // severity can be the one that exposes the difference.
+  scene.solved = solveHigherBrainFunction({
+    lesions: [{ id: 'nearly', severity: 0.99996, structures: [{ label: 'Arcuate fasciculus', side: 'dominant' }] }],
+  });
+  const row = scene.getMetrics().find((candidate) => candidate.id === 'route-state');
+  assert.match(row.valueJa, /0\.0001 未満/, 'the read-out distinguishes it from zero');
+  assert.match(row.valueJa, /0 ではありません/);
+  // And an ordinary low value does not get that sentence.
+  const ordinary = buildScene({ lesion: 'dominant-arcuate', task: 'repetition-nonword' }, 0.8);
+  const plain = ordinary.getMetrics().find((candidate) => candidate.id === 'route-state');
+  assert.ok(!plain.valueJa.includes('0.0001'), 'only when it would round to zero');
+});
+
 test('AR2-T24: a misspelt structure is an input error; an unmodelled one is out of scope', () => {
   const atlas = ['Angular gyrus', 'Fourth ventricle'];
   // In the atlas, and this model computes nothing from it: reported, and not
@@ -556,6 +572,22 @@ test('AR2-T30: an assumption is not dropped on the way to a consumer', () => {
     !rows.get('assumed').valueJa.includes('温存されています'),
     'which is not a claim that it is spared'
   );
+});
+
+test('AR2-T21b: a step drawn outside the brain is labelled as having no structure', () => {
+  const scene = buildScene({ task: 'writing-to-dictation-word' });
+  const schematic = scene.routePoints().filter((point) => point.schematic);
+  assert.ok(schematic.length > 0);
+  const ids = new Set(schematic.filter((point) => point.step.kind === 'node').map((point) => point.step.id));
+  assert.ok(ids.size > 0, 'at least one of them is a process a label is drawn for');
+  for (const note of scene.getAnnotations()) {
+    if (!ids.has(note.id)) continue;
+    assert.match(note.text, /no atlas structure/, `${note.id} says where it is not`);
+    assert.match(note.sub, /アトラス上の構造なし/);
+  }
+  // And a step that does have a mesh is labelled plainly.
+  const anchored = scene.getAnnotations().find((note) => note.id === 'phonological-analysis');
+  assert.ok(anchored && !anchored.text.includes('no atlas structure'));
 });
 
 // --- AR2-T31, T33, T34, T36, T41 -------------------------------------------

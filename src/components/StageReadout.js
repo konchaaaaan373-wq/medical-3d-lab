@@ -1,4 +1,4 @@
-import { el } from '../utils/dom.js';
+import { el, emphasised } from '../utils/dom.js';
 
 /** Index of the stage that owns this progression value. */
 export function stageIndexFor(progress, stages) {
@@ -90,8 +90,12 @@ export function createStageReadout({ meta, onSeek }) {
       const stage = stages[index];
       nameEn.textContent = stage.name;
       nameJa.textContent = stage.nameJa;
-      summaryEn.textContent = stage.summary;
-      summaryJa.textContent = stage.summaryJa;
+      // `**like this**` as emphasis, not as four asterisks. The stage copy is
+      // written the same way as the disclaimers and the scope panel, and this
+      // was the one surface still setting it as plain text — so a caveat added
+      // to a stage summary arrived on screen wearing punctuation.
+      summaryEn.replaceChildren(...emphasised(stage.summary));
+      summaryJa.replaceChildren(...emphasised(stage.summaryJa));
       element.dataset.stage = stage.id;
     },
     get stage() {

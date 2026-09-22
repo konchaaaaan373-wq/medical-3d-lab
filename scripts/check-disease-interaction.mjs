@@ -741,6 +741,22 @@ async function checkDisclosures(page, slug, outDir) {
   await page.setViewportSize({ width: 390, height: 844 });
   await page.waitForTimeout(400);
 
+  // The read-out lives behind the Data button on every scene that has one, and
+  // this function must not depend on an earlier step having pressed it: a check
+  // that passes because of what ran before it is a check that reports on the
+  // order of this file.
+  const shownNow = async (selector) => page.locator(selector).first()
+    .evaluate((node) => getComputedStyle(node).display !== 'none')
+    .catch(() => false);
+  if ((await page.locator('.metrics').count()) && !(await shownNow('.metrics'))) {
+    const dataButton = page.locator('button', { hasText: 'データ' });
+    if (await dataButton.count()) {
+      await dataButton.first().click();
+      await page.waitForTimeout(600);
+    }
+    if (!(await shownNow('.metrics'))) problems.push('the read-out cannot be brought on screen');
+  }
+
   const measure = async (locator, name) => {
     const box = await locator.boundingBox();
     if (!box) {

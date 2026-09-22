@@ -10,7 +10,7 @@ import {
 } from '../../../../data/higherBrainFunction.js';
 import {
   AVAILABILITY_HIGH, BULK_WHITE_MATTER, COMPUTATION, FUNCTION_TASKS, LESION_SITES, MAPPING, MODE, PATHWAY_STATE,
-  lesionSiteById, roundForDisplay, solveHigherBrainFunction,
+  isBelowDisplayFloor, lesionSiteById, solveHigherBrainFunction,
 } from '../../../../models/higherBrainFunction.js';
 import {
   ATLAS_CATEGORIES, brainAtlasMetadata, loadBrainAtlas, placeBrainAtlas,
@@ -904,7 +904,14 @@ export class HigherBrainFunctionScene {
     // Computed, positive, nothing at zero: it gets to the end. How bright the
     // answer is says how much of it did.
     const floor = HigherBrainFunctionScene.ANSWER_VISIBILITY_FLOOR;
-    const strength = Math.max(floor, Math.min(1, task.availability ?? 0));
+    // Every branch that could leave `availability` null has returned by here —
+    // not modelled, indeterminate, and a route stopped at a true zero. A `?? 0`
+    // in its place would turn a future fourth state into a silent zero, which
+    // is the class of bug this whole function exists to stop.
+    if (typeof task.availability !== 'number') {
+      throw new Error(`higherBrainFunction: ${task.id} is computed and carries no availability`);
+    }
+    const strength = Math.max(floor, Math.min(1, task.availability));
     return {
       ...base,
       kind: task.state === PATHWAY_STATE.HIGH ? DISPLAY.CARRYING : DISPLAY.WEAK,
@@ -1230,13 +1237,20 @@ export class HigherBrainFunctionScene {
       }
       // What the picture is saying, in words, so that a reader who cannot tell
       // a dim line from a stopped one has it written down.
+      // A value that is positive and rounds to zero at the read-out's own
+      // precision says so in words. "0" and "below 0.0001" are the same four
+      // decimal places and opposite claims, and this is the one place a reader
+      // could otherwise take the second for the first.
+      const tiny = isBelowDisplayFloor(traced.availability);
       rows.push({
         ...traceGroup,
         id: 'route-state',
         label: 'What the drawn route shows',
         labelJa: '描かれている経路が示していること',
-        value: ROUTE_DISPLAY_TEXT[display.kind].label,
-        valueJa: ROUTE_DISPLAY_TEXT[display.kind].labelJa,
+        value: ROUTE_DISPLAY_TEXT[display.kind].label
+          + (tiny ? ' The value is positive and below 0.0001 — not zero.' : ''),
+        valueJa: ROUTE_DISPLAY_TEXT[display.kind].labelJa
+          + (tiny ? '値は正で、0.0001 未満です——**0 ではありません**。' : ''),
         unit: '',
       });
       if (display.stop) {
@@ -1351,22 +1365,15 @@ export class HigherBrainFunctionScene {
         detailsJa: traced.unmodelledInfluences.map((influence) => influence.whatIsNotComputedJa),
       });
     }
-    // A structure the input named and this model computes nothing from. Not
-    // "no effect": a limit of the model, said as one.
-    if (this.solved.outOfScopeStructures?.length) {
-      rows.push({
-        ...limitGroup,
-        id: 'out-of-scope',
-        label: 'Named, and outside what this model computes',
-        labelJa: '指定されたが、このモデルの計算対象外の構造',
-        value: `${this.solved.outOfScopeStructures.join(', ')} — this model computes nothing from them, `
-          + 'which is not the same as their being unaffected.',
-        valueJa: `${this.solved.outOfScopeStructures.join('、')}——このモデルはここから何も計算しません。`
-          + 'それは「影響が無い」ということではありません。',
-        unit: '',
-        details: [...this.solved.outOfScopeStructures],
-      });
-    }
+    // There is no row here for `outOfScopeStructures`. The model reports them —
+    // a structure the input named and this model computes nothing from, which
+    // is a limit of the model and not "no effect" — and **nothing in this
+    // scene can produce one**: every lesion is a declared preset, and every
+    // preset names structures the model carries. A row no reader can reach is
+    // the read-out's version of a route no task can take, and this file has
+    // already deleted one of those. The field and its guard stay in the model,
+    // where a caller with a real atlas list (a test, a future tool that lets a
+    // reader lesion an arbitrary mesh) meets the case.
     // What the task itself is not about. The rows a reader over-reads are the
     // ones whose names are shorter than their meaning.
     if (traced?.excludesJa?.length) {
@@ -1489,8 +1496,12 @@ export class HigherBrainFunctionScene {
       .filter((point) => point.step.kind === 'node')
       .map((point) => ({
         id: point.step.id,
-        text: point.step.label,
-        sub: point.step.labelJa,
+        // A step with no mesh is labelled where it is *drawn*, which is beside
+        // the brain rather than in it. The label says so, because a name
+        // floating over the parietal lobe is read as a name *of* the parietal
+        // lobe — which is the claim the dotted line exists to avoid making.
+        text: point.schematic ? `${point.step.label} (no atlas structure)` : point.step.label,
+        sub: point.schematic ? `${point.step.labelJa}（アトラス上の構造なし）` : point.step.labelJa,
         position: point.position.clone(),
         range: [0, 1],
         compact: true,
