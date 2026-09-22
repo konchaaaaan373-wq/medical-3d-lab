@@ -49,6 +49,8 @@
  *
  * Options:
  *   --engine <name>  chromium (default), firefox or webkit
+ *   --dpr <number>   device scale factor (default 1)
+ *   --dist <path>    build directory (default dist)
  *   the scene slugs to drive, as arguments, after an optional output directory
  *   for the screenshots.
  */
@@ -72,6 +74,13 @@ import { VIDEO_MIME_CANDIDATES } from '../src/app/videoRecorder.js';
  * them.
  */
 const argv = process.argv.slice(2);
+const dprAt = argv.indexOf('--dpr');
+const dpr = dprAt >= 0 ? Number(argv[dprAt + 1]) : 1;
+if (dprAt >= 0) argv.splice(dprAt, 2);
+if (!Number.isFinite(dpr) || dpr <= 0 || dpr > 4) {
+  console.error('--dpr must be a number greater than 0 and at most 4.');
+  process.exit(1);
+}
 const engineAt = argv.indexOf('--engine');
 const engineName = engineAt >= 0 ? argv[engineAt + 1] : 'chromium';
 if (engineAt >= 0) argv.splice(engineAt, 2);
@@ -80,7 +89,9 @@ if (!['chromium', 'firefox', 'webkit'].includes(engineName)) {
   process.exit(1);
 }
 
-const distDir = resolve('dist');
+const distAt = argv.indexOf('--dist');
+const distDir = resolve(distAt >= 0 ? argv[distAt + 1] : 'dist');
+if (distAt >= 0) argv.splice(distAt, 2);
 const outDir = argv[0] ?? '/tmp/disease-shots';
 mkdirSync(outDir, { recursive: true });
 
@@ -99,7 +110,35 @@ const browser = await engine.launch(
   engineName === 'chromium' ? { executablePath: chromiumExecutable(engine) } : {}
 );
 if (engineName !== 'chromium') console.log(`engine: ${engineName}`);
-const page = await browser.newPage({ viewport: { width: 1440, height: 900 } });
+const page = await browser.newPage({ viewport: { width: 1440, height: 900 }, deviceScaleFactor: dpr });
+console.log(`deviceScaleFactor: ${dpr}`);
+
+/**
+ * Whether this engine can make a WebGL2 context *here*.
+ *
+ * Every scene in this check is a 3D scene, so an engine that cannot is not a
+ * product failure — it is a machine that cannot run the measurement. Measured
+ * (2026-09-21): headless Firefox on a GitHub runner refuses the context, and
+ * the run died thirty seconds later saying only that it could not find a
+ * canvas. `check-viewports.mjs` answers the same refusal the same way, and
+ * says at the end what it therefore did not measure.
+ */
+const hasWebgl2 = await page.evaluate(() => {
+  try {
+    return Boolean(document.createElement('canvas').getContext('webgl2'));
+  } catch {
+    return false;
+  }
+});
+if (!hasWebgl2) {
+  console.log(
+    `\n  note: ${engineName} cannot create a WebGL2 context on this machine, so no scene was driven`
+      + ' and no export was measured. Nothing here says anything about the product.'
+  );
+  await browser.close();
+  closeServer();
+  process.exit(dpr > 1 ? 1 : 0);
+}
 
 const state = () =>
   page.evaluate(() => {
@@ -129,6 +168,9 @@ const setSlider = async (value) => {
 };
 
 const report = [];
+/** How many scenes offered an export, and how many produced a file this engine could play. */
+let exportsOffered = 0;
+let exportsRecorded = 0;
 for (const slug of SLUGS) {
   await page.goto(`${base}?preview=1#/${slug}`, { waitUntil: 'networkidle' });
   // And refuse the locked page rather than timing out on a canvas that is not
@@ -295,15 +337,27 @@ for (const slug of SLUGS) {
   if (animated && (await reelButton.count())) {
     await reelButton.first().click();
     await page.waitForTimeout(1200);
+
+    // The sequence's own controls, measured on a phone.
+    //
+    // `verify:ui` never opens this surface — it measures the app's layouts, and
+    // reel mode replaces them (F-170). The row gained a control and ran off
+    // both edges of a 390px screen; a photograph found that, and a photograph
+    // is not a measurement. This is, and it is here because this is the check
+    // that is already inside the sequence.
+    problems.push(...(await reachableAt(page, 390, 844, '.reel-chrome', 'the sequence controls')));
+
     const downloadButton = page.locator('button[data-control="video-download"]');
     const offered = (await downloadButton.count()) > 0;
     if (offered !== shouldOffer) {
       problems.push(`the download button is ${offered ? 'offered' : 'absent'} but the rule says ${shouldOffer ? 'offered' : 'absent'}`);
     }
     if (offered) {
+      exportsOffered += 1;
       await downloadButton.first().click();
       await page.waitForSelector('.video-consent-panel', { timeout: 5000 });
       await page.screenshot({ path: join(outDir, `${slug}-video-consent.png`) });
+      problems.push(...(await reachableAt(page, 390, 844, '.video-consent-panel', 'the consent screen')));
 
       // The agree button must be shut until every clause is ticked. This is the
       // half a unit test can also check; it is checked again here because the
@@ -317,9 +371,56 @@ for (const slug of SLUGS) {
       for (let i = 0; i < boxCount; i += 1) await boxes.nth(i).check();
       if (await agree.isDisabled()) problems.push('the consent screen stayed shut with every clause ticked');
 
+      // What the page itself was drawing, just before the recording starts.
+      //
+      // The first version of this check had an absolute frame-rate floor, and
+      // it measured the machine rather than the export: on a software
+      // rasteriser the heart runs at 4 frames a second and the brain atlas at
+      // 1.5, so their recordings are *faithful* at those rates. The question
+      // worth asking is whether the export cost the motion that was there —
+      // which is exactly what asking for 1080×1920 on a slow machine does.
+      const drawnPerSecond = await page.evaluate(
+        () =>
+          new Promise((resolve) => {
+            let frames = 0;
+            const started = performance.now();
+            const tick = () => {
+              frames += 1;
+              if (performance.now() - started < 1500) requestAnimationFrame(tick);
+              else resolve(Number((frames / ((performance.now() - started) / 1000)).toFixed(1)));
+            };
+            requestAnimationFrame(tick);
+          })
+      );
+
+      // Observe the actual Three.js targets during the probe, not only the
+      // encoded file (which can have the right size despite oversized passes).
+      await page.evaluate(() => {
+        const viewer = window.__app.viewer;
+        const capture = viewer.captureSize.bind(viewer);
+        window.__captureProbe = [];
+        viewer.captureSize = (size) => {
+          const release = capture(size);
+          const targets = [viewer.composer.renderTarget1, viewer.composer.renderTarget2];
+          window.__captureProbe.push({
+            requested: size,
+            rendererRatio: viewer.renderer.getPixelRatio(),
+            targets: targets.map(({width, height}) => ({width, height})),
+          });
+          return release;
+        };
+      });
       const downloadPromise = page.waitForEvent('download', { timeout: 90_000 }).catch(() => null);
       await agree.click();
       const download = await downloadPromise;
+      const probes = await page.evaluate(() => window.__captureProbe);
+      if (!probes.length) problems.push('no capture-size probe was observed');
+      for (const probe of probes) {
+        if (probe.rendererRatio !== 1 || probe.targets.some(
+          (target) => target.width !== probe.requested.width || target.height !== probe.requested.height
+        )) problems.push(`capture targets exceed the requested size: ${JSON.stringify(probe)}`);
+        console.log(`  DPR ${dpr} capture probe: ${JSON.stringify(probe)}`);
+      }
       if (!download) problems.push('no file arrived within 90s of agreeing');
       else {
         const name = download.suggestedFilename();
@@ -338,6 +439,7 @@ for (const slug of SLUGS) {
         const decoded = await decodeRecording(page, saved, name);
         if (decoded.error) problems.push(`the browser could not play back its own file: ${decoded.error}`);
         else {
+          exportsRecorded += 1;
           writeFileSync(join(outDir, `${slug}-video-frame.png`), Buffer.from(decoded.frame.split(',')[1], 'base64'));
           if (!decoded.width || !decoded.height) problems.push('the file decodes to a frame with no size');
           if (decoded.distinctColours < 24) {
@@ -345,8 +447,33 @@ for (const slug of SLUGS) {
           }
           console.log(
             `  ${slug}: ${name} — ${(size / 1024).toFixed(0)} kB, ${decoded.width}×${decoded.height}, `
+              + `${decoded.frames} frames (${decoded.fps} fps, page drew ${drawnPerSecond}), `
               + `${Number.isFinite(decoded.duration) ? `${decoded.duration.toFixed(1)}s` : 'duration not written by the recorder'}`
           );
+          // Did the export cost the motion that was on screen?
+          //
+          // Not an absolute floor — that measures the machine, and on a
+          // software rasteriser the heart draws at 4 frames a second and the
+          // brain atlas at 1.5 whether anything is recording or not.
+          //
+          // A share of what the page was drawing a moment earlier is the
+          // honest line. Measured here, recording at the canvas's own size:
+          //
+          //   copd            8.6 drawn → 8.2 recorded   0.95
+          //   heart failure   8.6 drawn → 4.3 recorded   0.50
+          //   brain routes    3.3 drawn → 1.6 recorded   0.48
+          //   copd, forced to 1080×1920  8 → 2.4         0.30
+          //
+          // Compositing costs about half a frame on the heavy scenes, because
+          // `drawImage` from a WebGL canvas is a readback without a GPU. So
+          // the line goes under that and above the regression worth catching:
+          // a threshold at 0.5 would be a coin flip on two of these three.
+          if (decoded.frames && drawnPerSecond > 0 && decoded.fps < drawnPerSecond * 0.35) {
+            problems.push(
+              `the file runs at ${decoded.fps} frames a second while the page was drawing ${drawnPerSecond}`
+                + ' — the recording cost the motion that was on screen'
+            );
+          }
         }
       }
       await page.screenshot({ path: join(outDir, `${slug}-video-recorded.png`) });
@@ -402,7 +529,50 @@ if (failed.length) {
   }
   process.exit(1);
 }
-console.log(`\n  ok    ${report.length} scene(s) drove baseline → disease → reset, and every export that was offered produced a file this browser can play`);
+// A run that drove nothing is not a pass.
+//
+// Found by running this file against an ordinary `npm run build`: disease
+// scenes are withheld from a production build, so every slug resolved to a
+// locked page, the loop skipped all of them, and the line below printed
+// `ok    0 scene(s)` and exited 0. "Nothing failed" and "nothing happened"
+// are the same sentence to a CI log (L-49, L-61).
+if (report.length === 0) {
+  console.error(
+    `\n  no scene was driven, so nothing here was measured.`
+      + ` Disease scenes are not in a production build: rebuild with`
+      + ` \`VITE_ALLOW_PREVIEW=1 npm run build\`, and check that the slugs given exist.`
+  );
+  await browser.close();
+  closeServer();
+  process.exit(1);
+}
+
+if (dpr > 1 && exportsRecorded === 0) {
+  console.error('DPR validation requires at least one recorded and decoded export.');
+  process.exit(1);
+}
+
+// What was measured, not only that nothing failed.
+//
+// `webkit` was green on a run where it recorded nothing at all: the engine
+// cannot encode a canvas, so the product does not offer the download, and
+// "every export that was offered produced a file" is true of none of them.
+// A count is the difference between a green that measured something and a
+// green that measured the absence of something.
+//
+// The exit above is what makes the encoder a defensible explanation below:
+// with no scene driven, "no export was offered" says nothing about the engine,
+// and this line said it anyway — a cause reported without being established
+// (L-15).
+console.log(
+  `\n  ok    ${report.length} scene(s) drove baseline → disease → reset; `
+    + `${exportsRecorded} export(s) recorded and played back`
+    + (exportsOffered === 0
+      ? ` (no scene offered one — ${engineName} cannot encode a canvas here)`
+      : exportsRecorded < exportsOffered
+        ? ` of ${exportsOffered} offered`
+        : '')
+);
 
 /**
  * What the first bytes say the file is, against what its name claims.
@@ -474,12 +644,96 @@ async function decodeRecording(page, path, name) {
           seen.add((data[i] >> 3) * 1024 + (data[i + 1] >> 3) * 32 + (data[i + 2] >> 3));
         }
         const frame = canvas.toDataURL('image/png');
+
+        // How many frames are actually in it.
+        //
+        // Size and dimensions say nothing about motion: a fifteen-second file
+        // of 38 frames decodes, plays, and is a slideshow. `requestVideoFrame`
+        // counts what the decoder presents, which is the only honest measure of
+        // what was recorded.
+        let frames = 0;
+        let lastMediaTime = 0;
+        if (typeof video.requestVideoFrameCallback === 'function') {
+          video.currentTime = 0;
+          video.muted = true;
+          const counted = new Promise((resolve) => {
+            const tick = (_now, meta) => {
+              frames += 1;
+              lastMediaTime = meta.mediaTime;
+              if (!video.ended) video.requestVideoFrameCallback(tick);
+            };
+            video.requestVideoFrameCallback(tick);
+            video.onended = () => resolve();
+            setTimeout(resolve, 30000);
+          });
+          await video.play().catch(() => {});
+          await counted;
+          video.pause();
+        }
         URL.revokeObjectURL(url);
-        return { duration: video.duration, width: video.videoWidth, height: video.videoHeight, distinctColours: seen.size, frame };
+        return {
+          duration: video.duration,
+          width: video.videoWidth,
+          height: video.videoHeight,
+          distinctColours: seen.size,
+          frames,
+          fps: lastMediaTime > 0 ? Number((frames / lastMediaTime).toFixed(1)) : 0,
+          frame,
+        };
       } catch (error) {
         return { error: String(error?.message ?? error) };
       }
     },
     { base64, mimeType }
   );
+}
+
+/**
+ * Is every control on this surface on the screen, and big enough to hit?
+ *
+ * Measured at a viewport the caller names, then put back. Two rules, both the
+ * product's own: nothing may extend past the viewport's edges, and a button is
+ * at least 44px tall. A checkbox is exempt because the row it sits in is the
+ * target — `.video-consent-clause` is what a finger lands on, and that is what
+ * is measured.
+ *
+ * `verify:ui` owns these rules everywhere else and cannot reach reel mode,
+ * which is why they are also here (F-170).
+ */
+async function reachableAt(page, width, height, selector, what) {
+  const previous = page.viewportSize();
+  await page.setViewportSize({ width, height });
+  await page.waitForTimeout(700);
+  const found = await page.evaluate(
+    ({ root, floor }) => {
+      const surface = document.querySelector(root);
+      if (!surface) return ['is not on the page at all'];
+      const out = [];
+      const edge = surface.getBoundingClientRect();
+      if (edge.left < -0.5 || edge.right > window.innerWidth + 0.5) {
+        out.push(`runs from ${Math.round(edge.left)} to ${Math.round(edge.right)} across a ${window.innerWidth}px screen`);
+      }
+      for (const node of surface.querySelectorAll('button, a[href], .video-consent-clause')) {
+        const box = node.getBoundingClientRect();
+        if (box.width === 0 && box.height === 0) continue;
+        const name = (node.textContent || node.getAttribute('aria-label') || node.className).trim().slice(0, 28);
+        if (box.left < -0.5 || box.right > window.innerWidth + 0.5) {
+          out.push(`"${name}" is off the side (${Math.round(box.left)}–${Math.round(box.right)} of ${window.innerWidth})`);
+        }
+        // A panel that scrolls is allowed to be taller than the screen; its
+        // controls are reached by scrolling, so only what cannot scroll counts.
+        if ((box.top < -0.5 || box.bottom > window.innerHeight + 0.5) && !node.closest('.video-consent-panel')) {
+          out.push(`"${name}" is off the top or bottom (${Math.round(box.top)}–${Math.round(box.bottom)} of ${window.innerHeight})`);
+        }
+        if (node.tagName === 'BUTTON' && box.height > 0 && box.height < floor) {
+          out.push(`"${name}" is ${Math.round(box.height)}px tall, under the ${floor}px floor`);
+        }
+      }
+      return out;
+    },
+    { root: selector, floor: 44 }
+  );
+  if (previous) await page.setViewportSize(previous);
+  await page.waitForTimeout(500);
+  return found.map((problem) => `${what} at ${width}px: ${problem}`);
 }

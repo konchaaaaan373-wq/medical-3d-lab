@@ -111,6 +111,20 @@
     min-width: 44px;
   }
 
+  /* ---------- the sequence's own controls ---------- */
+
+  /* The row that sits outside the recorded frame while the 15-second sequence
+     plays: four frame shapes, restart, download, exit. They were 25 px — the
+     one number in this product no surface is allowed to invent — because
+     nothing measured them: `verify:ui` does not open reel mode, and until the
+     export landed nothing else did either. `check-disease-interaction.mjs`
+     measures them at 390 px now, which is how this was found (F-170). Width
+     too, for `↻`, which is one glyph. */
+  #ui .reel-chip {
+    min-height: 44px;
+    min-width: 44px;
+  }
+
   /* ---------- the console's slider ---------- */
 
   /* Already transparent with the track and thumb drawn inside it, so all that

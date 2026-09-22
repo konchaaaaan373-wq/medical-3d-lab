@@ -48,8 +48,12 @@ import { createLearningPanel } from '../components/LearningPanel.js';
 import { createSceneSwitcher } from '../components/SceneSwitcher.js';
 import { createReelMode } from './ReelMode.js';
 import { videoConsentTerms, videoExportOffered, videoFileName } from './videoExport.js';
-import { extensionForMimeType, saveBlob, videoRecordingSupported } from './videoRecorder.js';
-import { createVideoConsentDialog } from '../components/VideoConsentDialog.js';
+// The *question* — can this browser record a canvas — is asked on every scene
+// load, so it is static and tiny. The machinery that answers it (the recorder,
+// the frame painter, the consent screen) loads when somebody presses the
+// button: a production build publishes anatomy, anatomy cannot export, and
+// nobody who visits it should pay for the code that would have.
+import { extensionForMimeType, videoRecordingSupported } from './videoSupport.js';
 import { VIDEO_EXPORT_COPY } from '../data/videoExport.js';
 import { createStoryMode } from './StoryMode.js';
 import { createLabelLayer } from '../components/LabelLayer.js';
@@ -1525,7 +1529,7 @@ export async function createApp({ stage, ui, onRetryModel = null }) {
           playback.set(value);
         },
         getLanguage: () => ui.dataset.lang ?? 'both',
-        onDownload: videoDownloadOffered ? () => requestVideoDownload() : undefined,
+        onDownload: videoDownloadOffered ? () => void requestVideoDownload() : undefined,
         getProvenance: (language) => videoProvenance(language),
         captureState: () => captureSessionState({ playback, viewer, scene, comparing }),
         restoreState: (state) => {
@@ -1692,6 +1696,7 @@ export async function createApp({ stage, ui, onRetryModel = null }) {
   /** @type {ReturnType<typeof createVideoConsentDialog>|null} */
   let videoConsent = null;
   let videoRecording = false;
+  let videoConsentRequest = null;
 
   /**
    * What the file says about itself, once it is somewhere this app is not.
@@ -1715,26 +1720,44 @@ export async function createApp({ stage, ui, onRetryModel = null }) {
     };
   }
 
-  function requestVideoDownload() {
-    if (videoConsent || videoRecording) return;
-    const terms = videoConsentTerms(entry?.id ?? meta.id);
-    videoConsent = createVideoConsentDialog({
-      terms,
-      subject: {
-        title: meta.title,
-        titleJa: meta.titleJa,
-        caveat: meta.disclaimerShort ?? meta.disclaimer,
-        caveatJa: meta.disclaimerShortJa ?? meta.disclaimerJa,
-      },
-      onAgree: () => {
-        videoConsent = null;
-        void runVideoDownload(terms);
-      },
-      onCancel: () => {
-        videoConsent = null;
-      },
-    });
-    videoConsent.open(ui);
+  async function requestVideoDownload() {
+    if (!reelMode?.active || videoConsent || videoRecording) return;
+    const sessionId = reelMode.sessionId;
+    if (videoConsentRequest?.sessionId === sessionId) return;
+    const request = { sessionId };
+    videoConsentRequest = request;
+    const isCurrent = () => videoConsentRequest === request &&
+      reelMode.active && reelMode.sessionId === sessionId;
+    try {
+      const terms = videoConsentTerms(entry?.id ?? meta.id);
+      const { createVideoConsentDialog } = await import('../components/VideoConsentDialog.js');
+      // Exit, including Exit followed by re-entry, invalidates this visit's request.
+      if (!isCurrent() || videoConsent || videoRecording) return;
+      videoConsent = createVideoConsentDialog({
+        terms,
+        subject: {
+          title: meta.title,
+          titleJa: meta.titleJa,
+          caveat: meta.disclaimerShort ?? meta.disclaimer,
+          caveatJa: meta.disclaimerShortJa ?? meta.disclaimerJa,
+        },
+        onAgree: () => {
+          videoConsent = null;
+          if (reelMode.active && reelMode.sessionId === sessionId) void runVideoDownload(terms);
+        },
+        onCancel: () => {
+          videoConsent = null;
+        },
+      });
+      videoConsent.open(ui);
+    } catch (error) {
+      if (!isCurrent()) return;
+      console.warn('[video] the consent dialog could not load', error);
+      reelMode.setDownloadLabel(VIDEO_EXPORT_COPY.failedShort, { busy: false });
+    } finally {
+      // An older import must not unlock a new visit's in-flight request.
+      if (videoConsentRequest === request) videoConsentRequest = null;
+    }
   }
 
   async function runVideoDownload(terms) {
@@ -1754,6 +1777,7 @@ export async function createApp({ stage, ui, onRetryModel = null }) {
         label(copy.failedShort, false);
         return;
       }
+      const { saveBlob } = await import('./videoRecorder.js');
       saveBlob(
         blob,
         videoFileName({ slug: terms.slug, formatId, extension: extensionForMimeType(mimeType) })
