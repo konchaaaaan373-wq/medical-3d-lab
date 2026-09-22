@@ -1098,3 +1098,23 @@
     padding-inline: 0;
   }
 }
+
+/* ---- The opened information panel needs a ground, on a phone ---------------
+   At 430px and under the title card is deliberately transparent: the model is
+   dense, and permanent chrome should identify it without competing with it.
+   That is right for the collapsed state and wrong for the opened one — the
+   disclosure carries the maturity note, the privacy explanation and the usage
+   settings, and measured at 390×844 every one of them was 12px of `--ink-faint`
+   printed straight onto the backdrop at 3.31:1 (WCAG 1.4.3 AA needs 4.5:1).
+
+   Opening "情報・設定" is a request to read. So the request gets a surface to
+   read on, and the collapsed card keeps the frameless look it was given. */
+@media (max-width: 430px) {
+  #ui[data-anatomy] .anatomy-shell-about[open] > .anatomy-shell-about-copy,
+  #ui[data-anatomy-shell='calm'] .anatomy-shell-about[open] > .anatomy-shell-about-copy {
+    padding: 11px 12px;
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    background: var(--panel-sheet);
+  }
+}

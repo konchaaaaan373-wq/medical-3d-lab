@@ -96,6 +96,46 @@ function sourceLinks(record) {
 const cardIdFor = (scene) => `trust-${scene.slug}`;
 
 /**
+ * The two badges, said once in words a reader did not have to learn.
+ *
+ * `公開状態: アルファ` and `レビュー待ち` are this repository's vocabulary, and
+ * they are load-bearing — the maturity axis and the clinical-review axis are
+ * deliberately separate and a badge that merged them would be a claim neither
+ * of them makes (`docs/architecture/intended-use-and-model-provenance.md`). So
+ * the badges stay exactly as they are and this is added beside them.
+ *
+ * Measured on the record a reader reaches from inside a model: the first
+ * screenful read `Status: Alpha / 公開状態: アルファ / Pending / レビュー待ち`,
+ * four internal terms and no sentence, in answer to "what is this model based
+ * on". Both facts matter to a student and neither of them is self-explanatory.
+ *
+ * @param {object} scene
+ * @param {{status: string}} review
+ */
+function plainStanding(scene, review) {
+  const open = betaUnlocked() || isSceneReleased(scene);
+  const reviewed = review.status === 'reviewed';
+  const en = open
+    ? `This model is published and can be opened. ${reviewed
+        ? 'A clinical reviewer has checked the version below.'
+        : 'It has not yet completed clinical review — read the limitations below before relying on it.'}`
+    : `This model is still being built and cannot be opened yet. ${reviewed
+        ? 'A clinical reviewer has checked the version below.'
+        : 'It has not completed clinical review.'}`;
+  const ja = open
+    ? `このモデルは公開中で、実際に開くことができます。${reviewed
+        ? '下に記録したバージョンについて、臨床レビューが完了しています。'
+        : '臨床レビューはまだ完了していません。利用する前に、下の「未解決の限界」を読んでください。'}`
+    : `このモデルは開発中で、まだ開くことはできません。${reviewed
+        ? '下に記録したバージョンについて、臨床レビューが完了しています。'
+        : '臨床レビューは完了していません。'}`;
+  return el('p', { class: 'trust-standing' }, [
+    el('span', { class: 'lang-en', text: en }),
+    el('span', { class: 'lang-ja', text: ja }),
+  ]);
+}
+
+/**
  * One model, `scene` paired with its already-computed review presentation and
  * the id its card and TOC entry share.
  *
@@ -244,12 +284,22 @@ function trustFilter(entries, cardsById) {
     empty.hidden = shown > 0;
   }
 
-  function reset() {
+  /**
+   * Undo any narrowing.
+   *
+   * `focus` is opt-out because the two callers want opposite things. The
+   * "show every model" button is a press: the reader is standing at the
+   * filter and focus belongs back in it. A deep link to one model's record is
+   * not a press on anything — it resets the ledger below out of caution, and
+   * moving focus into a search field three screenfuls under the record the
+   * reader actually asked for would undo the whole point of putting it first.
+   */
+  function reset({ focus = true } = {}) {
     field.value = '';
     scope = 'all';
     for (const [id, button] of pressed) button.setAttribute('aria-pressed', String(id === 'all'));
     apply();
-    field.focus?.();
+    if (focus) field.focus?.();
   }
 
   field.addEventListener('input', apply);
@@ -366,12 +416,43 @@ export function createTrust({ ui, accountButton = null, focusId = null }) {
   });
 
   const entries = PUBLIC_SCENES.map(trustEntry);
-  const focusIndex = focusId
-    ? entries.findIndex((entry) => entry.scene.id === focusId || entry.scene.slug === focusId)
-    : -1;
-  const cards = entries.map((entry, index) => trustCard(entry, { open: index === focusIndex }));
-  const cardsById = new Map(entries.map((entry, index) => [entry.id, cards[index]]));
-  const filter = trustFilter(entries, cardsById);
+  /**
+   * The model the reader came here about, if the route named one.
+   *
+   * ## Why it is taken out of the list rather than scrolled to
+   *
+   * `#/trust?model=brain-anatomy` is what a reader presses from *inside* the
+   * brain, and the question they pressed it with is about the brain. What
+   * arrived was this page: a heading reading "model status and medical
+   * review", a paragraph about what the page publishes, three definitions, a
+   * search field, `71 of 71 models`, and the brain's own record as one
+   * collapsible row among seventy-one. Opened by hand, the first screenful of
+   * an answer to "what is this model based on" was four pieces of internal
+   * vocabulary and a filter.
+   *
+   * Scrolling to the row was the previous answer and it is not enough — and,
+   * measured, it did not even hold: the swap resets the scroll after the
+   * surface mounts, so the card's own `scrollIntoView` was undone on every
+   * arrival that was not a full document load. A record you have to be carried
+   * to is still a record inside somebody else's page.
+   *
+   * So when the route names a model, this page **is** that model's record, and
+   * the ledger of every other model follows it under its own heading. Nothing
+   * is duplicated: the focused entry is removed from the list below rather
+   * than copied above it, which is also why the filter is handed `others` —
+   * its count has to describe what it can actually narrow.
+   */
+  const focused = focusId
+    ? entries.find((entry) => entry.scene.id === focusId || entry.scene.slug === focusId) ?? null
+    : null;
+  const others = focused ? entries.filter((entry) => entry !== focused) : entries;
+  const cards = others.map((entry) => trustCard(entry, { open: false }));
+  const cardsById = new Map(others.map((entry, index) => [entry.id, cards[index]]));
+  const filter = trustFilter(others, cardsById);
+
+  const leadCard = focused ? trustCard(focused, { open: true }) : null;
+  const canOpenFocused =
+    focused && (betaUnlocked() || isSceneReleased(focused.scene));
 
   const element = el('main', { class: 'trust-page' }, [
     createShellHeader({
@@ -379,31 +460,75 @@ export function createTrust({ ui, accountButton = null, focusId = null }) {
       accountButton,
       languageToggle: languageToggle.element,
     }),
-    el('section', { class: 'trust-hero', id: 'content', tabindex: '-1', 'data-skip-target': '' }, [
-      el('p', { class: 'trust-kicker' }, [
-        el('span', { class: 'lang-en', text: 'Publication & review' }),
-        el('span', { class: 'lang-ja', text: '公開とレビュー' }),
-      ]),
-      el('h1', {}, [
-        el('span', { class: 'lang-en', text: 'Model status and medical review' }),
-        el('span', { class: 'lang-ja', text: 'モデルの公開状態と医学レビュー' }),
-      ]),
-      el('p', { class: 'trust-lead' }, [
-        el('span', {
-          class: 'lang-en',
-          text: 'For each model, we publish its implementation status, medical review, reviewed scope, unresolved limitations and source files.',
-        }),
-        el('span', {
-          class: 'lang-ja',
-          text: '各モデルの実装・公開状態、医学レビュー、確認範囲、未解決の限界、参照ファイルを掲載しています。',
-        }),
-      ]),
-      el('div', { class: 'trust-principles' }, [
-        bilingual('Status: current implementation and availability', '公開状態：現在の実装と利用可否'),
-        bilingual('Medical review: reviewed version and date', '医学レビュー：確認したバージョンと日付'),
-        bilingual('Evidence: sources, tests and limitations', '根拠：出典、テスト、限界'),
-      ]),
-    ]),
+    focused
+      ? el('section', {
+          class: 'trust-hero is-model',
+          id: 'content',
+          tabindex: '-1',
+          'data-skip-target': '',
+        }, [
+          el('p', { class: 'trust-kicker' }, [
+            el('span', { class: 'lang-en', text: "This model's record" }),
+            el('span', { class: 'lang-ja', text: 'このモデルの記録' }),
+          ]),
+          el('h1', {}, [
+            el('span', { class: 'lang-en', text: focused.scene.titleEn }),
+            el('span', { class: 'lang-ja', text: focused.scene.titleJa }),
+          ]),
+          el('p', { class: 'trust-lead' }, [
+            el('span', {
+              class: 'lang-en',
+              text: 'What this model is based on, how far it has been checked, and what has not been checked yet.',
+            }),
+            el('span', {
+              class: 'lang-ja',
+              text: 'このモデルが何にもとづいているか、どこまで確かめられているか、まだ確かめられていないことは何かを掲載しています。',
+            }),
+          ]),
+          plainStanding(focused.scene, focused.review),
+          // The way back to the thing the question was about. Back does this
+          // too, and a reader who followed a link from a model and then read
+          // three screenfuls of record should not have to remember that.
+          canOpenFocused
+            ? el('a', { class: 'trust-back-to-model', href: sceneRoute(focused.scene) }, [
+                el('span', { class: 'lang-en', text: `← Back to the ${focused.scene.titleEn} model` }),
+                el('span', { class: 'lang-ja', text: '← 3Dモデルに戻る' }),
+              ])
+            : null,
+        ].filter(Boolean))
+      : el('section', { class: 'trust-hero', id: 'content', tabindex: '-1', 'data-skip-target': '' }, [
+          el('p', { class: 'trust-kicker' }, [
+            el('span', { class: 'lang-en', text: 'Publication & review' }),
+            el('span', { class: 'lang-ja', text: '公開とレビュー' }),
+          ]),
+          el('h1', {}, [
+            el('span', { class: 'lang-en', text: 'Model status and medical review' }),
+            el('span', { class: 'lang-ja', text: 'モデルの公開状態と医学レビュー' }),
+          ]),
+          el('p', { class: 'trust-lead' }, [
+            el('span', {
+              class: 'lang-en',
+              text: 'For each model, we publish its implementation status, medical review, reviewed scope, unresolved limitations and source files.',
+            }),
+            el('span', {
+              class: 'lang-ja',
+              text: '各モデルの実装・公開状態、医学レビュー、確認範囲、未解決の限界、参照ファイルを掲載しています。',
+            }),
+          ]),
+          el('div', { class: 'trust-principles' }, [
+            bilingual('Status: current implementation and availability', '公開状態：現在の実装と利用可否'),
+            bilingual('Medical review: reviewed version and date', '医学レビュー：確認したバージョンと日付'),
+            bilingual('Evidence: sources, tests and limitations', '根拠：出典、テスト、限界'),
+          ]),
+        ]),
+    leadCard ? el('section', { class: 'trust-lead-record' }, [leadCard]) : null,
+    // The ledger, named as what it now is: everything except the record above.
+    focused
+      ? el('h2', { class: 'trust-others-heading' }, [
+          el('span', { class: 'lang-en', text: 'Records for every other model' }),
+          el('span', { class: 'lang-ja', text: 'ほかのモデルの記録' }),
+        ])
+      : null,
     filter.element,
     filter.empty,
     el('section', { class: 'trust-grid' }, cards),
@@ -430,26 +555,27 @@ export function createTrust({ ui, accountButton = null, focusId = null }) {
         ]),
       ]),
     ]),
-  ]);
+  ].filter(Boolean));
 
   ui.append(skipLink(), element);
   languageToggle.init();
-  document.title = 'Medical 3D Lab — model information';
+  // The tab says which record this is. A reader with the model in one tab and
+  // its record in another had two tabs called "model information".
+  document.title = focused
+    ? `Medical 3D Lab — ${focused.scene.titleJa}`
+    : 'Medical 3D Lab — model information';
 
   // Land on the record the route named, the way `#/brain-anatomy?structure=…`
   // opens on a structure instead of making the reader find it again. This
   // reads the card `createTrust` already built rather than looking it up by
   // id, so it works the moment the element exists and does not depend on the
   // document having actually mounted `element` yet.
-  if (focusIndex >= 0) {
-    // The filter starts wide open, but a future default — or a remembered one
-    // — must not be able to hide the record the route asked for. Asking for it
-    // explicitly is one line; discovering that a deep link silently showed an
-    // empty page is a bug report.
-    filter.reset();
-    cards[focusIndex].scrollIntoView?.({ block: 'start' });
-    cards[focusIndex].querySelector?.('summary')?.focus?.();
-  }
+  // No scroll and no focus move any more: the record the route named is the
+  // top of the page, so there is nowhere to be carried to. The filter is still
+  // reset explicitly — it narrows the *other* models, and a remembered or
+  // future default must never be able to make the ledger below look empty to
+  // somebody who arrived by deep link.
+  if (focused) filter.reset({ focus: false });
 
   return { element, filter };
 }

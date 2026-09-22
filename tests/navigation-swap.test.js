@@ -334,7 +334,7 @@ async function shellHarness({ mountDelay = 0 } = {}) {
   globalThis.document.body = new FakeElement('body');
   globalThis.document.documentElement = new FakeElement('html');
   const ui = new FakeElement('div');
-  const windowRef = fakeWindow('#/organs');
+  const windowRef = fakeWindow('#/');
   // Enough of a browser to answer "where was the reader" and "how did they get
   // here". `history.state` is the signal the shell uses to tell Back from a
   // link, because `popstate` fires for both in a real browser (measured).
@@ -345,11 +345,22 @@ async function shellHarness({ mountDelay = 0 } = {}) {
   // whatever was stamped on it. Modelling `state` as one sticky value instead
   // made the first forward navigation read as a traversal — the fake
   // disagreeing with the browser, which was measured to behave this way.
-  const entries = [{ hash: '#/organs', state: null }];
+  const entries = [{ hash: '#/', state: null }];
   let at = 0;
   windowRef.history = {
     get state() { return entries[at].state; },
-    replaceState(next) { entries[at].state = next; },
+    // The URL argument is honoured, because the browser honours it and the
+    // shell uses it: a route with no page of its own is corrected in the
+    // address bar with `replaceState`. A fake that dropped the URL left the
+    // address bar saying one thing and the shell building another, and every
+    // assertion downstream of it passed for the wrong reason.
+    replaceState(next, _title, url) {
+      entries[at].state = next;
+      if (url) {
+        entries[at].hash = url;
+        windowRef.location.hash = url;
+      }
+    },
   };
   windowRef.go = (next) => {
     entries.length = at + 1;
@@ -397,7 +408,7 @@ async function shellHarness({ mountDelay = 0 } = {}) {
   const { installShellNavigation } = await import('../src/app/shellNavigation.js');
   const shell = await installShellNavigation({
     ui,
-    route: { kind: 'explorer' },
+    route: { kind: 'landing' },
     open: true,
     accountButton: null,
     observe: async () => null,
@@ -426,13 +437,13 @@ test('a swap abandoned mid-flight leaves the page it started from, not the one i
   h.windowRef.go('#/trust');
   await settle(5);
   // Back before the Trust surface finished building.
-  h.windowRef.go('#/organs');
+  h.windowRef.go('#/');
   await settle(140);
 
   assert.equal(
     h.doc.documentElement.dataset.route,
-    'explorer',
-    'the address bar says #/organs, so the page must say explorer'
+    'landing',
+    'the address bar says #/, so the page must say landing'
   );
   const trust = h.mounts.filter((m) => m.route === 'trust');
   assert.equal(trust.length, 1, 'the abandoned surface was built');
@@ -474,20 +485,29 @@ test('a destination superseded before its turn is never built at all', async () 
   await settle(2);
   h.windowRef.go('#/terms');
   await settle(2);
-  h.windowRef.go('#/');
+  // Back to the first destination rather than to the page this document opened
+  // on: returning to the opening route is a `stay`, which uncovers what is
+  // already there and queues nothing — a correct answer that would leave this
+  // test measuring an empty queue.
+  h.windowRef.go('#/trust');
   await settle(300);
 
   const built = h.mounts.map((mount) => mount.route);
-  // `explorer` is the mount `installShellNavigation` made for the route this
+  // `landing` is the mount `installShellNavigation` made for the route this
   // document opened on.
-  assert.equal(built[0], 'explorer');
+  assert.equal(built[0], 'landing');
   assert.equal(
     built.includes('legal'),
     false,
     'the middle destination was abandoned before its turn and must never have been built'
   );
-  assert.equal(built.at(-1), 'landing', 'the reader ends on the one they last asked for');
-  assert.equal(h.doc.documentElement.dataset.route, 'landing');
+  // Three mounts, not two: the initial one, the Trust surface that was already
+  // building when the reader moved on, and the one they actually asked for.
+  // Without this the last assertion would pass on the *initial* landing mount
+  // and the test would say nothing about the final hop.
+  assert.equal(built.length, 3, `built ${built.join(', ')}`);
+  assert.equal(built.at(-1), 'trust', 'the reader ends on the one they last asked for');
+  assert.equal(h.doc.documentElement.dataset.route, 'trust');
   assert.equal(h.windowRef.location.reloads, 0, 'and nothing fell back to a document load');
 
   // Whatever was built and not wanted is gone; the live one is not.
@@ -586,7 +606,7 @@ test('a link to a page visited before still lands at the top', async () => {
   h.windowRef.scrollY = 1800;
 
   // A link away from it: this is what records 1800 against `#/trust`.
-  h.windowRef.go('#/organs');
+  h.windowRef.go('#/privacy');
   await settle(60);
   assert.equal(h.windowRef.scrollY, 0);
 
@@ -595,11 +615,11 @@ test('a link to a page visited before still lands at the top', async () => {
   await settle(60);
   assert.equal(h.windowRef.scrollY, 0, 'a link is not a resume');
 
-  // While Back to the model index still is one, so the memory is doing its job
-  // rather than simply being empty.
+  // While Back to the privacy document still is one, so the memory is doing its
+  // job rather than simply being empty.
   h.windowRef.back();
   await settle(60);
-  assert.equal(h.windowRef.scrollY, 0, 'the model index was left at the top');
+  assert.equal(h.windowRef.scrollY, 0, 'the privacy document was left at the top');
   h.restore();
 });
 
@@ -615,7 +635,7 @@ test('the shell stamps its entry without discarding state somebody else wrote', 
   h.windowRef.history.replaceState({ ...h.windowRef.history.state, somebodyElse: 'kept' });
 
   // Leave and come back, so the shell stamps that same entry a second time.
-  h.windowRef.go('#/organs');
+  h.windowRef.go('#/privacy');
   await settle(60);
   h.windowRef.back();
   await settle(60);
@@ -679,13 +699,13 @@ test('the ground changes when the page does, not when the build starts', async (
   // publication record turned a dark page pale underneath text written for a
   // dark page, for longer than the blank frame the swap was built to remove.
   const h = await shellHarness({ mountDelay: 60 });
-  assert.equal(h.doc.documentElement.dataset.route, 'explorer', 'the initial mount applies its own');
+  assert.equal(h.doc.documentElement.dataset.route, 'landing', 'the initial mount applies its own');
 
   h.windowRef.go('#/trust');
   await settle(25);
   assert.equal(
     h.doc.documentElement.dataset.route,
-    'explorer',
+    'landing',
     'mid-build the ground still belongs to the surface on screen'
   );
 

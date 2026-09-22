@@ -72,7 +72,12 @@ export const VIEWPORTS = [
  */
 export const SURFACES = [
   { id: 'landing', route: '#/', label: 'Landing' },
-  { id: 'explorer', route: '#/organs', label: 'Explorer' },
+  // Kept in the matrix although the beta corrects it: `#/organs` is a route
+  // that has been shipped, shared and crawled, and what a visitor following an
+  // old link arrives at is worth measuring at every width. `redirectsTo` is
+  // what the address bar is expected to read once the page has settled — see
+  // `src/app/routeRedirects.js` for why, and for the day it goes away.
+  { id: 'explorer', route: '#/organs', redirectsTo: '#/', label: 'Explorer (redirected)' },
   { id: 'lab', route: '#/lab', label: 'Lab', locked: true },
   { id: 'trust', route: '#/trust', label: 'Trust' },
   { id: 'terms', route: '#/terms', label: 'Terms' },

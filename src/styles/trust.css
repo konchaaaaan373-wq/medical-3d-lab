@@ -19,6 +19,85 @@
 .trust-principles { margin-top: 30px; display: grid; gap: 8px; color: #2e3b3f; font-size: 0.9rem; }
 .trust-principles > span::before { content: '— '; color: #8d6d4b; }
 
+/* ---- One model's record, when the route named one --------------------------
+   `#/trust?model=<slug>` is pressed from inside a model and asks about that
+   model. The heading is therefore the model's name, at a size that does not
+   shout over the record under it — a 4.8rem headline is right for a page
+   called "model status and medical review" and wrong for one called "触れて学ぶ
+   脳の解剖", which the reader can already see on the model they came from. */
+.trust-hero.is-model {
+  padding-bottom: 26px;
+}
+
+.trust-hero.is-model h1 {
+  font-size: clamp(1.7rem, 3.6vw, 2.6rem);
+  line-height: 1.12;
+  letter-spacing: -0.03em;
+}
+
+.trust-hero.is-model .trust-lead {
+  margin-top: 16px;
+}
+
+/* What the two badges mean, in a sentence. Sized as body text and not as a
+   note: it is the first thing on the page that a reader who has not learned
+   this product's vocabulary can actually use. */
+.trust-standing {
+  max-width: 760px;
+  margin: 18px 0 0;
+  padding: 14px 16px;
+  border-left: 3px solid #8d6d4b;
+  border-radius: 0 8px 8px 0;
+  background: rgba(141, 109, 75, 0.07);
+  color: #2e3b3f;
+  line-height: 1.7;
+}
+
+.trust-back-to-model {
+  display: inline-flex;
+  align-items: center;
+  /* WCAG 2.5.8: this is a primary way out of a long reading page. */
+  min-height: 44px;
+  margin-top: 20px;
+  padding: 0 16px;
+  border: 1px solid rgba(28, 37, 40, 0.22);
+  border-radius: 999px;
+  background: #ffffff;
+  color: #1c2528;
+  font-size: 0.92rem;
+  font-weight: 620;
+  text-decoration: none;
+}
+
+.trust-back-to-model:hover {
+  border-color: rgba(28, 37, 40, 0.4);
+}
+
+.trust-back-to-model:focus-visible {
+  outline: 2px solid #8d6d4b;
+  outline-offset: 2px;
+}
+
+.trust-lead-record {
+  max-width: 1040px;
+  margin: 0 auto 38px;
+  padding: 0 28px;
+}
+
+/* The ledger under the record, introduced as what it now is. It is a boundary
+   as much as a heading — without it the seventy other models read as a
+   continuation of the one record above them. */
+.trust-others-heading {
+  max-width: 1040px;
+  margin: 0 auto;
+  padding: 26px 28px 0;
+  border-top: 1px solid rgba(28, 37, 40, 0.14);
+  font-size: 1.05rem;
+  font-weight: 620;
+  letter-spacing: -0.01em;
+  color: #2e3b3f;
+}
+
 
 .trust-grid { max-width: 1040px; margin: 0 auto; padding: 0 28px; display: grid; gap: 16px; }
 
@@ -86,6 +165,9 @@
 
 @media (max-width: 720px) {
   .trust-hero { padding: 46px 18px 34px; }
+  .trust-hero.is-model { padding-top: 34px; padding-bottom: 20px; }
+  .trust-lead-record { padding: 0 14px; margin-bottom: 26px; }
+  .trust-others-heading { padding: 20px 14px 0; }
     .trust-grid { padding: 0 14px; }
   .trust-card-summary { display: block; padding: 18px 20px; }
   .trust-card-badges { margin-top: 10px; }

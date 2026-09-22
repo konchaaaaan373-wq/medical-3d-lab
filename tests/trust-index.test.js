@@ -178,23 +178,75 @@ test('Trust: a route naming a model opens only that model\'s section', () => {
   });
 });
 
-test('Trust: a route naming a model also moves focus to that model\'s summary', () => {
-  // The TOC click handler already moves focus to the summary it opens
-  // (`trustTocItem`'s click handler, above); landing on `#/trust?model=<slug>`
-  // directly must do the same, or a keyboard/screen-reader visitor who follows
-  // a shared link lands on an opened card with focus left on `<body>`.
+test("Trust: a route naming a model puts that model's record first, as the skip target", () => {
+  // This used to move focus to the opened card's `<summary>`, because the card
+  // was the seventy-first thing on the page and a keyboard or screen-reader
+  // visitor who followed a shared link would otherwise land on `<body>` above
+  // seven thousand pixels of other people's records.
+  //
+  // The record is now the top of the page, so there is nowhere to carry
+  // anybody to — and that is the stronger guarantee, so it is what is asserted
+  // here: the heading names *this* model, the skip target is the record rather
+  // than the ledger, and the ledger that follows is introduced as the other
+  // models. Focus on arrival is then the shell's ordinary
+  // `focusSurfaceStart`, which finds `[data-skip-target]` — this element.
   withFakeBrowser(() => {
     const focused = PUBLIC_SCENES[PUBLIC_SCENES.length - 1];
     const element = mountTrust({ focusId: focused.id });
-    const focusedId = `trust-${focused.slug}`;
-    const focusedCard = findByClass(element, 'trust-card').find((card) => card.getAttribute('id') === focusedId);
 
-    // `assert.equal`/`assert.deepEqual` would try to diff two whole
-    // `FakeElement` subtrees on failure (and time out doing it — see the
-    // cycles `parentElement`/`classList` create), so compare identity as a
-    // plain expression instead, the same way `target.open === true` above
-    // stays a primitive comparison.
-    assert.ok(document.activeElement === focusedCard.querySelector('summary'), 'focus must land on the opened card\'s summary');
+    const hero = findByClass(element, 'trust-hero')[0];
+    assert.ok(hero, 'the page still opens with a hero');
+    assert.equal(hero.classList.contains('is-model'), true, 'and it is this model\'s, not the ledger\'s');
+    assert.equal(hero.getAttribute('data-skip-target'), '', 'skipping to content must reach the record');
+    assert.equal(hero.getAttribute('tabindex'), '-1', 'so the shell can put focus on it');
+
+    const heading = hero.querySelector('h1');
+    const names = findByClass(heading, 'lang-ja').map((node) => node.textContent);
+    assert.deepEqual(names, [focused.titleJa], 'the heading is the model, not "model status and medical review"');
+
+    // And the record itself is above the ledger, not inside it.
+    const lead = findByClass(element, 'trust-lead-record')[0];
+    assert.ok(lead, 'the focused record has its own section');
+    const inLead = findByClass(lead, 'trust-card');
+    assert.equal(inLead.length, 1);
+    assert.equal(inLead[0].getAttribute('id'), `trust-${focused.slug}`);
+    assert.equal(inLead[0].getAttribute('open'), '', 'and it is open, because it is what was asked for');
+
+    // Not also left in the list below it: one record, one place.
+    const grid = findByClass(element, 'trust-grid')[0];
+    assert.equal(
+      findByClass(grid, 'trust-card').some((card) => card.getAttribute('id') === `trust-${focused.slug}`),
+      false,
+      'the focused record must be moved out of the ledger, not copied above it'
+    );
+    assert.ok(findByClass(element, 'trust-others-heading')[0], 'and the ledger says what it now is');
+  });
+});
+
+test('Trust: the record a reader was sent to says in words what its badges mean', () => {
+  // `Status: Alpha` and `Pending` are this repository's vocabulary and they
+  // stay — the maturity axis and the clinical-review axis are deliberately
+  // separate. Measured, though, the first screenful of the answer to "what is
+  // this model based on" was those four words and a search box.
+  withFakeBrowser(() => {
+    const element = mountTrust({ focusId: PUBLIC_SCENES[0].id });
+    const standing = findByClass(element, 'trust-standing')[0];
+    assert.ok(standing, 'the record leads with a sentence, not only with badges');
+    const ja = findByClass(standing, 'lang-ja')[0]?.textContent ?? '';
+    assert.ok(ja.includes('公開中') || ja.includes('開発中'), `says whether it can be opened: ${ja}`);
+    assert.ok(ja.includes('レビュー'), `and what the review state means: ${ja}`);
+  });
+});
+
+test('Trust with no model named is unchanged: the ledger, and nothing promoted', () => {
+  withFakeBrowser(() => {
+    const element = mountTrust();
+    assert.deepEqual(findByClass(element, 'trust-lead-record'), []);
+    assert.deepEqual(findByClass(element, 'trust-others-heading'), []);
+    assert.deepEqual(findByClass(element, 'trust-standing'), []);
+    const hero = findByClass(element, 'trust-hero')[0];
+    assert.equal(hero.classList.contains('is-model'), false);
+    assert.equal(findByClass(findByClass(element, 'trust-grid')[0], 'trust-card').length, PUBLIC_SCENES.length);
   });
 });
 

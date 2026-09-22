@@ -35,9 +35,11 @@ import './styles/phone-touch-targets.css';
 import { createBuildMarker } from './components/BuildMarker.js';
 import { isDocumentSurface, resolveRoute } from './app/router.js';
 import { openingMessage } from './app/destinationName.js';
+import { takeHandover } from './app/sceneHandover.js';
 import { installDeparture } from './app/departure.js';
 import { looksLikeAuthRedirect } from './access/authRedirect.js';
-import { routeOpen } from './app/releaseGate.js';
+import { betaUnlocked, routeOpen } from './app/releaseGate.js';
+import { redirectFor } from './app/routeRedirects.js';
 import { recordSceneVisit } from './app/sceneLibrary.js';
 import {
   installFinalPagehideCleanup,
@@ -90,9 +92,28 @@ async function boot() {
   // the landing page. A query flag is not a route the way a token fragment is;
   // the hash beside it is still a perfectly good one, and the recovery dialog
   // is a modal that opens over whatever it names.
-  const route = looksLikeAuthRedirect(window.location.hash)
-    ? { kind: 'landing' }
-    : resolveRoute(window.location.hash);
+  const authRedirect = looksLikeAuthRedirect(window.location.hash);
+
+  // A route that no longer has a page of its own is corrected before anything
+  // renders, and corrected in the address bar too — arriving at the landing
+  // page under `#/organs` is the state where the shell's own Home link looks
+  // inert, which is the bug the auth-redirect handling above exists to avoid.
+  //
+  // `replaceState`, not an assignment: this is not a place the reader chose to
+  // leave, so it must not cost them a Back press to get out of. It also does
+  // not fire `hashchange`, so nothing here can loop.
+  if (!authRedirect) {
+    const corrected = redirectFor(window.location.hash, { unlocked: betaUnlocked() });
+    if (corrected) {
+      try {
+        window.history.replaceState(window.history.state, '', corrected);
+      } catch {
+        window.location.hash = corrected;
+      }
+    }
+  }
+
+  const route = authRedirect ? { kind: 'landing' } : resolveRoute(window.location.hash);
   const open = routeOpen(route);
 
   if (open && route.kind === 'scene') recordSceneVisit(route.sceneId);
@@ -207,6 +228,22 @@ async function boot() {
   // veil nobody can see through.
   const veil = document.getElementById('boot-veil') ?? document.createElement('div');
   veil.className = 'loading';
+  // The frame the previous document was showing, if it left one for this hash.
+  //
+  // Painted behind the wait instead of the opaque `--bg` rectangle, so the
+  // reader's eye is never asked to start from nothing: the model they were
+  // looking at stays under the sentence naming the one that is opening, and
+  // the real model cross-fades in over it. See `sceneHandover.js` for why this
+  // is a picture rather than the viewer itself.
+  try {
+    const carried = takeHandover({ hash: window.location.hash });
+    if (carried) {
+      veil.style.setProperty('--handover-image', `url("${carried.image}")`);
+      veil.dataset.handover = '';
+    }
+  } catch (error) {
+    console.warn('[handover] the carried frame could not be painted', error);
+  }
   veil.setAttribute('lang', sceneLanguage);
   veil.setAttribute('role', 'status');
   const veilLabel = document.createElement('span');

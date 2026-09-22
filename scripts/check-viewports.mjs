@@ -453,19 +453,34 @@ function measureInPage({ tolerance, floor, intent, exemptions, inlineLinks, inte
   const scrolledOut = [];
 
   /**
-   * The shell header's own text, against whatever is painted behind it.
+   * The product's own chrome, against whatever is painted behind it.
    *
    * Narrow on purpose. This is not a contrast audit of the product — the
    * surfaces carry pre-existing findings that are somebody else's to decide on,
    * and a check that goes red on them would be switched off within a week.
    *
-   * It is the one element that is now *shared* by five surfaces while taking
-   * its colours from custom properties resolved per route, which is a mistake
-   * waiting to be made once per new surface. It was made immediately: the
-   * locked page kept `locked.css`'s dark ground and was given the pale ground's
-   * dark ink, so the wordmark shipped at 1.44:1 and the nav at 3.26:1, and
-   * every other check on this page passed.
+   * What is in this list is the chrome whose ink is written in one file and
+   * whose ground is decided in another, which is a mistake that can only be
+   * made once per context and has now been made three times:
+   *
+   * - `.shell-header` is shared by five surfaces and takes its colours from
+   *   custom properties resolved per route. The locked page kept
+   *   `locked.css`'s dark ground and was given the pale ground's dark ink, so
+   *   the wordmark shipped at 1.44:1 and the nav at 3.26:1.
+   * - `.title-card` was a dark card when `clinical-review.css` was written;
+   *   the anatomy scenes later moved it to a pale ground, and the ink did not
+   *   follow. The one link to a model's medical basis, and the badge saying
+   *   its clinical review is not complete, were both near-white on near-white
+   *   on every published model.
+   * - `.global-scene-nav` is the fixed header over a renderer whose background
+   *   changes with the inspection mode, so its ink is declared locally — which
+   *   is right, and is the arrangement that has to keep being true.
+   *
+   * These three are the ones this change set made shared. Adding a fourth is
+   * cheap; what is not cheap is the thing all three have in common, which is
+   * that every other check on the page passed while they were unreadable.
    */
+  const CONTRAST_CHROME = ['.shell-header', '.title-card', '.global-scene-nav'];
   const shellContrast = [];
   // Links are counted apart from the rest. Safari does not move focus to a link
   // on Tab unless full keyboard access is on, so on a WebKit run "no link was
@@ -506,30 +521,93 @@ function measureInPage({ tolerance, floor, intent, exemptions, inlineLinks, inte
   {
     const channel = (v) => { const c = v / 255; return c <= 0.03928 ? c / 12.92 : ((c + 0.055) / 1.055) ** 2.4; };
     const luminance = ([r, g, b]) => 0.2126 * channel(r) + 0.7152 * channel(g) + 0.0722 * channel(b);
+    /**
+     * A computed background or text colour, as 0–255 channels plus alpha.
+     *
+     * Two serialisations, because a browser uses both. `rgb()` / `rgba()` is
+     * the familiar one. `color(srgb r g b / a)`, with channels as 0–1 floats,
+     * is what Chromium returns for a `color-mix()` — and this product paints
+     * the scene's title card with `color-mix(in srgb, var(--panel-strong) 82%,
+     * transparent)`.
+     *
+     * Reading only the first form did not fail loudly: it returned null, the
+     * card was skipped as if it painted nothing, and the badge on it was
+     * measured against the page two layers further back. That reported the
+     * model's clinical-review caveat at 3.16:1 on one viewport out of eight —
+     * a finding that looks exactly like a real one and is a parser gap.
+     */
     const rgba = (value) => {
-      const found = String(value).match(/rgba?\(([^)]+)\)/);
+      const text = String(value);
+      const modern = text.match(/color\(srgb\s+([^)]+)\)/);
+      if (modern) {
+        const [channels, alpha = '1'] = modern[1].split('/');
+        const parts = channels.trim().split(/\s+/).map((one) => Number.parseFloat(one));
+        if (parts.length < 3 || parts.some(Number.isNaN)) return null;
+        return { rgb: parts.slice(0, 3).map((one) => one * 255), alpha: Number.parseFloat(alpha) };
+      }
+      const found = text.match(/rgba?\(([^)]+)\)/);
       if (!found) return null;
       const parts = found[1].split(',').map((one) => Number.parseFloat(one));
       return { rgb: parts.slice(0, 3), alpha: parts[3] === undefined ? 1 : parts[3] };
     };
-    // What is actually behind the text: the nearest ancestor that paints
-    // something opaque. A transparent header over a dark page is the case that
-    // matters, and asking the element's own `background-color` answers
-    // `rgba(0,0,0,0)` for it.
+    /**
+     * What is actually behind the text.
+     *
+     * Not "the nearest opaque ancestor", which is what this was: it skipped
+     * every translucent card on the way and measured the text against whatever
+     * was under *them*. On a 3D scene that is the body's grey, and the scene's
+     * title card is `rgba(250, 251, 249, 0.78)` over it — so a label that
+     * measures 5.0:1 against the card it is printed on was reported at 3.31:1
+     * against a colour the reader never sees through it.
+     *
+     * So the translucent layers are composited, innermost last, exactly as the
+     * browser paints them. The walk still ends at the first fully opaque
+     * ancestor, because nothing behind that one contributes.
+     *
+     * What it still cannot see is a `<canvas>`: a WebGL backdrop has no CSS
+     * colour, and chrome that floats over one is measured against the body
+     * beneath it. That is the right approximation here — this product's pale
+     * inspection backdrop and its body grey are close — and it is an
+     * approximation, so a finding on scene chrome is worth confirming in a
+     * screenshot before acting on it.
+     */
     const behind = (element) => {
+      const layers = [];
+      let base = null;
       for (let node = element; node && node !== document.documentElement; node = node.parentElement) {
         const colour = rgba(getComputedStyle(node).backgroundColor);
-        if (colour && colour.alpha > 0.85) return colour.rgb;
+        if (!colour || colour.alpha === 0) continue;
+        if (colour.alpha > 0.99) { base = colour.rgb; break; }
+        layers.push(colour);
       }
-      const root = rgba(getComputedStyle(document.documentElement).backgroundColor);
-      return root && root.alpha > 0 ? root.rgb : [255, 255, 255];
+      if (!base) {
+        const root = rgba(getComputedStyle(document.documentElement).backgroundColor);
+        base = root && root.alpha > 0 ? root.rgb : [255, 255, 255];
+      }
+      // Outermost first: `layers` was filled walking *up*, so painting it in
+      // reverse puts the innermost card on top, which is what the eye sees.
+      let ground = base;
+      for (const layer of layers.reverse()) {
+        ground = layer.rgb.map((v, i) => v * layer.alpha + ground[i] * (1 - layer.alpha));
+      }
+      return ground;
     };
-    const header = document.querySelector('.shell-header');
-    for (const element of header ? header.querySelectorAll('span,a,button') : []) {
+    const chrome = CONTRAST_CHROME.flatMap((selector) => [...document.querySelectorAll(selector)]);
+    for (const element of chrome.flatMap((root) => [...root.querySelectorAll('span,a,button')])) {
       const text = [...element.childNodes].filter((n) => n.nodeType === 3).map((n) => n.textContent.trim()).join('');
       if (!text) continue;
       const style = getComputedStyle(element);
       if (style.display === 'none' || style.visibility === 'hidden') continue;
+      // Inside a collapsed disclosure is not on screen — and Chromium still
+      // gives it a box. Measured: the scene's "情報・設定" details is closed at
+      // 390px, and every span in it returned a 48×14 rect, an `offsetParent`
+      // and a ground of the page behind the card, so six pieces of text
+      // nobody can see were reported at 3.31:1 — while the one real finding
+      // on that viewport had to be picked out from among them.
+      //
+      // `visible()` and the tab walk above both already ask this question.
+      // This loop is the one that did not.
+      if (element.closest('details:not([open])')) continue;
       const box = element.getBoundingClientRect();
       if (!box.width || !box.height) continue;
       const ink = rgba(style.color);
@@ -1686,6 +1764,21 @@ try {
         await page.waitForTimeout(surface.needsRenderer ? 800 : 300);
         await lifecycleTrace?.snapshot('surface-ready-for-measurement');
 
+        // A route that declares a correction has to have made it, in the
+        // address bar, by the time anything is measured. A redirect that
+        // renders the right page under the wrong hash is the state that leaves
+        // the shell's own Home link looking inert, and it is invisible in a
+        // screenshot.
+        if (surface.redirectsTo) {
+          const landed = await page.evaluate(() => location.hash);
+          if (landed !== surface.redirectsTo) {
+            problems.push(
+              `${where}: ${surface.route} was expected to correct to ` +
+                `"${surface.redirectsTo}" and the address bar says "${landed}"`,
+            );
+          }
+        }
+
         if (lifecycleTrace && diagnosticsWaitDetail && surface.id === 'explorer') {
           await page.waitForFunction(() => {
             const detail = document.querySelector('.landing-demo-viewport')?.dataset.detail;
@@ -1825,7 +1918,13 @@ try {
                 problems.push(`${where}: activating the skip link navigated away`);
               }
               const stillHere = await page.evaluate(() => location.hash);
-              if (surface.route !== '#/' && stillHere !== surface.route) {
+              // A surface that declares a redirect is expected to have moved
+              // before this runs: the correction happens at boot, long before
+              // the skip link. Compared against the declared destination
+              // rather than exempted, so a redirect landing somewhere other
+              // than where it says it lands is still a failure.
+              const expected = surface.redirectsTo ?? surface.route;
+              if (expected !== '#/' && stillHere !== expected) {
                 problems.push(
                   `${where}: the route became "${stillHere}" when the skip link was used`,
                 );
@@ -1892,7 +1991,7 @@ try {
         }
         if (measured.shellContrast?.length) {
           problems.push(
-            `${where}: ${measured.shellContrast.length} piece(s) of shell-header text below WCAG 1.4.3 AA` +
+            `${where}: ${measured.shellContrast.length} piece(s) of chrome text below WCAG 1.4.3 AA` +
               `\n    ${measured.shellContrast.slice(0, 6).join('\n    ')}`,
           );
         }

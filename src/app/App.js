@@ -8,6 +8,7 @@ import { resolveRoute, structureOf } from './router.js';
 import { hasDataOnlySurface } from './dataView.js';
 import { installDeparture } from './departure.js';
 import { openingMessage } from './destinationName.js';
+import { keepFrameForHandover } from './sceneHandover.js';
 import { Playback } from '../utils/Playback.js';
 import { damp } from '../utils/math.js';
 import { ZOOM_RANGE, clampZoom, steppedZoom, zoomedDistance as zoomed } from './zoom.js';
@@ -1969,6 +1970,23 @@ export async function createApp({ stage, ui, onRetryModel = null }) {
     // model that had quietly stopped moving.
     onDepart: () => {
       if (!viewer?.running) return undefined;
+      // The frame goes with the reader, before the loop stops.
+      //
+      // A model needs its own document, so the canvas cannot survive the
+      // navigation — but a picture of it can, and the blank rectangle between
+      // the two documents is the whole of what a reader feels. `snapshot()`
+      // re-renders and reads the buffer in the same task, which is the only
+      // moment it is readable with `preserveDrawingBuffer: false`.
+      try {
+        viewer.snapshot();
+        keepFrameForHandover({
+          canvas: viewer.renderer?.domElement,
+          toHash: window.location.hash,
+          fromSceneId: entry?.id ?? meta?.id ?? null,
+        });
+      } catch (error) {
+        console.warn('[handover] the outgoing frame could not be carried', error);
+      }
       viewer.stop();
       return () => viewer.start();
     },

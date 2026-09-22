@@ -57,13 +57,13 @@ import { inLanguage } from '../utils/language.js';
  */
 
 /**
- * Whether the Experimental destination is offered at all.
+ * Whether the destinations behind the preview unlock are offered at all.
  *
  * `betaUnlocked()` reads `window.location.search`, and `node --test` has no
  * `window` — several surfaces are rendered head-less in the suite, and a
  * header that threw there would make them untestable. Falling back to `false`
  * is the safe direction: when we cannot tell whether the reader has the
- * preview unlock, we do not offer them the locked destination.
+ * preview unlock, we do not offer them the locked destinations.
  */
 function labIsOffered() {
   try {
@@ -87,7 +87,18 @@ const dual = (en, ja) => [
  * different destinations to a reader.
  */
 export const SHELL_DESTINATIONS = Object.freeze([
-  Object.freeze({ id: 'models', route: EXPLORER_ROUTE, en: 'Models', ja: 'モデル' }),
+  // Gated, because in the beta it is not a destination.
+  //
+  // `#/organs` renders the same organ hero, the same organ chips and the same
+  // two actions as the landing page — 23 identical controls in the same order,
+  // measured in a browser. So "Models" and the wordmark beside it went to the
+  // same models, and a reader who pressed one from the other saw the heading
+  // change and nothing else. Two links to one page is how a header stops being
+  // usable as a landmark, so the beta keeps the wordmark and drops this. Under
+  // the preview unlock `#/organs` is the real Explorer — seventy models, search
+  // and filters — and it is a destination again. `routeRedirects.js` holds the
+  // other half of the rule.
+  Object.freeze({ id: 'models', route: EXPLORER_ROUTE, en: 'Models', ja: 'モデル', gated: true }),
   Object.freeze({
     id: 'trust',
     route: MODEL_INFO_ROUTE,

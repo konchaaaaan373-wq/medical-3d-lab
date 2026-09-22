@@ -44,6 +44,7 @@ test('public manifest: the row shape is the contract, and it is fixed', () => {
       'modelCard',
       'modelInfoRoute',
       'organId',
+      'organLabel',
       'organLabelJa',
       'posterKind',
       'posterPath',
@@ -52,7 +53,19 @@ test('public manifest: the row shape is the contract, and it is fixed', () => {
       'titleEn',
       'titleJa',
     ]);
-    for (const key of ['sceneId', 'organId', 'organLabelJa', 'titleJa', 'titleEn', 'route']) {
+    // `organLabel` is in this list, not only in the key set above. A bilingual
+    // control reads both names and renders an empty span for a missing one —
+    // which is how the scene header's model strip shipped with no English
+    // labels at all while every structural check stayed green.
+    for (const key of [
+      'sceneId',
+      'organId',
+      'organLabel',
+      'organLabelJa',
+      'titleJa',
+      'titleEn',
+      'route',
+    ]) {
       assert.equal(typeof model[key], 'string', `${model.sceneId}.${key}`);
       assert.ok(model[key].trim(), `${model.sceneId}.${key} is empty`);
     }

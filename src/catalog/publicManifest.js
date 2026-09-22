@@ -67,6 +67,7 @@ function revisionOf(models) {
  * @typedef {object} PublicModel
  * @property {string} sceneId       catalogue id, stable, appears in the URL
  * @property {string} organId       the organ it is filed under
+ * @property {string} organLabel    the organ's English name, from the taxonomy
  * @property {string} organLabelJa  the organ's Japanese name, from the taxonomy
  * @property {string} titleJa       the model's Japanese name
  * @property {string} titleEn       the model's English name
@@ -88,6 +89,11 @@ const rowFor = (scene) => {
   return Object.freeze({
     sceneId: scene.id,
     organId: scene.organ,
+    // Both languages, because every surface that shows one shows the other:
+    // the row carried only the Japanese name, so a bilingual control built
+    // from the manifest rendered an empty English span and the page silently
+    // lost half its labels at the `lang-en` breakpoint.
+    organLabel: organ?.label ?? scene.organ,
     organLabelJa: organ?.labelJa ?? scene.organ,
     titleJa: scene.titleJa,
     titleEn: scene.titleEn,

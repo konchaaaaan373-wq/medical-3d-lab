@@ -2,7 +2,8 @@ import { installDeparture, needsDocumentUnlessClosed } from './departure.js';
 import { isDocumentSurface, mountDocumentSurface as mountSurface } from './documentSurfaces.js';
 import { destinationSubject, openingMessage } from './destinationName.js';
 import { resolveRoute, sameRoute } from './router.js';
-import { routeOpen } from './releaseGate.js';
+import { betaUnlocked, routeOpen } from './releaseGate.js';
+import { redirectFor } from './routeRedirects.js';
 import { recordSceneVisit } from './sceneLibrary.js';
 
 /**
@@ -296,6 +297,22 @@ export async function installShellNavigation({
     // arrival was reached.
     const traversal = isTraversal();
     const outgoingScroll = windowRef.scrollY ?? 0;
+
+    // A route with no page of its own is corrected here as well as at boot,
+    // and for the same reason: a swap that rendered the landing page while the
+    // address bar still said `#/organs` would leave `stillWanted` — which asks
+    // the address bar — disagreeing with what is on screen for the rest of the
+    // document's life. `replaceState` fires no `hashchange`, so correcting it
+    // queues nothing behind this swap.
+    const corrected = redirectFor(hash, { unlocked: betaUnlocked() });
+    if (corrected) {
+      try {
+        windowRef.history?.replaceState?.(windowRef.history?.state ?? null, '', corrected);
+      } catch {
+        /* the surface below is still the right one; only the address bar lags */
+      }
+      hash = corrected;
+    }
 
     const next = resolveRoute(hash);
     const nextOpen = routeOpen(next);
