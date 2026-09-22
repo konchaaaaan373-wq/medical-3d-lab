@@ -694,10 +694,22 @@ export class HigherBrainFunctionScene {
    * segment stays one mesh and the reach painting below can walk it in order.
    */
   static LINE_TYPES = Object.freeze({
-    [MAPPING.ATLAS]: Object.freeze({ id: 'tract', dash: null, radius: 0.024 }),
-    [MAPPING.COARSE]: Object.freeze({ id: 'coarse', dash: Object.freeze({ on: 4, off: 3 }), radius: 0.019 }),
-    [MAPPING.CONCEPTUAL]: Object.freeze({ id: 'conceptual', dash: Object.freeze({ on: 1, off: 3 }), radius: 0.014 }),
+    [MAPPING.ATLAS]: Object.freeze({ id: 'tract', dash: null, radius: 0.026 }),
+    [MAPPING.COARSE]: Object.freeze({ id: 'coarse', dash: Object.freeze({ on: 3, off: 3 }), radius: 0.018 }),
+    [MAPPING.CONCEPTUAL]: Object.freeze({ id: 'conceptual', dash: Object.freeze({ on: 1, off: 4 }), radius: 0.012 }),
   });
+
+  /**
+   * How long one ring of a dashed segment is, in the scene's own units.
+   *
+   * Fixed in **world** space rather than as a fraction of the segment, because
+   * a fraction gives a short connection short dashes and a long one long
+   * dashes: the same line type then looks like two. At this value a coarse
+   * dash is about 0.1 units on and 0.1 off, which is roughly fifteen pixels at
+   * the scene's default framing — the size at which a dashed line reads as
+   * dashed rather than as a slightly noisy solid one.
+   */
+  static DASH_RING = 0.035;
 
   /** The line type of a step, falling back to the most cautious one. */
   static lineTypeFor(mapping) {
@@ -789,8 +801,11 @@ export class HigherBrainFunctionScene {
   /** One piece of the line, cut out of the whole curve so the path is unchanged. */
   _buildRouteSegment(curve, span) {
     const type = HigherBrainFunctionScene.lineTypeFor(span.step.mapping);
-    const rings = 24;
     const radial = 8;
+    // Enough rings that a dash is a fixed length on screen, and bounded so a
+    // long span does not become a thousand-ring tube.
+    const length = curve.getPoint(span.toAt).distanceTo(curve.getPoint(span.fromAt));
+    const rings = Math.min(96, Math.max(24, Math.round(length / HigherBrainFunctionScene.DASH_RING)));
     const sub = new THREE.CatmullRomCurve3(
       Array.from({ length: rings + 1 }, (unused, index) => curve
         .getPoint(span.fromAt + ((span.toAt - span.fromAt) * index) / rings))

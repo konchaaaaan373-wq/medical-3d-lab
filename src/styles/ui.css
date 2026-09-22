@@ -4259,3 +4259,30 @@
 #ui .metric-group[hidden] {
   display: none;
 }
+
+/* ---------- a legend entry that describes a line ----------
+   Three kinds of connection are drawn as three kinds of line in the 3D, and
+   the legend says which is which. Said in words alone it is a legend a reader
+   has to study; drawn, it is one they can glance at. The widths match the 3D:
+   a tract mesh is the thickest line and a connection with no structure behind
+   it is the thinnest. */
+.legend-dot.is-line {
+  width: 22px;
+  height: 0;
+  border-radius: 0;
+  background: none;
+  align-self: center;
+  flex: none;
+}
+
+.legend-dot.is-line.is-tract {
+  border-top: 3px solid var(--dot);
+}
+
+.legend-dot.is-line.is-coarse {
+  border-top: 2px dashed var(--dot);
+}
+
+.legend-dot.is-line.is-conceptual {
+  border-top: 2px dotted var(--dot);
+}

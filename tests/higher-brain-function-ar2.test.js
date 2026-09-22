@@ -667,6 +667,22 @@ test('AR2-T34: the three line types reach the renderer, and the legend has all t
     else assert.ok(transparent > 0, `${segment.id} has gaps`);
   }
 
+  // The dash is a fixed length in the world, not a fraction of the segment: a
+  // fraction gives a short connection short dashes and a long one long dashes,
+  // and the same line type then looks like two different ones.
+  const dashed = mixed.routeSegments.filter((segment) => segment.dash);
+  assert.ok(dashed.length >= 2, 'more than one dashed piece to compare');
+  const dashLengths = dashed.map((segment) => {
+    const span = mixed.routeCurve.getPoint(segment.toAt).distanceTo(mixed.routeCurve.getPoint(segment.fromAt));
+    return (span / (segment.rings - 1)) * segment.dash.on;
+  });
+  for (const length of dashLengths) {
+    assert.ok(
+      length > HigherBrainFunctionScene.DASH_RING * 0.5 && length < HigherBrainFunctionScene.DASH_RING * 6,
+      `a dash is a plausible length in the world (${length.toFixed(3)})`
+    );
+  }
+
   const legend = HigherBrainFunctionScene.meta.legend.filter((entry) => entry.lineType);
   assert.deepEqual(legend.map((entry) => entry.lineType), ['tract', 'coarse', 'conceptual']);
 });

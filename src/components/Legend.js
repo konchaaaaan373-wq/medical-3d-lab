@@ -3,11 +3,18 @@ import { el } from '../utils/dom.js';
 /**
  * Colour key. Each swatch dims when its species is not yet present, so the
  * legend doubles as a second read-out of where the progression currently is.
+ *
+ * An entry may also declare a `lineType` — `tract`, `coarse` or `conceptual` —
+ * and its swatch is then a **line** drawn the way the scene draws that kind of
+ * line: solid, long-dashed or dotted. A legend whose three entries look
+ * identical is a legend that has to be read to be used, and the whole point of
+ * the distinction it describes is that it can be seen.
  */
 export function createLegend(meta) {
   const items = meta.legend.map((entry) => {
     const dot = el('span', {
-      class: entry.outline ? 'legend-dot is-outline' : 'legend-dot',
+      class: `legend-dot${entry.outline ? ' is-outline' : ''}`
+        + (entry.lineType ? ` is-line is-${entry.lineType}` : ''),
       style: `--dot:${meta.palette[entry.key]}`,
     });
     const node = el('li', { class: 'legend-item' }, [
