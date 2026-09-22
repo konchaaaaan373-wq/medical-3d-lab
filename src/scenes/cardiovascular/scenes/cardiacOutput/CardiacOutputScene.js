@@ -585,6 +585,10 @@ export class CardiacOutputScene {
         valueJa: describe(true),
         unit: '',
         emphasis: true,
+        // One of the four a phone shows without being asked. Which four is a
+        // teaching decision: what you changed, what came out, the pressure it
+        // came out against, and the pressure it cost. The rest is a press away.
+        compact: true,
       });
     }
 
@@ -597,6 +601,7 @@ export class CardiacOutputScene {
         reference: ref ? ref.cardiacOutputLMin.toFixed(1) : undefined,
         unit: 'L/min',
         emphasis: true,
+        compact: true,
       },
       {
         id: 'sv',
@@ -615,6 +620,7 @@ export class CardiacOutputScene {
         reference: ref ? mmHg(ref.meanArterialPressureMmHg) : undefined,
         unit: 'mmHg',
         emphasis: true,
+        compact: true,
       },
       {
         id: 'lvedp',
@@ -627,6 +633,7 @@ export class CardiacOutputScene {
         reference: ref ? mmHg(ref.endDiastolicPressureMmHg) : undefined,
         unit: 'mmHg',
         emphasis: true,
+        compact: true,
       },
       {
         id: 'pvp',

@@ -214,6 +214,140 @@ for (const slug of SLUGS) {
   const hasSlider = (await page.locator('input.slider:not(.slider-sm)').count()) > 0;
   await page.screenshot({ path: join(outDir, `${slug}-baseline.png`) });
 
+  // --- the read-out on a phone ------------------------------------------
+  //
+  // A scene may declare which read-out rows are worth a small screen's space
+  // (`compact: true` on a metric row). Where one does, those rows and the way
+  // to the rest have to be **in the viewport** — not merely in the document,
+  // and not behind a scroll a reader has no reason to try.
+  //
+  // This is here rather than in `verify:ui` because that check drives one
+  // fixed scene (`#/brain-anatomy`) and would not have seen this one. It was
+  // green while `cardiac-output` showed a reader cardiac output with the
+  // filling pressure below the fold — which is the wrong half of what the
+  // scene exists to teach (R152-04).
+  const compactRows = await page.locator(".metrics.has-compact .metric[data-compact='key']").count();
+  if (compactRows > 0) {
+    const desktop = page.viewportSize();
+    // Portrait is what the product currently meets and must not regress.
+    // Landscape is reported and not enforced — see the note where it is
+    // handled below; the reason is recorded as F-192 rather than hidden in a
+    // tolerance.
+    for (const [label, width, height, enforced] of [
+      ['portrait 390x844', 390, 844, true],
+      ['portrait 375x667', 375, 667, true],
+      ['landscape 844x390', 844, 390, false],
+    ]) {
+      await page.setViewportSize({ width, height });
+      await page.waitForTimeout(900);
+      const report = await page.evaluate(({ width, height }) => {
+        const inside = (rect) =>
+          rect.top >= 0 && rect.left >= 0 && rect.bottom <= height && rect.right <= width;
+        const describe = (node) => {
+          const rect = node.getBoundingClientRect();
+          const label = node.querySelector('.metric-label')?.textContent?.trim().slice(0, 24) ?? node.className;
+          // Occlusion, asked only where the answer means anything.
+          //
+          // `elementFromPoint` is a **hit test**, and the scene overlay is
+          // `pointer-events: none` so that a reader can drag the model through
+          // it. Under that, the hit at a row's midpoint is the canvas behind
+          // it however plainly the row is painted on top — the first version
+          // of this reported all four rows "covered" at every width, which is
+          // a property of the overlay rather than of the layout.
+          //
+          // So the test runs only where the element takes pointer events, and
+          // a hit on the row, a descendant or an ancestor counts as clear.
+          const takesPointer = getComputedStyle(node).pointerEvents !== 'none';
+          const hit = takesPointer
+            ? document.elementFromPoint(
+                Math.min(width - 1, Math.max(0, rect.left + rect.width / 2)),
+                Math.min(height - 1, Math.max(0, rect.top + rect.height / 2))
+              )
+            : null;
+          return {
+            label,
+            visible: inside(rect) && rect.width > 0 && rect.height > 0,
+            covered: takesPointer ? !(hit && (node.contains(hit) || hit.contains(node))) : false,
+            occlusionTested: takesPointer,
+            rect: { top: Math.round(rect.top), bottom: Math.round(rect.bottom) },
+          };
+        };
+        const rows = [...document.querySelectorAll(".metrics.has-compact .metric[data-compact='key']")].map(describe);
+        // Geometry, so a failure says what to change rather than only that
+        // something is wrong.
+        const panel = document.querySelector('.metrics.has-compact');
+        const rail = panel?.closest('.rail');
+        const box = (node) => {
+          if (!node) return null;
+          const r = node.getBoundingClientRect();
+          return {
+            top: Math.round(r.top),
+            bottom: Math.round(r.bottom),
+            width: Math.round(r.width),
+            height: Math.round(r.height),
+          };
+        };
+        const geometry = {
+          panel: box(panel),
+          rail: box(rail),
+          railScrollHeight: rail ? Math.round(rail.scrollHeight) : null,
+          console: box(document.querySelector('.model-controls.is-primary') ?? document.querySelector('.console')),
+        };
+        const more = document.querySelector('.metrics.has-compact .metrics-more');
+        const canvas = document.querySelector('canvas');
+        const canvasRect = canvas?.getBoundingClientRect();
+        return {
+          rows,
+          more: more ? describe(more) : null,
+          geometry,
+          // How much of the 3D a reader can actually see: the panels sit over
+          // it, so "the model is not under the read-out" is part of this.
+          canvasVisibleHeight: canvasRect
+            ? Math.max(0, Math.min(height, canvasRect.bottom) - Math.max(0, canvasRect.top))
+            : 0,
+          viewportHeight: height,
+        };
+      }, { width, height });
+
+      const where = JSON.stringify(report.geometry);
+      // On a landscape phone the top bar collapses to nothing — the rail
+      // measured 0px tall while the panel inside it was 162 — so the read-out
+      // is clipped whatever it declares. That is the shared layout rather than
+      // this scene, and fixing it is a decision about where a console and a
+      // read-out go when the screen is 390px tall. Reported every run so it
+      // cannot be forgotten, not enforced so the instrument stays honest about
+      // what it is asking of whom.
+      const note = (line) => console.log(`  ${slug}: ${line} [reported, not enforced — F-192]`);
+      const report_ = enforced ? (line) => problems.push(line) : note;
+      for (const row of report.rows) {
+        if (!row.visible) {
+          report_(
+            `${label}: the read-out row “${row.label}” is outside the viewport ` +
+              `(${row.rect.top}..${row.rect.bottom}) — ${where}`
+          );
+        } else if (row.covered) {
+          report_(
+            `${label}: the read-out row “${row.label}” is clipped or covered ` +
+              `(${row.rect.top}..${row.rect.bottom}) — ${where}`
+          );
+        }
+      }
+      if (report.more && !report.more.visible) {
+        report_(`${label}: the way to the rest of the figures is outside the viewport`);
+      }
+      if (report.canvasVisibleHeight < report.viewportHeight * 0.25) {
+        report_(
+          `${label}: only ${Math.round(report.canvasVisibleHeight)}px of the model is on screen` +
+            ` out of ${report.viewportHeight}`
+        );
+      }
+      await page.screenshot({ path: join(outDir, `${slug}-readout-${width}x${height}.png`) });
+    }
+    if (desktop) await page.setViewportSize(desktop);
+    await page.waitForTimeout(700);
+  }
+
+
   const controlLocator = page.locator('.model-control input[type="range"]');
   const hasModelControls = (await controlLocator.count()) > 0;
   // A scene whose subject is a set of independent conditions rather than a

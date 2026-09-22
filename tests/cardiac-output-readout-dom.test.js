@@ -145,3 +145,54 @@ test('read-out: the panel drops rows a scene stops sending, whatever the scene',
   void FakeElement;
   });
 });
+
+
+test('read-out: a phone gets four rows and a way to the rest', async () => {
+  await withDocument(async () => {
+    const panel = createMetricsPanel();
+    const session = new ExperimentSession();
+    panel.update(await readoutFor(session));
+
+    // The scene declares which rows survive a small screen. Four: what was
+    // changed, what came out, the pressure it came out against, and the
+    // pressure it cost. The stylesheet decides at what width that applies;
+    // what is asserted here is the declaration and the affordance.
+    const compact = panel.element.children
+      .filter((node) => node.dataset?.compact === 'key')
+      .map((node) => findByClass(node, 'metric-label')[0].children[1].textContent);
+    assert.deepEqual(compact, ['変えたもの', '心拍出量 CO', '平均動脈圧 MAP', '左室拡張末期圧']);
+
+    // Output without the pressure it cost is the wrong half of this scene's
+    // teaching, so the two travel together.
+    assert.ok(compact.includes('心拍出量 CO') && compact.includes('左室拡張末期圧'));
+
+    assert.ok(panel.element.classList.contains('has-compact'), 'the panel knows it has a compact set');
+
+    const [button] = findByClass(panel.element, 'metrics-more');
+    assert.ok(button, 'and offers the rest');
+    assert.equal(button.getAttribute('aria-expanded'), 'false');
+    assert.equal(button.children[1].textContent, 'すべての数値');
+    assert.equal(panel.element.children[panel.element.children.length - 1], button, 'it comes last');
+
+    button.click();
+    assert.ok(panel.element.classList.contains('is-expanded'));
+    assert.equal(button.getAttribute('aria-expanded'), 'true');
+    assert.equal(button.children[1].textContent, '主要な数値だけ');
+
+    // Still there after an update, and still last.
+    panel.update(await readoutFor(session));
+    assert.equal(panel.element.children[panel.element.children.length - 1], button);
+    assert.ok(panel.element.classList.contains('is-expanded'), 'expanding is not undone by a new solve');
+  });
+});
+
+test('read-out: a scene that declares no compact rows is untouched', async () => {
+  await withDocument(async () => {
+    const panel = createMetricsPanel();
+    const row = (id) => ({ id, label: id, labelJa: id, value: 1, unit: '' });
+    panel.update([row('a'), row('b')]);
+    assert.equal(panel.element.classList.contains('has-compact'), false);
+    assert.equal(findByClass(panel.element, 'metrics-more').length, 0, 'no affordance nobody asked for');
+    assert.equal(panel.element.children.length, 2);
+  });
+});
