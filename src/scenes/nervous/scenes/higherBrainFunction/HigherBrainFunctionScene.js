@@ -745,7 +745,7 @@ export class HigherBrainFunctionScene {
     this.routePositions = points;
     this.routeCurve = null;
     if (points.length === 0) {
-      this.pulse.visible = false;
+      this._clearRunMarkers();
       return;
     }
     // Attending to one side of space is one structure doing one job: there is
@@ -1013,9 +1013,37 @@ export class HigherBrainFunctionScene {
     return ring % period < segment.dash.on ? 1 : 0;
   }
 
+  /**
+   * Nothing of the last run left on screen.
+   *
+   * The three markers are separate objects from the route line, so disposing
+   * the line and hiding the pulse left the other two exactly as the previous
+   * frame had them: switch away from a task while the word is being said, or
+   * while the answer is coming back, and that flash stayed lit over a task that
+   * has no route at all. `_applyCycle` returned early in the same state and
+   * cleared nothing, so the next frame did not fix it either.
+   *
+   * Opacity as well as visibility, because a material carries its own value and
+   * a mesh made visible again a moment later would come back mid-fade.
+   */
+  _clearRunMarkers() {
+    for (const flash of [this.stimulus, this.answer]) {
+      if (!flash) continue;
+      flash.mesh.visible = false;
+      flash.material.opacity = 0;
+      flash.mesh.scale.setScalar(1);
+    }
+    if (this.pulse) this.pulse.visible = false;
+  }
+
   _applyCycle() {
     const points = this.routePositions ?? [];
-    if (!this.pulse || points.length === 0) return;
+    if (!this.pulse || points.length === 0) {
+      // Not just a return: there is nothing to draw, and "nothing to draw" has
+      // to be drawn too.
+      this._clearRunMarkers();
+      return;
+    }
     const { DISPLAY } = HigherBrainFunctionScene;
     const phase = this.cyclePhase();
     const display = this.routeDisplay();
@@ -1053,9 +1081,16 @@ export class HigherBrainFunctionScene {
     // start while the word is being said, and stays where it stopped while the
     // answer is, or is not, given. A route with nothing at zero on it runs the
     // whole way however dim it is — 0.2 is not a stop.
+    // No floor. It used to be `Math.max(reach, 0.02)`, so a signal stopped at
+    // the very first step — the entry process destroyed — was still drawn two
+    // per cent of the way along the route. That is a small distance and a large
+    // claim: the whole point of the blocked state is that the word did not get
+    // past the step that stopped it. A floor on how *bright* a faint answer is
+    // drawn is a display convenience; a floor on how far a stopped signal
+    // travels is a different picture from the one the model computed.
     const travelled = asking
       ? 0
-      : Math.max(display.reach, 0.02) * (phase.id === 'travelling' ? phase.through : 1);
+      : display.reach * (phase.id === 'travelling' ? phase.through : 1);
     this.pulse.visible = display.kind !== DISPLAY.NOT_MODELLED;
     this.pulse.position.copy(this.routeCurve.getPoint(clamp(travelled)));
     this._paintRouteReach(display.kind === DISPLAY.NOT_MODELLED ? 0 : display.reach, lit);
