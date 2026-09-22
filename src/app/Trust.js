@@ -164,6 +164,34 @@ function trustFilter(entries, cardsById) {
     'aria-live': 'polite',
   });
 
+  /**
+   * What the page says when the filter matches nothing.
+   *
+   * Without it, narrowing to zero left a heading, a search box and seven
+   * thousand pixels of nothing, with the only explanation a grey line reading
+   * `71件中 0件`. A reader who mistypes a model name gets a page that looks
+   * broken, and the control that caused it is above the fold while the empty
+   * space is below.
+   *
+   * It offers the way out rather than only describing the state: the button is
+   * the same `reset()` a deep link uses, so there is one way to undo a filter.
+   */
+  const clearButton = el(
+    'button',
+    { class: 'trust-empty-clear', type: 'button', on: { click: () => reset() } },
+    [
+      el('span', { class: 'lang-en', text: 'Show every model' }),
+      el('span', { class: 'lang-ja', text: 'すべてのモデルを表示' }),
+    ]
+  );
+  const empty = el('div', { class: 'trust-empty', hidden: '' }, [
+    el('p', { class: 'trust-empty-line' }, [
+      el('span', { class: 'lang-en', text: 'No model matches that.' }),
+      el('span', { class: 'lang-ja', text: '該当するモデルがありません。' }),
+    ]),
+    clearButton,
+  ]);
+
   const buttons = SCOPES.map((item) =>
     el(
       'button',
@@ -213,12 +241,22 @@ function trustFilter(entries, cardsById) {
       el('span', { class: 'lang-en', text: `${shown} of ${entries.length} models` }),
       el('span', { class: 'lang-ja', text: `${entries.length}件中 ${shown}件` })
     );
+    empty.hidden = shown > 0;
+  }
+
+  function reset() {
+    field.value = '';
+    scope = 'all';
+    for (const [id, button] of pressed) button.setAttribute('aria-pressed', String(id === 'all'));
+    apply();
+    field.focus?.();
   }
 
   field.addEventListener('input', apply);
   apply();
 
   return {
+    empty,
     element: el('div', { class: 'trust-filter' }, [
       el('label', { class: 'trust-filter-label', for: 'trust-filter' }, [
         el('span', { class: 'lang-en', text: 'Find a model' }),
@@ -237,12 +275,7 @@ function trustFilter(entries, cardsById) {
       count,
     ]),
     /** Undo any narrowing, so a deep link to one record is never filtered out. */
-    reset() {
-      field.value = '';
-      scope = 'all';
-      for (const [id, button] of pressed) button.setAttribute('aria-pressed', String(id === 'all'));
-      apply();
-    },
+    reset,
   };
 }
 
@@ -372,6 +405,7 @@ export function createTrust({ ui, accountButton = null, focusId = null }) {
       ]),
     ]),
     filter.element,
+    filter.empty,
     el('section', { class: 'trust-grid' }, cards),
     // `tabindex="-1"` so the shared-section jump above can move focus here,
     // the same reason `.trust-hero` (`id="content"`) already carries one.

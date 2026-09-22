@@ -201,7 +201,10 @@
 .trust-filter-count {
   margin: 0;
   flex-basis: 100%;
-  color: var(--reading-faint);
+  /* `--reading-muted`, not `--reading-faint`: measured at 3.59:1 on this ground
+     at 13.4px, which is below WCAG 1.4.3 AA. It is the only thing that tells a
+     reader the filter did anything, so it is not a whisper. */
+  color: var(--reading-muted);
   font-size: 0.84rem;
 }
 
@@ -216,4 +219,53 @@
   .trust-filter {
     padding: 0 14px;
   }
+}
+
+/* Nothing matched. Shown where the records would have been, not tucked under
+   the control that emptied the page. */
+.trust-empty {
+  max-width: 1040px;
+  margin: 0 auto 28px;
+  padding: 26px 28px;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 18px;
+}
+
+.trust-empty[hidden] {
+  display: none;
+}
+
+.trust-empty-line {
+  margin: 0;
+  color: var(--reading-ink);
+  font-size: 1rem;
+}
+
+.trust-empty-clear {
+  min-height: 44px;
+  padding: 0 16px;
+  border: 1px solid var(--reading-accent);
+  border-radius: 999px;
+  background: transparent;
+  color: var(--reading-accent-strong);
+  font: inherit;
+  font-size: 0.9rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.trust-empty-clear:hover {
+  background: var(--reading-accent);
+  color: #ffffff;
+}
+
+.trust-empty-clear:focus-visible {
+  outline: 2px solid var(--reading-accent);
+  outline-offset: 2px;
+}
+
+@media (max-width: 720px) {
+  .trust-empty { padding: 20px 14px; }
 }

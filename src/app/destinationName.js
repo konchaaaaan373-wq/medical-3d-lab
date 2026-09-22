@@ -80,10 +80,18 @@ export function destinationSubject(hash, language = 'ja') {
  *
  * @param {string} hash
  * @param {'en'|'ja'} language
+ * @param {{open?: boolean}} [options] `open: false` when the release gate holds
+ *   this route closed, so the sentence does not promise a model.
  * @returns {string|null}
  */
-export function openingMessage(hash, language = 'ja') {
+export function openingMessage(hash, language = 'ja', { open = true } = {}) {
   const subject = destinationSubject(hash, language);
   if (!subject) return null;
-  return OPENING[language === 'en' ? 'en' : 'ja'](subject);
+  const ja = language !== 'en';
+  // A model the release has not opened does not open: the reader gets the "in
+  // development" page. Saying "opening the lungs model" for four seconds and
+  // then showing something else is the mislabelled link this change set out to
+  // remove, with a delay on it.
+  if (!open) return ja ? `${subject}（準備中）` : `${subject} — in development`;
+  return OPENING[ja ? 'ja' : 'en'](subject);
 }

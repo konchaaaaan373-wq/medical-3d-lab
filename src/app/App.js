@@ -3,8 +3,8 @@ import { Viewer } from './Viewer.js';
 import { loadScene, sceneById, systemsWithScenes, resolveSceneId } from './sceneRegistry.js';
 import { SCENES, structureFunctionScene } from '../catalog/index.js';
 import { RELEASED_SCENES } from '../catalog/release.js';
-import { betaUnlocked, sceneOpen } from './releaseGate.js';
-import { structureOf } from './router.js';
+import { betaUnlocked, routeOpen, sceneOpen } from './releaseGate.js';
+import { resolveRoute, structureOf } from './router.js';
 import { hasDataOnlySurface } from './dataView.js';
 import { installDeparture } from './departure.js';
 import { openingMessage } from './destinationName.js';
@@ -1956,7 +1956,9 @@ export async function createApp({ stage, ui, onRetryModel = null }) {
     // What is opening, not that something is. The arriving document paints the
     // same sentence from the same function, so the two halves of a model
     // switch read as one wait rather than as a false start.
-    describe: (hash) => openingMessage(hash, ui.dataset.lang === 'en' ? 'en' : 'ja'),
+    describe: (hash) => openingMessage(hash, ui.dataset.lang === 'en' ? 'en' : 'ja', {
+      open: routeOpen(resolveRoute(hash)),
+    }),
     // This scene renders until its document goes away. On a model switch that
     // leaves the outgoing model drawing frames nobody can see while the
     // incoming document builds a second WebGL context and a second atlas.

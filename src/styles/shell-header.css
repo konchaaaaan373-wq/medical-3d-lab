@@ -49,13 +49,30 @@
   --shell-height: 60px;
 }
 
-/* The landing page keeps its dark ground, and the header keeps its structure.
-   Only the four colours change. */
-html[data-route='landing'] {
+/* Two surfaces keep a dark ground, and the header keeps its structure on both.
+   Only the four colours change.
+
+   The locked surface is here because `locked.css` paints `.locked-surface` with
+   `var(--bg)` — it is a closed door, not a workbench, and it is deliberately
+   the same kind of place as the front door. Leaving it out of this block while
+   adding it to the light-ground rule below is exactly what shipped a header of
+   1.44:1 text over a dark panel, and a horizontal seam where the panel ended
+   and the page's new pale ground began. It was the one surface of the five
+   that was never looked at. */
+html[data-route='landing'],
+html[data-route='locked'] {
   --shell-ink: #eaf2ff;
   --shell-muted: #a7b6ce;
   --shell-rule: rgba(176, 198, 229, 0.18);
   --shell-accent: #f04f69;
+}
+
+/* The locked surface's own panel is `var(--bg)`; the page behind it has to
+   agree, or a short page shows the join. */
+html[data-route='locked'],
+html[data-route='locked'] body {
+  background: var(--bg);
+  color: var(--ink);
 }
 
 /* ---------------------------------------------------------------- the header */
@@ -235,9 +252,7 @@ html[data-route='explorer'] body,
 html[data-route='trust'],
 html[data-route='trust'] body,
 html[data-route='legal'],
-html[data-route='legal'] body,
-html[data-route='locked'],
-html[data-route='locked'] body {
+html[data-route='legal'] body {
   background: var(--reading-bg);
   color: var(--reading-ink);
 }

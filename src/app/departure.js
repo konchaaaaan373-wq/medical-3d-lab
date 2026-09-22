@@ -97,6 +97,26 @@ const COPY = {
 export const routeNeedsDocument = (route) => route?.kind === 'scene';
 
 /**
+ * The same question, asked of a route the release gate may have closed.
+ *
+ * A scene route that the beta has not opened does not render a scene: it
+ * renders the "in development" page, which is plain DOM with no renderer in
+ * it. Treating it as a scene anyway made the two ways off that page — "see the
+ * published models" and "home" — each cost a document load for a context that
+ * was never built. It is the page 67 of the 71 models show, so it is the most
+ * reloaded surface in the product for the least reason.
+ *
+ * Injected rather than imported, because `hashChangeAction` is pure and
+ * `routeOpen` reads `window`. The caller that has a browser supplies this one;
+ * the caller that does not gets the conservative default, which is never wrong
+ * — only slower.
+ *
+ * @param {(route: {kind?: string}) => boolean} isOpen
+ */
+export const needsDocumentUnlessClosed = (isOpen) => (route) =>
+  routeNeedsDocument(route) && isOpen(route);
+
+/**
  * What a hash change means for this document. The whole policy, in one place.
  *
  * Four answers, not two. Modelling it as "is this a departure?" reads an
@@ -116,18 +136,24 @@ export const routeNeedsDocument = (route) => route?.kind === 'scene';
  *
  * @param {string} next the hash now
  * @param {string} shown the hash this document is rendering
- * @param {{canSwap?: boolean}} [options] `canSwap` is false when the shell has
- *   no mount table to swap with, which makes every departure a reload again.
+ * @param {{canSwap?: boolean, needsDocument?: (route: object) => boolean}} [options]
+ *   `canSwap` is false when the shell has no mount table to swap with, which
+ *   makes every departure a reload again. `needsDocument` lets a caller that
+ *   can ask the release gate say that a *closed* scene route is plain DOM.
  * @returns {'ignore'|'stay'|'swap'|'leave'}
  */
-export function hashChangeAction(next, shown, { canSwap = false } = {}) {
+export function hashChangeAction(
+  next,
+  shown,
+  { canSwap = false, needsDocument = routeNeedsDocument } = {}
+) {
   if (isInPageAnchor(next)) return 'ignore';
   if (sameRoute(next, shown)) return 'stay';
   if (!canSwap) return 'leave';
   // Both sides, not just the destination: leaving a scene has to dispose one
   // as surely as arriving at one has to build one.
-  if (routeNeedsDocument(resolveRoute(next))) return 'leave';
-  if (routeNeedsDocument(resolveRoute(shown))) return 'leave';
+  if (needsDocument(resolveRoute(next))) return 'leave';
+  if (needsDocument(resolveRoute(shown))) return 'leave';
   return 'swap';
 }
 
@@ -142,6 +168,8 @@ export function hashChangeAction(next, shown, { canSwap = false } = {}) {
  * @param {(hash: string) => (string|null)} [options.describe] what the veil
  *   should say is opening, given the destination hash. Returning null keeps
  *   the generic wording.
+ * @param {(route: object) => boolean} [options.needsDocument] see
+ *   `hashChangeAction`; the shell supplies one that knows about the release gate.
  * @param {((hash: string) => Promise<boolean>)|null} [options.onSwap] mount the
  *   destination inside this document. Resolving false (or throwing) falls back
  *   to a reload.
@@ -163,6 +191,7 @@ export function installDeparture({
   describe = () => null,
   onSwap = null,
   onDepart = null,
+  needsDocument = routeNeedsDocument,
   reload = () => windowRef.location.reload(),
   backstopMs = DEPARTURE_BACKSTOP_MS,
   setTimer = (fn, ms) => setTimeout(fn, ms),
@@ -300,7 +329,7 @@ export function installDeparture({
 
   function onHashChange() {
     const hash = windowRef.location.hash;
-    const action = hashChangeAction(hash, shown, { canSwap: Boolean(onSwap) });
+    const action = hashChangeAction(hash, shown, { canSwap: Boolean(onSwap), needsDocument });
     if (action === 'ignore') return;
 
     if (action === 'stay') {

@@ -451,6 +451,22 @@ function measureInPage({ tolerance, floor, intent, exemptions, inlineLinks, inte
   const covered = [];
   const coveredByTransient = [];
   const scrolledOut = [];
+
+  /**
+   * The shell header's own text, against whatever is painted behind it.
+   *
+   * Narrow on purpose. This is not a contrast audit of the product — the
+   * surfaces carry pre-existing findings that are somebody else's to decide on,
+   * and a check that goes red on them would be switched off within a week.
+   *
+   * It is the one element that is now *shared* by five surfaces while taking
+   * its colours from custom properties resolved per route, which is a mistake
+   * waiting to be made once per new surface. It was made immediately: the
+   * locked page kept `locked.css`'s dark ground and was given the pale ground's
+   * dark ink, so the wordmark shipped at 1.44:1 and the nav at 3.26:1, and
+   * every other check on this page passed.
+   */
+  const shellContrast = [];
   // Links are counted apart from the rest. Safari does not move focus to a link
   // on Tab unless full keyboard access is on, so on a WebKit run "no link was
   // ever focused" is a fact about the engine, while "this button was never
@@ -487,6 +503,56 @@ function measureInPage({ tolerance, floor, intent, exemptions, inlineLinks, inte
     else if (smallest + 0.5 < intent) belowIntent.push(size);
   }
 
+  {
+    const channel = (v) => { const c = v / 255; return c <= 0.03928 ? c / 12.92 : ((c + 0.055) / 1.055) ** 2.4; };
+    const luminance = ([r, g, b]) => 0.2126 * channel(r) + 0.7152 * channel(g) + 0.0722 * channel(b);
+    const rgba = (value) => {
+      const found = String(value).match(/rgba?\(([^)]+)\)/);
+      if (!found) return null;
+      const parts = found[1].split(',').map((one) => Number.parseFloat(one));
+      return { rgb: parts.slice(0, 3), alpha: parts[3] === undefined ? 1 : parts[3] };
+    };
+    // What is actually behind the text: the nearest ancestor that paints
+    // something opaque. A transparent header over a dark page is the case that
+    // matters, and asking the element's own `background-color` answers
+    // `rgba(0,0,0,0)` for it.
+    const behind = (element) => {
+      for (let node = element; node && node !== document.documentElement; node = node.parentElement) {
+        const colour = rgba(getComputedStyle(node).backgroundColor);
+        if (colour && colour.alpha > 0.85) return colour.rgb;
+      }
+      const root = rgba(getComputedStyle(document.documentElement).backgroundColor);
+      return root && root.alpha > 0 ? root.rgb : [255, 255, 255];
+    };
+    const header = document.querySelector('.shell-header');
+    for (const element of header ? header.querySelectorAll('span,a,button') : []) {
+      const text = [...element.childNodes].filter((n) => n.nodeType === 3).map((n) => n.textContent.trim()).join('');
+      if (!text) continue;
+      const style = getComputedStyle(element);
+      if (style.display === 'none' || style.visibility === 'hidden') continue;
+      const box = element.getBoundingClientRect();
+      if (!box.width || !box.height) continue;
+      const ink = rgba(style.color);
+      if (!ink) continue;
+      const ground = behind(element);
+      const blended = ink.alpha >= 1 ? ink.rgb : ink.rgb.map((v, i) => v * ink.alpha + ground[i] * (1 - ink.alpha));
+      const a = luminance(blended);
+      const b = luminance(ground);
+      const ratio = (Math.max(a, b) + 0.05) / (Math.min(a, b) + 0.05);
+      const size = Number.parseFloat(style.fontSize);
+      const large = size >= 24 || (size >= 18.66 && Number.parseInt(style.fontWeight, 10) >= 700);
+      const needed = large ? 3 : 4.5;
+      // The 0.05 slack is rounding, not tolerance: a computed colour can come
+      // back a hair under the value the stylesheet declared.
+      if (ratio + 0.05 < needed) {
+        shellContrast.push(
+          `${describe(element)} "${text.slice(0, 20)}" is ${Math.round(ratio * 100) / 100}:1 ` +
+            `at ${Math.round(size)}px (WCAG 1.4.3 AA needs ${needed}:1)`,
+        );
+      }
+    }
+  }
+
   return {
     overflowPx,
     overflowing,
@@ -499,6 +565,7 @@ function measureInPage({ tolerance, floor, intent, exemptions, inlineLinks, inte
     engineSkipsLinks: linksPresent > 0 && linksReached === 0 && controlsReached > 0,
     covered,
     coveredByTransient,
+    shellContrast,
     scrolledOut,
     interactiveCount: [...document.querySelectorAll(INTERACTIVE)].filter(visible).length,
     scrollHeight: doc.scrollHeight,
@@ -1821,6 +1888,12 @@ try {
           problems.push(
             `${where}: ${measured.covered.length} control(s) with something painted over them` +
               `\n    ${measured.covered.slice(0, 6).join('\n    ')}`,
+          );
+        }
+        if (measured.shellContrast?.length) {
+          problems.push(
+            `${where}: ${measured.shellContrast.length} piece(s) of shell-header text below WCAG 1.4.3 AA` +
+              `\n    ${measured.shellContrast.slice(0, 6).join('\n    ')}`,
           );
         }
         if (measured.coveredByTransient.length) {

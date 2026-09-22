@@ -1,4 +1,4 @@
-import { PUBLIC_MANIFEST } from '../catalog/publicManifest.js';
+import { MODEL_INFO_ROUTE, PUBLIC_MANIFEST } from '../catalog/publicManifest.js';
 import { createLanguageToggle } from '../components/LanguageToggle.js';
 import {
   HERO_ORGANS,
@@ -140,12 +140,25 @@ export function createLanding({
         'See the source, licence, revision, represented structures and known limits for each model.',
         '各モデルの出典、ライセンス、改訂履歴、収録している構造、既知の限界を確認できます。'
       )),
-      // One link, not two to the same page. The record is reachable from the
-      // header on every surface and from beside the hero with the organ's own
-      // name on it; a third copy here, worded differently again, was the
-      // fourth link to `#/trust` on this screen.
-      el('nav', { class: 'landing-method-links', 'aria-label': 'Support / サポート' }, [
-        shellLink('#/support', 'Report a problem', '不具合を連絡する', 'landing-method-link'),
+      // One link, and it is the one this section is about.
+      //
+      // There were two: this destination *and* "report a problem", which the
+      // footer already offers. Removing the wrong one of the two left a heading
+      // reading "check the model before using it", a paragraph listing what the
+      // record contains, and then a link to a bug report — a section that
+      // described a destination and no longer offered it, which is worse scent
+      // than the duplication it was meant to fix.
+      //
+      // It is worded as the destination, matching the header and the page it
+      // opens. The hero's link beside it is not a duplicate of this one: that
+      // one carries `?model=<slug>` and follows the organ on screen.
+      el('nav', { class: 'landing-method-links', 'aria-label': 'Model records / モデルの記録' }, [
+        shellLink(
+          MODEL_INFO_ROUTE,
+          'Publication & review',
+          '公開とレビュー',
+          'landing-method-link is-primary landing-cta'
+        ),
       ]),
     ]),
 

@@ -1232,3 +1232,21 @@ html[data-route='explorer'] .public-models-actions .landing-model-action {
     line-height: 1.1;
   }
 }
+
+/* The hero's own "sources & limits" link, on a light ground.
+   ------------------------------------------------------------------------
+   `landingOrganHero.js` builds one link per organ and it follows the organ the
+   reader selected — which is why the model index uses the hero's link rather
+   than a fixed one of its own. What it inherited with it is
+   `.landing-model-info-link`'s colour, `var(--ink-dim)`: a pale grey chosen for
+   the landing page's near-black ground. On this page that measured 1.83:1.
+
+   The link that says a model has limits is the last one to make hard to read. */
+html[data-route='explorer'] .landing-model-info-link {
+  color: var(--explorer-accent-strong, #045564);
+}
+
+html[data-route='explorer'] .landing-model-info-link:hover,
+html[data-route='explorer'] .landing-model-info-link:focus-visible {
+  color: var(--explorer-ink, #102f3a);
+}

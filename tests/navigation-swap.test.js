@@ -1,7 +1,12 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 
-import { hashChangeAction, installDeparture, routeNeedsDocument } from '../src/app/departure.js';
+import {
+  hashChangeAction,
+  installDeparture,
+  needsDocumentUnlessClosed,
+  routeNeedsDocument,
+} from '../src/app/departure.js';
 import { DOCUMENT_ROUTE_KINDS, isDocumentSurface, resolveRoute } from '../src/app/router.js';
 import { destinationSubject, openingMessage } from '../src/app/destinationName.js';
 import { FakeElement, installFakeDocument } from './helpers/fake-dom.js';
@@ -54,6 +59,10 @@ function fakeWindow(hash) {
     removeEventListener(type, fn) { listeners.get(type)?.delete(fn); },
     go(next) {
       this.location.hash = next;
+      this.fire();
+    },
+    /** Fire `hashchange` for whatever the location already says. */
+    fire() {
       for (const fn of listeners.get('hashchange') ?? []) fn();
     },
   };
@@ -326,7 +335,35 @@ async function shellHarness({ mountDelay = 0 } = {}) {
   globalThis.document.documentElement = new FakeElement('html');
   const ui = new FakeElement('div');
   const windowRef = fakeWindow('#/organs');
-  windowRef.scrollTo = () => {};
+  // Enough of a browser to answer "where was the reader" and "how did they get
+  // here". `history.state` is the signal the shell uses to tell Back from a
+  // link, because `popstate` fires for both in a real browser (measured).
+  windowRef.scrollY = 0;
+  windowRef.scrollTo = ({ top = 0 } = {}) => { windowRef.scrollY = top; };
+  // History entries, minimally but faithfully: a hash assignment *pushes* an
+  // entry, and a new entry's state is null; Back returns to an entry with
+  // whatever was stamped on it. Modelling `state` as one sticky value instead
+  // made the first forward navigation read as a traversal — the fake
+  // disagreeing with the browser, which was measured to behave this way.
+  const entries = [{ hash: '#/organs', state: null }];
+  let at = 0;
+  windowRef.history = {
+    get state() { return entries[at].state; },
+    replaceState(next) { entries[at].state = next; },
+  };
+  windowRef.go = (next) => {
+    entries.length = at + 1;
+    entries.push({ hash: next, state: null });
+    at += 1;
+    windowRef.location.hash = next;
+    windowRef.fire();
+  };
+  windowRef.back = () => {
+    if (at === 0) return;
+    at -= 1;
+    windowRef.location.hash = entries[at].hash;
+    windowRef.fire();
+  };
   // `routeOpen` -> `betaUnlocked()` reads the *global* `window.location.search`
   // (see `src/app/releaseGate.js`), not the injected one. Without this the
   // release check throws, the swap falls back to a reload, and the test passes
@@ -495,4 +532,138 @@ test('a stalled departure keeps naming its destination when it offers to try aga
     'asking again still says what it is opening'
   );
   restore();
+});
+
+
+// ------------------------------------------------------- where the reader was
+
+/**
+ * A document load restores scroll for free. A swap does not, and scrolling to
+ * the top of every arrival is right for a link and wrong for Back — measured
+ * before it was fixed: 2500 px into the publication record, follow a header
+ * link, press Back, and the reader landed at the top of a 7,000 px page.
+ *
+ * The signal is `history.state`, not `popstate`: in a real browser this
+ * product's own `location.hash = …` fires `popstate` too, so the event cannot
+ * tell a traversal from a link. A hash assignment pushes an entry whose state
+ * is `null`; an entry the reader came *back* to still carries the stamp the
+ * shell wrote on it.
+ */
+test('Back returns the reader to where they were; a link does not', async () => {
+  const h = await shellHarness();
+
+  // Read a long page, then follow a link away from it.
+  h.windowRef.scrollY = 2500;
+  h.windowRef.go('#/trust');
+  await settle(60);
+  assert.equal(h.windowRef.scrollY, 0, 'a link lands at the top of its destination');
+
+  // Coming back is a traversal: the entry carries the stamp the shell wrote.
+  h.windowRef.back();
+  await settle(60);
+  assert.equal(h.windowRef.scrollY, 2500, 'Back returns to where the reader was reading');
+
+  h.restore();
+});
+
+test('a link to a page visited before still lands at the top', async () => {
+  // The cheap version of this remembers a position per hash and restores it
+  // whenever that hash comes back — which silently turns "open the publication
+  // record" into "resume it halfway down", days later.
+  //
+  // The first version of this test could not tell the two apart: it returned to
+  // the page by Back, which records nothing, so the memory was empty and both
+  // the right and the wrong implementation scrolled to the top. Every hop below
+  // is a link, so the memory is populated and the assertion has something to be
+  // wrong about.
+  const h = await shellHarness();
+
+  h.windowRef.go('#/trust');
+  await settle(60);
+  h.windowRef.scrollY = 1800;
+
+  // A link away from it: this is what records 1800 against `#/trust`.
+  h.windowRef.go('#/organs');
+  await settle(60);
+  assert.equal(h.windowRef.scrollY, 0);
+
+  // And a link back to it must open it, not resume it.
+  h.windowRef.go('#/trust');
+  await settle(60);
+  assert.equal(h.windowRef.scrollY, 0, 'a link is not a resume');
+
+  // While Back to the model index still is one, so the memory is doing its job
+  // rather than simply being empty.
+  h.windowRef.back();
+  await settle(60);
+  assert.equal(h.windowRef.scrollY, 0, 'the model index was left at the top');
+  h.restore();
+});
+
+test('the shell stamps its entry without discarding state somebody else wrote', async () => {
+  // `releaseGate.js` calls `history.replaceState(history.state, '', url)` when
+  // it strips `?preview=` out of the address bar. Overwriting rather than
+  // merging would throw away whatever else the page keeps there.
+  const h = await shellHarness();
+  h.windowRef.go('#/trust');
+  await settle(60);
+  // Something else writes to this entry, the way the release gate does when it
+  // strips `?preview=` out of the address bar.
+  h.windowRef.history.replaceState({ ...h.windowRef.history.state, somebodyElse: 'kept' });
+
+  // Leave and come back, so the shell stamps that same entry a second time.
+  h.windowRef.go('#/organs');
+  await settle(60);
+  h.windowRef.back();
+  await settle(60);
+
+  assert.equal(h.windowRef.history.state.somebodyElse, 'kept', 'a stamp must not be an overwrite');
+  assert.ok(h.windowRef.history.state.m3lVisit, 'and its own stamp is there too');
+  h.restore();
+});
+
+// ------------------------------------------ a model the beta has not opened
+
+test('a closed model route is a document surface, because that is what it renders', () => {
+  // `#/copd` resolves to a scene, and the beta does not open it — so what the
+  // reader gets is the "in development" page: plain DOM, no renderer. Treating
+  // it as a scene anyway made both ways off that page cost a document load for
+  // a WebGL context that was never built, on the page 67 of the 71 models show.
+  // Scene *ids*, which is what `resolveRoute` returns — `#/copd` is the slug of
+  // `copd-hyperinflation`. Keying this on the slug made the fixture close
+  // nothing, so the first run of this test failed against working code.
+  const closed = new Set(['copd-hyperinflation', 'heart-failure']);
+  const isOpen = (route) => !(route.kind === 'scene' && closed.has(route.sceneId));
+  const opts = { canSwap: true, needsDocument: needsDocumentUnlessClosed(isOpen) };
+
+  assert.equal(hashChangeAction('#/copd', '#/organs', opts), 'swap', 'arriving at a closed model');
+  assert.equal(hashChangeAction('#/organs', '#/copd', opts), 'swap', 'and leaving one');
+  assert.equal(hashChangeAction('#/', '#/copd', opts), 'swap');
+
+  // An *open* model is still a scene, both ways. This is the half that must not
+  // be lost while making the other half cheaper.
+  assert.equal(hashChangeAction('#/brain-anatomy', '#/organs', opts), 'leave');
+  assert.equal(hashChangeAction('#/organs', '#/brain-anatomy', opts), 'leave');
+  assert.equal(hashChangeAction('#/copd', '#/brain-anatomy', opts), 'leave');
+  assert.equal(hashChangeAction('#/brain-anatomy', '#/copd', opts), 'leave');
+});
+
+test('without the release gate, the conservative answer stands', () => {
+  // `hashChangeAction` is pure and `routeOpen` reads `window`; a caller with no
+  // browser gets `routeNeedsDocument`, which reloads for every scene route open
+  // or closed. Slower, never wrong — and it is what `node --test` exercises
+  // everywhere else in this file.
+  assert.equal(hashChangeAction('#/copd', '#/organs', { canSwap: true }), 'leave');
+  assert.equal(hashChangeAction('#/organs', '#/copd', { canSwap: true }), 'leave');
+});
+
+test('the wait does not promise a model the release has not opened', () => {
+  // `#/copd` renders the "in development" page. A veil that said "opening the
+  // lungs model" for four seconds and then showed something else is the
+  // mislabelled link this whole change set out to remove, with a delay on it.
+  assert.equal(openingMessage('#/copd', 'ja'), '肺の3Dモデルを開いています');
+  assert.equal(openingMessage('#/copd', 'ja', { open: false }), '肺の3Dモデル（準備中）');
+  assert.equal(openingMessage('#/copd', 'en', { open: false }), 'the lungs model — in development');
+  // And an open one is unaffected.
+  assert.equal(openingMessage('#/heart-anatomy', 'ja', { open: true }), '心臓の3Dモデルを開いています');
 });

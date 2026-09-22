@@ -325,3 +325,58 @@ test('CSS: no rule declares padding on .trust-card itself', () => {
       'because .trust-card is their parent, not a competing rule for the same element'
   );
 });
+
+test('Trust says so when nothing matches, and offers the way back', () => {
+  // Narrowing to zero used to leave a heading, a search box and seven thousand
+  // pixels of nothing, explained only by a grey line reading `71件中 0件` —
+  // above the fold, while the emptiness was below it. A reader who mistypes a
+  // model name gets a page that looks broken.
+  withFakeBrowser(() => {
+    const element = mountTrust();
+    const field = findByClass(element, 'trust-filter-field')[0];
+    const empty = findByClass(element, 'trust-empty')[0];
+    assert.ok(empty, 'there is an empty state to show');
+    assert.equal(empty.hidden, true, 'and it is hidden while there is anything to see');
+
+    field.value = 'zzzz-no-such-model';
+    field.dispatchEvent({ type: 'input' });
+    assert.equal(
+      findByClass(element, 'trust-card').filter((card) => !card.hidden).length,
+      0,
+      'nothing matches'
+    );
+    assert.equal(empty.hidden, false, 'so the page says so');
+
+    // And the way out is a control, not a sentence telling the reader to undo
+    // it themselves.
+    const clear = findByClass(element, 'trust-empty-clear')[0];
+    assert.ok(clear, 'the empty state offers a way back');
+    clear.dispatchEvent({ type: 'click' });
+    assert.equal(field.value, '', 'which clears what was typed');
+    assert.equal(
+      findByClass(element, 'trust-card').filter((card) => !card.hidden).length,
+      PUBLIC_SCENES.length,
+      'and brings every record back'
+    );
+    assert.equal(empty.hidden, true);
+  });
+});
+
+test('the empty state is reachable by the scope buttons too, not only by typing', () => {
+  withFakeBrowser(() => {
+    const element = mountTrust();
+    const empty = findByClass(element, 'trust-empty')[0];
+    const field = findByClass(element, 'trust-filter-field')[0];
+    const scopes = findByClass(element, 'trust-filter-scope');
+
+    // A name that exists, narrowed to the half it is not in.
+    const published = PUBLIC_SCENES.filter(isSceneReleased)[0];
+    field.value = published.titleJa;
+    field.dispatchEvent({ type: 'input' });
+    assert.equal(empty.hidden, true, 'the name matches, so there is something to see');
+    scopes[2].dispatchEvent({ type: 'click' });
+    assert.equal(empty.hidden, false, 'a published model filtered to "in development" shows nothing');
+    scopes[1].dispatchEvent({ type: 'click' });
+    assert.equal(empty.hidden, true, 'and the other half shows it again');
+  });
+});

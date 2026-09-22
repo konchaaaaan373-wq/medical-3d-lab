@@ -124,7 +124,9 @@ async function boot() {
   const leaveOnRouteChange = () => installDeparture({
     shownHash,
     language: readUiLanguagePreference(),
-    describe: (hash) => openingMessage(hash, readUiLanguagePreference()),
+    describe: (hash) => openingMessage(hash, readUiLanguagePreference(), {
+      open: routeOpen(resolveRoute(hash)),
+    }),
     // No `onDepart` here. This departure covers the scene-*failure* surface,
     // which has no renderer to release; `App.js` installs the one that does,
     // where the viewer is in scope rather than behind a debugging global.

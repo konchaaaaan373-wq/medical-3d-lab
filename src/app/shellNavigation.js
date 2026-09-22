@@ -1,4 +1,4 @@
-import { installDeparture } from './departure.js';
+import { installDeparture, needsDocumentUnlessClosed } from './departure.js';
 import { isDocumentSurface } from './documentSurfaces.js';
 import { destinationSubject, openingMessage } from './destinationName.js';
 import { resolveRoute, sameRoute } from './router.js';
@@ -50,9 +50,21 @@ import { recordSceneVisit } from './sceneLibrary.js';
  * new way for a link to do nothing.
  */
 
-/** Read once per document: which language the announcement speaks. */
-const announcementFor = (hash, language) =>
-  destinationSubject(hash, language) ?? (language === 'en' ? 'Page loaded' : 'ページを表示しました');
+/**
+ * What to say has arrived.
+ *
+ * A model the release has not opened does not render a model — it renders the
+ * "in development" page. Announcing "the lungs model" for it would be the
+ * spoken version of the mislabelled link this change set out to remove, and
+ * the only reader who hears it is the one who cannot see the page to correct
+ * the impression.
+ */
+function announcementFor(hash, language, open = true) {
+  const subject = destinationSubject(hash, language);
+  if (!subject) return language === 'en' ? 'Page loaded' : 'ページを表示しました';
+  if (open) return subject;
+  return language === 'en' ? `${subject} — in development` : `${subject}（準備中）`;
+}
 
 /**
  * The live region that tells a screen reader a new page arrived.
@@ -137,6 +149,8 @@ export async function installShellNavigation({
   doc = globalThis.document,
 }) {
   const announcer = createAnnouncer(doc);
+  /** The route currently painted, for recording where the reader was on it. */
+  let shownHash = windowRef.location?.hash ?? null;
   let current = await mountDocumentSurface({
     route,
     ui,
@@ -162,6 +176,46 @@ export async function installShellNavigation({
    * only thing that knows the answer, so it is what gets asked.
    */
   const stillWanted = (hash) => sameRoute(windowRef.location.hash, hash);
+
+  /**
+   * Where the reader was on each page they have left.
+   *
+   * A document load restores scroll for free; a swap does not, and scrolling to
+   * the top of every arrival is right for a link and wrong for Back. Measured:
+   * scroll 2500 into the publication record, follow a header link, press Back —
+   * and the swap put them at the top of a 7,000 px page they had been reading
+   * the middle of.
+   *
+   * ## Telling Back from a link
+   *
+   * Not `popstate`. In a real browser this product's own `location.hash = …`
+   * fires `popstate` as well as `hashchange` (measured — it is not only
+   * traversals), so the event says nothing.
+   *
+   * `history.state` does. A hash assignment pushes a *new* entry, and a new
+   * entry's state is `null`; an entry the reader came back to still carries
+   * whatever was written on it. So each settled swap stamps its own entry, and
+   * an arrival that finds a stamp is a traversal. That is exactly the
+   * distinction, and it degrades to "scroll to the top" if the stamp is ever
+   * missing.
+   */
+  const scrollMemory = new Map();
+  let visits = 0;
+
+  /** Whether this arrival is Back/Forward rather than a link. */
+  const isTraversal = () => Boolean(windowRef.history?.state?.m3lVisit);
+
+  /** Mark the entry now on screen, so a later return to it is recognisable. */
+  function stampEntry() {
+    try {
+      const state = { ...(windowRef.history?.state ?? {}), m3lVisit: (visits += 1) };
+      // Merged, never replaced: the release gate writes to `history.state` too
+      // when it strips `?preview=` out of the address bar.
+      windowRef.history?.replaceState?.(state, '');
+    } catch {
+      /* a scroll position is a courtesy; never let it stop a navigation */
+    }
+  }
 
   /**
    * One swap at a time.
@@ -236,6 +290,12 @@ export async function installShellNavigation({
       return true;
     }
 
+    // Both read before the page changes under us: `scrollY` still belongs to
+    // the surface on screen, and the entry's stamp still describes how this
+    // arrival was reached.
+    const traversal = isTraversal();
+    const outgoingScroll = windowRef.scrollY ?? 0;
+
     const next = resolveRoute(hash);
     const nextOpen = routeOpen(next);
     const asLocked = nextOpen ? next : { kind: 'locked' };
@@ -275,6 +335,12 @@ export async function installShellNavigation({
 
     current = mounted;
     stopWorking();
+    // Recorded against the page being left, and only when this is a link: on a
+    // traversal the browser has already moved the scroll by the time a
+    // `hashchange` handler runs, so the number here would be the destination's,
+    // not the outgoing page's.
+    if (!traversal && shownHash !== null) scrollMemory.set(shownHash, outgoingScroll);
+    shownHash = hash;
     try {
       previous?.destroy();
     } catch (error) {
@@ -288,11 +354,19 @@ export async function installShellNavigation({
     // "was this a page view" stays the one place.
     if (next.kind === 'scene') recordSceneVisit(next.sceneId);
 
-    windowRef.scrollTo?.({ top: 0, left: 0, behavior: 'auto' });
+    windowRef.scrollTo?.({
+      top: traversal ? (scrollMemory.get(hash) ?? 0) : 0,
+      left: 0,
+      behavior: 'auto',
+    });
+    stampEntry();
     focusSurfaceStart(ui);
-    announcer.say(announcementFor(hash, ui.dataset.lang === 'en' ? 'en' : 'ja'));
+    announcer.say(announcementFor(hash, ui.dataset.lang === 'en' ? 'en' : 'ja', nextOpen));
     return true;
   }
+
+  // The entry this document opened on, so coming back to it is recognisable.
+  stampEntry();
 
   const departure = installDeparture({
     windowRef,
@@ -300,6 +374,10 @@ export async function installShellNavigation({
     shownHash: windowRef.location.hash,
     language,
     describe: (hash) => openingMessage(hash, ui.dataset.lang === 'en' ? 'en' : 'ja'),
+    // This caller has a browser, so it can ask the release gate: a model the
+    // beta has not opened renders the "in development" page, which is plain
+    // DOM and can be swapped like any other.
+    needsDocument: needsDocumentUnlessClosed(routeOpen),
     onSwap: swapTo,
   });
 
