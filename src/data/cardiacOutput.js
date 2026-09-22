@@ -102,6 +102,10 @@ export const CONTROLS = [
     // volumes plus the *whole* volume of the three chambers, which is a sum
     // over two different zero-pressure references. See MODEL_SCOPE.
     id: 'fillingVolumeMl',
+    // A name short enough for a read-out row. The full label belongs on the
+    // control, where there is a line to spend on it.
+    short: 'Filling',
+    shortJa: '充満',
     label: 'Circulating filling, in the model · mL',
     labelJa: '循環充満量（モデル内）・ mL',
     unit: '',
@@ -111,12 +115,20 @@ export const CONTROLS = [
     // pressure it is measured across is this model's systemic venous pressure,
     // which is not a central venous pressure.
     id: 'systemicResistanceMmHgSPerMl',
+    // A name short enough for a read-out row. The full label belongs on the
+    // control, where there is a line to spend on it.
+    short: 'Resistance',
+    shortJa: '抵抗',
     label: 'Systemic resistance · the model’s lumped resistance · mmHg·s/mL',
     labelJa: '体血管抵抗（モデルの集中抵抗）・ mmHg·s/mL',
     unit: '',
   },
   {
     id: 'contractilityEesMmHgPerMl',
+    // A name short enough for a read-out row. The full label belongs on the
+    // control, where there is a line to spend on it.
+    short: 'Contractility',
+    shortJa: '収縮力',
     label: 'Contractility · LV elastance Ees, mmHg/mL',
     labelJa: '収縮力 ・ 左室エラスタンス Ees（mmHg/mL）',
     unit: '',
@@ -127,6 +139,10 @@ export const CONTROLS = [
     // "faster is more" home, and nothing in the declared range contradicts
     // them (see §14 of the card).
     id: 'heartRatePerMin',
+    // A name short enough for a read-out row. The full label belongs on the
+    // control, where there is a line to spend on it.
+    short: 'Rate',
+    shortJa: '心拍数',
     label: 'Heart rate · /min · only the rate changes; not a model of tachycardia',
     labelJa: '心拍数 ・ /min ・ 変わるのは心拍数だけ。頻脈の評価ではありません',
     unit: '',

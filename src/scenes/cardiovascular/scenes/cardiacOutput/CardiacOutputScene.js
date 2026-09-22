@@ -534,40 +534,56 @@ export class CardiacOutputScene {
       });
     }
 
-    // With the comparison on, say **what is being compared** before saying what
-    // came of it. An external review asked for this: a reader looking at two
-    // hearts side by side can see that something differs and not which of the
-    // four it was, and "I only changed one thing" is the claim the whole scene
-    // rests on. So the row names the inputs that differ and their sizes, and
-    // says how many are held — and when several differ, it says that too
-    // rather than letting a multi-input condition read as a one-factor
-    // comparison. The intervention is a multi-input change by construction.
-    if (ref) {
+    // Say **what is being compared** before saying what came of it. An
+    // external review asked for this: "I only changed one thing" is the claim
+    // the whole scene rests on, and nothing on screen said which one.
+    //
+    // Emitted on every update, not only while comparing, for two reasons. It
+    // is the answer to "what have I done" whether or not the second heart is
+    // drawn — and `MetricsPanel` appends a row the first time it sees its id,
+    // so a row that appears later lands at the bottom of the panel, below the
+    // fold, which is where the first version of this went.
+    {
       // `view.input`, not `session.input`: the row describes the condition the
       // numbers beside it came from. When a condition is refused the two
       // differ — the controls hold what was asked for, the screen holds what
       // was solved — and a row that described the request would name a change
       // the figures do not contain.
       const shown = this.session.view.input;
-      const moved = CONTROL_IDS.filter((id) => shown[id] !== this.session.baseline.input[id]);
+      const baseline = this.session.baseline.input;
+      const moved = CONTROL_IDS.filter((id) => shown[id] !== baseline[id]);
       const held = CONTROL_IDS.length - moved.length;
-      const describe = (id) => {
-        const label = CONTROLS.find((control) => control.id === id);
-        const format = (value) => (Number.isInteger(value) ? value : Number(value.toFixed(2)));
-        return {
-          en: `${(label?.label ?? id).split('·')[0].trim()} ${format(this.session.baseline.input[id])} → ${format(shown[id])}`,
-          ja: `${(label?.labelJa ?? id).split('・')[0].trim()} ${format(this.session.baseline.input[id])} → ${format(shown[id])}`,
-        };
+      const format = (value) => (Number.isInteger(value) ? value : Number(value.toFixed(2)));
+      const name = (id, ja) => {
+        const control = CONTROLS.find((entry) => entry.id === id);
+        return (ja ? control?.shortJa : control?.short) ?? id;
       };
-      const parts = moved.map(describe);
+      // Short on purpose. The first version spelled out every moved control
+      // with both its values, and a four-control condition rendered as two
+      // lines of large type that widened the read-out across the model. One
+      // moved control is the case worth spelling out — it is the one-factor
+      // comparison this scene is for — and beyond that the count and the
+      // names are what a reader needs.
+      // The held count rides in the value rather than in `unit`, which
+      // `MetricsPanel` renders in one language only — a bilingual string in a
+      // single-language slot shows both to everybody.
+      const describe = (ja) => {
+        if (moved.length === 0) return ja ? 'なし' : 'none';
+        const rest = held === 0 ? '' : ja ? `（他 ${held} 固定）` : ` (${held} held)`;
+        if (moved.length === 1) {
+          const id = moved[0];
+          return `${name(id, ja)} ${format(baseline[id])} → ${format(shown[id])}${rest}`;
+        }
+        const list = moved.map((id) => name(id, ja)).join(ja ? '・' : ', ');
+        return ja ? `${moved.length} つ: ${list}${rest}` : `${moved.length}: ${list}${rest}`;
+      };
       rows.push({
         id: 'changed',
-        label: moved.length === 1 ? 'Changed (one input)' : `Changed (${moved.length} inputs)`,
-        labelJa: moved.length === 1 ? '変更した入力（1 つ）' : `変更した入力（${moved.length} つ）`,
-        value: parts.length ? parts.map((part) => part.en).join(' · ') : 'nothing yet',
-        valueJa: parts.length ? parts.map((part) => part.ja).join(' ・ ') : 'まだありません',
-        unit: parts.length ? `${held} held` : '',
-        unitJa: parts.length ? `他 ${held} つは固定` : '',
+        label: 'Changed',
+        labelJa: '変えたもの',
+        value: describe(false),
+        valueJa: describe(true),
+        unit: '',
         emphasis: true,
       });
     }

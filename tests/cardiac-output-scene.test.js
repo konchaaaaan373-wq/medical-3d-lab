@@ -682,36 +682,35 @@ test('the comparison says which inputs moved, how far, and how many are held', a
     return CardiacOutputScene.prototype.getMetrics.call(scene);
   };
 
-  // Off, there is nothing to compare against and no row.
-  assert.equal(rowsFor(false).find((row) => row.id === 'changed'), undefined);
+  // Emitted whether or not the second heart is drawn: it is the answer to
+  // "what have I done", and a row that only appears while comparing would be
+  // appended below every other row by the panel and land under the fold.
+  const off = rowsFor(false).find((row) => row.id === 'changed');
+  assert.ok(off, 'the row is there without the comparison');
+  assert.match(off.valueJa, /^なし$/);
+  assert.equal(rowsFor(false)[0].id, 'changed', 'and it leads the panel');
 
-  // On and untouched: the row is there and says so, rather than being absent
-  // and leaving "has anything changed?" unanswered.
   const untouched = rowsFor(true).find((row) => row.id === 'changed');
   assert.ok(untouched, 'the comparison names what is being compared');
-  assert.match(untouched.valueJa, /まだありません/);
+  assert.match(untouched.valueJa, /^なし$/);
 
   // One slider: named, with both values and the number held.
   session.setControl('systemicResistanceMmHgSPerMl', 1.6);
   const one = rowsFor(true).find((row) => row.id === 'changed');
-  assert.match(one.labelJa, /1 つ/);
-  assert.match(one.valueJa, /体血管抵抗/);
-  assert.match(one.valueJa, /1\.1 → 1\.6/);
-  assert.match(one.unitJa, /他 3 つは固定/);
+  assert.equal(one.valueJa, '抵抗 1.1 → 1.6（他 3 固定）', 'one moved control is spelled out, with the rest counted');
+  assert.equal(one.unit, '', 'the unit slot renders one language only, so nothing bilingual goes in it');
 
   // Two sliders: it says two rather than letting a multi-input condition read
   // as a one-factor comparison.
   session.setControl('heartRatePerMin', 90);
   const two = rowsFor(true).find((row) => row.id === 'changed');
-  assert.match(two.labelJa, /2 つ/);
-  assert.match(two.unitJa, /他 2 つは固定/);
-  assert.match(two.valueJa, /心拍数/);
+  assert.equal(two.valueJa, '2 つ: 抵抗・心拍数（他 2 固定）', 'two or more are named, not spelled out');
 
   // The drug is a multi-input change by construction, and is reported as one.
   session.selectPreset(PRESET_IDS.REDUCED_CONTRACTILITY);
   session.selectIntervention('dobutamine');
   const drug = rowsFor(true).find((row) => row.id === 'changed');
-  assert.match(drug.labelJa, /2 つ/, 'dobutamine moves elastance and resistance, and the row says two');
+  assert.match(drug.valueJa, /他 2 固定/, 'dobutamine moves elastance and resistance, so two are held');
 });
 
 test('a refused condition never leaves the previous answer standing as the current one', async () => {
