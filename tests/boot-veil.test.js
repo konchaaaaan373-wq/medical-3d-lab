@@ -89,3 +89,82 @@ test('the inline script parses the hash the way the router does', () => {
   assert.match(html, /replace\(\/\^#\\\/\?\/, ''\)/, 'and the leading #/');
   assert.equal(resolveRoute('#/trust?model=heart-anatomy').kind, 'trust');
 });
+
+/**
+ * The veil is an inline script, and the site forbids inline scripts.
+ *
+ * `public/_headers` ships `script-src 'self' 'wasm-unsafe-eval'` — no
+ * `'unsafe-inline'`, no nonce. So the nine lines that decide whether to paint
+ * the veil were **blocked on the deployed site** and ran only on localhost,
+ * where the test server does not send the site's own headers. Every
+ * measurement of the fix was taken against a server that does not apply the
+ * policy the product ships.
+ *
+ * The fix is a hash, which costs no extra request — the whole point of the
+ * script is to run before anything is fetched. What a hash costs instead is
+ * that it silently stops matching the moment the script changes by one
+ * character, and a blocked script fails the way the original bug looked. So the
+ * hash is computed here from the file rather than trusted, and the failure
+ * message carries the value to paste.
+ */
+import { createHash } from 'node:crypto';
+
+/** The inline scripts a CSP's `script-src` actually governs. */
+function inlineScripts(source) {
+  return [...source.matchAll(/<script([^>]*)>([\s\S]*?)<\/script>/g)]
+    .filter(([, attributes]) => {
+      if (/\bsrc=/.test(attributes)) return false;
+      // `application/ld+json` is data, not script: CSP does not govern it and
+      // hashing it would be noise.
+      const type = attributes.match(/\btype=["']([^"']+)["']/);
+      return !type || /javascript|module/i.test(type[1]);
+    })
+    .map(([, , body]) => body);
+}
+
+const sha256 = (text) => `sha256-${createHash('sha256').update(text, 'utf8').digest('base64')}`;
+
+test('the boot veil script is allowed by the policy the site actually ships', () => {
+  const headers = readFileSync(fileURLToPath(new URL('../public/_headers', import.meta.url)), 'utf8');
+  const policy = headers.match(/Content-Security-Policy:([^\n]+)/)?.[1] ?? '';
+  assert.ok(policy, 'public/_headers must declare a Content-Security-Policy');
+
+  const scripts = inlineScripts(html);
+  assert.equal(scripts.length, 1, 'one inline script: the boot veil');
+
+  // The `script-src` directive alone. Asking the whole policy matched
+  // `style-src 'self' 'unsafe-inline'` and reported that inline scripts were
+  // allowed — a guard reading the wrong directive is a guard that passes for
+  // the wrong reason, which is how this one failed on its first run.
+  const scriptSrc = policy.match(/script-src([^;]*)/)?.[1] ?? '';
+  assert.ok(scriptSrc, 'the policy must have a script-src directive');
+
+  const digest = sha256(scripts[0]);
+  const inlineAllowed = /'unsafe-inline'/.test(scriptSrc) || /\bnonce-/.test(scriptSrc);
+  assert.equal(
+    inlineAllowed,
+    false,
+    'this product deliberately forbids inline scripts wholesale; the veil is allowed by hash'
+  );
+  assert.ok(
+    scriptSrc.includes(`'${digest}'`),
+    `the boot veil's hash is not in script-src. Add '${digest}' to public/_headers ` +
+      '— without it the veil is blocked on the deployed site and the blank frame it ' +
+      'removes comes back, while every local measurement still says it is fixed'
+  );
+});
+
+test('the build does not rewrite the script the hash was taken from', () => {
+  // Vite rewrites `index.html`. If it ever touched this block — whitespace
+  // included — the shipped hash would stop matching the shipped script, and
+  // nothing else would notice.
+  let built;
+  try {
+    built = readFileSync(fileURLToPath(new URL('../dist/index.html', import.meta.url)), 'utf8');
+  } catch {
+    return; // no build here; `verify:site` runs against one
+  }
+  const fromSource = inlineScripts(html);
+  const fromBuild = inlineScripts(built);
+  assert.deepEqual(fromBuild, fromSource, 'the built inline script differs from the source one');
+});
