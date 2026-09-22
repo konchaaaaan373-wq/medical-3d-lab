@@ -82,6 +82,15 @@ test('the lesson only points at things the scene actually has', async () => {
     module.manipulation.to >= control.min && module.manipulation.to <= control.max,
     `moves the control somewhere the reader could not drag it to`
   );
+  // The panel replays `setup` in `Object.entries` order, and selecting a preset
+  // resets the four sliders — so a preset listed *after* a slider would wipe the
+  // value being set. It works today because of the order the literal happens to
+  // be written in, which is not a reason for it to keep working.
+  const setupOrder = Object.keys(module.setup).filter((id) => id !== 'progress');
+  const presetAt = setupOrder.indexOf('preset');
+  if (presetAt >= 0) {
+    assert.equal(presetAt, 0, 'the preset has to be set before anything it would reset');
+  }
   for (const [id, value] of Object.entries(module.setup)) {
     if (id === 'progress') continue;
     const setupControl = controls.get(id);

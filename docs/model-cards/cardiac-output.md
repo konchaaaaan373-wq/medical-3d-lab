@@ -221,6 +221,22 @@ resistance", which is the misconception rather than the teaching.
 
 **Catalog status:** `alpha`
 
+### Revision 4 — a claim in §2 that was not true of one path
+
+§2 says every figure on the screen is read from one solved beat, so the picture
+and the read-out cannot disagree. A review found one path where they did:
+switching preset while the comparison was on left the read-out's "before" column
+on the new baseline and the heart drawn beside it on the old one, because the
+comparison heart was refreshed when the Compare *button* was pressed rather than
+when a *control* was. Choosing an intervention that belongs to the other preset
+went the same way. Nothing threw and nothing was red.
+
+It is fixed and guarded, and the claim in §2 is now true of every path.
+Separately, restoring a session replayed each control at its captured value,
+which with an intervention selected counted as manual moves and deselected it —
+the sliders holding a drug's condition under a chip reading "none". Setting a
+control to the value it already has is now not moving it.
+
 ### Revision 3 — dead surface removed
 
 No behaviour changed and no number moved. A self-review found four exported or

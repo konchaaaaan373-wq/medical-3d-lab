@@ -208,6 +208,47 @@ test('the preset comes first in the controls, because restoring replays them in 
   assert.equal(scene.session.input.heartRatePerMin, 96);
 });
 
+test('coming back from the sequence keeps the intervention that was selected', async () => {
+  // `restoreSessionState` puts a reader back by replaying every control at its
+  // captured value. With an intervention selected, those values *are* the
+  // intervention's — so a replay that counted as four manual moves handed back
+  // the right numbers with the chip silently reading "none": the sliders
+  // holding a drug's condition under a label saying nothing was applied, which
+  // is a state nobody could reach by hand.
+  //
+  // Setting a control to the value it already has is not moving it.
+  const { captureSessionState, restoreSessionState } = await import('../src/app/sessionState.js');
+  const scene = await buildScene();
+  const viewer = {
+    camera: new THREE.PerspectiveCamera(50, 1.6, 0.1, 100),
+    controls: { target: new THREE.Vector3(), autoRotate: false, enabled: true, update() {} },
+  };
+  const playback = {
+    value: 0,
+    playing: false,
+    play() { this.playing = true; },
+    pause() { this.playing = false; },
+    set(v) { this.value = v; },
+  };
+
+  scene.setModelControl('intervention', 'dobutamine');
+  const wanted = { ...scene.session.input };
+  const snapshot = captureSessionState({ playback, viewer, scene, comparing: false });
+
+  // What the sequence does on the way in, and the app on the way out.
+  scene.resetModelControls();
+  scene.setModelControl('systemicResistanceMmHgSPerMl', 1.6);
+  restoreSessionState(snapshot, { playback, viewer, scene, setComparison: (v) => scene.setComparison(v) });
+
+  assert.deepEqual({ ...scene.session.input }, wanted, 'the condition comes back');
+  assert.equal(scene.session.interventionId, 'dobutamine', 'and so does what it was called');
+  assert.equal(
+    scene.getModelControls().find((c) => c.id === 'intervention').value,
+    'dobutamine',
+    'which is what the reader sees selected'
+  );
+});
+
 test('every control offered is one the model declares, at the model’s own range', async () => {
   const scene = await buildScene();
   for (const control of scene.getModelControls().slice(2)) {
@@ -358,6 +399,44 @@ test('comparison is against this preset’s own before-condition, from the same 
 
   scene.setComparison(false);
   assert.equal(scene.getMetrics()[0].reference, undefined, 'and the column goes away again');
+});
+
+test('the heart being compared against follows the baseline, not the button', async () => {
+  // Found by review, not by a test, and it is the failure this scene exists to
+  // make impossible: the read-out and the picture disagreeing about the same
+  // condition.
+  //
+  // The comparison heart used to be refreshed only in `setComparison`, which
+  // runs when the *button* is pressed. The baseline moves when a *control* is
+  // pressed — selecting a preset takes a new "before" snapshot, and so does
+  // choosing an intervention that belongs to the other preset. Switching preset
+  // while comparing therefore left the "before" column on the new baseline and
+  // the heart drawn beside it on the old one. Nothing threw.
+  const scene = await buildScene();
+  scene.setComparison(true);
+  assert.equal(scene.reference.metrics, scene.session.baseline.metrics);
+
+  scene.setModelControl('preset', PRESET_IDS.REDUCED_CONTRACTILITY);
+  assert.equal(
+    scene.reference.metrics,
+    scene.session.baseline.metrics,
+    'the drawn heart is the baseline the numbers are measured against'
+  );
+  const rows = Object.fromEntries(scene.getMetrics().map((row) => [row.id, row]));
+  assert.equal(Number(rows.edv.reference), Math.round(scene.reference.metrics.edvMl));
+
+  // And the same through the door an intervention opens, which switches the
+  // preset underneath the reader.
+  scene.setModelControl('preset', PRESET_IDS.REFERENCE);
+  scene.setModelControl('intervention', 'dobutamine');
+  assert.equal(scene.session.presetId, PRESET_IDS.REDUCED_CONTRACTILITY);
+  assert.equal(scene.reference.metrics, scene.session.baseline.metrics);
+  const after = Object.fromEntries(scene.getMetrics().map((row) => [row.id, row]));
+  assert.equal(after.co.reference, scene.reference.metrics.cardiacOutputLMin.toFixed(1));
+
+  // Reset does not move the baseline, so nothing should change hands there.
+  scene.resetModelControls();
+  assert.equal(scene.reference.metrics, scene.session.baseline.metrics);
 });
 
 test('the circuit shows a change in output once, not twice', async () => {

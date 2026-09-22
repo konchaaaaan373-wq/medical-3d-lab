@@ -241,8 +241,26 @@ export class CardiacOutputScene {
     });
   }
 
-  /** Pushes the solved beat into everything drawn. Called once per accepted solve. */
+  /**
+   * Pushes the solved beat into everything drawn. Called on every accepted change.
+   *
+   * The comparison heart is refreshed from here rather than from
+   * `setComparison`, which is the mistake this replaces: `setComparison` runs
+   * when the *button* is pressed, and the baseline moves when a *control* is
+   * pressed — selecting a preset takes a new "before" snapshot, and so does
+   * choosing an intervention that belongs to the other preset. Switching preset
+   * while comparing left the read-out's "before" column on the new baseline and
+   * the heart drawn beside it on the old one, disagreeing about the same
+   * condition. Nothing threw.
+   */
   _applyState() {
+    // The sequence drives a control every frame and the cache answers most of
+    // those with the beat already on screen. Rebuilding the circuit's tube
+    // geometry for a solution nothing changed is work nobody asked for.
+    // The heart being compared against follows the *baseline*, so it is
+    // refreshed here with everything else rather than when the Compare button
+    // is pressed.
+    this.reference?.setState(this.session.baseline.metrics, this.session.baseline.cycle);
     this._refreshEndDiastolicShape();
     if (!this.blood) return;
     this.blood.setEjectionWindow(this.state.ejectionStartPhase, this.state.ejectionEndPhase);

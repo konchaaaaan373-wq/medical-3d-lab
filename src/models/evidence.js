@@ -3725,6 +3725,8 @@ export const CARDIAC_OUTPUT_EVIDENCE = defineEvidence('cardiac-output', [
     claim: 'Dobutamine multiplies end-systolic elastance by 1.5 and systemic resistance by 0.85; the volume intervention adds 120 mL of stressed volume.',
     confidence: CONFIDENCE.ILLUSTRATIVE,
     source: 'No source for these magnitudes; illustrative values chosen so the contrast between the two interventions is legible on screen.',
+    validation: 'calibration: the cardiac-output interventions keep their chosen illustrative sizes',
+    layer: LAYER.CALIBRATION,
     note: 'Illustrative. These are not doses, cannot be combined, and must never be read as the response a person would have. The cited study\u2019s own effect sizes are not transferable to this model\u2019s parameters.',
   },
   {

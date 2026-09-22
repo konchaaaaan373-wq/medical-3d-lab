@@ -163,10 +163,20 @@ export class ExperimentSession {
    */
   setControl(id, value) {
     if (!CONTROL_IDS.includes(id)) throw new RangeError(`unknown control: ${id}`);
-    // Touching a slider is taking manual control back. The intervention is
-    // cleared and the reader's own condition comes back with this one control
-    // moved — so nothing of the drug survives into a hand-set state, which is
-    // the only way a hidden effect could ever be added on top of a manual one.
+    // Setting a control to the value it already has is not moving it, and must
+    // not do anything. This is not a micro-optimisation: `restoreSessionState`
+    // puts a reader back by replaying every control at its captured value, and
+    // with an intervention selected those values *are* the intervention's. A
+    // replay that counted as four manual moves handed the reader back the right
+    // numbers with the intervention silently deselected — the sliders holding a
+    // drug's condition under a chip reading "none", which is a state nobody
+    // could have reached by hand.
+    if (this._input[id] === value) return this._view;
+
+    // Moving one is taking manual control back. The intervention is cleared and
+    // the reader's own condition comes back with this control moved — so nothing
+    // of the drug survives into a hand-set state, which is the only way a hidden
+    // effect could ever be added on top of a manual one.
     const from = this._intervention === INTERVENTION_IDS.NONE ? this._input : this._directInput;
     this._intervention = INTERVENTION_IDS.NONE;
     this._directInput = null;
