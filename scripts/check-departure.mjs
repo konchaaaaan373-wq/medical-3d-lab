@@ -424,22 +424,33 @@ try {
     await page.goto(`${origin}/#/organs`, { waitUntil: 'networkidle' });
     await page.waitForTimeout(1500);
 
+    let stacked = false;
     /** Follow a hash and report what the reader saw on the way. */
-    const move = async (hash) => {
+    const move = async (hash, expected = null) => {
       const before = documents;
       const started = Date.now();
       await page.evaluate((next) => { window.location.hash = next; }, hash);
+      // What "arrived" means for a swap is the *content* changing, not a veil
+      // going away — a swap never raises one, so "no veil" is true from the
+      // first sample and a loop that waits for it measures nothing. The first
+      // version of this check did exactly that and then read `data-route`
+      // before the swap had committed, reporting the surface it had left.
       let blank = false;
       for (let i = 0; i < 100; i += 1) {
         await sleep(60);
         const state = await ask(page, `(() => ({
           ui: document.getElementById('ui') ? document.getElementById('ui').children.length : 0,
+          mains: document.querySelectorAll('#ui > main').length,
+          root: document.documentElement.dataset.route || null,
           veil: !!document.querySelector('.loading:not(.is-done)'),
           busy: document.documentElement.hasAttribute('data-navigating'),
         }))()`, 4000);
         if (state.unreadable) continue;
         if (state.ui === 0 && !state.veil) blank = true;
-        if (state.ui > 0 && !state.veil && !state.busy) break;
+        // Two at once would mean the outgoing page is still stacked under the
+        // incoming one, which is its own defect and is asserted below.
+        if (state.mains > 1) stacked = true;
+        if (state.root === expected && state.mains === 1 && !state.veil && !state.busy) break;
       }
       const settled = Date.now() - started;
       const after = await ask(page, `(() => ({
@@ -459,7 +470,7 @@ try {
     let clean = true;
     let detail = '';
     for (const [hash, expected] of READING) {
-      const seen = await move(hash);
+      const seen = await move(hash, expected);
       costs.push(`${hash} ${seen.settled}ms`);
       if (seen.reloaded) { clean = false; detail = `${hash} replaced the document`; break; }
       if (seen.blank) { clean = false; detail = `${hash} showed an empty #ui`; break; }
@@ -479,12 +490,21 @@ try {
       clean,
       clean ? costs.join(', ') : detail
     );
+    // The outgoing surface must be off the page by the time the incoming one
+    // is on it. It was not: a surface's own teardown disposes a WebGL hero
+    // before removing its element, so the old page sat under the new one for
+    // 870 ms with the page height going 1061 → 2495 → 1434 px.
+    record(
+      'the outgoing surface is never left stacked under the incoming one',
+      stacked === false,
+      stacked ? 'two <main> elements were in the document at once' : 'one <main> throughout'
+    );
 
     // And the other half of the same rule: a model still gets its own
     // document, because `App.js` owns a WebGL context with no teardown to
     // trust. If this ever stops reloading, something has started carrying a
     // renderer across a route change.
-    const toScene = await move('#/brain-anatomy');
+    const toScene = await move('#/brain-anatomy', 'scene');
     record(
       'a model still gets a document of its own',
       toScene.reloaded === true && toScene.route === 'scene',
@@ -515,9 +535,12 @@ try {
     for (const hash of ['#/trust', '#/organs', '#/terms', '#/', '#/privacy',
                         '#/trust', '#/organs', '#/', '#/support', '#/trust']) {
       await page.evaluate((next) => { window.location.hash = next; }, hash);
-      await sleep(500);
+      await sleep(900);
     }
-    await sleep(1200);
+    // Long enough for the last swap to commit: counting mid-swap reports the
+    // account button as missing, because it is moved from one surface's header
+    // into the next one's rather than rebuilt.
+    await sleep(2500);
 
     const counted = await ask(page, `(() => ({
       accountModals: document.querySelectorAll('.access-modal').length,
@@ -526,7 +549,7 @@ try {
       feedbackOverlays: document.querySelectorAll('.feedback-overlay').length,
       skipLinks: document.querySelectorAll('.skip-link').length,
       shellHeaders: document.querySelectorAll('.shell-header').length,
-      announcers: document.querySelectorAll('[role="status"][aria-live="polite"]').length,
+      announcers: document.querySelectorAll('body > .visually-hidden[role="status"]').length,
       roots: document.querySelectorAll('#ui > main').length,
     }))()`);
     const singles = Object.entries(counted).filter(([key]) => key !== 'unreadable');

@@ -105,3 +105,44 @@ test('fallback: the WebGL failure screen can navigate', () => {
   const fallback = main.slice(main.indexOf('createSceneFailureFallback({'));
   assert.match(fallback, /leaveOnRouteChange\(\);/, 'the fallback has no navigation listener');
 });
+
+test('the skip link is in the document before anything the shell floats into it', () => {
+  // A keyboard user's first Tab must reach "skip to content". Two things append
+  // straight to `#ui` behind dynamic imports — the surface (which brings the
+  // skip link) and observability (which brings a floating feedback button) —
+  // and starting the second before awaiting the first made them a race. When
+  // observability won, the first Tab stop was the feedback button. Measured at
+  // about one load in six on the model index, whose module is the largest and
+  // so lost most often.
+  //
+  // `verify:ui` reported it on four consecutive full runs, on a different
+  // surface and viewport each time, which is what a race looks like from the
+  // outside — and is why it was nearly written off as a flaky check. This
+  // guard is deterministic so nobody has to win that argument again.
+  const surfaces = read('src/app/documentSurfaces.js');
+
+  const observeCall = surfaces.indexOf('startObservability()');
+  const firstImport = surfaces.indexOf("await import('./LockedSurface.js')");
+  assert.ok(firstImport > 0, 'the mount table imports its surfaces');
+  assert.ok(
+    observeCall > firstImport,
+    'observability must be started after the surface is built, or its floating trigger ' +
+      'can be appended to #ui ahead of the surface\'s skip link'
+  );
+
+  // And the thing that makes it easy to get wrong: the promise must not be
+  // kicked off at the top and merely awaited later. Checked on the *variable's
+  // initialiser* rather than on the text before the imports — the helper that
+  // starts it is declared up there, and a first version of this guard matched
+  // the declaration and failed against the fixed code.
+  assert.match(
+    surfaces,
+    /let observabilityReady = null;/,
+    'observability must start as unstarted; assigning the promise at the top is the race'
+  );
+  assert.match(
+    surfaces,
+    /observabilityReady = startObservability\(\);/,
+    'and be started once, after the surface is built'
+  );
+});

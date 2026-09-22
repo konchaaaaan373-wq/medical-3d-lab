@@ -2065,3 +2065,28 @@
   という前提で書いて即座に落ちました**——ホームの地は `landing.css` にあります。
   **cascade を静的に再現しようとした guard は、間違った理由で落ちます。**
   実ブラウザで測る側が本体で、静的側はそれが見えない対を持つだけです。
+
+### L-97 検査が 4 回続けて正しく赤くしたのに、道具のせいにしかけた
+
+- **症状**: `verify:ui` が full run のたびに
+  「最初の Tab が skip link ではない」を 1〜3 件出しました。**毎回別の
+  surface / viewport**、**単独で走らせると 3/3 で緑**。
+  「負荷依存の flake だろう」と判断し、`docs/follow-ups.md` に
+  **「この branch が入れたものではない可能性が高い」と書きました**。
+  実際は競合で、原因はこの branch でした——`mountDocumentSurface` が
+  surface の dynamic import を await する前に `observe()` を開始しており、
+  先に解決したほうが `#ui` に先に append されます。observability が勝つと
+  **ページ最初の Tab が「ご意見」ボタン**になります（実測 6 回に 1 回）。
+- **どう見つかったか**: 4 回目の赤のあと、切り分けをやめて
+  **検査が Tab を押す前に何をしているか読みました**——skip link の
+  *存在*は既に確認済みで、押した結果だけが違う。つまり
+  「mount が遅い」ではなく「順序が違う」。DOM の並び（skip link と
+  feedback trigger のどちらが先か）を 6 回測って 1 回逆転を捕まえました。
+  **「毎回違う組で落ちる・単独では再現しない」は flake の証拠ではなく、
+  競合の証拠です。** 同じ形をしています。
+- **いま何が捕まえるか**: `tests/in-page-anchors.test.js` の
+  「the skip link is in the document before anything the shell floats into it」が
+  `observe()` の開始を surface の構築より後に固定します（静的・決定的）。
+  最初の版は `startObservability` の**宣言**にマッチして、直った側のコードで
+  落ちました——**宣言と呼び出しを区別しない位置チェックは、正しいコードを
+  赤くします。**

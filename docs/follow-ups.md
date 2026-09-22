@@ -4895,23 +4895,28 @@ shell は `M/3`、シーンは `3D`（`global-nav-brand-mark`）。
 
 *この PR の作者が監査して、費用が主題に釣り合わないので残したもの。*
 
-### F-202 — `verify:ui` の「最初の Tab が skip link ではない」が散発的に赤い
+### F-202 — （解決済み）`verify:ui` の「最初の Tab が skip link ではない」は競合で、この branch のものだった
 
-full run のたびに **別の surface / viewport の組** で 1〜3 件出ます
-（実測: 1 回目 phone-320 Terms・phone-375 Explorer、2 回目 phone-landscape
-Terms・phone-landscape 特商法・tablet-768 Terms）。**同じ組だけを単独で
-3 回走らせると 3 回とも緑**です。
+**この項目は最初、間違った結論で書かれていました。** 記録として残します。
 
-- **時間依存**です。full run は 10 viewport × 10 surface を順に駆動するので
-  負荷が高く、skip link が DOM に入る前に tab の掃引が始まっていると
-  この形で落ちます
-- **この branch が入れたものではない可能性が高い**——組が毎回変わり、
-  単独では再現しません。ただし**確定はしていません**: baseline の full run と
-  比べるところまでやって、この項目に結果を書き足してください
-- 直すなら検査側です。掃引の前に「skip link が存在し、かつ focus 可能」を
-  待つ。いまは「読み込みが終わった」で始めています
-- **赤が散発的に出る検査は、そのうち読まれなくなります。** CLAUDE.md の
-  F-108（恒常的に赤いチェックは他の全部の信号を殺す）と同じ理由で、
-  散発でも同じことが起きます
+最初に書いた内容: 「full run のたびに別の組で 1〜3 件出る。単独では再現しない。
+時間依存で、**この branch が入れたものではない可能性が高い**」。
 
-*この PR の作者が監査中に見つけたもの。公開面は動きません。*
+**違いました。** full run 4 回すべてで出ており（2 件・3 件・1 件・2 件、
+毎回別の surface / viewport）、**Explorer が支配的**でした。
+掘ったら競合で、原因はこの branch です。
+
+- `mountDocumentSurface` が **surface の dynamic import を await する前に**
+  `observe()` を開始していました。両方とも `#ui` に直接 append します——
+  surface は skip link を、observability は浮遊する「ご意見」ボタンを。
+  **先に解決したほうが先に DOM に入ります**
+- observability が勝つと、**ページ最初の Tab が「本文へ移動」ではなく
+  「ご意見」ボタン**になります。実測で `#/organs` の**6 回に 1 回**。
+  Explorer の module が最大なので最も頻繁に負けます
+- 直したあと **36/36 回とも skip link が先**
+- **危なかったのは「直せなかった」ではなく、「4 回言われて、道具のせいにしかけた」**
+  ことです。検査は 4 回とも正しく、赤の出方（毎回違う組・単独で再現しない）が
+  競合の見た目そのものでした
+- いま何が捕まえるか: `tests/in-page-anchors.test.js` が
+  `observe()` の開始位置を surface の構築より後に固定します（決定的）。
+  `verify:ui` の skip link 判定はこれまで通り実ブラウザ側を見ます

@@ -90,6 +90,7 @@ export async function mountDocumentSurface({
   onRendererFailure = () => {},
   applyState = true,
 }) {
+  let trustOpened = false;
   const locked = !open;
   const kind = locked ? 'locked' : route.kind;
   const state = locked ? 'locked' : ROUTE_ELEMENT_STATE[route.kind];
@@ -118,11 +119,33 @@ export async function mountDocumentSurface({
   let surface = null;
   let observability = null;
 
-  const observabilityReady = observe({ ui, surface: TELEMETRY_SURFACE[kind] })
-    .then((installed) => {
+  /**
+   * Started *after* the surface is built, and that ordering is load-bearing.
+   *
+   * Observability appends a floating feedback button straight to `#ui`. The
+   * surface appends its skip link. Both arrive behind a dynamic import, so
+   * starting this one first made the two a race — and whichever module
+   * resolved first went into the DOM first.
+   *
+   * When observability won, the first Tab stop on the page was the feedback
+   * button rather than "skip to content". Measured at roughly one load in six
+   * on the model index, whose module is the largest and so loses most often;
+   * `verify:ui` reported it four full runs running, on a different surface and
+   * viewport each time, which is exactly what a race looks like from the
+   * outside and exactly why it was nearly dismissed as a flaky check.
+   *
+   * `main.js` had this right before the mount table existed: it awaited the
+   * surface, then called `observe()`. The order is restored here.
+   */
+  const startObservability = () =>
+    observe({ ui, surface: TELEMETRY_SURFACE[kind] }).then((installed) => {
       observability = installed;
       return installed;
     });
+  /** @type {Promise<any>|null} resolved once the surface is on the page. */
+  let observabilityReady = null;
+  /** The landing hero reports renderer failures before observability exists. */
+  const whenObservable = () => observabilityReady ?? Promise.resolve(null);
 
   if (locked) {
     const { createLockedSurface } = await import('./LockedSurface.js');
@@ -133,14 +156,14 @@ export async function mountDocumentSurface({
       ui,
       accountButton,
       onRendererFailure: async (error, context) => {
-        const installed = await observabilityReady;
+        const installed = await whenObservable();
         onRendererFailure(error, { ...context, observability: installed });
       },
     });
   } else if (kind === 'trust') {
     const { createTrust } = await import('./Trust.js');
     surface = await createTrust({ ui, accountButton, focusId: route.focusId ?? null });
-    void observabilityReady.then((installed) => installed?.telemetry.record('trust.open', {}));
+    trustOpened = true;
   } else if (kind === 'legal') {
     const { createLegal } = await import('./Legal.js');
     surface = createLegal({ ui, docId: route.docId, accountButton });
@@ -153,19 +176,29 @@ export async function mountDocumentSurface({
     });
   }
 
-  // Waited for before the snapshot below, not because the surface needs it —
-  // it does not — but because the feedback trigger it mounts is appended to
-  // `#ui` asynchronously. A snapshot taken before that lands would not include
-  // the trigger, and a swap that happened in the same window would leave one
-  // behind on every navigation.
-  await observabilityReady.catch((error) => {
-    console.warn('[observability] not installed', error);
-    return null;
-  });
-
   // Everything that appeared while this surface built — including the nodes a
-  // surface appends beside its own root and does not remove itself.
+  // surface appends beside its own root and does not remove itself, such as
+  // the landing page's skip link.
   const added = [...ui.childNodes].filter((node) => !before.has(node));
+
+  // Started now that the surface and its skip link are in the document, and
+  // deliberately *not* awaited.
+  //
+  // It was awaited, so that the snapshot above would include the feedback
+  // trigger it appends. That cost a dynamic import inside the swap's critical
+  // path — and the swap does not commit until the mount returns, so for the
+  // length of it both the outgoing and the incoming surface were in the
+  // document at once. Measured at 300 ms of two stacked `<main>` elements.
+  //
+  // The snapshot does not need to cover the trigger: `feedback.dispose()`
+  // removes the trigger and the overlay itself, and `destroy()` below calls it
+  // whether or not this has resolved by then.
+  observabilityReady = startObservability();
+  void observabilityReady
+    .then((installed) => {
+      if (trustOpened) installed?.telemetry?.record('trust.open', {});
+    })
+    .catch((error) => console.warn('[observability] not installed', error));
 
   return {
     surface,
@@ -178,24 +211,42 @@ export async function mountDocumentSurface({
      */
     state,
     destroy() {
-      // The surface's own teardown first: it is the only thing that knows how
-      // to dispose a WebGL hero or unsubscribe a keyboard shortcut.
+      // Off the page first, disposed second — and that order is the whole
+      // point.
+      //
+      // A surface's own `destroy()` ends by removing its element, but it does
+      // the expensive work first: the model index disposes a WebGL hero, which
+      // under a software rasteriser is most of a second of synchronous work.
+      // With the DOM removal behind it, the outgoing page stayed on screen for
+      // the whole teardown *underneath the incoming one* — measured at 870 ms
+      // with two `<main>` elements in the document and the page height going
+      // 1061 → 2495 → 1434 px, so the reader watched the new page appear below
+      // the old one and then the scrollbar jump.
+      //
+      // Detaching is instant and is all the reader's eye cares about. Whatever
+      // the surface then does to release a renderer happens to a subtree that
+      // is no longer painted, and `remove()` on an already-detached node is a
+      // no-op, so the surface's own teardown is unaffected.
+      for (const node of added) node.remove?.();
       try {
         surface?.destroy?.();
         surface?.dispose?.();
       } catch (error) {
         console.warn('navigation: a surface did not tear itself down cleanly', error);
       }
-      try {
-        observability?.feedback?.dispose?.();
-        observability?.dispose?.();
-      } catch (error) {
-        console.warn('navigation: observability did not tear down cleanly', error);
-      }
-      // Whatever is left of what this mount added. An element the surface
-      // already removed is simply no longer in the document and `remove()` is
-      // a no-op on it.
-      for (const node of added) node.remove?.();
+      // It may not have finished installing. Disposing what does not exist yet
+      // is the leak this has to avoid, so an unresolved install is disposed
+      // when it lands rather than ignored.
+      const release = (installed) => {
+        try {
+          installed?.feedback?.dispose?.();
+          installed?.dispose?.();
+        } catch (error) {
+          console.warn('navigation: observability did not tear down cleanly', error);
+        }
+      };
+      if (observability) release(observability);
+      else void observabilityReady?.then(release, () => {});
     },
   };
 }

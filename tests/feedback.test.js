@@ -130,7 +130,19 @@ test('feedback: it is reachable from every product-shell surface', () => {
 
   // And the trigger is taken down with the surface that mounted it, or every
   // navigation would leave another one on the page.
-  assert.match(surfaces, /observability\?\.feedback\?\.dispose\?\.\(\)/);
+  assert.match(surfaces, /feedback\?\.dispose\?\.\(\)/, 'the surface disposes its feedback panel');
+
+  // Including when the surface is torn down before observability has finished
+  // installing. Observability is no longer awaited inside the mount — that
+  // await put a dynamic import inside the swap's critical path and left the
+  // outgoing surface stacked under the incoming one — so a fast navigation can
+  // destroy a surface whose panel does not exist yet. Disposing nothing and
+  // moving on is how that becomes a trigger per navigation.
+  assert.match(
+    surfaces,
+    /else void observabilityReady\?\.then\(release/,
+    'an install still in flight must be disposed when it lands, not ignored'
+  );
 });
 
 test('feedback: the panel is keyboard-dismissable and announces itself', () => {
