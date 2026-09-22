@@ -6,6 +6,11 @@
       "titleScale": 1,
       "html": "dc6473d8a13bada7"
     },
+    "cardiac-output": {
+      "bodyChars": 82,
+      "titleScale": 1,
+      "html": "adb01c784e8a79bf"
+    },
     "heart-anatomy": {
       "bodyChars": 82,
       "titleScale": 1,
@@ -24,7 +29,7 @@
     "site": {
       "bodyChars": 82,
       "titleScale": 1,
-      "html": "08d920468e6e7235"
+      "html": "373824fc659d2e17"
     }
   }
 }

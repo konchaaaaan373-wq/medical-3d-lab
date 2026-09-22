@@ -23,6 +23,9 @@ export const LANDING_MODEL_ORDER = Object.freeze([
   // lung rather than after it: a visitor who stops reading part way down has
   // seen only models that open.
   'liver-anatomy',
+  // Published 2026-09-22, the first model here that is not an atlas. Same
+  // reason for the position: the open models lead, whatever kind they are.
+  'cardiac-output',
   'kidney-anatomy',
   'stomach-anatomy',
   'intestine-anatomy',
@@ -59,7 +62,6 @@ export const LANDING_MODEL_ORDER = Object.freeze([
   'abdomen-anatomy',
   'pelvis-anatomy',
   'heart-failure',
-  'cardiac-output',
   'circulation',
   'myocardial-ischemia',
   'amyloid-beta',
