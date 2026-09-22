@@ -653,7 +653,18 @@ export const BETA_PUBLICATION_DECISIONS = Object.freeze([
     record: 'docs/beta-publication/cardiac-output.md',
     /** Procedural geometry: no external asset, so nothing to pin but the scene. */
     assetRevisions: Object.freeze({}),
-    sceneRevision: Object.freeze({ cardRevision: 5, modelDigest: '9482474ed50d1090' }),
+    // Re-pinned 2026-09-22 after two diagnostics were added to the boundary
+    // (a per-compartment flow balance, and the same balance over a
+    // twenty-fourth of the beat, which is what catches a mis-wired loop). The
+    // gate closed on the old pin, which is the mechanism working: it cannot
+    // tell a new measurement from a changed model, so it stops and asks.
+    //
+    // What was checked before re-pinning, and is recorded in the decision
+    // document: every figure this scene shows is **bit-identical** to the
+    // values the original decision was taken against. The change adds checks
+    // and removes nothing; a solve that passed still passes with the same
+    // numbers, and one that would not is now refused earlier.
+    sceneRevision: Object.freeze({ cardRevision: 6, modelDigest: 'd768aa4672f67c05' }),
     scope: Object.freeze({
       structures: Object.freeze([
         'the left ventricle, built from the solved end-diastolic and end-systolic volumes rather than posed',

@@ -235,6 +235,34 @@ export const DIAGNOSTIC_TOLERANCES = Object.freeze({
   conservedVolumeMl: 0.5,
   /** Largest allowed mismatch between EDV − ESV and what crossed the aortic valve. */
   strokeVolumeMismatchMl: 0.5,
+  /**
+   * Largest allowed mismatch, for **any** compartment, between what crossed
+   * its two boundaries over the beat and what its volume actually did.
+   *
+   * The independent one. `strokeVolumeMismatchMl` asks it of the left
+   * ventricle and the aortic valve; this asks it of all seven compartments and
+   * all seven flows, so an error in the pulmonary side or in the venous
+   * reservoir — neither of which the left ventricle's own numbers can see —
+   * has to show up here. Measured 2026-09-22 over the declared domain: worst
+   * 0.0162 mL (left ventricle, Ees 0.8 / filling 980 / SVR 1.1 / 50 min⁻¹),
+   * thirty times inside this — small, and not the zero an identity returns.
+   */
+  compartmentBalanceMl: 0.5,
+  /**
+   * The same, asked of a twenty-fourth of the beat at a time.
+   *
+   * This is the **wiring** check. The whole-beat balance cannot be one — see
+   * `measureBeat` — because in a series loop at steady state every flow
+   * integrates to the same stroke volume. Inside a window they do not.
+   *
+   * The number is set from the separation, not from a wish: with the loop
+   * wired correctly the residual is the first-order quadrature error inside a
+   * window, measured 2026-09-22 at 0.29 mL for the reference and 0.54 mL worst
+   * over the domain. Connecting the systemic veins to the pulmonic valve
+   * instead of the tricuspid puts it at 18.3 mL and the solve is refused.
+   * Three sits between them with room on both sides.
+   */
+  compartmentWindowMl: 3,
   /** Any backward flow through an ideal one-way valve at all, in mL/s. */
   valveBackflowMlPerS: 0,
   /**
@@ -395,6 +423,33 @@ const COMPARTMENT_NAMES = Object.freeze([
 const COMPARTMENT_ORDER = Object.freeze([LV, SA, SV, RV, PA, PV, LA]);
 
 /**
+ * What flows into and out of each compartment, in the same order.
+ *
+ * Written down so the balance below is a statement about the **loop** rather
+ * than about one equation evaluated twice. The check it enables — integrated
+ * inflow minus integrated outflow equals the compartment's own volume change
+ * over the beat — couples seven integrals and seven volume differences that
+ * were produced by different parts of the integration, so an error in any one
+ * of them has nowhere to hide.
+ *
+ * Contrast `systemicOhmRelative`, which is an identity: the systemic flow *is*
+ * defined as (P_sa − P_sv) / R, so multiplying its mean by R and comparing it
+ * with the mean gradient can only ever return zero to machine precision. It is
+ * kept as a wiring check — it would catch a resistance read from the wrong
+ * parameter — and it is not evidence of numerical accuracy. Measured
+ * 2026-09-22: 5×10⁻¹⁶ at the reference, 1.5×10⁻¹⁵ at the corners.
+ */
+const COMPARTMENT_FLOWS = Object.freeze([
+  Object.freeze({ in: 'mitral', out: 'aortic' }),
+  Object.freeze({ in: 'aortic', out: 'systemic' }),
+  Object.freeze({ in: 'systemic', out: 'tricuspid' }),
+  Object.freeze({ in: 'tricuspid', out: 'pulmonic' }),
+  Object.freeze({ in: 'pulmonic', out: 'pulmonary' }),
+  Object.freeze({ in: 'pulmonary', out: 'pulmonaryVenous' }),
+  Object.freeze({ in: 'pulmonaryVenous', out: 'mitral' }),
+]);
+
+/**
  * Walks one further beat at full resolution and reports what it found.
  *
  * Everything here has to follow the real trajectory: evaluating flows at one
@@ -420,8 +475,56 @@ function measureBeat(solution, parameters, steps) {
   let venousPressureIntegral = 0;
   let elapsed = 0;
 
+  /**
+   * The same balance, asked of short windows instead of the whole beat.
+   *
+   * This is the one that catches **wiring**, which the whole-beat balance
+   * cannot: at periodic steady state every through-flow in a series loop
+   * integrates to the same stroke volume, so connecting a compartment to the
+   * wrong neighbour changes its beat total by a few thousandths of a
+   * millilitre and passes. Over a twenty-fourth of a cycle the flows are
+   * nothing like equal — the aortic valve is shut for two thirds of it — so
+   * the same mistake leaves tens of millilitres unaccounted for.
+   *
+   * An instantaneous form was tried first and does not work: `flows` is
+   * evaluated at the step boundary while ΔV is the average over the step, and
+   * at a valve opening the flow slews by a hundred millilitres a second
+   * inside one step. The finite-difference error was 85 mL/s with the loop
+   * wired correctly, which leaves nothing to detect a mistake against.
+   * Integrating over a window removes it.
+   */
+  const WINDOWS = 24;
+  const windowSteps = Math.max(1, Math.round(steps / WINDOWS));
+  let windowStart = Float64Array.from(solution.volumes);
+  const windowIntegrals = Object.fromEntries(Object.keys(integrals).map((key) => [key, 0]));
+  let stepsInWindow = 0;
+  let windowResidualMl = 0;
+  let worstWindowCompartment = COMPARTMENT_NAMES[0];
+
+  const closeWindow = (volumes) => {
+    for (let slot = 0; slot < COMPARTMENT_ORDER.length; slot++) {
+      const index = COMPARTMENT_ORDER[slot];
+      const { in: inflow, out: outflow } = COMPARTMENT_FLOWS[slot];
+      const imbalance = Math.abs(
+        windowIntegrals[inflow] - windowIntegrals[outflow] - (volumes[index] - windowStart[index])
+      );
+      if (imbalance > windowResidualMl) {
+        windowResidualMl = imbalance;
+        worstWindowCompartment = COMPARTMENT_NAMES[slot];
+      }
+    }
+    for (const key of Object.keys(windowIntegrals)) windowIntegrals[key] = 0;
+    windowStart = Float64Array.from(volumes);
+    stepsInWindow = 0;
+  };
+
   const end = walkBeat(solution, parameters, steps, ({ dt, pressures, flows, volumes }) => {
-    for (const key of Object.keys(integrals)) integrals[key] += flows[key] * dt;
+    for (const key of Object.keys(integrals)) {
+      integrals[key] += flows[key] * dt;
+      windowIntegrals[key] += flows[key] * dt;
+    }
+    stepsInWindow += 1;
+    if (stepsInWindow >= windowSteps) closeWindow(volumes);
     for (const valve of ['mitral', 'aortic', 'tricuspid', 'pulmonic']) {
       valveBackflow = Math.min(valveBackflow, flows[valve]);
     }
@@ -434,6 +537,8 @@ function measureBeat(solution, parameters, steps) {
 
   let periodicResidualMl = 0;
   let worstCompartment = COMPARTMENT_NAMES[0];
+  let balanceResidualMl = 0;
+  let worstBalanceCompartment = COMPARTMENT_NAMES[0];
   let total = 0;
   for (let slot = 0; slot < COMPARTMENT_ORDER.length; slot++) {
     const index = COMPARTMENT_ORDER[slot];
@@ -441,6 +546,18 @@ function measureBeat(solution, parameters, steps) {
     if (drift > periodicResidualMl) {
       periodicResidualMl = drift;
       worstCompartment = COMPARTMENT_NAMES[slot];
+    }
+    // What crossed this compartment's two boundaries over the beat, against
+    // what its volume actually did. Independent of the periodic residual: a
+    // compartment can return to where it started while the flows either side
+    // of it disagree about how it got there.
+    const { in: inflow, out: outflow } = COMPARTMENT_FLOWS[slot];
+    const imbalance = Math.abs(
+      integrals[inflow] - integrals[outflow] - (end[index] - start[index])
+    );
+    if (imbalance > balanceResidualMl) {
+      balanceResidualMl = imbalance;
+      worstBalanceCompartment = COMPARTMENT_NAMES[slot];
     }
     total += end[index];
     if (!Number.isFinite(end[index])) finite = false;
@@ -456,6 +573,10 @@ function measureBeat(solution, parameters, steps) {
     finite,
     periodicResidualMl,
     worstCompartment,
+    balanceResidualMl,
+    worstBalanceCompartment,
+    windowResidualMl,
+    worstWindowCompartment,
     conservedVolumeMl: total,
     integrals,
     valveBackflowMlPerS: valveBackflow,
@@ -576,6 +697,18 @@ export function solveCardiacOutput(input, options = {}) {
       `stroke volume and aortic throughput differ by ${strokeVolumeMismatchMl.toFixed(3)} mL`
     );
   }
+  if (measured.windowResidualMl > DIAGNOSTIC_TOLERANCES.compartmentWindowMl) {
+    failures.push(
+      `${measured.worstWindowCompartment}'s flows and its volume change differ by ` +
+        `${measured.windowResidualMl.toFixed(3)} mL within a single window of the beat`
+    );
+  }
+  if (measured.balanceResidualMl > DIAGNOSTIC_TOLERANCES.compartmentBalanceMl) {
+    failures.push(
+      `${measured.worstBalanceCompartment}'s flows and its volume change differ by ` +
+        `${measured.balanceResidualMl.toFixed(4)} mL over the beat`
+    );
+  }
   if (measured.valveBackflowMlPerS < -DIAGNOSTIC_TOLERANCES.valveBackflowMlPerS) {
     failures.push(`a valve carried ${measured.valveBackflowMlPerS.toFixed(4)} mL/s backwards`);
   }
@@ -598,6 +731,10 @@ export function solveCardiacOutput(input, options = {}) {
     strokeVolumeMismatchMl,
     valveBackflowMlPerS: measured.valveBackflowMlPerS,
     systemicOhmRelative: measured.systemicOhmRelative,
+    balanceResidualMl: measured.balanceResidualMl,
+    worstBalanceCompartment: measured.worstBalanceCompartment,
+    windowResidualMl: measured.windowResidualMl,
+    worstWindowCompartment: measured.worstWindowCompartment,
     beatFlowsMl: Object.freeze({ ...measured.integrals }),
     stepsPerBeat,
     diagnosticSteps,

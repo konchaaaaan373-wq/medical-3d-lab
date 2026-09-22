@@ -183,17 +183,23 @@ test('raising the rate does not by itself raise cardiac output', () => {
   );
 });
 
-test('cardiac output rises with rate everywhere in the range, which is a limitation', () => {
-  // Not a claim about hearts. It is a measured property of *this* model, and
-  // the model card's §14 now rests on it: a reader who takes "faster is more"
-  // from the rate control will never be contradicted inside the declared
-  // range, because systole is a fixed fraction of the cycle here and the point
-  // where filling time starts to limit output sits outside it.
+test('no fall in output with rate at any sampled point — a characterization test', () => {
+  // **A characterization test of this build, not a rule of physiology.** It
+  // records what the model does today so that a change to it is noticed; a red
+  // run here is a prompt to re-read the model card, not evidence that the
+  // model has become wrong about hearts.
   //
-  // The card used to assert the opposite — that such a condition existed in
-  // range — and nothing had measured it (L-95). This is what measures it, so
-  // that if the model ever gains a rate-dependent systolic fraction, this goes
-  // red and the card has to be rewritten rather than quietly becoming true.
+  // The card used to assert the opposite — that a condition existed inside the
+  // range where raising the rate lowered output — and nothing had measured it
+  // (L-95). The first correction then overshot and called the model
+  // "monotonic", which a finite sweep cannot establish. So what is asserted
+  // here is bounded the way the card's wording is: no fall **at these points**,
+  // with nothing claimed about the conditions between them and nothing claimed
+  // about why.
+  //
+  // The wider survey the card quotes is `npm run sweep:cardiac-output -- --rate`
+  // (2600 states, 2400 adjacent pairs). This is the subset cheap enough to run
+  // on every `npm test`.
   const axes = {
     contractilityEesMmHgPerMl: [0.8, 1.4, 2.74, 4.0],
     fillingVolumeMl: [540, 710, 980],

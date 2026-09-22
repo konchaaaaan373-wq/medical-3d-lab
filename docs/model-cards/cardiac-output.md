@@ -167,6 +167,15 @@ stenosis.
 - A warm start from a distant condition is rescaled to the requested conserved
   volume, which is a numerical initialisation and not a physiological
   redistribution.
+- **One of the boundary's own checks measures nothing, and now says so.**
+  `systemicOhmRelative` compares mean flow × resistance with the mean systemic
+  gradient. The systemic flow *is* defined as (P_sa − P_sv) / R, and R is
+  constant, so the comparison is an identity: it returns 5×10⁻¹⁶ at the
+  reference and 1.5×10⁻¹⁵ at the corners, and it would do so however wrong the
+  integration was. It is kept as a wiring check — it would catch a resistance
+  read from the wrong parameter — and it is **not** evidence of numerical
+  accuracy. An external reviewer found this; the checks that do carry that
+  evidence are in §16.
 
 ## 12. What it must never be used for
 
@@ -209,19 +218,37 @@ resistance", which is the misconception rather than the teaching.
   reflection and the aortic valve are all part of what the ventricle works
   against, and only the first of those exists here, held constant.
 - **A reader may take "raise the rate and output rises" from playing with the
-  rate control, and inside the declared range this model will never contradict
+  rate control, and nothing this model has been observed to do will contradict
   them.** Stroke volume does fall as the rate rises — each beat fills less —
-  but the product rises anyway at every condition measured: 1820 solves across
-  the four axes, the rate walked in steps of 5/min, and cardiac output is
-  monotonically increasing in rate at all of them.
+  but the product rose at every sampled pair.
 
-  This is a **consequence of the limitation in §13, not a physiological
-  claim**: systole is a fixed fraction of the cycle here, so diastolic filling
-  time is lost more slowly than in a person, and the point where filling starts
-  to limit output sits outside the range this model will solve. The tests
-  refuse to encode "faster is more" as a fact about hearts — what they pin is
-  that stroke volume falls, that output is the product rather than the rate,
-  and that this monotonicity holds so that it is noticed if it ever stops.
+  What was measured, exactly (`npm run sweep:cardiac-output -- --rate`,
+  2026-09-22): Ees at 0.8, 1.2, 1.6, 2.0, 2.4, 2.74, 3.2, 4.0 mmHg/mL; filling
+  at 540, 650, 710, 830, 980 mL; SVR at 0.7, 1.0, 1.1, 1.4, 1.8 mmHg·s/mL;
+  rate from 50 to 110/min in steps of 5. The full product of the four axes:
+  **2600 states solved, all valid, 2400 adjacent pairs in rate compared at
+  fixed everything else.** A fall counted at more than 1×10⁻⁶ L/min. **No fall
+  was found.** The smallest change seen was **+0.023 L/min**, at Ees 0.8,
+  filling 540 mL, SVR 1.8, going from 105 to 110/min.
+
+  **That is a finite grid, and it is all it is.** It says nothing about the
+  conditions between those points, and the controls are continuous within their
+  steps. This section does **not** claim the model is monotonic in rate over
+  its whole domain.
+
+  **Why is not established.** The limitation in §13 — systole is a fixed
+  fraction of the cycle, so filling time is lost more slowly here than in a
+  person — is the obvious candidate, and it is a **hypothesis this repository
+  has not tested**: doing so needs the time model changed and the two compared,
+  which has not been done. Whether a turn-over exists outside the declared
+  range is likewise **unmeasured**; an earlier version of this section asserted
+  one inside it, from the same kind of reasoning, and it was not there.
+
+  The tests refuse to encode "faster is more" as a fact about hearts. What they
+  pin is that stroke volume falls, that output is the product rather than the
+  rate, and — as a **characterization test of the current build, not a rule of
+  physiology** — that the sampled grid still contains no fall, so that a change
+  to the time model is noticed rather than absorbed.
 
   An earlier version of this section claimed the opposite — that a condition
   inside the range existed where raising the rate lowered output. Nothing had
@@ -238,23 +265,61 @@ resistance", which is the misconception rather than the teaching.
 
 **Catalog status:** `alpha`
 
+### Revision 6 — two checks that measure something, and one that never did
+
+An external review asked what the boundary's checks actually establish. One of
+them establishes nothing: `systemicOhmRelative` is an identity (§11), returning
+machine epsilon regardless of how the integration went. It stays as a wiring
+check and is no longer counted as numerical evidence.
+
+Two checks were added in its place, both about the loop rather than about one
+equation evaluated twice:
+
+- **Per-compartment balance over the beat.** For each of the seven
+  compartments, integrated inflow minus integrated outflow against its own
+  volume change. Worst over the declared domain: 0.0162 mL (left ventricle, Ees
+  0.8 / filling 980 mL / SVR 1.1 / 50 min⁻¹), tolerance 0.5 mL.
+- **The same over a twenty-fourth of the beat.** This is the one that catches a
+  mis-wired loop, which the whole-beat form cannot: in a series circulation at
+  steady state every flow integrates to the same stroke volume. 0.29 mL wired
+  correctly, 18.3 mL mis-wired, tolerance 3 mL — set from the separation rather
+  than chosen. An instantaneous form was tried first and abandoned: the
+  finite-difference error at a valve opening is 85 mL/s, which leaves nothing
+  to detect a mistake against.
+
+**No figure this scene shows moved.** Every recorded reference value is
+bit-identical to what the previous revision produced; the change adds
+measurement and removes nothing. The publication decision was re-pinned to this
+revision on that basis, and the gate closed in between — which is the mechanism
+working, not a problem: it cannot tell a new diagnostic from a changed model,
+so it stops and asks.
+
 ### Correction to revision 5 (2026-09-22) — §14 asserted a condition that does not exist
 
 §14 warned that a reader might take "faster is more" from the rate control, and
 then said the model would contradict them somewhere inside the declared range.
-**It does not.** The claim was written from the shape of the physics — each beat
-fills less, so at some rate the product must turn over — and nothing measured
-whether that point falls inside the range this model solves. It does not:
-across 1820 solves spanning the four axes, with the rate walked in steps of
-5/min from 50 to 110, cardiac output is monotonically increasing in rate at
-every condition.
+**No such point was found.** The claim was written from the shape of the
+physics — each beat fills less, so at some rate the product must turn over —
+and nothing measured whether that point falls inside the range this model
+solves.
 
-The limitation in §13 is why, and it makes the misconception risk **worse**
-rather than better: systole is a fixed fraction of the cycle, so filling time
-is lost more slowly here than in a person, and the turn-over sits outside the
-range. §14 now says that, and
-`tests/cardiac-output-physiology.test.js` pins the monotonicity so that the
-card is forced to change if the model's behaviour ever does.
+`npm run sweep:cardiac-output -- --rate` now measures it and prints what it
+measured: 2600 states over the full product of four axes, 2400 adjacent pairs
+in rate, no fall above 1×10⁻⁶ L/min, smallest change +0.023 L/min. §14 quotes
+those numbers and says in its own words that a finite grid is a finite grid.
+
+**A first attempt at this correction overshot** and wrote that output "is
+monotonically increasing in rate", which is a claim about the whole continuous
+domain that a sweep cannot support, and asserted §13's fixed-fraction systole
+as the cause and a turn-over outside the range as a fact. All three are now
+marked as what they are: a sampled result, an untested hypothesis, and an
+unmeasured question. The reviewer who caught this is credited in
+`docs/reviews/cardiac-output-external-review-request.md`.
+
+`tests/cardiac-output-physiology.test.js` pins the sampled result as a
+characterization test of the current build, and
+`tests/cardiac-output-claims.test.js` pins the card's own wording, so that the
+retracted sentence cannot come back without a test going red.
 
 **No model source changed**, so the registry revision does not move and the
 publication decision stays pinned to revision 5 — this is a correction to what
@@ -343,8 +408,23 @@ to it.
 - **Model integrity:** `node --test tests/cardiac-output-model.test.js` — the
   definitions, the units both ways, refusal outside the range, route
   independence, and the whole declared domain settling into a periodic beat.
-- **The range itself:** `node scripts/sweep-cardiac-output.mjs`, and
-  `--probe` to see where it gives way outside.
+- **Every compartment's books balance, twice.** Over the whole beat, what
+  crossed each compartment's two boundaries equals what its volume did: worst
+  0.0162 mL over the declared domain, against a 0.5 mL tolerance. And over a
+  twenty-fourth of the beat, which is the check that catches a **mis-wired
+  loop** — over a whole beat in a series circulation every flow integrates to
+  the same stroke volume, so connecting a compartment to the wrong neighbour
+  changes its beat total by thousandths of a millilitre and passes. Within a
+  window it does not: 0.29 mL wired correctly, 18.3 mL with the systemic veins
+  connected to the pulmonic valve, and the solve refused.
+- **What the claims say, as opposed to what the model does:**
+  `node --test tests/cardiac-output-claims.test.js` — a string-level check on
+  this card, because a sentence it does not support is invisible to every
+  numeric test in this list. It exists because §14 carried one for four days
+  (L-95).
+- **The range itself:** `npm run sweep:cardiac-output`, `--probe` to see where
+  it gives way outside, and `--rate` for the rate axis walked and reported as
+  the finite grid it is.
 - **Interventions and the lesson:** `node --test tests/cardiac-output-interventions.test.js
   tests/cardiac-output-learning.test.js` — inputs only, no accumulation, refusal
   rather than clamping, the two modes' state, and every stored answer re-derived.

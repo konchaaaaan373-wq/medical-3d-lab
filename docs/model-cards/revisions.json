@@ -61,8 +61,8 @@
       "src/models/cardiacInterventions.js",
       "src/models/cardiacMechanics.js"
     ],
-    "cardRevision": 5,
-    "modelDigest": "9482474ed50d1090",
+    "cardRevision": 6,
+    "modelDigest": "d768aa4672f67c05",
     "cardUpdatedAt": "2026-09-22"
   },
   {

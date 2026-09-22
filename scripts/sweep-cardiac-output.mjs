@@ -4,6 +4,7 @@
  *
  *   node scripts/sweep-cardiac-output.mjs             # the declared domain
  *   node scripts/sweep-cardiac-output.mjs --probe     # wider, to find the edge
+ *   node scripts/sweep-cardiac-output.mjs --rate      # the rate axis, walked
  *
  * This is where `CONTROL_DOMAIN` came from. The ranges in
  * `src/models/cardiacOutput.js` are not a judgement about what a reader should
@@ -27,6 +28,7 @@ import {
 } from '../src/models/cardiacOutput.js';
 
 const probe = process.argv.includes('--probe');
+const rateWalk = process.argv.includes('--rate');
 
 /** Deterministic sampler: a survey that differs between runs cannot be cited. */
 function seededRandom(seed) {
@@ -121,3 +123,109 @@ for (const [key, range] of Object.entries(extremes)) {
 }
 
 process.exitCode = failures.length > 0 && !probe ? 1 : 0;
+
+/**
+ * The rate axis, walked, and reported as what it is: a finite grid.
+ *
+ * ## Why this mode exists
+ *
+ * The model card once asserted that somewhere inside the declared range,
+ * raising the heart rate lowered cardiac output. Nothing had measured it, and
+ * measuring it found no such point (L-95). The first correction then
+ * overshot in the other direction and said output "is monotonically
+ * increasing in rate" — which is a statement about the whole continuous
+ * domain, and a finite sweep cannot make it.
+ *
+ * So this mode reports the sweep and nothing beyond it: which values each axis
+ * took, how they were combined, how many states were solved, how many adjacent
+ * pairs in rate were compared, the tolerance a decrease had to exceed to
+ * count, and — the number the card quotes — the **smallest** increase seen and
+ * where. A later run that finds a decrease prints it.
+ *
+ * It does not, and cannot, say there is no such point between the samples.
+ */
+if (rateWalk) {
+  const EES = [0.8, 1.2, 1.6, 2.0, 2.4, 2.74, 3.2, 4.0];
+  const FILL = [540, 650, 710, 830, 980];
+  const SVR = [0.7, 1.0, 1.1, 1.4, 1.8];
+  const RATE_STEP = 5;
+  const { min: rateMin, max: rateMax } = CONTROL_DOMAIN.heartRatePerMin;
+  /**
+   * How much a fall has to be before it is a fall.
+   *
+   * The solver stops on a relative tolerance, so two neighbouring solutions
+   * carry integration noise. Anything smaller than this is not a turn-over, it
+   * is the last digit moving; anything larger is reported.
+   */
+  const DECREASE_TOLERANCE_L_MIN = 1e-6;
+
+  const rates = [];
+  for (let rate = rateMin; rate <= rateMax; rate += RATE_STEP) rates.push(rate);
+
+  let states = 0;
+  let comparisons = 0;
+  let nonValid = 0;
+  let smallest = null;
+  const decreases = [];
+
+  for (const contractilityEesMmHgPerMl of EES) {
+    for (const fillingVolumeMl of FILL) {
+      for (const systemicResistanceMmHgSPerMl of SVR) {
+        let previous = null;
+        for (const heartRatePerMin of rates) {
+          const result = solveCardiacOutput({
+            contractilityEesMmHgPerMl,
+            fillingVolumeMl,
+            systemicResistanceMmHgSPerMl,
+            heartRatePerMin,
+          });
+          states += 1;
+          if (result.status !== RESULT_STATUS.VALID) {
+            nonValid += 1;
+            previous = null;
+            continue;
+          }
+          const output = result.metrics.cardiacOutputLMin;
+          if (previous) {
+            comparisons += 1;
+            const delta = output - previous.output;
+            const where = {
+              contractilityEesMmHgPerMl,
+              fillingVolumeMl,
+              systemicResistanceMmHgSPerMl,
+              from: previous.rate,
+              to: heartRatePerMin,
+              delta,
+            };
+            if (delta < -DECREASE_TOLERANCE_L_MIN) decreases.push(where);
+            if (!smallest || delta < smallest.delta) smallest = where;
+          }
+          previous = { rate: heartRatePerMin, output };
+        }
+      }
+    }
+  }
+
+  const describe = (row) =>
+    `Ees ${row.contractilityEesMmHgPerMl}, filling ${row.fillingVolumeMl} mL, ` +
+    `SVR ${row.systemicResistanceMmHgSPerMl}, ${row.from} → ${row.to}/min: ` +
+    `${row.delta >= 0 ? '+' : ''}${row.delta.toFixed(6)} L/min`;
+
+  console.log('\n--- the rate axis, walked ---');
+  console.log(`Ees        : ${EES.join(', ')} mmHg/mL`);
+  console.log(`filling    : ${FILL.join(', ')} mL`);
+  console.log(`SVR        : ${SVR.join(', ')} mmHg·s/mL`);
+  console.log(`rate       : ${rateMin} .. ${rateMax} /min in steps of ${RATE_STEP} (${rates.length} values)`);
+  console.log('combination: the full product of the four axes');
+  console.log(`states     : ${states} solved, ${nonValid} not valid`);
+  console.log(`comparisons: ${comparisons} adjacent pairs in rate, at fixed everything else`);
+  console.log(`tolerance  : a fall counts at more than ${DECREASE_TOLERANCE_L_MIN} L/min`);
+  console.log(`smallest change: ${smallest ? describe(smallest) : 'none measured'}`);
+  console.log(`falls found: ${decreases.length}`);
+  for (const row of decreases.slice(0, 12)) console.log(`  ${describe(row)}`);
+  console.log(
+    '\nThis is a finite grid. It says no fall was found at these points; it says' +
+      '\nnothing about the points between them, and nothing about why.'
+  );
+  if (decreases.length > 0) process.exitCode = 1;
+}
