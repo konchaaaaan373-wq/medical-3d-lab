@@ -333,46 +333,92 @@ for (const slug of SLUGS) {
     await page.waitForTimeout(600);
 
     /**
-     * The first control on this step a reader could actually press.
+     * The control on this step that carries a reader *forward*.
      *
-     * Asked for by visibility rather than by presence: a step keeps the
-     * previous step's nodes in the DOM, and clicking a hidden one waits thirty
-     * seconds and then fails as a timeout rather than as "the lesson is stuck",
-     * which is a worse report of the same fact.
+     * Forward is the whole of it. An earlier version of this walk asked for
+     * the first visible button in the nav row, and the nav row puts **Back**
+     * first — so it pressed Back on every observe step, bounced to manipulate,
+     * pressed apply, came back, and pressed Back again. It never reached
+     * explain or transfer, and whether it happened to stop on a step that has
+     * a table decided whether this check passed. On `cardiac-output` it did,
+     * on `copd` it did not, and the report blamed the copd lesson for it.
+     *
+     * So: choices, then an action that is still pressable, then the primary
+     * nav button only (`Next` / `Done` carry `.primary`; `Back` does not).
+     * Asked for by visibility as well, because a step keeps the previous
+     * step's nodes in the DOM and clicking a hidden one waits thirty seconds
+     * and then fails as a timeout rather than as "the lesson is stuck".
      */
     const pressable = async () => {
-      for (const selector of ['.learn-step .learn-choice', '.learn-step .learn-action', '.learn-nav button']) {
+      for (const selector of [
+        '.learn-step .learn-choice',
+        '.learn-step .learn-action:not([disabled])',
+        '.learn-step .learn-nav-btn.primary',
+      ]) {
         const all = page.locator(selector);
-        for (let i = await all.count(); i > 0; i -= 1) {
-          const candidate = all.nth(await all.count() - i);
+        for (let i = 0; i < (await all.count()); i += 1) {
+          const candidate = all.nth(i);
           if (await candidate.isVisible().catch(() => false)) return candidate;
         }
       }
       return null;
     };
 
+    // Read while walking, not at the end. The last step's own button is
+    // `Done`, which closes the panel — so anything measured after the loop is
+    // measured on a lesson that is no longer on screen.
+    let sawRows = 0;
+    let blank = false;
+    let shot = false;
+    const readTable = async () => {
+      const rows = await page.locator('.learn-row-label').count();
+      if (!rows) return;
+      sawRows = Math.max(sawRows, rows);
+      blank =
+        blank ||
+        (await page.evaluate(() =>
+          [...document.querySelectorAll('.learn-row-figure')].some((node) => /undefined|NaN/.test(node.textContent))
+        ));
+      if (!shot) {
+        shot = true;
+        await page.screenshot({ path: join(outDir, `${slug}-lesson.png`) });
+      }
+    };
+
     let steps = 0;
-    for (let guard = 0; guard < 14; guard += 1) {
+    // `idle` is the tween, not a stuck lesson: apply disables itself and the
+    // step only advances once the manipulation has been driven into the model,
+    // which for a scene with `settleModel` is a dozen breaths rather than a
+    // second. Waiting is how this walk tells the two apart.
+    let idle = 0;
+    for (let guard = 0; guard < 26 && idle < 6; guard += 1) {
+      await readTable();
       const target = await pressable();
-      if (!target) break;
+      if (!target) {
+        idle += 1;
+        await page.waitForTimeout(1200);
+        if (!(await page.locator('.learn-body').count())) break;
+        continue;
+      }
+      idle = 0;
       await target.click({ timeout: 4000 }).catch(() => {});
       steps += 1;
       // The manipulation is tweened into the model over about a second and a
       // half, and the transfer step solves the model four times.
       await page.waitForTimeout(1700);
       if (!(await page.locator('.learn-body').count())) break;
+      await readTable();
     }
     if (steps < 4) problems.push(`the lesson stopped after ${steps} step(s)`);
-    const tableRows = await page.locator('.learn-row-label').count();
-    if (!tableRows) problems.push('the lesson never showed a before/after row');
-    const blank = await page.evaluate(() =>
-      [...document.querySelectorAll('.learn-row-figure')].some((node) => /undefined|NaN/.test(node.textContent))
-    );
+    if (!sawRows) problems.push('the lesson never showed a before/after row');
     if (blank) problems.push('the lesson read `undefined` into its own table');
-    await page.screenshot({ path: join(outDir, `${slug}-lesson.png`) });
+    if (!shot) await page.screenshot({ path: join(outDir, `${slug}-lesson.png`) });
 
-    const close = page.locator('.learn-close');
-    if (await close.count()) await close.first().click();
+    // The lesson may already have closed itself — its last button is `Done`,
+    // and the panel's nodes stay in the DOM after it does, so `count()` is not
+    // an answer to "is it still open".
+    const close = page.locator('.learn-close').first();
+    if (await close.isVisible().catch(() => false)) await close.click();
     await page.waitForTimeout(1200);
     const reset = page.locator('.model-control-reset');
     if (await reset.count()) await reset.first().click();
