@@ -466,12 +466,19 @@ export const BETA_PUBLICATION_DECISIONS = Object.freeze([
     sceneRevision: Object.freeze({ cardRevision: 26, modelDigest: '20ae31ab7bafd24f' }),
     scope: Object.freeze({
       // The authored tour in `SCENE_POINTS`, not whatever a run measured: four
-      // named parts at four recorded points, crossing both adopted files.
+      // named parts at four recorded points, crossing both adopted files —
+      // three great vessels from the vasculature file and a chamber from the
+      // heart one, which the drive prints as their places in the hierarchy.
+      //
+      // Re-measured 2026-09-22, with the brain's and for the same reason: the
+      // opening framing stopped being discarded (F-133), so the model moved.
+      // The old fourth point named the left ventricle where it was authored
+      // for the artery that runs across it.
       structures: Object.freeze([
-        'Right atrium',
-        'Right ventricle',
-        'Left anterior descending artery',
+        'Superior vena cava',
+        'Arch of the aorta',
         'Ascending aorta',
+        'Left atrium',
       ]),
       views: Object.freeze([
         'six authored viewpoints offered and one applied by the drive: anterior, posterior, left and right lateral, from the base, from the apex',
@@ -542,11 +549,18 @@ export const BETA_PUBLICATION_DECISIONS = Object.freeze([
       // first run. Three of the four points were wrong and two of those had
       // come to name the same structure, so the scope below would have
       // claimed four distinct parts that a run could only show three of.
+      // Re-measured 2026-09-22, the third time. Same cause as the second and
+      // the opposite direction: the scene had gone back to opening at a
+      // framing it abandons the moment anything re-frames it (F-133), and
+      // fixing that moved the model again — this time towards filling the
+      // frame. The fourth point had been naming "Orbital gyri" where it is
+      // authored for its neighbour, under both framings, because it was last
+      // measured three framing changes ago.
       structures: Object.freeze([
-        'Precentral gyrus',
+        'Middle frontal gyrus',
+        'Superior parietal lobule',
+        'Inferior frontal sulcus',
         'Supramarginal gyrus',
-        'Angular gyrus',
-        'Orbital part of inferior frontal gyrus',
       ]),
       views: Object.freeze([
         'left-lateral (applied by the interaction drive)',
