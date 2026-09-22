@@ -3448,6 +3448,7 @@
  * `.top-left` is already set up to do.
  */
 .model-scope,
+.reference-library,
 .related-scenes {
   flex: none;
 }
@@ -3493,6 +3494,226 @@
 .related-toggle:hover,
 .scope-toggle:hover {
   color: var(--ink);
+}
+
+/* ---------- reference reading ----------
+   The classical syndrome names, which this model does not compute and a reader
+   does want beside it. One entry open at a time, opened by a real button: the
+   whole point is that the reader chooses which one to read, because choosing
+   for them is the classifier this scene removed.
+
+   Everything here is at the 12px type floor or above, which is why it does not
+   match the 9–10.5px of the two panels it sits between. The floor only shrinks
+   (`npm run type-floor`), so a new panel joins at the floor rather than at the
+   size of its neighbours; bringing those two up is its own change. */
+.reference-library {
+  width: min(236px, 100%);
+  max-width: 236px;
+  padding: 0;
+  overflow: hidden;
+}
+
+.reference-toggle {
+  display: block;
+  width: 100%;
+  background: none;
+  border: 0;
+  color: var(--ink-dim);
+  font: inherit;
+  font-size: 12px;
+  letter-spacing: 0.03em;
+  text-align: left;
+  padding: 10px 11px;
+  cursor: pointer;
+}
+
+.reference-toggle::after {
+  content: '＋';
+  float: right;
+  color: var(--ink-faint);
+}
+
+.reference-library.is-open .reference-toggle::after {
+  content: '−';
+}
+
+.reference-toggle:hover,
+.reference-toggle:focus-visible {
+  color: var(--ink);
+}
+
+.reference-body {
+  padding: 0 11px 10px;
+  max-height: 46vh;
+  overflow-y: auto;
+}
+
+.reference-intro,
+.reference-group-note {
+  margin: 0 0 6px;
+  font-size: 12px;
+  line-height: 1.45;
+  color: var(--ink-dim);
+}
+
+.reference-group + .reference-group {
+  margin-top: 10px;
+}
+
+.reference-group-title {
+  margin: 0 0 4px;
+  font-size: 12px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--ink-faint);
+  font-weight: 600;
+}
+
+.reference-list {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+/* A touch target a thumb can hit. A reference a reader cannot open is the same
+   as one that is not there, which is what this panel exists to stop being. */
+.reference-entry {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  width: 100%;
+  min-height: 44px;
+  padding: 7px 9px;
+  background: rgb(255 255 255 / 4%);
+  border: 1px solid rgb(255 255 255 / 12%);
+  border-radius: 4px;
+  color: var(--ink-dim);
+  font: inherit;
+  font-size: 12px;
+  line-height: 1.3;
+  text-align: left;
+  cursor: pointer;
+}
+
+.reference-entry:hover,
+.reference-entry:focus-visible {
+  color: var(--ink);
+}
+
+.reference-entry.is-open {
+  color: var(--ink);
+  border-color: var(--ink-faint);
+  background: rgb(255 255 255 / 9%);
+}
+
+.reference-detail {
+  margin-top: 8px;
+  padding: 8px 0 0;
+  border-top: 1px solid rgb(255 255 255 / 12%);
+}
+
+.reference-detail-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 6px;
+}
+
+.reference-detail-title {
+  margin: 0;
+  font-size: 13px;
+  color: var(--ink);
+}
+
+.reference-close {
+  background: none;
+  border: 0;
+  color: var(--ink-faint);
+  font: inherit;
+  font-size: 12px;
+  padding: 6px 8px;
+  min-height: 44px;
+  cursor: pointer;
+}
+
+.reference-close:hover,
+.reference-close:focus-visible {
+  color: var(--ink);
+}
+
+.reference-gist {
+  margin: 4px 0 6px;
+  font-size: 12px;
+  line-height: 1.45;
+  color: var(--ink-dim);
+}
+
+.reference-lines {
+  margin: 0;
+}
+
+.reference-line-label {
+  font-size: 12px;
+  letter-spacing: 0.03em;
+  color: var(--ink-faint);
+}
+
+/* Grouping, not a verdict: the sentence under each label is what carries the
+   claim, and the shade only helps the eye find the groups. */
+.reference-line-label.is-characteristically-affected {
+  color: var(--caution-ink, #d9a441);
+}
+
+.reference-line-label.is-not-evaluated-here {
+  color: var(--ink-faint);
+  font-style: italic;
+}
+
+.reference-line-text {
+  margin: 0 0 6px;
+  font-size: 12px;
+  line-height: 1.45;
+  color: var(--ink-dim);
+}
+
+.reference-not-evaluated {
+  margin-top: 7px;
+  padding-top: 7px;
+  border-top: 1px dashed rgb(255 255 255 / 12%);
+}
+
+.reference-not-evaluated h6 {
+  margin: 0 0 4px;
+  font-size: 12px;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--ink-faint);
+  font-weight: 600;
+}
+
+.reference-not-evaluated ul {
+  margin: 0;
+  padding-left: 14px;
+  list-style: none;
+}
+
+.reference-not-evaluated li {
+  position: relative;
+  font-size: 12px;
+  line-height: 1.45;
+  color: var(--ink-dim);
+  padding-bottom: 4px;
+}
+
+.reference-not-evaluated li::before {
+  content: '×';
+  position: absolute;
+  left: -13px;
+  top: 2px;
+  color: var(--ink-faint);
 }
 
 .scope-body {

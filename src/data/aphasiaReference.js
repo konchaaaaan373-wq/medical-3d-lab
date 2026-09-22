@@ -351,3 +351,98 @@ export const APHASIA_MIMICS = Object.freeze([
     ]),
   },
 ]);
+
+/** What a tendency means, for a feature that carries no sentence of its own. */
+const TENDENCY_TEXT = Object.freeze({
+  [FEATURE_TENDENCY.CHARACTERISTIC]: Object.freeze({
+    text: 'Characteristically affected.', textJa: '特徴的に障害されます。',
+  }),
+  [FEATURE_TENDENCY.RELATIVELY_SPARED]: Object.freeze({
+    text: 'Relatively spared, compared with the rest of the picture.',
+    textJa: '像全体と比べて相対的に保たれます。',
+  }),
+  [FEATURE_TENDENCY.VARIABLE]: Object.freeze({
+    text: 'Reported both ways; varies with lesion, stimulus or time.',
+    textJa: '両方向に報告があり、病変・刺激・時期で変わります。',
+  }),
+  [FEATURE_TENDENCY.NOT_EVALUATED]: Object.freeze({
+    text: 'This model has no value for it at all.', textJa: 'このモデルはこれについて値を持ちません。',
+  }),
+});
+
+/**
+ * The same entries in the shape a reference panel renders.
+ *
+ * A view adapter, and nothing more: it reorders and renames fields and adds no
+ * claim. It lives here rather than in the panel so that the panel stays a
+ * component that renders whatever a scene hands it, and so that the one place
+ * that decides *what a reader is shown* is the same file the entries are
+ * written in.
+ *
+ * The tone of a feature comes from {@link FEATURE_TENDENCY} and is a grouping,
+ * not a verdict: the sentence beside it is what carries the claim.
+ */
+export const APHASIA_LIBRARY = Object.freeze({
+  title: 'Classical syndromes, for comparison',
+  titleJa: '古典的な症候（比較のための参照）',
+  intro: 'This model computes route availability and stops. These are the pictures the names describe, '
+    + 'next to what the model does not evaluate about each one. Nothing here is matched against the '
+    + 'current result, scored or ranked — several may fit, and none may.',
+  introJa: 'このモデルが計算するのは経路の利用可能性までです。ここにあるのは各症候名が指す像と、'
+    + 'そのうち**このモデルが評価していないもの**です。現在の結果との照合・点数付け・順位付けは'
+    + '行いません——複数当てはまることも、どれも当てはまらないこともあります。',
+  groups: Object.freeze([
+    Object.freeze({
+      id: 'aphasias',
+      title: 'Aphasia syndromes',
+      titleJa: '失語の症候',
+      note: 'Each feature says what is typically described and how much it varies. A fixed symbol per '
+        + 'cell would be a necessary-condition table, and these are not that.',
+      noteJa: '各項目は「典型的にどう記載されるか」と「どれだけ揺れるか」を述べます。'
+        + '記号 1 つで埋める表は必要条件の表になりますが、これらはそういうものではありません。',
+      entries: Object.freeze(APHASIA_REFERENCE.map((entry) => Object.freeze({
+        id: entry.id,
+        name: entry.name,
+        nameJa: entry.nameJa,
+        gist: entry.gist,
+        gistJa: entry.gistJa,
+        lines: Object.freeze(entry.features.map((item) => Object.freeze({
+          label: item.label,
+          labelJa: item.labelJa,
+          tone: item.tendency,
+          text: item.note || TENDENCY_TEXT[item.tendency].text,
+          textJa: item.noteJa || TENDENCY_TEXT[item.tendency].textJa,
+        }))),
+        notEvaluated: Object.freeze(entry.notEvaluatedHere.map((text, index) => Object.freeze({
+          text, textJa: entry.notEvaluatedHereJa[index],
+        }))),
+      }))),
+    }),
+    Object.freeze({
+      id: 'mimics',
+      title: 'Described as not aphasia',
+      titleJa: '「失語ではない」とされる像',
+      note: 'Ruling a language disorder out is a stronger claim than naming one, and it needs an '
+        + 'examination this model does not perform. These are here to be read, not to be concluded.',
+      noteJa: '言語障害を**否定する**ことは、名前を付けることより強い主張で、'
+        + 'このモデルが行わない診察を要します。読むために置いてあり、結論するためではありません。',
+      entries: Object.freeze(APHASIA_MIMICS.map((entry) => Object.freeze({
+        id: entry.id,
+        name: entry.name,
+        nameJa: entry.nameJa,
+        gist: entry.gist,
+        gistJa: entry.gistJa,
+        lines: Object.freeze([Object.freeze({
+          label: 'Why it is described as not aphasia',
+          labelJa: '失語ではないとされる理由',
+          tone: FEATURE_TENDENCY.VARIABLE,
+          text: entry.whyNotAphasia,
+          textJa: entry.whyNotAphasiaJa,
+        })]),
+        notEvaluated: Object.freeze(entry.notEvaluatedHere.map((text, index) => Object.freeze({
+          text, textJa: entry.notEvaluatedHereJa[index],
+        }))),
+      }))),
+    }),
+  ]),
+});

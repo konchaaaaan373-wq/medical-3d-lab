@@ -4,6 +4,7 @@ import { readFileSync } from 'node:fs';
 import {
   FUNCTION_EDGES,
   FUNCTION_NODES,
+  MAPPING,
   LESION_SITES,
   dominanceFor,
   resolveSide,
@@ -147,7 +148,16 @@ test('a connection points at the real tract where the atlas has one', () => {
   const named = new Map(FUNCTION_EDGES.map((edge) => [edge.id, edge.within.map((w) => w.label)]));
   assert.deepEqual(named.get('dorsal-phonological'), ['Arcuate fasciculus']);
   assert.deepEqual(named.get('initiation-to-output'), ['Frontal aslant tract']);
-  assert.deepEqual(named.get('semantic-to-initiation'), ['Inferior fronto-occipital fasciculus']);
+  // Not `semantic-to-initiation`. It was anchored in the inferior
+  // fronto-occipital fasciculus because that was the nearest named bundle, and
+  // the IFOF ends on the frontal convexity rather than on the medial surface
+  // where speech initiation sits — so destroying it stopped speech initiation
+  // for no reason the model could give. The bundle is a display anchor now,
+  // which the solver never reads.
+  assert.deepEqual(named.get('semantic-to-initiation'), []);
+  const initiation = FUNCTION_EDGES.find((edge) => edge.id === 'semantic-to-initiation');
+  assert.equal(initiation.mapping, MAPPING.CONCEPTUAL);
+  assert.deepEqual(initiation.displayAnchor.map((w) => w.label), ['Inferior fronto-occipital fasciculus']);
   assert.deepEqual(named.get('dlpfc-to-striatum'), ['Corticostriatal tract (anterior)', 'Corticostriatal tract (anterior)']);
   assert.deepEqual(named.get('thalamus-to-dlpfc'), ['Anterior thalamic radiation', 'Anterior thalamic radiation']);
   assert.deepEqual(named.get('praxis-to-premotor'), ['Superior longitudinal fasciculus III']);

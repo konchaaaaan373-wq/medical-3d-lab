@@ -29,12 +29,22 @@ import {
  * produce today.
  */
 
-/** A solved route as the resolver consumes one. */
+/**
+ * A solved route as the resolver consumes one.
+ *
+ * `zero` puts a *true* zero on the first step — the flag the solver sets when a
+ * structure is destroyed outright or a process is switched off by hand. A route
+ * whose availability is 0 because its steps multiplied down to nothing does not
+ * carry it, and that difference is what `declaredBlock` rests on.
+ */
 const route = (id, availability, { evaluable = true, zero = false } = {}) => ({
   id,
   steps: [
-    { kind: 'node', id: `${id}-a`, label: id, labelJa: id, integrity: zero ? 0 : availability, evaluable },
-    { kind: 'node', id: `${id}-b`, label: id, labelJa: id, integrity: 1, evaluable },
+    {
+      kind: 'node', id: `${id}-a`, label: id, labelJa: id,
+      integrity: zero ? 0 : availability, evaluable, blocked: zero,
+    },
+    { kind: 'node', id: `${id}-b`, label: id, labelJa: id, integrity: 1, evaluable, blocked: false },
   ],
   availability,
   evaluable,
@@ -206,7 +216,9 @@ test('contract: every evaluated route blocked plus an unknown one is not "all bl
   assert.deepEqual(result.unevaluatedRouteIds, ['unknown']);
 });
 
-test('contract: a known value is not the best route while an eligible route is unknown', () => {
+// --- AR2-T01, AR2-T02, AR2-T03: a band is not a number ----------------------
+
+test('contract: a known value is not the maximum while an eligible route is unknown', () => {
   // 0.6 with an unknown sibling is 0.6 of one route. Reporting it as the
   // task's value claims the unknown one is worse, which is not known.
   const mixed = resolveTaskResult({
@@ -214,15 +226,36 @@ test('contract: a known value is not the best route while an eligible route is u
   });
   assert.notEqual(mixed.availability, 0.6, 'not reported as the task value');
   assert.equal(mixed.computationStatus, COMPUTATION.INDETERMINATE);
+  assert.deepEqual(mixed.availabilityBounds, { lower: 0.6, upper: 1 });
+  assert.equal(mixed.establishedBand, null, '0.6-to-1 spans two bands, so no band is established');
 
-  // The top band does settle it: an unknown route can only be equal or better,
-  // so "there is a way through" survives not knowing what it is worth.
-  const reaching = resolveTaskResult({
-    routes: [route('known', 0.9), route('unknown', 1, { evaluable: false })],
+  // The top band was treated as settling it: 0.9 with an unknown sibling came
+  // back `computed`, with 0.9 as the task's value. It is not the task's value.
+  // What the arithmetic does establish is that the maximum is somewhere in
+  // 0.9-to-1, every point of which is the top band — a band, not a number.
+  for (const known of [AVAILABILITY_HIGH, 0.9, 0.9999]) {
+    const reaching = resolveTaskResult({
+      routes: [route('known', known), route('unknown', 1, { evaluable: false })],
+    });
+    assert.equal(reaching.computationStatus, COMPUTATION.INDETERMINATE, `${known} does not settle a value`);
+    assert.equal(reaching.availability, null, `${known} is not returned as the maximum`);
+    assert.equal(reaching.state, null);
+    assert.equal(reaching.establishedBand, PATHWAY_STATE.HIGH, `${known}-to-1 is all one band`);
+    assert.deepEqual(reaching.availabilityBounds, { lower: known, upper: 1 });
+    assert.deepEqual(reaching.unevaluatedRouteIds, ['unknown'], 'and the unknown one is still reported');
+    assert.deepEqual(reaching.evaluatedRouteIds, ['known']);
+  }
+
+  // Exactly 1 settles it, and only exactly 1: no route can be worth more, by
+  // the [0, 1] contract the resolver checks on its way in.
+  const ceiling = resolveTaskResult({
+    routes: [route('known', 1), route('unknown', 1, { evaluable: false })],
   });
-  assert.equal(reaching.computationStatus, COMPUTATION.COMPUTED);
-  assert.equal(reaching.availability, 0.9);
-  assert.deepEqual(reaching.unevaluatedRouteIds, ['unknown'], 'and the unknown one is still reported');
+  assert.equal(ceiling.computationStatus, COMPUTATION.COMPUTED);
+  assert.equal(ceiling.availability, 1);
+  assert.equal(ceiling.state, PATHWAY_STATE.HIGH);
+  assert.deepEqual(ceiling.unevaluatedRouteIds, ['unknown'], 'the unknown route is not erased by the 1');
+  assert.equal(ceiling.declaredBlock, false);
 });
 
 test('contract: every route unknown is indeterminate, not intact', () => {

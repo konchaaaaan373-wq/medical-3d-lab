@@ -293,14 +293,23 @@ export const FUNCTION_NODES = Object.freeze([
   },
   {
     id: 'phonological-analysis',
-    mapping: MAPPING.ATLAS,
-    label: 'Phonological analysis (Wernicke area)',
-    labelJa: '音韻の分析（Wernicke 野：上側頭回後部・側頭平面）',
+    // The label used to say "posterior superior temporal gyrus" over a mesh
+    // that is the whole lateral surface of the gyrus. The atlas has no
+    // posterior third, so the display now names what is actually selected and
+    // `omits` says what that costs.
+    mapping: MAPPING.COARSE,
+    label: 'Phonological analysis (lateral superior temporal gyrus and temporal plane)',
+    labelJa: '音韻の分析（上側頭回外側部・側頭平面：アトラスは後部を分けません）',
     substrate: NODE_SUBSTRATE.COMPOSITE,
     structures: Object.freeze([
       dominant('Superior temporal gyrus (Lateral part)'),
       dominant('Temporal plane'),
     ]),
+    omits: 'The atlas divides the superior temporal gyrus into a lateral part and a temporal plane, and '
+      + 'not into anterior and posterior. A lesion here takes the whole lateral surface, so nothing in '
+      + 'this model distinguishes a posterior from an anterior superior temporal lesion.',
+    omitsJa: 'アトラスは上側頭回を外側部と側頭平面に分けており、前後には分けていません。'
+      + 'ここの病変は外側面まるごとを取るので、後部病変と前部病変をこのモデルは区別しません。',
   },
   {
     id: 'lexical-semantic',
@@ -344,6 +353,11 @@ export const FUNCTION_NODES = Object.freeze([
       dominant('Precentral gyrus'),
       dominant('Insula (Subcentral gyrus and ant. and post. sulci)'),
     ]),
+    omits: 'The ventral precentral cortex is not divided out of the precentral gyrus here, so a lesion '
+      + 'takes the mouth and the hand together and the model has no articulatory quality to report.',
+    omitsJa:
+      'アトラスは中心前回から腹側部を分けていないので、病変は口と手を一緒に取ります。構音の'
+        + '質そのものは、このモデルが持っていません。',
   },
   {
     id: 'visual-input-dominant',
@@ -388,6 +402,12 @@ export const FUNCTION_NODES = Object.freeze([
     substrate: NODE_SUBSTRATE.COMPOSITE,
     structures: Object.freeze([dominant('Lateral occipitotemporal gyrus')]),
     sharesMeshWith: Object.freeze(['orthographic-visual-form']),
+    omits: 'One occipitotemporal mesh standing in for the object-selective cortex within it; the atlas '
+      + 'has no finer division, so word-form and object-form cortex cannot be lesioned apart by mesh.',
+    omitsJa:
+      '後頭側頭回の 1 メッシュを、その中の物体選択的な皮質の代わりに置いています。アトラ'
+        + 'スにそれ以上の区分が無いため、文字と物体の領域をメッシュで切り分けることはできません'
+        + '。',
   },
   {
     id: 'orthographic-output-lexicon',
@@ -397,12 +417,24 @@ export const FUNCTION_NODES = Object.freeze([
     substrate: NODE_SUBSTRATE.COMPOSITE,
     structures: Object.freeze([dominant('Angular gyrus')]),
     note:
-      'Placed on the angular gyrus because the cases of lexical agraphia — irregular words misspelled, '
-      + 'nonwords spelled correctly — were reported with angular lesions sparing the supramarginal gyrus. '
-      + 'The mesh is the whole gyrus, so this is the gyrus standing in for a part of it.',
+      'A historical association, not a centre. The case series behind it (four patients with lexical '
+      + 'agraphia — irregular words misspelled, nonwords spelled correctly) described posterior angular '
+      + 'lesions; four patients is a description of where those lesions were, and not a demonstration '
+      + 'that this gyrus is necessary or sufficient for whole-word spelling. What this model claims is '
+      + 'the dissociation between the two writing routes; where each of them sits is the weaker half of '
+      + 'the claim and is marked uncertain in the evidence registry.',
     noteJa:
-      '語彙性失書（不規則語は綴れず、非語は綴れる）の症例が、縁上回を避けた角回病変で報告されているため'
-      + '角回に置いています。メッシュは角回全体なので、その一部の代わりに角回を置いた形です。',
+      '中枢ではなく、歴史的な関連です。もとになった症例群は語彙性失書 4 例（不規則語は綴れず、非語は'
+      + '綴れる）の後方角回病変の記載で、4 例は「その病変がどこにあったか」の記述であって、'
+      + '角回が語まるごとの綴りに必要十分であることの証明ではありません。このモデルが主張しているのは'
+      + '書字 2 経路の解離のほうで、それぞれの座は弱いほうの主張です'
+      + '（evidence registry で uncertain としています）。',
+    omits: 'The mesh is the whole angular gyrus. Nothing in this model distinguishes a posterior angular '
+      + 'lesion from an anterior one, and no lesion here can be confined to the part the case series '
+      + 'described.',
+    omitsJa:
+      'メッシュは角回全体です。後方角回の病変と前方の病変をこのモデルは区別せず、'
+      + '症例群が記載した部分だけに病変を限定することもできません。',
   },
   {
     id: 'phoneme-grapheme-conversion',
@@ -412,12 +444,25 @@ export const FUNCTION_NODES = Object.freeze([
     substrate: NODE_SUBSTRATE.COMPOSITE,
     structures: Object.freeze([dominant('Supramarginal gyrus')]),
     note:
-      'The complementary half of the same pair of case series: phonological agraphia — nonwords cannot be '
-      + 'spelled, real words can — was reported with supramarginal lesions sparing the angular gyrus. It '
-      + 'shares the mesh with the praxis formulas, which is why a supramarginal lesion here takes both.',
+      'The complementary half of the same case series: four patients with phonological agraphia — '
+      + 'nonwords cannot be spelled, real words can. The published summary describes those lesions as '
+      + 'involving the supramarginal gyrus **or the insula deep to it**, which is wider than the '
+      + 'one-gyrus assignment this node makes, and the summary is as far as the source has been read '
+      + 'here. The gyrus is where the model puts the process; it is not a claim that the process is '
+      + 'there and nowhere else. It shares the mesh with the praxis formulas, so a supramarginal lesion '
+      + 'takes both.',
     noteJa:
-      '同じ症例群の対になる半分です。音韻性失書（非語が綴れず、実在語は綴れる）は角回を避けた縁上回病変で'
-      + '報告されています。行為の図式と同じメッシュに載るため、縁上回の病変は両方を奪います。',
+      '同じ症例群の対になる半分で、音韻性失書 4 例（非語が綴れず、実在語は綴れる）です。'
+      + '公開されている SUMMARY は、その病変を縁上回**またはその深部の島**を含むものとして'
+      + '記載しており、このノードが行う「1 つの脳回への割り当て」より広い条件です'
+      + '（この環境で読めたのは SUMMARY までで、本文は未取得です）。'
+      + '脳回はモデルがこの処理を置いた場所であって、そこにしか無いという主張ではありません。'
+      + '行為の図式と同じメッシュに載るため、縁上回の病変は両方を奪います。',
+    omits: 'The whole supramarginal gyrus, and not the insula the source also describes: a lesion of the '
+      + 'insula does not affect this process in the model, although the reported cases included it.',
+    omitsJa:
+      '縁上回まるごとで、出典が併記している島は含みません。報告された症例には島が含まれていましたが、'
+      + 'モデルでは島の病変はこの処理に影響しません。',
   },
   {
     id: 'graphemic-buffer',
@@ -470,6 +515,10 @@ export const FUNCTION_NODES = Object.freeze([
     labelJa: '優位半球の運動前野（中前頭回後部）',
     substrate: NODE_SUBSTRATE.COMPOSITE,
     structures: Object.freeze([dominant('Middle frontal gyrus')]),
+    omits: 'The middle frontal gyrus mesh stands in for premotor cortex, which the atlas does not divide '
+      + 'from prefrontal cortex on this gyrus.',
+    omitsJa:
+      '中前頭回のメッシュを運動前野の代わりに置いています。アトラスはこの回で前頭前野と運動前野を分けていません。',
   },
   {
     id: 'premotor-nondominant',
@@ -478,6 +527,9 @@ export const FUNCTION_NODES = Object.freeze([
     labelJa: '非優位半球の運動前野（中前頭回後部）',
     substrate: NODE_SUBSTRATE.COMPOSITE,
     structures: Object.freeze([nondominant('Middle frontal gyrus')]),
+    omits: 'The same mesh on the other side, with the same limit.',
+    omitsJa:
+      '反対側の同じメッシュで、限界も同じです。',
   },
   {
     id: 'hand-motor-dominant',
@@ -486,6 +538,10 @@ export const FUNCTION_NODES = Object.freeze([
     labelJa: '右手の運動野（優位半球 中心前回）',
     substrate: NODE_SUBSTRATE.COMPOSITE,
     structures: Object.freeze([dominant('Precentral gyrus')]),
+    omits: 'The precentral gyrus is one mesh with no somatotopy, so the hand cannot be lesioned without '
+      + 'the face and the leg.',
+    omitsJa:
+      '中心前回は体部位再現を持たない 1 メッシュなので、手だけを顔や下肢と切り離して失わせることはできません。',
   },
   {
     id: 'hand-motor-nondominant',
@@ -494,6 +550,9 @@ export const FUNCTION_NODES = Object.freeze([
     labelJa: '左手の運動野（非優位半球 中心前回）',
     substrate: NODE_SUBSTRATE.COMPOSITE,
     structures: Object.freeze([nondominant('Precentral gyrus')]),
+    omits: 'The same mesh on the other side, with the same limit.',
+    omitsJa:
+      '反対側の同じメッシュで、限界も同じです。',
   },
   {
     id: 'spatial-attention-nondominant',
@@ -553,6 +612,10 @@ export const FUNCTION_NODES = Object.freeze([
       ...bilateral('Superior frontal gyrus'),
       ...bilateral('Cingulate gyrus and sulcus (Middle anterior part)'),
     ]),
+    omits: 'The supplementary motor area is not a separate mesh; the medial frontal and cingulate meshes '
+      + 'stand in for it together.',
+    omitsJa:
+      '補足運動野は独立したメッシュではありません。内側前頭と帯状回のメッシュをまとめて代わりに置いています。',
   },
   {
     id: 'dorsal-striatum',
@@ -641,11 +704,17 @@ export const MODULATORY_NETWORKS = Object.freeze([
     id: 'cortico-thalamic-language',
     label: 'Cortico-thalamic language network',
     labelJa: '皮質—視床の言語ネットワーク',
+    what: 'cortico-thalamic language network modulation',
+    whatJa: '皮質—視床の言語ネットワークによる調節',
     structures: Object.freeze([
       dominant('Ventral anterior nucleus'),
       dominant('Anterior nuclei of thalamus'),
       dominant('Pulvinar'),
       dominant('Anterior thalamic radiation'),
+    ]),
+    onTasks: Object.freeze([
+      'auditory-comprehension', 'naming-object', 'propositional-output-route',
+      'speech-initiation-route', 'repetition-word', 'writing-from-meaning',
     ]),
     whatIsNotComputed:
       'How much of which language task a thalamic lesion takes, and for how long. The syndrome is '
@@ -657,35 +726,19 @@ export const MODULATORY_NETWORKS = Object.freeze([
   },
 ]);
 
-/**
- * The connections between nodes.
- *
- * `within` names the mesh a lesion of that connection sits inside, so that a
- * disconnection can be shown on the same atlas as everything else — **and it
- * names the real tract wherever the atlas has one.** The distributed file
- * carries fifty-four tract meshes that no scene in this repository has ever
- * displayed, the arcuate fasciculus among them, so the dorsal language route
- * points at the arcuate itself rather than at a bundle of white matter said to
- * contain it.
- *
- * Where the atlas has no mesh the approximation is stated instead of hidden:
- * short association fibres (premotor to motor cortex, planning to articulation)
- * are anchored in the telencephalic white matter, and every callosal crossing
- * is anchored in the one undivided corpus callosum, because the atlas has no
- * splenium, body or genu as separate meshes. That is why `within` is a field
- * on every connection rather than something a reader is left to assume, and
- * `tests/higher-brain-function-anatomy.test.js` pins down which connections are
- * in which of the two groups.
- *
- * @type {readonly {id:string,from:string,to:string,label:string,labelJa:string,
- *   within:readonly {label:string,side:string}[]}[]}
- */
 export const FUNCTION_EDGES = Object.freeze([
   {
     id: 'auditory-to-phonological', from: 'auditory-input', to: 'phonological-analysis',
     label: 'Auditory cortex to phonological analysis', labelJa: '聴覚野 → 音韻の分析',
     mapping: MAPPING.COARSE,
     within: Object.freeze([dominant('White matter of telencephalon')]),
+    omits: 'The bulk white-matter mesh stands in for a named bundle the atlas does not carry separately. '
+      + 'It is one mesh for the whole hemisphere, so no lesion in this model can take this connection '
+      + 'without taking every other connection that runs through it.',
+    omitsJa:
+      'アトラスが単独で持たない束の代わりに、大脳白質のメッシュまるごとを置いています。半球'
+        + 'ぶんで 1 メッシュなので、このモデルではこの連絡だけを切ることができず、同じメッシ'
+        + 'ュを通る他の連絡も一緒に切れます。',
   },
   {
     id: 'phonological-to-semantic', from: 'phonological-analysis', to: 'lexical-semantic',
@@ -702,12 +755,22 @@ export const FUNCTION_EDGES = Object.freeze([
   {
     id: 'semantic-to-initiation', from: 'lexical-semantic', to: 'speech-initiation',
     label: 'Meaning to speech initiation', labelJa: '意味 → 発話の起動',
-    // The ventral association bundle running from the temporal lobe forward.
-    // It ends in the frontal convexity rather than on the medial surface where
-    // the supplementary motor area is, so this is the nearest named bundle
-    // rather than the tract itself.
-    mapping: MAPPING.ATLAS,
-    within: Object.freeze([dominant('Inferior fronto-occipital fasciculus')]),
+    // This used to be anchored in the inferior fronto-occipital fasciculus,
+    // with a comment admitting the IFOF ends on the frontal convexity rather
+    // than on the medial surface where the supplementary motor area is. A
+    // comment does not undo a dependency: with that anchor, destroying the
+    // IFOF stopped speech initiation, and the model had no reason to say so.
+    // There is no named bundle in this atlas for temporal cortex to medial
+    // frontal cortex, so the connection is declared for what it is.
+    mapping: MAPPING.CONCEPTUAL,
+    within: Object.freeze([]),
+    assumedAvailable: true,
+    // Drawing only. `displayAnchor` never reaches the solver.
+    displayAnchor: Object.freeze([dominant('Inferior fronto-occipital fasciculus')]),
+    note: 'Drawn along the ventral bundle so the line has somewhere to go. The model does not make '
+      + 'speech initiation depend on that bundle, because the bundle does not end where the process is.',
+    noteJa: '線を引く先として腹側の束に沿わせているだけです。その束に発話の起動を依存させてはいません'
+      + '——束の終点が、この処理のある場所ではないからです。',
   },
   {
     id: 'initiation-to-output', from: 'speech-initiation', to: 'phonological-output',
@@ -723,13 +786,31 @@ export const FUNCTION_EDGES = Object.freeze([
     // Wernicke aphasia and in conduction aphasia, which it is not in either.
     id: 'semantic-to-phonological', from: 'lexical-semantic', to: 'phonological-analysis',
     label: 'Meaning to the word’s sound form', labelJa: '意味 → 語の音韻形',
+    // The field was simply missing here, and the audited solver defaulted it
+    // into the atlas branch: a declaration error that computed anyway. It is
+    // coarse rather than exact — the middle longitudinal fasciculus runs within
+    // the temporal lobe between the two ends this connection needs, which is
+    // the claim, and it is not that this bundle is the lexical-to-phonological
+    // pathway.
+    mapping: MAPPING.COARSE,
     within: Object.freeze([dominant('Middle longitudinal fasciculus')]),
+    omits: 'A temporal-lobe bundle standing in for a short intra-temporal connection the atlas does not '
+      + 'divide out. A lesion confined to part of the bundle is not represented.',
+    omitsJa: '側頭葉内の短い連絡を、アトラスが分けていないため束まるごとで代用しています。'
+      + '束の一部だけの病変は表現できません。',
   },
   {
     id: 'output-to-motor', from: 'phonological-output', to: 'speech-motor',
     label: 'Output planning to articulation', labelJa: '出力計画 → 構音',
     mapping: MAPPING.COARSE,
     within: Object.freeze([dominant('White matter of telencephalon')]),
+    omits: 'The bulk white-matter mesh stands in for a named bundle the atlas does not carry separately. '
+      + 'It is one mesh for the whole hemisphere, so no lesion in this model can take this connection '
+      + 'without taking every other connection that runs through it.',
+    omitsJa:
+      'アトラスが単独で持たない束の代わりに、大脳白質のメッシュまるごとを置いています。半球'
+        + 'ぶんで 1 メッシュなので、このモデルではこの連絡だけを切ることができず、同じメッシ'
+        + 'ュを通る他の連絡も一緒に切れます。',
   },
   {
     id: 'visual-to-orthographic-form', from: 'visual-input-dominant', to: 'orthographic-visual-form',
@@ -739,9 +820,20 @@ export const FUNCTION_EDGES = Object.freeze([
   },
   {
     id: 'callosal-visual', from: 'visual-input-nondominant', to: 'orthographic-visual-form',
-    label: 'Callosal crossing for vision', labelJa: '視覚情報の脳梁交叉（膨大部）',
-    mapping: MAPPING.ATLAS,
+    // The label said "splenium" over a mesh that is the whole corpus callosum.
+    // The concept has a part name; the thing a reader selects and destroys does
+    // not, so the label now says what the mesh is and `conceptualRegion` says
+    // which part of it the crossing is thought to use.
+    label: 'Callosal crossing for vision (whole corpus callosum)',
+    labelJa: '視覚情報の脳梁交叉（アトラスは脳梁全体）',
+    mapping: MAPPING.COARSE,
     within: Object.freeze([median('Corpus callosum')]),
+    conceptualRegion: 'posterior callosum (splenium)',
+    conceptualRegionJa: '後方の脳梁（膨大部）',
+    omits: 'This atlas has one corpus callosum mesh and no splenium. Selecting it takes the whole '
+      + 'commissure, so the result is not the picture of a splenial lesion.',
+    omitsJa: 'このアトラスは脳梁を 1 つのメッシュとしてのみ持ち、膨大部を分けていません。'
+      + '選ぶと交連全体を取るので、この結果は膨大部病変の像ではありません。',
   },
   {
     id: 'object-form-to-semantic', from: 'object-visual-form', to: 'lexical-semantic',
@@ -757,21 +849,42 @@ export const FUNCTION_EDGES = Object.freeze([
   },
   {
     id: 'callosal-praxis', from: 'praxis-formula', to: 'premotor-nondominant',
-    label: 'Callosal crossing for praxis', labelJa: '行為の図式の脳梁交叉（体部）',
-    mapping: MAPPING.ATLAS,
+    label: 'Callosal crossing for praxis (whole corpus callosum)',
+    labelJa: '行為の図式の脳梁交叉（アトラスは脳梁全体）',
+    mapping: MAPPING.COARSE,
     within: Object.freeze([median('Corpus callosum')]),
+    conceptualRegion: 'body of the callosum',
+    conceptualRegionJa: '脳梁の体部',
+    omits: 'One corpus callosum mesh, no body. Selecting it takes the whole commissure, so the visual '
+      + 'crossing and the praxis crossing cannot be lesioned apart in this model.',
+    omitsJa: '脳梁は 1 メッシュで、体部という区分がありません。選ぶと交連全体を取るので、'
+      + 'このモデルでは視覚の交叉と行為の交叉を別々に切ることはできません。'
   },
   {
     id: 'premotor-to-hand-dominant', from: 'premotor-dominant', to: 'hand-motor-dominant',
     label: 'Dominant premotor to right hand', labelJa: '優位半球 運動前野 → 右手',
     mapping: MAPPING.COARSE,
     within: Object.freeze([dominant('White matter of telencephalon')]),
+    omits: 'The bulk white-matter mesh stands in for a named bundle the atlas does not carry separately. '
+      + 'It is one mesh for the whole hemisphere, so no lesion in this model can take this connection '
+      + 'without taking every other connection that runs through it.',
+    omitsJa:
+      'アトラスが単独で持たない束の代わりに、大脳白質のメッシュまるごとを置いています。半球'
+        + 'ぶんで 1 メッシュなので、このモデルではこの連絡だけを切ることができず、同じメッシ'
+        + 'ュを通る他の連絡も一緒に切れます。',
   },
   {
     id: 'premotor-to-hand-nondominant', from: 'premotor-nondominant', to: 'hand-motor-nondominant',
     label: 'Non-dominant premotor to left hand', labelJa: '非優位半球 運動前野 → 左手',
     mapping: MAPPING.COARSE,
     within: Object.freeze([nondominant('White matter of telencephalon')]),
+    omits: 'The bulk white-matter mesh stands in for a named bundle the atlas does not carry separately. '
+      + 'It is one mesh for the whole hemisphere, so no lesion in this model can take this connection '
+      + 'without taking every other connection that runs through it.',
+    omitsJa:
+      'アトラスが単独で持たない束の代わりに、大脳白質のメッシュまるごとを置いています。半球'
+        + 'ぶんで 1 メッシュなので、このモデルではこの連絡だけを切ることができず、同じメッシ'
+        + 'ュを通る他の連絡も一緒に切れます。',
   },
   {
     id: 'dlpfc-to-striatum', from: 'dorsolateral-prefrontal', to: 'dorsal-striatum',
@@ -799,18 +912,36 @@ export const FUNCTION_EDGES = Object.freeze([
     // contains them, not the bundle itself.
     mapping: MAPPING.COARSE,
     within: Object.freeze([...bilateral('White matter of telencephalon')]),
+    omits: 'The bulk white-matter mesh stands in for the bilateral pathway the atlas does not carry '
+      + 'separately; one mesh per hemisphere, so this connection cannot be lesioned on its own.',
+    omitsJa:
+      'アトラスが単独で持たない束の代わりに、大脳白質のメッシュまるごとを置いています。半球'
+        + 'ぶんで 1 メッシュなので、このモデルではこの連絡だけを切ることができず、同じメッシ'
+        + 'ュを通る他の連絡も一緒に切れます。',
   },
   {
     id: 'ventral-striatum-to-pallidum', from: 'ventral-striatum', to: 'pallidal-outflow',
     label: 'Ventral striatum to pallidum', labelJa: '腹側線条体 → 淡蒼球',
     mapping: MAPPING.COARSE,
     within: Object.freeze([...bilateral('White matter of telencephalon')]),
+    omits: 'The bulk white-matter mesh stands in for the bilateral pathway the atlas does not carry '
+      + 'separately; one mesh per hemisphere, so this connection cannot be lesioned on its own.',
+    omitsJa:
+      'アトラスが単独で持たない束の代わりに、大脳白質のメッシュまるごとを置いています。半球'
+        + 'ぶんで 1 メッシュなので、このモデルではこの連絡だけを切ることができず、同じメッシ'
+        + 'ュを通る他の連絡も一緒に切れます。',
   },
   {
     id: 'pallidum-to-thalamus', from: 'pallidal-outflow', to: 'mediodorsal-thalamus',
     label: 'Pallidum to mediodorsal thalamus', labelJa: '淡蒼球 → 視床背内側核',
     mapping: MAPPING.COARSE,
     within: Object.freeze([...bilateral('White matter of telencephalon')]),
+    omits: 'The bulk white-matter mesh stands in for the bilateral pathway the atlas does not carry '
+      + 'separately; one mesh per hemisphere, so this connection cannot be lesioned on its own.',
+    omitsJa:
+      'アトラスが単独で持たない束の代わりに、大脳白質のメッシュまるごとを置いています。半球'
+        + 'ぶんで 1 メッシュなので、このモデルではこの連絡だけを切ることができず、同じメッシ'
+        + 'ュを通る他の連絡も一緒に切れます。',
   },
   {
     id: 'thalamus-to-dlpfc', from: 'mediodorsal-thalamus', to: 'dorsolateral-prefrontal',
@@ -838,9 +969,14 @@ export const FUNCTION_EDGES = Object.freeze([
   },
   {
     id: 'callosal-object-form', from: 'visual-input-nondominant', to: 'object-visual-form',
-    label: 'Across the commissure, for object form', labelJa: '交連を越えて（物体の形態へ）',
-    mapping: MAPPING.ATLAS,
+    label: 'Across the commissure, for object form (whole corpus callosum)',
+    labelJa: '交連を越えて、物体の形態へ（アトラスは脳梁全体）',
+    mapping: MAPPING.COARSE,
     within: Object.freeze([median('Corpus callosum')]),
+    conceptualRegion: 'posterior callosum (splenium)',
+    conceptualRegionJa: '後方の脳梁（膨大部）',
+    omits: 'The same single mesh as the crossing for letter form: the two cannot be separated here.',
+    omitsJa: '文字の形態へ向かう交叉と同じ 1 メッシュです。ここでは 2 つを分けられません。'
   },
   {
     id: 'orthographic-form-to-semantic', from: 'orthographic-visual-form', to: 'lexical-semantic',
@@ -851,12 +987,22 @@ export const FUNCTION_EDGES = Object.freeze([
   {
     id: 'semantic-to-orthographic-lexicon', from: 'lexical-semantic', to: 'orthographic-output-lexicon',
     label: 'Meaning to whole-word spelling', labelJa: '意味 → 語まるごとの綴り',
-    mapping: MAPPING.ATLAS,
-    within: Object.freeze([dominant('Posterior thalamic radiation')]),
-    note: 'The atlas has no temporal-to-angular association bundle of its own; this is the nearest named '
-      + 'mesh the route passes through rather than the tract itself.',
-    noteJa: 'アトラスは側頭—角回の連合線維を単独では持ちません。経路が通る最も近い名前つきメッシュで、'
-      + '線維そのものではありません。',
+    // This was anchored in the posterior thalamic radiation because it was the
+    // nearest named mesh, with a note saying so. The note was true and the
+    // dependency was wrong in a way a reader could not see: the posterior
+    // thalamic radiation is the visual relay, so destroying it stopped
+    // whole-word spelling — a claim nobody would defend if it were written out.
+    // The atlas has no temporal-to-angular association bundle, and borrowing a
+    // different nearby bundle would repeat the same mistake with a new name.
+    mapping: MAPPING.CONCEPTUAL,
+    within: Object.freeze([]),
+    assumedAvailable: true,
+    displayAnchor: Object.freeze([dominant('Posterior thalamic radiation')]),
+    note: 'Drawn near the posterior thalamic radiation so the line has a path on screen. No lesion of '
+      + 'that radiation affects this connection in the model, because the radiation is the visual relay '
+      + 'and this is not a visual step.',
+    noteJa: '画面上の経路として後視床放線の近くに描いているだけです。モデルの計算では、その放線の病変は'
+      + 'この連絡に影響しません——放線は視覚の中継であって、ここは視覚の段ではないからです。',
   },
   {
     id: 'phonological-to-conversion', from: 'phonological-analysis', to: 'phoneme-grapheme-conversion',
@@ -923,6 +1069,94 @@ export const FUNCTION_EDGES = Object.freeze([
  *     label?:string,labelJa?:string}[],
  *   excludes:readonly string[],excludesJa:readonly string[]}[]}
  */
+/**
+ * Every atlas structure this model computes something from.
+ *
+ * The union of what the nodes stand on, what the connections run within, and
+ * what the modulatory networks declare. **Not** `displayAnchor`: a structure
+ * that only tells the renderer where to draw a line is not a structure the
+ * model depends on, and the whole point of separating the two is that a lesion
+ * of a display anchor changes nothing.
+ */
+/**
+ * Check the declaration itself, at load, before anything is solved.
+ *
+ * Every failure here was reachable in the audited version by leaving a field
+ * out: an edge with no `mapping` was computed as if it had one, a conceptual
+ * element with structures would have had them silently ignored, and a display
+ * anchor on a structure-backed element would have been indistinguishable from a
+ * dependency. A declaration this model computes from is either complete or it
+ * is an error — never a default.
+ */
+function validateNetwork() {
+  const problems = [];
+  const mappings = new Set(Object.values(MAPPING));
+  const nodeIds = new Set();
+  const seen = new Set();
+  const check = (element, kind, structures) => {
+    if (seen.has(element.id)) problems.push(`${kind} ${element.id}: declared twice`);
+    seen.add(element.id);
+    if (!mappings.has(element.mapping)) {
+      problems.push(`${kind} ${element.id}: mapping ${JSON.stringify(element.mapping)} is not one of `
+        + [...mappings].join(', '));
+    }
+    if (!Array.isArray(structures)) {
+      problems.push(`${kind} ${element.id}: no structure list`);
+      return;
+    }
+    if (element.mapping === MAPPING.CONCEPTUAL) {
+      if (structures.length > 0) {
+        problems.push(`${kind} ${element.id}: conceptual, and names structures the solver would ignore`);
+      }
+    } else if (structures.length === 0) {
+      problems.push(`${kind} ${element.id}: structure-backed, and names no structure`);
+    }
+    // A display anchor belongs to something with no dependency of its own.
+    // On a structure-backed element it would be a second, invisible list of
+    // structures, and nobody reading the file could tell which one counts.
+    if (element.displayAnchor && element.mapping !== MAPPING.CONCEPTUAL) {
+      problems.push(`${kind} ${element.id}: a display anchor on a structure-backed element`);
+    }
+    for (const structure of [...structures, ...(element.displayAnchor ?? [])]) {
+      if (typeof structure?.label !== 'string' || !structure.label) {
+        problems.push(`${kind} ${element.id}: a structure with no label`);
+      }
+      if (!Object.values(SIDE).includes(structure?.side)) {
+        problems.push(`${kind} ${element.id}: structure ${structure?.label} has side `
+          + JSON.stringify(structure?.side));
+      }
+    }
+    // A coarse mapping is a claim about what is left out, so it says so.
+    if (element.mapping === MAPPING.COARSE && !element.omits && !element.note) {
+      problems.push(`${kind} ${element.id}: coarse, and does not say what it omits`);
+    }
+  };
+  for (const node of FUNCTION_NODES) {
+    nodeIds.add(node.id);
+    check(node, 'node', node.structures);
+  }
+  for (const edge of FUNCTION_EDGES) {
+    check(edge, 'connection', edge.within);
+    if (!nodeIds.has(edge.from)) problems.push(`connection ${edge.id}: unknown from ${edge.from}`);
+    if (!nodeIds.has(edge.to)) problems.push(`connection ${edge.id}: unknown to ${edge.to}`);
+  }
+  for (const network of MODULATORY_NETWORKS) {
+    if (!network.what || !network.whatJa) problems.push(`network ${network.id}: no name for the influence`);
+    if (!Array.isArray(network.onTasks) || network.onTasks.length === 0) {
+      problems.push(`network ${network.id}: declares no tasks it bears on`);
+    }
+  }
+  if (problems.length > 0) {
+    throw new Error(`higherBrainFunction: the declaration is incomplete —\n  ${problems.join('\n  ')}`);
+  }
+}
+
+export const MODELLED_STRUCTURE_LABELS = Object.freeze(new Set([
+  ...FUNCTION_NODES.flatMap((node) => node.structures.map((structure) => structure.label)),
+  ...FUNCTION_EDGES.flatMap((edge) => edge.within.map((structure) => structure.label)),
+  ...MODULATORY_NETWORKS.flatMap((network) => network.structures.map((structure) => structure.label)),
+]));
+
 export const FUNCTION_TASKS = Object.freeze([
   {
     id: 'auditory-comprehension',
@@ -1623,17 +1857,11 @@ export const LESION_SITES = Object.freeze([
     // The nucleus most directly implicated alongside the ventrolateral nucleus,
     // which this atlas does not carry as a mesh. The pulvinar was in this list
     // and is gone: it was chosen to make a route work, not from a lesion study.
-    unmodelledInfluences: Object.freeze([
-      Object.freeze({
-        what: 'cortico-thalamic language network modulation',
-        whatJa: '皮質—視床の言語ネットワークによる調節',
-        network: 'cortico-thalamic-language',
-        onTasks: Object.freeze([
-          'auditory-comprehension', 'naming-object', 'propositional-output-route',
-          'speech-initiation-route', 'repetition-word', 'writing-from-meaning',
-        ]),
-      }),
-    ]),
+    //
+    // What this lesion does *not* compute is declared by MODULATORY_NETWORKS
+    // and matched against the damage map, not listed here: a preset and a raw
+    // structure selection that destroy the same nucleus have to say the same
+    // thing, and they did not when the declaration lived on the preset.
   },
   {
     id: 'dominant-angular',
@@ -1798,12 +2026,41 @@ export function functionsOfStructure(label, side, { handedness = HANDEDNESS.RIGH
 
   const nodeIds = new Set(nodes.map((node) => node.id));
   const connectionIds = new Set(connections.map((connection) => connection.id));
-  const tasks = FUNCTION_TASKS.filter((task) => task.routes.some((route) => route.nodes.some((nodeId, index) => {
+  // Eligible routes only. The audited version walked `task.routes` whole, so
+  // the lexical route that nonword repetition declares *in order to exclude it*
+  // put nonword repetition on the list of things a lesion of the semantic store
+  // passes through — a route that task may not take.
+  const passesThrough = (route) => route.nodes.some((nodeId, index) => {
     if (nodeIds.has(nodeId)) return true;
     if (index === 0) return false;
     const edge = edgeBetween(route.nodes[index - 1], nodeId);
     return edge ? connectionIds.has(edge.id) : false;
-  }))).map((task) => ({ id: task.id, label: task.label, labelJa: task.labelJa }));
+  });
+  const tasks = FUNCTION_TASKS
+    .filter((task) => task.routes
+      .filter((route) => routeIsEligible(route, task.stimulus ?? null))
+      .some(passesThrough))
+    .map((task) => ({ id: task.id, label: task.label, labelJa: task.labelJa }));
+  // Declared but not taken for this stimulus. Kept, and kept separate: it is
+  // the answer to "why is this structure on the picture and not in the list".
+  const tasksByIneligibleRoute = FUNCTION_TASKS
+    .filter((task) => !tasks.some((listed) => listed.id === task.id))
+    .filter((task) => task.routes
+      .filter((route) => !routeIsEligible(route, task.stimulus ?? null))
+      .some(passesThrough))
+    .map((task) => ({ id: task.id, label: task.label, labelJa: task.labelJa }));
+  // Networks this model declares and does not compute. A structure that is only
+  // in one of these is not a structure with no function here; it is one whose
+  // involvement this model has not put a number on.
+  const modulates = MODULATORY_NETWORKS.filter((network) => network.structures.some(matches))
+    .map((network) => ({
+      id: network.id,
+      label: network.label,
+      labelJa: network.labelJa,
+      onTasks: network.onTasks,
+      whatIsNotComputed: network.whatIsNotComputed,
+      whatIsNotComputedJa: network.whatIsNotComputedJa,
+    }));
 
   // The reading: this one structure gone, and the model solved for it. What
   // comes back is route availability, and it is deliberately not turned into a
@@ -1823,7 +2080,11 @@ export function functionsOfStructure(label, side, { handedness = HANDEDNESS.RIGH
     nodes,
     connections,
     tasks,
+    tasksByIneligibleRoute,
+    modulates,
     carries: tasks.length > 0,
+    /** True when the only thing this structure does here is modulate, uncomputed. */
+    modulatesOnly: tasks.length === 0 && modulates.length > 0,
     ifLost: {
       /** Route availability in the bottom band. Not "the patient cannot do this". */
       low: banded(PATHWAY_STATE.LOW),
@@ -1875,11 +2136,73 @@ export function isBelowHigh(state) {
  * serves only those, which is the whole of what keeps a nonword out of the
  * lexicon: `max()` below is taken over the eligible subset, so an ineligible
  * route cannot rescue a task by being the best one.
+ *
+ * **A missing stimulus is not evidence of eligibility.** The audited version
+ * answered `true` when the caller had no stimulus to give, so the one
+ * restriction the model has was lifted by leaving a field out. A route that
+ * declares which stimuli it serves is ineligible until it is told which one it
+ * is being asked for; a route that declares none is unrestricted and stays so.
  */
 export function routeIsEligible(route, stimulus) {
   if (!route.stimuli) return true;
-  if (stimulus == null) return true;
+  if (stimulus == null) return false;
   return route.stimuli.includes(stimulus);
+}
+
+/** Why a task has no number, when the reason is not "the routes did not settle it". */
+export const NOT_MODELLED_REASON = Object.freeze({
+  /** The task declares no route at all: this model does not carry it. */
+  NO_ROUTE_DECLARED: 'no-route-declared',
+  /** Routes exist, and none of them serves the stimulus the task was probed with. */
+  NO_ELIGIBLE_ROUTE: 'no-eligible-route',
+});
+
+/**
+ * Display rounding. **Never** the value the model computes with.
+ *
+ * Four places is enough for a read-out and far too few for a comparison with
+ * zero: a structure destroyed to 0.99996 leaves 0.00004, which rounds to `0`
+ * and would be read as a severed route if the rounded number were the one the
+ * model kept. The model keeps the exact product and rounds here, at the edge,
+ * where the result is a string on a panel and nothing downstream divides by it.
+ */
+export function roundForDisplay(value, places = 4) {
+  if (!Number.isFinite(value)) return value;
+  const scale = 10 ** places;
+  return Math.round(value * scale) / scale;
+}
+
+/**
+ * True when a value is positive but rounds to zero at the read-out's precision.
+ *
+ * The read-out needs this to write "below 0.0001" rather than "0": the two are
+ * the same four decimal places and opposite claims.
+ */
+export function isBelowDisplayFloor(value, places = 4) {
+  return Number.isFinite(value) && value > 0 && roundForDisplay(value, places) === 0;
+}
+
+function assertRouteContract(route, index) {
+  if (!route || typeof route !== 'object') {
+    throw new Error(`higherBrainFunction: route ${index} is not an object`);
+  }
+  if (typeof route.id !== 'string' || route.id === '') {
+    throw new Error(`higherBrainFunction: route ${index} has no id`);
+  }
+  if (!route.evaluable) return;
+  const value = route.availability;
+  if (typeof value !== 'number' || !Number.isFinite(value)) {
+    throw new Error(
+      `higherBrainFunction: route ${route.id} is marked evaluable and carries `
+      + `${JSON.stringify(value)} as its availability. An evaluable route has a finite number.`
+    );
+  }
+  if (value < 0 || value > 1) {
+    throw new Error(
+      `higherBrainFunction: route ${route.id} has availability ${value}, outside [0, 1]. `
+      + 'The band boundaries mean nothing outside it, so the value is refused rather than sorted.'
+    );
+  }
 }
 
 /**
@@ -1891,36 +2214,59 @@ export function routeIsEligible(route, stimulus) {
  *
  * - **No eligible route is not availability zero.** `max([])` has no value.
  *   Giving it 0 reports a task as abolished; giving it 1 reports it as normal;
- *   giving it `-Infinity` propagates. It is {@link COMPUTATION.NOT_MODELLED}.
+ *   giving it `-Infinity` propagates. It is {@link COMPUTATION.NOT_MODELLED},
+ *   and {@link NOT_MODELLED_REASON} says which of the two ways it got there.
  * - **An unevaluated route is not a blocked one.** If every route this mode
  *   could evaluate is in the bottom band and an eligible route remains whose
  *   availability cannot be computed, the answer is
  *   {@link COMPUTATION.INDETERMINATE} — "all routes are blocked" is not a
  *   conclusion available here.
- * - **A known value is not "the best route" while an eligible route is
- *   unknown.** 0.6 with an unknown sibling is 0.6 of *one route*, not the
- *   task's value, so it is not reported as one.
+ * - **A known value is not the maximum while an eligible route is unknown.**
+ *   0.9 with an unknown sibling is 0.9 of *one route*. The audited version
+ *   settled that case because 0.9 is in the top band, and returned 0.9 as the
+ *   task's value: a band is not a number. What is established there is
+ *   `availabilityBounds` (0.9 to 1) and, because every point of that interval
+ *   is in the same band, `establishedBand`. The exact value stays `null`.
+ *   Only an evaluated route at exactly 1 settles the maximum, because no route
+ *   can exceed it.
  * - **The bottom band is not a blockade.** `declaredBlock` is set only when
- *   every evaluated route carries an element at exactly zero.
+ *   every eligible route is evaluated *and* each carries an element whose
+ *   integrity is exactly zero — an input that destroyed a structure outright,
+ *   or a process switched off by hand. A tiny positive product is not one, and
+ *   neither is a number that would round to zero on a panel.
  *
  * @param {{routes:readonly object[], ineligibleRouteIds:readonly string[]}} input
  */
 export function resolveTaskResult({ routes, ineligibleRouteIds = [] }) {
+  routes.forEach(assertRouteContract);
+  const frozenIneligible = Object.freeze([...ineligibleRouteIds]);
   const empty = {
     availability: null,
     state: null,
+    availabilityBounds: null,
+    establishedBand: null,
     route: null,
+    routeId: null,
     evaluatedRouteIds: Object.freeze([]),
-    ineligibleRouteIds: Object.freeze([...ineligibleRouteIds]),
+    ineligibleRouteIds: frozenIneligible,
     unevaluatedRouteIds: Object.freeze([]),
     limitingSteps: Object.freeze([]),
     declaredBlock: false,
+    routeDeclaredBlock: false,
+    notModelledReason: null,
   };
   if (routes.length === 0) {
-    return Object.freeze({ ...empty, computationStatus: COMPUTATION.NOT_MODELLED });
+    return Object.freeze({
+      ...empty,
+      computationStatus: COMPUTATION.NOT_MODELLED,
+      notModelledReason: ineligibleRouteIds.length > 0
+        ? NOT_MODELLED_REASON.NO_ELIGIBLE_ROUTE
+        : NOT_MODELLED_REASON.NO_ROUTE_DECLARED,
+    });
   }
   const evaluated = routes.filter((route) => route.evaluable);
   const unevaluatedRouteIds = Object.freeze(routes.filter((route) => !route.evaluable).map((route) => route.id));
+  const evaluatedRouteIds = Object.freeze(evaluated.map((route) => route.id));
   if (evaluated.length === 0) {
     return Object.freeze({
       ...empty,
@@ -1934,34 +2280,51 @@ export function resolveTaskResult({ routes, ineligibleRouteIds = [] }) {
     (winner, route) => (route.availability > winner.availability ? route : winner),
     evaluated[0]
   );
-  // An unknown sibling route makes the maximum unknown too, *unless* the best
-  // evaluated route already reaches the top band: an unknown route can only be
-  // equal or better, so "there is a way through" survives not knowing. Anything
-  // below that — 0.6 with an unknown sibling — is 0.6 of one route and is not
-  // reported as the task's value.
-  const settled = unevaluatedRouteIds.length === 0
-    || evaluated.some((route) => route.availability >= AVAILABILITY_HIGH);
+  const routeBlocked = (route) => route.steps.some((step) => step.blocked === true);
+  const lower = best.availability;
+  const upper = unevaluatedRouteIds.length === 0 ? lower : 1;
+  const bounds = Object.freeze({ lower, upper });
+  // The band is established when it is the same at both ends of the interval:
+  // 0.9-to-1 is the top band whatever the unknown route turns out to be, and
+  // 0.6-to-1 is not a band at all. This is arithmetic on the model's own
+  // ordering, not a confidence interval and not a probability.
+  const establishedBand = stateFor(lower) === stateFor(upper) ? stateFor(lower) : null;
+  // An evaluated route at exactly 1 settles the maximum: routes are in [0, 1]
+  // by the contract checked above, so nothing unknown can beat it.
+  const settled = unevaluatedRouteIds.length === 0 || lower === 1;
   if (!settled) {
     return Object.freeze({
       ...empty,
       computationStatus: COMPUTATION.INDETERMINATE,
-      evaluatedRouteIds: Object.freeze(evaluated.map((route) => route.id)),
+      availabilityBounds: bounds,
+      establishedBand,
+      evaluatedRouteIds,
       unevaluatedRouteIds,
       route: best.steps,
+      routeId: best.id,
+      routeDeclaredBlock: routeBlocked(best),
     });
   }
   return Object.freeze({
     computationStatus: COMPUTATION.COMPUTED,
-    availability: best.availability,
-    state: stateFor(best.availability),
+    availability: lower,
+    state: stateFor(lower),
+    availabilityBounds: bounds,
+    establishedBand,
     route: best.steps,
-    evaluatedRouteIds: Object.freeze(evaluated.map((route) => route.id)),
-    ineligibleRouteIds: Object.freeze([...ineligibleRouteIds]),
+    routeId: best.id,
+    evaluatedRouteIds,
+    ineligibleRouteIds: frozenIneligible,
     unevaluatedRouteIds,
     limitingSteps: Object.freeze(
       best.steps.filter((step) => step.integrity < AVAILABILITY_HIGH).map((step) => step.id)
     ),
-    declaredBlock: evaluated.every((route) => route.steps.some((step) => step.integrity === 0)),
+    // Every eligible route evaluated, and each of them stopped by an element at
+    // a true zero. With an unknown route still outstanding this stays false:
+    // "everything is blocked" is not something an unfinished set can say.
+    declaredBlock: unevaluatedRouteIds.length === 0 && evaluated.every(routeBlocked),
+    routeDeclaredBlock: routeBlocked(best),
+    notModelledReason: null,
   });
 }
 
@@ -1987,6 +2350,7 @@ export function solveHigherBrainFunction({
   lesions = [],
   interventions = [],
   extent = 1,
+  atlasStructures = null,
 } = {}) {
   const dominance = dominanceFor(handedness);
   if (mode !== MODE.ATLAS_LESION && mode !== MODE.CONCEPTUAL) {
@@ -2024,10 +2388,11 @@ export function solveHigherBrainFunction({
 
   /** @type {Map<string, number>} structureKey → 0–1 destroyed */
   const structureDamage = new Map();
-  /** @type {string[]} what the chosen lesions say they do not compute */
-  const unmodelledInfluences = [];
-  /** @type {Map<string, string[]>} task id → influences this model does not compute */
-  const unmodelledByTask = new Map();
+  /** @type {string[]} atlas structures named by the input that this model does not compute with */
+  const outOfScopeStructures = [];
+  /** @type {string[]} structures the input named that could not be checked against the atlas */
+  const uncheckedStructures = [];
+  const atlasIndex = atlasStructures === null ? null : new Set(atlasStructures);
 
   for (const lesion of lesions) {
     if (!lesion) continue;
@@ -2055,18 +2420,69 @@ export function solveHigherBrainFunction({
         + 'integrity from the structures they run within, so that damaging one side cannot zero the other.'
       );
     }
-    if (severity > 0) {
-      for (const influence of lesion.unmodelledInfluences ?? []) {
-        unmodelledInfluences.push(influence.what);
-        for (const taskId of influence.onTasks) {
-          if (!unmodelledByTask.has(taskId)) unmodelledByTask.set(taskId, []);
-          unmodelledByTask.get(taskId).push(influence.what);
-        }
-      }
+    if (lesion.unmodelledInfluences) {
+      throw new Error(
+        `higherBrainFunction: lesion ${lesion.id} declares \`unmodelledInfluences\`. Influence this `
+        + 'model does not compute is declared by MODULATORY_NETWORKS and matched against the damage '
+        + 'map, so that the same damage entered as a preset and as raw structures says the same thing.'
+      );
     }
   }
 
+  // Which structures this model actually computes with. Anything the input
+  // names that is not in here is either out of this model's scope or a
+  // misspelling, and those are different answers: "the atlas has this structure
+  // and this model computes nothing from it" is a limit of the model, while
+  // "no such structure" is an input error. Neither of them is "no effect".
   const damageOf = (label, side) => structureDamage.get(structureKey(label, side)) ?? 0;
+  for (const label of [...new Set([...structureDamage.keys()].map((key) => key.slice(0, key.lastIndexOf('|'))))]) {
+    if (MODELLED_STRUCTURE_LABELS.has(label)) continue;
+    if (atlasIndex === null) {
+      uncheckedStructures.push(label);
+    } else if (atlasIndex.has(label)) {
+      outOfScopeStructures.push(label);
+    } else {
+      throw new Error(
+        `higherBrainFunction: no atlas structure called ${JSON.stringify(label)}. `
+        + 'A structure this model does not compute with is reported as out of scope; a structure the '
+        + 'atlas does not have is an input error, and neither of them means the lesion has no effect.'
+      );
+    }
+  }
+
+  // Influence this model declares and does not compute, matched against the
+  // normalised damage map rather than against the preset that produced it. The
+  // audited version read it off `lesion.unmodelledInfluences`, so the same
+  // thalamus, entered by tapping the structure instead of choosing the preset,
+  // came back with no warning at all.
+  /** @type {Map<string, object[]>} task id → influences this model does not compute */
+  const unmodelledByTask = new Map();
+  const unmodelledInfluences = [];
+  for (const network of MODULATORY_NETWORKS) {
+    const touched = network.structures
+      .map((structure) => {
+        const side = resolveSide(structure.side, dominance);
+        return { label: structure.label, side, damage: damageOf(structure.label, side) };
+      })
+      .filter((structure) => structure.damage > 0);
+    if (touched.length === 0) continue;
+    const influence = Object.freeze({
+      id: network.id,
+      what: network.what,
+      whatJa: network.whatJa,
+      label: network.label,
+      labelJa: network.labelJa,
+      whatIsNotComputed: network.whatIsNotComputed,
+      whatIsNotComputedJa: network.whatIsNotComputedJa,
+      structures: Object.freeze(touched.map(({ label, side }) => ({ label, side }))),
+      onTasks: network.onTasks,
+    });
+    unmodelledInfluences.push(influence);
+    for (const taskId of network.onTasks) {
+      if (!unmodelledByTask.has(taskId)) unmodelledByTask.set(taskId, []);
+      unmodelledByTask.get(taskId).push(influence);
+    }
+  }
 
   /**
    * One element's integrity, and whether this mode can evaluate it at all.
@@ -2078,23 +2494,41 @@ export function solveHigherBrainFunction({
    * healthy.
    */
   const resolveElement = (element, structures) => {
-    if (switchedOff.has(element.id)) return { integrity: 0, evaluable: true };
+    // A hand-switched process is a true zero: the reader set it, and nothing
+    // about rounding or a product of small numbers is involved.
+    if (switchedOff.has(element.id)) return { integrity: 0, evaluable: true, blocked: true };
     if (element.mapping === MAPPING.CONCEPTUAL) {
       // A process with no mesh is available unless it is switched off, *and*
       // every task whose route passes through it carries that as a coverage
       // limitation. `assumedAvailable` is the declaration of that assumption;
       // without it the element is simply not evaluable by a lesion, which is
       // reported as indeterminate rather than as health.
-      if (element.assumedAvailable) return { integrity: 1, evaluable: true, assumed: true };
-      return { integrity: 1, evaluable: mode === MODE.CONCEPTUAL };
+      if (element.assumedAvailable) return { integrity: 1, evaluable: true, assumed: true, blocked: false };
+      return { integrity: 1, evaluable: mode === MODE.CONCEPTUAL, blocked: false };
+    }
+    // Anything that is neither of the two structure-backed mappings is a
+    // declaration error rather than a default. The audited version let an
+    // element with a missing or misspelt `mapping` fall through to the atlas
+    // branch and be computed from whatever structures it happened to name,
+    // which is the one outcome that hides the mistake.
+    if (element.mapping !== MAPPING.ATLAS && element.mapping !== MAPPING.COARSE) {
+      throw new Error(
+        `higherBrainFunction: ${element.id} declares mapping ${JSON.stringify(element.mapping)}, `
+        + `which is none of ${Object.values(MAPPING).join(', ')}.`
+      );
     }
     if (structures.length === 0) {
       throw new Error(`higherBrainFunction: ${element.id} claims an atlas mapping and names no structure`);
     }
-    const integrity = element.substrate === NODE_SUBSTRATE.PAIRED
+    // Exact, and rounded only by `roundForDisplay` at the edge. A structure
+    // destroyed to 0.99996 leaves 0.00004 here; rounding it to four places
+    // before the comparison below would turn a nearly-destroyed structure into
+    // a severed one, which is the difference between "very little gets through"
+    // and "nothing does".
+    const integrity = clamp01(element.substrate === NODE_SUBSTRATE.PAIRED
       ? bestSideIntegrity(structures)
-      : 1 - mean(structures.map((structure) => structure.damage));
-    return { integrity: round(clamp01(integrity)), evaluable: true };
+      : 1 - mean(structures.map((structure) => structure.damage)));
+    return { integrity, evaluable: true, blocked: integrity === 0 };
   };
 
   const nodes = FUNCTION_NODES.map((node) => {
@@ -2102,7 +2536,7 @@ export function solveHigherBrainFunction({
       const side = resolveSide(structure.side, dominance);
       return { label: structure.label, side, damage: damageOf(structure.label, side) };
     });
-    const { integrity, evaluable, assumed } = resolveElement(node, structures);
+    const { integrity, evaluable, assumed, blocked } = resolveElement(node, structures);
     return {
       id: node.id,
       label: node.label,
@@ -2112,6 +2546,8 @@ export function solveHigherBrainFunction({
       evaluable,
       /** True when this is a process no lesion can reach, taken as available. */
       assumed: Boolean(assumed),
+      /** True only for a true zero: a destroyed structure, or a hand-switched process. */
+      blocked: Boolean(blocked),
       structures,
     };
   });
@@ -2128,7 +2564,7 @@ export function solveHigherBrainFunction({
       return { label: structure.label, side, damage: damageOf(structure.label, side) };
     });
     const substrate = edge.substrate ?? NODE_SUBSTRATE.COMPOSITE;
-    const { integrity, evaluable, assumed } = resolveElement({ ...edge, substrate }, structures);
+    const { integrity, evaluable, assumed, blocked } = resolveElement({ ...edge, substrate }, structures);
     return {
       id: edge.id,
       from: edge.from,
@@ -2140,6 +2576,7 @@ export function solveHigherBrainFunction({
       integrity,
       evaluable,
       assumed: Boolean(assumed),
+      blocked: Boolean(blocked),
     };
   });
   const edgeById = new Map(edges.map((edge) => [edge.id, edge]));
@@ -2218,7 +2655,11 @@ export function solveHigherBrainFunction({
     edges,
     tasks,
     interventions: Object.freeze([...interventions]),
-    unmodelledInfluences: Object.freeze([...new Set(unmodelledInfluences)]),
+    unmodelledInfluences: Object.freeze(unmodelledInfluences),
+    /** Atlas structures the input named that this model computes nothing from. Not "no effect". */
+    outOfScopeStructures: Object.freeze([...new Set(outOfScopeStructures)].sort()),
+    /** Structures that could not be checked, because no atlas list was passed in. */
+    uncheckedStructures: Object.freeze([...new Set(uncheckedStructures)].sort()),
     /** Every structure this lesion set touches, for a view that has to draw it. */
     affectedStructures: [...structureDamage.entries()]
       .map(([key, damage]) => {
@@ -2252,14 +2693,18 @@ function solveRoute(route, nodeById, edgeById) {
       const solvedEdge = edgeById.get(edge.id);
       steps.push({
         kind: 'connection', id: edge.id, label: edge.label, labelJa: edge.labelJa,
+        mapping: solvedEdge.mapping,
         integrity: solvedEdge.integrity, evaluable: solvedEdge.evaluable, assumed: solvedEdge.assumed,
+        blocked: solvedEdge.blocked,
       });
     }
     const node = nodeById.get(nodeId);
     if (!node) throw new Error(`higherBrainFunction: route ${route.id} names an unknown process ${nodeId}`);
     steps.push({
       kind: 'node', id: node.id, label: node.label, labelJa: node.labelJa,
+      mapping: node.mapping,
       integrity: node.integrity, evaluable: node.evaluable, assumed: node.assumed,
+      blocked: node.blocked,
     });
   }
   // A closed loop — the frontal–subcortical circuits return to the cortex they
@@ -2268,12 +2713,15 @@ function solveRoute(route, nodeById, edgeById) {
   // twice would make a lesion of it weigh double for no reason anybody could
   // defend. Distinct things only.
   const counted = new Set();
-  const availability = round(steps.reduce((carried, step) => {
+  // Exact. The read-out rounds with `roundForDisplay`; the model does not,
+  // because the only comparison that matters here — is this a true zero? — is
+  // the one rounding destroys.
+  const availability = steps.reduce((carried, step) => {
     const key = `${step.kind}:${step.id}`;
     if (counted.has(key)) return carried;
     counted.add(key);
     return carried * step.integrity;
-  }, 1));
+  }, 1);
   return {
     id: route.id,
     label: route.label ?? null,
@@ -2313,3 +2761,5 @@ function clamp01(value) {
 function round(value) {
   return Math.round(value * 1e4) / 1e4;
 }
+
+validateNetwork();

@@ -8,8 +8,8 @@ import {
   TASK_READOUT_LABELS, TRACEABLE_TASKS, VISUAL_MAPPING,
 } from '../../../../data/higherBrainFunction.js';
 import {
-  AVAILABILITY_HIGH, AVAILABILITY_LOW, BULK_WHITE_MATTER, COMPUTATION, FUNCTION_TASKS, LESION_SITES, MODE, PATHWAY_STATE,
-  lesionSiteById, solveHigherBrainFunction,
+  AVAILABILITY_HIGH, BULK_WHITE_MATTER, COMPUTATION, FUNCTION_TASKS, LESION_SITES, MAPPING, MODE, PATHWAY_STATE,
+  lesionSiteById, roundForDisplay, solveHigherBrainFunction,
 } from '../../../../models/higherBrainFunction.js';
 import {
   ATLAS_CATEGORIES, brainAtlasMetadata, loadBrainAtlas, placeBrainAtlas,
@@ -17,6 +17,7 @@ import {
 import {
   REEL_CUES, REEL_DURATION, REEL_ROWS, REEL_TASK, cameraAt, extentAt, overlayAt, runTimeAt, segmentAt,
 } from './reelStoryboard.js';
+import { APHASIA_LIBRARY } from '../../../../data/aphasiaReference.js';
 import { brainStructureInfo } from '../../../../data/brainAnatomy.js';
 import { disposeObject } from '../../../../utils/dispose.js';
 import { clamp } from '../../../../utils/math.js';
@@ -71,6 +72,10 @@ export class HigherBrainFunctionScene {
     related: RELATED,
     visualMapping: VISUAL_MAPPING,
     modelScope: MODEL_SCOPE,
+    // Reference reading, opened by the reader. Declared on the scene rather
+    // than reached from the model: the solver cannot import this file, and the
+    // panel does not compute anything from it.
+    referenceLibrary: APHASIA_LIBRARY,
     modelControls: MODEL_CONTROLS_COPY,
     disclaimer: DISCLAIMER,
     disclaimerJa: DISCLAIMER_JA,
@@ -620,19 +625,52 @@ export class HigherBrainFunctionScene {
   _disposeRouteLine() {
     this.routeShape = null;
     this.routePaintedReach = null;
-    if (!this.routeLine) return;
-    this.routeGroup?.remove(this.routeLine);
-    this.routeLine.geometry.dispose();
-    this.routeLine.material.dispose();
+    for (const segment of this.routeSegments ?? []) {
+      this.routeGroup?.remove(segment.mesh);
+      segment.mesh.geometry.dispose();
+      segment.mesh.material.dispose();
+    }
+    this.routeSegments = [];
     this.routeLine = null;
   }
 
   /**
-   * The traced route as one line through the atlas.
+   * How a step of the route is drawn, by what the model depends on for it.
+   *
+   * Three line types, and the difference is the line itself rather than its
+   * colour: a reader who cannot tell the three colours apart still sees a solid
+   * line, a long-dashed one and a dotted one. Drawing all three the same way —
+   * which is what this scene used to do — told a reader that a conceptual
+   * connection between two processes and the arcuate fasciculus were the same
+   * kind of claim about a brain.
+   *
+   * `dash` is in ring units along the segment: `on` rings drawn, `off` rings
+   * left out. A gap is alpha zero rather than missing geometry, so the whole
+   * segment stays one mesh and the reach painting below can walk it in order.
+   */
+  static LINE_TYPES = Object.freeze({
+    [MAPPING.ATLAS]: Object.freeze({ id: 'tract', dash: null, radius: 0.024 }),
+    [MAPPING.COARSE]: Object.freeze({ id: 'coarse', dash: Object.freeze({ on: 4, off: 3 }), radius: 0.019 }),
+    [MAPPING.CONCEPTUAL]: Object.freeze({ id: 'conceptual', dash: Object.freeze({ on: 1, off: 3 }), radius: 0.014 }),
+  });
+
+  /** The line type of a step, falling back to the most cautious one. */
+  static lineTypeFor(mapping) {
+    return HigherBrainFunctionScene.LINE_TYPES[mapping]
+      ?? HigherBrainFunctionScene.LINE_TYPES[MAPPING.CONCEPTUAL];
+  }
+
+  /**
+   * The traced route as one line through the atlas, in as many pieces as it
+   * has connections.
    *
    * Drawn in front of the brain rather than inside it: most of a route runs
    * through white matter a reader cannot see from outside, and a line that
    * disappears behind a gyrus teaches nothing about where it went.
+   *
+   * One mesh per connection, because the line type belongs to the connection.
+   * The pulse still follows one curve through the whole thing, so nothing about
+   * the travel changes.
    */
   _buildRouteLine(task) {
     const points = this.routePoints(task);
@@ -663,55 +701,308 @@ export class HigherBrainFunctionScene {
       return;
     }
     const curve = new THREE.CatmullRomCurve3(points.map((point) => point.position));
-    const tubularSegments = Math.max(24, points.length * 12);
-    const radialSegments = 8;
-    const geometry = new THREE.TubeGeometry(curve, tubularSegments, 0.022, radialSegments, false);
-    // The line carries its own colour, so *how far the word got* can be read
-    // off the route itself rather than from where one small marker happens to
-    // be at the instant a reader looks. See `_paintRouteReach`.
+    const last = points.length - 1;
+    // A span runs from one process to the next. The connection between them is
+    // what decides the line type; where the route passes through a connection
+    // with a mesh of its own, that mesh is a point on the way and the span
+    // covers both halves.
+    const spans = [];
+    for (let index = 0; index < last; index += 1) {
+      const from = points[index];
+      const step = points[index + 1].step;
+      if (step.kind === 'connection') {
+        const to = points[index + 2];
+        if (!to) break;
+        spans.push({ step, fromAt: index / last, toAt: (index + 2) / last });
+        index += 1;
+      } else {
+        // No point of its own — a conceptual connection, or one whose mesh the
+        // scene could not place. The step is still in the route, so the type
+        // comes from the route rather than from the points.
+        const between = this._connectionBetween(task, from.step, step);
+        spans.push({ step: between ?? step, fromAt: index / last, toAt: (index + 1) / last });
+      }
+    }
+    this.routeSegments = spans.map((span) => this._buildRouteSegment(curve, span));
+    for (const segment of this.routeSegments) this.routeGroup.add(segment.mesh);
+    // Kept as the handle the rest of the scene and its tests reach for: the
+    // first piece of the line, with every piece on `routeSegments`.
+    this.routeLine = this.routeSegments[0]?.mesh ?? null;
+    this.routeCurve = curve;
+    this.pulse.visible = true;
+  }
+
+  /** The connection step of the traced route between two consecutive nodes. */
+  _connectionBetween(task, fromStep, toStep) {
+    const route = task?.route ?? [];
+    const at = route.indexOf(fromStep);
+    if (at < 0) return null;
+    const next = route[at + 1];
+    return next && next.kind === 'connection' && route[at + 2] === toStep ? next : null;
+  }
+
+  /** One piece of the line, cut out of the whole curve so the path is unchanged. */
+  _buildRouteSegment(curve, span) {
+    const type = HigherBrainFunctionScene.lineTypeFor(span.step.mapping);
+    const rings = 24;
+    const radial = 8;
+    const sub = new THREE.CatmullRomCurve3(
+      Array.from({ length: rings + 1 }, (unused, index) => curve
+        .getPoint(span.fromAt + ((span.toAt - span.fromAt) * index) / rings))
+    );
+    const geometry = new THREE.TubeGeometry(sub, rings, type.radius, radial, false);
     geometry.setAttribute(
       'color',
-      new THREE.BufferAttribute(new Float32Array(geometry.attributes.position.count * 3), 3)
+      new THREE.BufferAttribute(new Float32Array(geometry.attributes.position.count * 4), 4)
     );
-    this.routeRings = tubularSegments + 1;
-    this.routeRingWidth = radialSegments + 1;
-    this.routePaintedReach = null;
     const material = new THREE.MeshBasicMaterial({
       color: 0xffffff, vertexColors: true, transparent: true, opacity: 0.55, depthTest: false,
     });
-    this.routeLine = new THREE.Mesh(geometry, material);
-    this.routeLine.renderOrder = 28;
-    this.routeLine.name = 'route';
-    this.routeGroup.add(this.routeLine);
-    this.routeCurve = curve;
-    this.pulse.visible = true;
+    const mesh = new THREE.Mesh(geometry, material);
+    mesh.renderOrder = 28;
+    mesh.name = `route:${span.step.id}`;
+    return {
+      mesh,
+      id: span.step.id,
+      mapping: span.step.mapping,
+      lineType: type.id,
+      dash: type.dash,
+      fromAt: span.fromAt,
+      toAt: span.toAt,
+      rings: rings + 1,
+      ringWidth: radial + 1,
+    };
+  }
+
+  /** What line type each piece of the drawn route is, for a legend or a test. */
+  routeLineKinds() {
+    return (this.routeSegments ?? []).map((segment) => ({
+      id: segment.id, mapping: segment.mapping, lineType: segment.lineType, dashed: segment.dash !== null,
+    }));
+  }
+
+  /**
+   * What the picture is saying about the traced route, in one place.
+   *
+   * Five states, and they are not degrees of one thing. The audited version had
+   * two — "gets through" and "stops" — and everything else fell into the second
+   * one: a route carrying 0.2 was animated as a full stop with no answer, and
+   * so was a task this model has no route for. A reader could not tell a weak
+   * route from a severed one, or either from a question the model does not
+   * answer, and the read-out saying so underneath did not undo what the picture
+   * showed.
+   *
+   * - `carrying` — computed, top band.
+   * - `weak` — computed and positive below the top band. **Reaches the far
+   *   end**, with a faint answer. A positive number is not a stop.
+   * - `blocked` — an element of the traced route is at a true zero. That, and
+   *   only that, halts the pulse where it happens.
+   * - `indeterminate` — the model could not settle this route or this task. The
+   *   line is drawn in the unknown colour and nothing is animated as stopping.
+   * - `not-modelled` — there is no route. Nothing is asked and nothing travels.
+   *
+   * `answerStrength` carries a floor so that a very small positive value is
+   * still visible on screen. The floor is a property of the display and is
+   * never read back into the model: `availability` is what the model says, and
+   * `strength` is how bright a dot is.
+   */
+  static DISPLAY = Object.freeze({
+    CARRYING: 'carrying',
+    WEAK: 'weak',
+    BLOCKED: 'blocked',
+    INDETERMINATE: 'indeterminate',
+    NOT_MODELLED: 'not-modelled',
+  });
+
+  /** The dimmest a positive answer is drawn. A display floor, not a quantity. */
+  static ANSWER_VISIBILITY_FLOOR = 0.22;
+
+  routeDisplay(task = this.tracedTask()) {
+    const { DISPLAY } = HigherBrainFunctionScene;
+    const points = this.routePositions ?? [];
+    const span = Math.max(1, points.length - 1);
+    const base = {
+      taskId: task?.id ?? null,
+      routeId: task?.routeId ?? null,
+      reach: 1,
+      strength: 0,
+      stop: null,
+      assumed: Boolean(task?.route?.some((step) => step.assumed)),
+      /** The traced route's own conclusion, which is not the task's. */
+      routeBlocked: Boolean(task?.routeDeclaredBlock),
+      /** The task's, which may be unsettled while this route is not. */
+      taskBlocked: Boolean(task?.declaredBlock),
+      otherRoutes: (task?.evaluatedRouteIds ?? []).filter((id) => id !== task?.routeId).length,
+      unknownRoutes: (task?.unevaluatedRouteIds ?? []).length,
+    };
+    if (!task || task.computationStatus === COMPUTATION.NOT_MODELLED) {
+      return { ...base, kind: DISPLAY.NOT_MODELLED, reach: 0, strength: 0 };
+    }
+    // A true zero on the traced route halts it there — whatever the task as a
+    // whole turns out to be, because this is a statement about this route.
+    const stopIndex = points.findIndex((point) => point.step.blocked === true);
+    if (stopIndex > 0) {
+      return {
+        ...base,
+        kind: DISPLAY.BLOCKED,
+        reach: stopIndex / span,
+        strength: 0,
+        stop: points[stopIndex].step,
+      };
+    }
+    if (stopIndex === 0) {
+      return { ...base, kind: DISPLAY.BLOCKED, reach: 0, strength: 0, stop: points[0].step };
+    }
+    if (task.computationStatus === COMPUTATION.INDETERMINATE) {
+      return { ...base, kind: DISPLAY.INDETERMINATE, reach: 1, strength: 0 };
+    }
+    // Computed, positive, nothing at zero: it gets to the end. How bright the
+    // answer is says how much of it did.
+    const floor = HigherBrainFunctionScene.ANSWER_VISIBILITY_FLOOR;
+    const strength = Math.max(floor, Math.min(1, task.availability ?? 0));
+    return {
+      ...base,
+      kind: task.state === PATHWAY_STATE.HIGH ? DISPLAY.CARRYING : DISPLAY.WEAK,
+      reach: 1,
+      strength,
+    };
   }
 
   /**
    * The step where the traced route stops, or null when it does not.
    *
-   * "Stops" means an element of the reported route is in the bottom band — a
-   * statement about this route, not about a person, and not "the responsible
-   * lesion". A task with no value at all has no stopping place either, which
-   * is why this returns null for one rather than picking a step.
+   * "Stops" means an element of the reported route is at a **true zero** — a
+   * structure the input destroyed outright, or a process switched off by hand.
+   * It used to mean "in the bottom band", which made a route carrying 0.2 look
+   * severed. A task with no value at all has no stopping place either, which is
+   * why this returns null for one rather than picking a step.
    */
   blockingStep(task = this.tracedTask()) {
-    if (!task || task.computationStatus !== COMPUTATION.COMPUTED || !task.route) return null;
-    return task.route.find((step) => step.integrity < AVAILABILITY_LOW) ?? null;
+    return this.routeDisplay(task).stop;
   }
 
   /**
    * How far along the route the signal gets, as a fraction of its length.
    *
-   * With nothing stopping it, the signal runs the whole way.
+   * With nothing at zero on it, the signal runs the whole way — however dim.
    */
   blockedFraction(task = this.tracedTask()) {
-    const blocking = this.blockingStep(task);
-    if (!blocking || !task?.route) return 1;
-    const index = task.route.findIndex((step) => step === blocking);
-    if (index <= 0) return 0;
-    if (task.route.length < 2) return 0;
-    return index / (task.route.length - 1);
+    return this.routeDisplay(task).reach;
+  }
+
+  /**
+   * Light the route as far as the signal gets, and leave the rest dim.
+   *
+   * The claim this scene's sequence makes is that the aphasias differ by
+   * *where the word stopped*. That was drawn as a small marker halted at the
+   * failing step — and a rendered frame showed it does not read: the marker is
+   * the same colour as the line it sits on and a few pixels across, so a front
+   * lesion and a back lesion produced two pictures a viewer cannot tell apart
+   * (`docs/follow-ups.md` F-197). The stopping place is a property of the whole
+   * route, so the whole route says it.
+   *
+   * The dim part is **neutral, not the lesion colour**. Those steps are intact;
+   * they were never reached. Painting them as damaged would be a different
+   * claim, and a false one — the same mistake the marker's own colour rule
+   * already guards against.
+   *
+   * The fourth component of each vertex colour is the dash: a piece of a
+   * long-dashed or dotted line is transparent where the line type says the
+   * line is not there.
+   *
+   * @param {number} reach 0–1 along the route
+   * @param {string} [lit] the colour of the part that has been reached
+   */
+  _paintRouteReach(reach, lit = PALETTE.carrying) {
+    const segments = this.routeSegments ?? [];
+    if (segments.length === 0) return;
+    const key = `${reach.toFixed(4)}|${lit}`;
+    if (this.routePaintedReach === key) return;
+    this.routePaintedReach = key;
+    const front = new THREE.Color(lit);
+    const dim = new THREE.Color(PALETTE.unreached);
+    for (const segment of segments) {
+      const colours = segment.mesh.geometry.attributes.color;
+      for (let ring = 0; ring < segment.rings; ring += 1) {
+        // The tube's vertices run ring by ring along the curve, so a ring's
+        // index is its position along this segment — and the segment knows
+        // where it sits on the whole route.
+        const withinSegment = segment.rings > 1 ? ring / (segment.rings - 1) : 0;
+        const along = segment.fromAt + (segment.toAt - segment.fromAt) * withinSegment;
+        const colour = along <= reach ? front : dim;
+        const alpha = HigherBrainFunctionScene._dashAlpha(segment, ring);
+        for (let around = 0; around < segment.ringWidth; around += 1) {
+          colours.setXYZW(ring * segment.ringWidth + around, colour.r, colour.g, colour.b, alpha);
+        }
+      }
+      colours.needsUpdate = true;
+    }
+  }
+
+  /** 1 where the line is drawn, 0 in a gap of a dashed or dotted one. */
+  static _dashAlpha(segment, ring) {
+    if (!segment.dash) return 1;
+    const period = segment.dash.on + segment.dash.off;
+    return ring % period < segment.dash.on ? 1 : 0;
+  }
+
+  _applyCycle() {
+    const points = this.routePositions ?? [];
+    if (!this.pulse || points.length === 0) return;
+    const { DISPLAY } = HigherBrainFunctionScene;
+    const phase = this.cyclePhase();
+    const display = this.routeDisplay();
+    const swell = (through) => Math.sin(clamp(through) * Math.PI);
+    const unresolved = display.kind === DISPLAY.INDETERMINATE || display.kind === DISPLAY.NOT_MODELLED;
+
+    // The word being said, at the end of the route it enters by. A task this
+    // model has no route for is not asked at all: nothing enters, which is a
+    // different picture from a question that goes in and gets no answer.
+    const asking = phase.id === 'asked' && display.kind !== DISPLAY.NOT_MODELLED;
+    this.stimulus.mesh.position.copy(points[0].position);
+    this.stimulus.mesh.visible = asking;
+    this.stimulus.material.opacity = asking ? 0.75 * swell(phase.through) : 0;
+    this.stimulus.mesh.scale.setScalar(1 + (asking ? swell(phase.through) * 0.6 : 0));
+
+    // The answer, at the far end, as strong as the route that reached it.
+    const strength = this.answerStrength();
+    const answering = phase.id === 'answered' && strength > 0;
+    this.answer.mesh.position.copy(points[points.length - 1].position);
+    this.answer.mesh.visible = answering;
+    this.answer.material.opacity = answering ? 0.8 * strength * swell(phase.through) : 0;
+    this.answer.mesh.scale.setScalar(1 + (answering ? swell(phase.through) * 0.9 * strength : 0));
+
+    const lit = unresolved ? PALETTE.unknown : PALETTE.carrying;
+    if (!this.routeCurve) {
+      // A one-structure task: nothing travels, so the marker only says whether
+      // the structure is carrying, stopped, or not evaluated at all.
+      this.pulse.visible = points.length === 1 && display.kind !== DISPLAY.NOT_MODELLED;
+      this.pulseMaterial.color.set(
+        display.kind === DISPLAY.BLOCKED ? PALETTE.blocked : lit
+      );
+      return;
+    }
+    // Travelling: from where it was asked to as far as it gets. It waits at the
+    // start while the word is being said, and stays where it stopped while the
+    // answer is, or is not, given. A route with nothing at zero on it runs the
+    // whole way however dim it is — 0.2 is not a stop.
+    const travelled = asking
+      ? 0
+      : Math.max(display.reach, 0.02) * (phase.id === 'travelling' ? phase.through : 1);
+    this.pulse.visible = display.kind !== DISPLAY.NOT_MODELLED;
+    this.pulse.position.copy(this.routeCurve.getPoint(clamp(travelled)));
+    this._paintRouteReach(display.kind === DISPLAY.NOT_MODELLED ? 0 : display.reach, lit);
+    // Dark only where it stops, and only for a true zero. Colouring the whole
+    // traverse said the signal was already failing at steps the model has
+    // carrying perfectly well.
+    this.pulseMaterial.color.set(
+      display.kind === DISPLAY.BLOCKED && phase.id === 'answered' ? PALETTE.blocked : lit
+    );
+  }
+
+  update(dt) {
+    if (!this.pulse) return;
+    this.renderAtSeconds(this.cycleTime + dt);
   }
 
   /** A marker that swells and fades where something happened. */
@@ -753,107 +1044,18 @@ export class HigherBrainFunctionScene {
   }
 
   /**
-   * What comes back at the end of a run: the traced task's own band, and
-   * nothing else.
+   * What comes back at the end of a run: how much of the answer arrived.
    *
    * A task with no value has nothing to answer with, and that is drawn as
    * nothing coming back rather than as a failure — the difference is in the
    * read-out, which says whether the reason is "not modelled" or "cannot be
-   * determined".
+   * determined". A *positive* route always answers, however faintly: the floor
+   * in {@link routeDisplay} exists so that 0.05 is dim rather than absent, and
+   * it is a floor on the brightness of a dot and not on anything the model
+   * computes.
    */
   answerStrength() {
-    const task = this.tracedTask();
-    if (!task || task.computationStatus !== COMPUTATION.COMPUTED) return 0;
-    if (task.state === PATHWAY_STATE.HIGH) return 1;
-    if (task.state === PATHWAY_STATE.INTERMEDIATE) return 0.45;
-    return 0;
-  }
-
-  /**
-   * Light the route as far as the signal gets, and leave the rest dim.
-   *
-   * The claim this scene's sequence makes is that the aphasias differ by
-   * *where the word stopped*. That was drawn as a small marker halted at the
-   * failing step — and a rendered frame showed it does not read: the marker is
-   * the same colour as the line it sits on and a few pixels across, so a front
-   * lesion and a back lesion produced two pictures a viewer cannot tell apart
-   * (`docs/follow-ups.md` F-197). The stopping place is a property of the whole
-   * route, so the whole route says it.
-   *
-   * The dim part is **neutral, not the lesion colour**. Those steps are intact;
-   * they were never reached. Painting them as damaged would be a different
-   * claim, and a false one — the same mistake the marker's own colour rule
-   * already guards against.
-   *
-   * @param {number} reach 0–1 along the route
-   */
-  _paintRouteReach(reach) {
-    if (!this.routeLine || !this.routeRings) return;
-    if (this.routePaintedReach !== null && Math.abs(this.routePaintedReach - reach) < 1e-4) return;
-    this.routePaintedReach = reach;
-    const colours = this.routeLine.geometry.attributes.color;
-    const lit = new THREE.Color(PALETTE.carrying);
-    const dim = new THREE.Color(PALETTE.unreached);
-    for (let ring = 0; ring < this.routeRings; ring += 1) {
-      // The tube's vertices run ring by ring along the curve, so a ring's
-      // index is its position along the route.
-      const along = this.routeRings > 1 ? ring / (this.routeRings - 1) : 0;
-      const colour = along <= reach ? lit : dim;
-      for (let around = 0; around < this.routeRingWidth; around += 1) {
-        colours.setXYZ(ring * this.routeRingWidth + around, colour.r, colour.g, colour.b);
-      }
-    }
-    colours.needsUpdate = true;
-  }
-
-  _applyCycle() {
-    const points = this.routePositions ?? [];
-    if (!this.pulse || points.length === 0) return;
-    const phase = this.cyclePhase();
-    const reach = this.blockedFraction();
-    const swell = (through) => Math.sin(clamp(through) * Math.PI);
-
-    // The word being said, at the end of the route it enters by.
-    const asking = phase.id === 'asked';
-    this.stimulus.mesh.position.copy(points[0].position);
-    this.stimulus.mesh.visible = asking;
-    this.stimulus.material.opacity = asking ? 0.75 * swell(phase.through) : 0;
-    this.stimulus.mesh.scale.setScalar(1 + (asking ? swell(phase.through) * 0.6 : 0));
-
-    // The answer, at the far end, as strong as the route that reached it.
-    const strength = this.answerStrength();
-    const answering = phase.id === 'answered' && strength > 0;
-    this.answer.mesh.position.copy(points[points.length - 1].position);
-    this.answer.mesh.visible = answering;
-    this.answer.material.opacity = answering ? 0.8 * strength * swell(phase.through) : 0;
-    this.answer.mesh.scale.setScalar(1 + (answering ? swell(phase.through) * 0.9 * strength : 0));
-
-    if (!this.routeCurve) {
-      // A one-structure task: nothing travels, so the marker only says whether
-      // the structure is carrying.
-      this.pulse.visible = points.length === 1;
-      this.pulseMaterial.color.set(reach < 1 ? PALETTE.blocked : PALETTE.carrying);
-      return;
-    }
-    // Travelling: from where it was asked to as far as it gets. It waits at the
-    // start while the word is being said, and stays where it stopped while the
-    // answer is, or is not, given.
-    const travelled = asking
-      ? 0
-      : Math.max(reach, 0.02) * (phase.id === 'travelling' ? phase.through : 1);
-    this.pulse.visible = true;
-    this.pulse.position.copy(this.routeCurve.getPoint(clamp(travelled)));
-    this._paintRouteReach(reach);
-    // Dark only where it stops. Colouring the whole traverse said the signal
-    // was already failing at steps the model has carrying perfectly well.
-    this.pulseMaterial.color.set(
-      reach < 1 && phase.id === 'answered' ? PALETTE.blocked : PALETTE.carrying
-    );
-  }
-
-  update(dt) {
-    if (!this.pulse) return;
-    this.renderAtSeconds(this.cycleTime + dt);
+    return this.routeDisplay().strength;
   }
 
   // --- what the panels read -------------------------------------------------

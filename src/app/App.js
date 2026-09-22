@@ -41,6 +41,7 @@ import { createPressureWavePanel } from '../components/PressureWavePanel.js';
 import { createBullseyePanel } from '../components/BullseyePanel.js';
 import { createChartPanel } from '../components/ChartPanel.js';
 import { createModelScopePanel } from '../components/ModelScopePanel.js';
+import { createReferenceLibraryPanel } from '../components/ReferenceLibraryPanel.js';
 import { createRelatedScenesPanel } from '../components/RelatedScenesPanel.js';
 import { createCausalStoryPanel } from '../components/CausalStoryPanel.js';
 import { createModelControls } from '../components/ModelControls.js';
@@ -847,6 +848,11 @@ export async function createApp({ stage, ui, onRetryModel = null }) {
     noteJa: relatedSource?.noteJa ?? null,
   });
   const scopePanel = meta.modelScope ? createModelScopePanel(meta.modelScope) : null;
+  // Reference reading a scene offers next to its model, when it has any. The
+  // panel renders what the scene hands it and computes nothing from it.
+  const referencePanel = meta.referenceLibrary
+    ? createReferenceLibraryPanel(meta.referenceLibrary)
+    : null;
   // One place, on every scene. The scope panel says what the model does not
   // represent; this says where the rest is shown.
   const relatedPanel = createRelatedScenesPanel(related);
@@ -1220,6 +1226,7 @@ export async function createApp({ stage, ui, onRetryModel = null }) {
     ...chartPanels.map((panel) => panel.element),
     controlsInConsole ? null : modelControls?.element,
     scopePanel?.element,
+    referencePanel?.element,
     // Last, under the model's own limits: "what this does not represent" is the
     // question the way on answers.
     relatedPanel?.element,

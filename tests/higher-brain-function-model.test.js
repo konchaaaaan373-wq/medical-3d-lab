@@ -123,20 +123,21 @@ test('model: every lesion site is anatomy plus a cause, and names no deficit', (
       return nodeStructures.has(key) || edgeStructures.has(key);
     });
     // A site may instead touch a network this model names and does not
-    // compute — the thalamus is the case, and it has to declare the influence
-    // rather than simply changing nothing.
-    const declaresUnmodelled = (site.unmodelledInfluences ?? []).length > 0;
+    // compute — the thalamus is the case. The declaration lives on the network
+    // and is matched against the damage the site produces, so that the same
+    // structure selected by hand says the same thing; a site that declares the
+    // influence itself is refused by the solver.
+    assert.equal(site.unmodelledInfluences, undefined, `${site.id} does not carry its own influence list`);
+    const networks = MODULATORY_NETWORKS.filter((network) => network.structures.some((structure) => site
+      .structures.some((named) => named.label === structure.label && named.side === structure.side)));
     assert.ok(
-      touches || declaresUnmodelled,
-      `${site.id} either damages a structure the network uses or declares an influence this model does not compute`
+      touches || networks.length > 0,
+      `${site.id} either damages a structure the network uses or lands in a declared modulatory network`
     );
     if (!touches) {
-      for (const influence of site.unmodelledInfluences) {
-        assert.ok(influence.onTasks.length > 0, `${site.id} says which tasks the influence reaches`);
-        assert.ok(
-          MODULATORY_NETWORKS.some((network) => network.id === influence.network),
-          `${site.id} names a declared modulatory network`
-        );
+      for (const network of networks) {
+        assert.ok(network.onTasks.length > 0, `${site.id} lands in a network that says which tasks it reaches`);
+        assert.ok(network.what && network.whatJa, `${site.id} lands in a network that names the influence`);
       }
     }
     // The site's *identity* may not be the deficit: a preset called "Broca"
@@ -758,16 +759,22 @@ test('scene: the route is lit as far as the word got, and neutral past it', () =
   // the halted marker is a few pixels of the same colour as the line it sits
   // on, so a front lesion and a back lesion looked alike. The route carries it
   // now, and this is what keeps it carrying it.
+  // The line is in as many pieces as the route has connections now, so the
+  // count walks every piece rather than one tube.
   const litRings = (scene) => {
-    const colours = scene.routeLine.geometry.attributes.color;
     const carrying = new THREE.Color(PALETTE.carrying);
     let lit = 0;
-    for (let ring = 0; ring < scene.routeRings; ring += 1) {
-      const at = ring * scene.routeRingWidth;
-      if (Math.abs(colours.getX(at) - carrying.r) < 1e-3
-        && Math.abs(colours.getZ(at) - carrying.b) < 1e-3) lit += 1;
+    let of = 0;
+    for (const segment of scene.routeSegments) {
+      const colours = segment.mesh.geometry.attributes.color;
+      for (let ring = 0; ring < segment.rings; ring += 1) {
+        const at = ring * segment.ringWidth;
+        of += 1;
+        if (Math.abs(colours.getX(at) - carrying.r) < 1e-3
+          && Math.abs(colours.getZ(at) - carrying.b) < 1e-3) lit += 1;
+      }
     }
-    return { lit, of: scene.routeRings };
+    return { lit, of };
   };
 
   const intact = buildScene({ lesion: 'dominant-arcuate', task: 'repetition-nonword' }, 0);
@@ -796,8 +803,9 @@ test('scene: the route is lit as far as the word got, and neutral past it', () =
   // Past the stop the line is neutral, never the lesion colour: those steps
   // are intact and were simply never reached.
   const lesion = new THREE.Color(PALETTE.lesion);
-  const colours = behind.routeLine.geometry.attributes.color;
-  const last = (behind.routeRings - 1) * behind.routeRingWidth;
+  const tail = behind.routeSegments.at(-1);
+  const colours = tail.mesh.geometry.attributes.color;
+  const last = (tail.rings - 1) * tail.ringWidth;
   assert.ok(Math.abs(colours.getX(last) - lesion.r) > 0.2, 'the unreached part is not painted as damaged');
   front.dispose();
   behind.dispose();

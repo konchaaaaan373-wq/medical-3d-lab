@@ -33,6 +33,10 @@ export const PALETTE = {
   // those steps are not damaged, they were simply never reached, and painting
   // them in the lesion colour would say the opposite.
   unreached: '#4a4a52',
+  // A step this model does not evaluate. Neither carrying nor stopped: it is
+  // the colour of "no answer was computed here", and it is deliberately not a
+  // dimmer version of either of the other two.
+  unknown: '#6f7ca8',
 };
 
 export const LEGEND = [
@@ -44,18 +48,42 @@ export const LEGEND = [
   { key: 'executive', label: 'Frontal–subcortical circuits', labelJa: '前頭葉–皮質下の回路' },
   {
     key: 'tract',
-    label: 'The mesh a step runs in — a real tract, or a coarse stand-in for one',
-    labelJa: 'その段階が通るメッシュ（実在の線維束か、その粗い代用）',
-    note: 'The atlas carries some of these as real tract meshes and not others; a few steps of this '
-      + 'model have no structure at all. The line is drawn the same way for all three, which is a '
-      + 'limitation of the view rather than a claim about the anatomy.',
-    noteJa: 'アトラスが実在の線維束メッシュとして持っているものと、持っていないものがあり、'
-      + 'このモデルの一部の段階には対応する構造がまったくありません。**線はどれも同じように'
-      + '描かれます**——これは解剖についての主張ではなく、表示側の限界です。',
+    label: 'A step drawn along a tract mesh the atlas actually carries — a solid line',
+    labelJa: 'アトラスが実際に持つ線維束メッシュに沿って描いた段階（実線）',
+    lineType: 'tract',
+    note: 'The line being solid is a claim about the mesh: that this step is drawn along a bundle the '
+      + 'atlas names. It is not a claim that the bundle is the only route the task has.',
+    noteJa: '実線であることは**メッシュについての主張**です——この段階が、アトラスが名前で持つ束に'
+      + '沿って描かれている、ということ。その束がこの課題の唯一の経路だという主張ではありません。',
+  },
+  {
+    key: 'tract',
+    label: 'A coarse stand-in: a real mesh larger than the step it represents — a long-dashed line',
+    labelJa: '粗い代用：その段階より大きな実メッシュで代表させたもの（長い破線）',
+    lineType: 'coarse',
+    note: 'The mesh exists and the step runs inside it, but the mesh takes in a great deal else. A '
+      + 'lesion of it cannot be confined to this step.',
+    noteJa: 'メッシュは実在し、その段階もその中を通りますが、メッシュはそれ以外の多くも含みます。'
+      + 'その病変をこの段階だけに限定することはできません。',
+  },
+  {
+    key: 'tract',
+    label: 'A connection with no structure behind it — a dotted line',
+    labelJa: '対応する構造を持たない連絡（点線）',
+    lineType: 'conceptual',
+    note: 'Between two processes, and along no bundle. Where it is drawn is for legibility only: no '
+      + 'lesion in this model affects a dotted step, and the model says so in the read-out.',
+    noteJa: '2 つの処理のあいだの連絡で、どの束にも沿っていません。描いてある位置は**読みやすさの'
+      + 'ため**だけのもので、このモデルのどの病変も点線の段階には影響しません（読み取り欄に出ます）。',
   },
   { key: 'lesion', label: 'The lesion', labelJa: '病変' },
   { key: 'carrying', label: 'The task getting through', labelJa: '課題の信号が通っているところ' },
-  { key: 'blocked', label: 'Where it stops', labelJa: '信号が止まるところ' },
+  { key: 'blocked', label: 'Where it stops — a step at zero', labelJa: '信号が止まるところ（0 の段階）' },
+  {
+    key: 'unknown',
+    label: 'A step this model does not evaluate — neither getting through nor stopped',
+    labelJa: 'このモデルが評価していない段階（通っているのでも、止まっているのでもありません）',
+  },
 ];
 
 /**

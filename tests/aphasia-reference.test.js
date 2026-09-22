@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync, readdirSync } from 'node:fs';
 
-import { APHASIA_MIMICS, APHASIA_REFERENCE, FEATURE_TENDENCY } from '../src/data/aphasiaReference.js';
+import { APHASIA_LIBRARY, APHASIA_MIMICS, APHASIA_REFERENCE, FEATURE_TENDENCY } from '../src/data/aphasiaReference.js';
 
 /**
  * The reference layer, and the wall between it and the model.
@@ -30,15 +30,17 @@ test('reference: nothing in the model layer can reach the reference layer', () =
 test('reference: the reference layer imports nothing and computes nothing', () => {
   const source = read('src/data/aphasiaReference.js');
   assert.ok(!/^import /m.test(source), 'it imports nothing at all');
-  // One local helper builds the rows; nothing else in the file is a function,
-  // so there is no classifier here to be called by mistake.
+  // Local helpers build the rows and the view shape; nothing exported is a
+  // function, so there is no classifier here to be called by mistake.
+  // `APHASIA_LIBRARY` is the same entries reordered for a panel — a view
+  // adapter with no claim of its own, and still `const`.
   const exported = [...source.matchAll(/^export (const|function|class)\s+(\w+)/gm)].map((match) => [match[1], match[2]]);
   for (const [kind, name] of exported) {
     assert.equal(kind, 'const', `${name} is data, not a function`);
   }
   assert.deepEqual(
     exported.map(([, name]) => name).sort(),
-    ['APHASIA_MIMICS', 'APHASIA_REFERENCE', 'FEATURE_TENDENCY']
+    ['APHASIA_LIBRARY', 'APHASIA_MIMICS', 'APHASIA_REFERENCE', 'FEATURE_TENDENCY']
   );
 });
 
@@ -102,20 +104,73 @@ test('reference: the three that are not aphasia say why, and say what is untesta
   assert.ok(alexia.notEvaluatedHereJa.some((item) => /膨大部/.test(item)));
 });
 
-test('reference: no scene or app file imports it as a source of answers', () => {
-  // It may be displayed. What it may not do is feed a computation, so nothing
-  // outside a component or a test may import it at all until a panel is built
-  // for it — and when one is, this test is where that decision gets recorded.
-  const roots = ['src/models', 'src/scenes/nervous/scenes/higherBrainFunction', 'src/app'];
-  for (const root of roots) {
+test('reference: the model cannot reach it, and what can only displays it', () => {
+  // The wall used to be "nobody outside a component or a test imports it at
+  // all", which was right while there was no panel and wrong the moment one
+  // was built: the reference layer that nobody can open is a comment. The line
+  // is drawn where it belongs now — **the solver may not see it** — and the
+  // files that may are held to displaying it.
+  const forbidden = ['src/models'];
+  for (const root of forbidden) {
     for (const name of readdirSync(new URL(`../${root}/`, import.meta.url))) {
       if (!name.endsWith('.js')) continue;
       // A prose reference is fine and useful — the evidence registry points at
       // it to say where the names went. What is forbidden is an import.
       assert.ok(
         !/from\s+'[^']*aphasiaReference/.test(read(`${root}/${name}`)),
-        `${root}/${name} does not import the reference layer yet (see docs/follow-ups.md F-199)`
+        `${root}/${name} does not import the reference layer`
       );
     }
+  }
+
+  // And the files that do import it hand it to a view and nothing else. The
+  // scene declares it on `meta` for the panel to render; it may not be read
+  // while solving, compared against a result, or scored.
+  const importers = [];
+  for (const root of ['src/scenes/nervous/scenes/higherBrainFunction', 'src/app', 'src/components']) {
+    for (const name of readdirSync(new URL(`../${root}/`, import.meta.url))) {
+      if (!name.endsWith('.js')) continue;
+      const source = read(`${root}/${name}`);
+      if (/from\s+'[^']*aphasiaReference/.test(source)) importers.push({ path: `${root}/${name}`, source });
+    }
+  }
+  assert.equal(importers.length, 1, 'exactly one file brings the names into the view layer');
+  assert.equal(importers[0].path, 'src/scenes/nervous/scenes/higherBrainFunction/HigherBrainFunctionScene.js');
+  const used = importers[0].source
+    .split('\n')
+    .filter((line) => /APHASIA_LIBRARY|APHASIA_REFERENCE|APHASIA_MIMICS/.test(line))
+    .filter((line) => !line.trim().startsWith('//') && !line.trim().startsWith('*'));
+  // Two lines: the import, and handing it to `meta`. A third would be the
+  // solver starting to read it, which is the thing this test is for.
+  assert.deepEqual(
+    used.map((line) => line.trim()),
+    [
+      "import { APHASIA_LIBRARY } from '../../../../data/aphasiaReference.js';",
+      'referenceLibrary: APHASIA_LIBRARY,',
+    ],
+    'the scene hands the names to the panel and never reads them'
+  );
+});
+
+test('reference: the library a panel renders says the same things the entries do', () => {
+  const named = APHASIA_LIBRARY.groups.flatMap((group) => group.entries);
+  assert.equal(named.length, APHASIA_REFERENCE.length + APHASIA_MIMICS.length);
+  for (const entry of named) {
+    assert.ok(entry.name && entry.nameJa, `${entry.id} is named in both languages`);
+    assert.ok(entry.gist && entry.gistJa, `${entry.id} says what it is in both languages`);
+    assert.ok(entry.notEvaluated.length > 0, `${entry.id} says what this model does not evaluate`);
+    for (const item of entry.notEvaluated) {
+      assert.ok(item.text && item.textJa, `${entry.id}: every limitation is in both languages`);
+    }
+    for (const line of entry.lines) {
+      assert.ok(line.text && line.textJa, `${entry.id}/${line.label}: both languages`);
+    }
+  }
+  // No score, no rank, no percentage: the panel shows entries, and a reader
+  // chooses. Anything that ordered them against a result would be the
+  // classifier this scene removed, wearing a different hat.
+  const serialised = JSON.stringify(APHASIA_LIBRARY);
+  for (const field of ['"match"', '"score"', '"probability"', '"rank"', '"likelihood"']) {
+    assert.ok(!serialised.includes(field), `the library carries no ${field}`);
   }
 });
