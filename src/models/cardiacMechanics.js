@@ -209,6 +209,12 @@ export function solveSteadyState(
   let previousEdv = Infinity;
   let previousEsv = Infinity;
   let beats = 0;
+  // Whether the loop left because the beat stopped changing, or because it ran
+  // out of beats. Reading `beats < maxBeats` afterwards cannot tell the two
+  // apart: settling on the last allowed beat and never settling at all both
+  // leave the counter at `maxBeats`, and one of those is an answer while the
+  // other is where the integration happened to stop.
+  let converged = false;
 
   for (; beats < maxBeats; beats++) {
     let edv = -Infinity;
@@ -220,13 +226,32 @@ export function solveSteadyState(
     }
     if (Math.abs(edv - previousEdv) < tolerance && Math.abs(esv - previousEsv) < tolerance) {
       beats += 1;
+      converged = true;
       break;
     }
     previousEdv = edv;
     previousEsv = esv;
   }
 
-  return { cycle: recordCycle(volumes, p, cycleLength, dt, stepsPerBeat, samples, scratch), beats, volumes };
+  return {
+    cycle: recordCycle(volumes, p, cycleLength, dt, stepsPerBeat, samples, scratch),
+    beats,
+    volumes,
+    /**
+     * Additive, and deliberately not acted on here.
+     *
+     * The termination test is a *chamber* test — successive end-diastolic and
+     * end-systolic volumes of the left ventricle — so it says the ventricle has
+     * settled, not that all seven compartments have. Callers that open a wider
+     * range of inputs than the progression this solver was written for have to
+     * check the rest themselves (`src/models/cardiacOutput.js` does); what this
+     * flag adds is the one fact only the loop knows.
+     */
+    converged,
+    maxBeats,
+    tolerance,
+    stepsPerBeat,
+  };
 }
 
 function rescaleTo(volumes, total) {
@@ -366,6 +391,11 @@ export function walkBeat(solution, p, steps, visit) {
     visit({ phase, dt, pressures, flows: flowsAt(pressures, p), volumes });
     step(volumes, phase, dt, cycleLength, p, scratch);
   }
+  // The state one full beat on, which no visit sees: the last one is handed the
+  // step *before* the closing one. Without it a caller cannot ask the question
+  // a periodic solution exists to answer — whether the compartments came back
+  // to where they started — and would have to re-integrate the beat to find out.
+  return volumes;
 }
 
 /** Volume at a point in the cycle, interpolated from the recorded beat. */
