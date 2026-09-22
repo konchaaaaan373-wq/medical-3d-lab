@@ -53,8 +53,16 @@ export const REEL_SEGMENTS = Object.freeze([
 /** The same beats, in the shape the player reads. */
 export const REEL_CUES = REEL_SEGMENTS.map(({ id, at, until }) => ({ id, at, until }));
 
-/** The task the sequence asks for, by its id in the model. */
-export const REEL_TASK = 'repetition-word';
+/**
+ * The task the sequence asks for, by its id in the model.
+ *
+ * A **nonword**, and that is the point. Repeating a known word has a way round
+ * through its meaning, so a dorsal cut leaves it partly available and the
+ * sequence would show two stopping places and one partial. A nonsense word has
+ * no lexical entry and therefore no way round, so each of the three cuts stops
+ * it somewhere different — which is the claim the fifteen seconds make.
+ */
+export const REEL_TASK = 'repetition-nonword';
 
 /**
  * The rows the overlay prints, by task id.
@@ -64,7 +72,7 @@ export const REEL_TASK = 'repetition-word';
  * caption no longer claims anything about how fluent the speech is.
  */
 export const REEL_ROWS = Object.freeze([
-  'repetition-word',
+  'repetition-nonword',
   'auditory-comprehension',
   'speech-initiation-route',
 ]);
@@ -174,7 +182,7 @@ export function overlayAt(t, { language, metrics }) {
           label: site
             ? pick(language, site.label, site.labelJa)
             : pick(language, REEL_COPY.cards.task.label, REEL_COPY.cards.task.labelJa),
-          rows: [row(language, 'repetition-word', metrics['repetition-word'])],
+          rows: [row(language, 'repetition-nonword', metrics['repetition-nonword'])],
         },
         {
           label: pick(language, REEL_COPY.cards.spared.label, REEL_COPY.cards.spared.labelJa),

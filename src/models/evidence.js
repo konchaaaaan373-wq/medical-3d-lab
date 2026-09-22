@@ -136,6 +136,34 @@ const LAYERS = new Set(Object.values(LAYER));
  * checked in the calibration layer — see `defineEvidence`, which refuses any
  * other arrangement.
  */
+/**
+ * How far a source was checked, which is not the same as how strong it is.
+ *
+ * A citation that was matched against a bibliographic record is not a paper
+ * that was read, and neither is a search result that quoted an abstract. The
+ * distinction exists because this repository cannot reach the medical
+ * publishers from its build environment: every attempt at a publisher domain
+ * is refused by the network policy, so `FULL_TEXT` is a value nothing here can
+ * honestly claim today, and a registry that had no way to say so would end up
+ * claiming it by default.
+ */
+export const VERIFICATION = {
+  /** The paper itself was read, including its tables and figures. */
+  FULL_TEXT: 'full-text',
+  /** The abstract was read; the body of the paper was not retrieved. */
+  ABSTRACT: 'abstract-only',
+  /** Author, year, journal, title and identifier were matched; no abstract read. */
+  CITATION: 'citation-only',
+  /** A textbook-level description this repository is restating. */
+  TEXTBOOK: 'textbook-account',
+  /** Nothing was checked. The claim must be limited accordingly. */
+  UNVERIFIED: 'unverified',
+  /** A decision this repository made. There is no source to verify. */
+  DESIGN: 'repository-decision',
+};
+
+const VERIFICATIONS = new Set(Object.values(VERIFICATION));
+
 export const ASSERTABLE = new Set([CONFIDENCE.ESTABLISHED, CONFIDENCE.SUPPORTED]);
 
 /**
@@ -149,8 +177,17 @@ export const ASSERTABLE = new Set([CONFIDENCE.ESTABLISHED, CONFIDENCE.SUPPORTED]
  * would be asserting that a number this repository invented is a finding.
  *
  * @param {string} scene
+ * `sourceVerification` records **how far the source was actually checked**, and
+ * it is optional only because most registries predate it. Where it is present
+ * it must be one of {@link VERIFICATION}, because "we read the abstract" and
+ * "we read the paper" are different warrants and a registry that cannot tell
+ * them apart invites the second to be claimed for the first. This build
+ * environment cannot reach the medical publishers at all, so for several
+ * registries the honest value is the weakest one.
+ *
  * @param {{id:string, claim:string, confidence:string, source:string,
- *          validation?:string, layer?:string, note?:string}[]} entries
+ *          validation?:string, layer?:string, note?:string,
+ *          sourceVerification?:string, doesNotEstablish?:string}[]} entries
  */
 export function defineEvidence(scene, entries) {
   const seen = new Set();
@@ -161,6 +198,12 @@ export function defineEvidence(scene, entries) {
       throw new Error(`${scene}: "${entry.id}" has confidence "${entry.confidence}", which is not one of the six`);
     }
     if (!entry.claim || !entry.source) throw new Error(`${scene}: "${entry.id}" needs a claim and a source`);
+    if (entry.sourceVerification && !VERIFICATIONS.has(entry.sourceVerification)) {
+      throw new Error(
+        `${scene}: "${entry.id}" claims verification "${entry.sourceVerification}", which is not one of `
+        + [...VERIFICATIONS].join(', ')
+      );
+    }
     if (!ASSERTABLE.has(entry.confidence) && !entry.note) {
       throw new Error(`${scene}: "${entry.id}" is ${entry.confidence} and must say what it is not`);
     }
@@ -3452,211 +3495,434 @@ export const BREAST_LESION_EVIDENCE = defineEvidence('breast-lesion', [
 /** @see src/models/higherBrainFunction.js, docs/model-evidence/higher-brain-function.md */
 export const HIGHER_BRAIN_FUNCTION_EVIDENCE = defineEvidence('higher-brain-function', [
   {
-    id: 'repetition-has-a-route-of-its-own',
+    id: 'the-model-does-not-classify',
     claim:
-      'Repetition of a heard word can fail while comprehension of the same word and the fluency of spontaneous speech are preserved, so the pathway carrying it is separable from the ones carrying the other two.',
+      'This model computes route availability per task and produces no syndrome name and no exclusion of one.',
+    confidence: CONFIDENCE.APPROXIMATION,
+    source:
+      'A decision, taken after a review of the previous version. A first-match chain over four '
+      + 'dimensionless route values was returning a clinical category, and the features that separate '
+      + 'the aphasias — the quality of the output, paraphasia, agrammatism, the stimulus a task was '
+      + 'probed with — are not computed here. Ruling a language disorder out needs more still.',
+    sourceVerification: VERIFICATION.DESIGN,
+    note:
+      'An approximation of what the model is for, not of the medicine. The classical syndromes are in '
+      + '`src/data/aphasiaReference.js` as reference reading, with what this model cannot evaluate about '
+      + 'each of them listed beside it. A reader compares; the model does not decide.',
+    doesNotEstablish: 'That the classical categories are wrong, or that they are right.',
+  },
+  {
+    id: 'two-writing-routes',
+    claim:
+      'Spelling runs by two routes that dissociate: a lexical route for whole known words and a '
+      + 'phonological route that converts sounds to letters, so nonwords and irregular words can be '
+      + 'lost separately.',
     confidence: CONFIDENCE.SUPPORTED,
     source:
-      'The classical connectionist account of the aphasias — Wernicke and Lichtheim, and Geschwind\u2019s disconnection syndromes — as given in standard neurology and neuroanatomy texts.',
-    validation: 'physiology: repetition can fail while comprehension and fluency do not',
+      'Roeltgen, Sevush and Heilman, Neurology 1983;33:755 (phonological agraphia: nonwords cannot be '
+      + 'spelled, the lexical route is preserved) and Roeltgen and Heilman, Brain 1984;107:811 (lexical '
+      + 'agraphia, the complementary case). Rapcsak et al., Neuropsychologia 2007, report that a '
+      + 'dual-route model predicts reading and spelling performance in acquired alexia and agraphia.',
+    sourceVerification: VERIFICATION.ABSTRACT,
+    validation: 'physiology: the two writing routes come apart, and a nonword may not take the lexical one',
     layer: LAYER.EXTERNAL,
+    doesNotEstablish:
+      'The anatomy. The 1984 series localised the two to the angular and supramarginal gyri on CT in '
+      + 'four patients each, which is where this model places them, and that is a small old series '
+      + 'rather than a settled localisation.',
+  },
+  {
+    id: 'writing-is-not-downstream-of-speaking',
+    claim:
+      'Written spelling does not require the route that plans spoken output: agraphia and the loss of '
+      + 'speech dissociate.',
+    confidence: CONFIDENCE.SUPPORTED,
+    source:
+      'The same two case series, in which spelling is assessed in patients whose spoken output is '
+      + 'affected, and the standard description of apraxia of speech as leaving writing available.',
+    sourceVerification: VERIFICATION.ABSTRACT,
+    validation: 'physiology: writing from meaning does not depend on speaking',
+    layer: LAYER.EXTERNAL,
+    doesNotEstablish:
+      'That writing is normal in the perisylvian aphasias. It is not — agraphia accompanies them — and '
+      + 'this model does not produce that, which is declared as a coverage limitation on every writing '
+      + 'result rather than corrected by pushing a value down.',
+  },
+  {
+    id: 'letters-and-objects-dissociate',
+    claim:
+      'A process specific to the visual form of letters and words can be affected while the visual '
+      + 'processing of objects is not.',
+    confidence: CONFIDENCE.SUPPORTED,
+    source:
+      'Gaillard et al., Neuron 2006, report a patient whose reading changed after resection of a small '
+      + 'word-responsive region of left occipitotemporal cortex that overlapped the word-specific fMRI '
+      + 'activation, with pre-operative category selectivity for words, faces, houses and tools.',
+    sourceVerification: VERIFICATION.ABSTRACT,
+    validation: 'physiology: letters and objects come apart when the processes do',
+    layer: LAYER.EXTERNAL,
+    doesNotEstablish:
+      'The post-operative comparison in detail: the full text was not retrieved, so what happened to '
+      + 'object naming specifically is not something this entry states. The dissociation is asserted '
+      + 'for the *processes* in this model, and the atlas cannot separate them at all.',
+  },
+  {
+    id: 'the-atlas-cannot-separate-letters-from-objects',
+    claim:
+      'The two form processes share one atlas mesh, so a lesion takes both and the selective '
+      + 'dissociation is available only as a conceptual intervention.',
+    confidence: CONFIDENCE.APPROXIMATION,
+    source:
+      'The distributed atlas: one `Lateral occipitotemporal gyrus` per side, with no subdivision into '
+      + 'word-responsive and object-responsive cortex.',
+    sourceVerification: VERIFICATION.DESIGN,
+    note:
+      'An approximation of the substrate. It is reported on the result — both tasks carry the shared '
+      + 'mesh as a coverage limitation — rather than worked around by letting a lesion take one and '
+      + 'spare the other.',
+  },
+  {
+    id: 'repetition-has-two-routes',
+    claim:
+      'Repeating a heard word can go by a direct phonological route or round through the lexicon, so '
+      + 'interrupting the direct route affects nonwords more than familiar words.',
+    confidence: CONFIDENCE.SUPPORTED,
+    source:
+      'The standard dual-route account of repetition, and the clinical descriptions of conduction '
+      + 'aphasia in which repetition is reported as worse for nonwords and function words than for '
+      + 'familiar content words.',
+    sourceVerification: VERIFICATION.TEXTBOOK,
+    validation: 'physiology: a known word can be repeated round through meaning, and a nonword cannot',
+    layer: LAYER.EXTERNAL,
+    doesNotEstablish:
+      'That conduction aphasia is one bundle cut. It is reported with cortical lesions as well, and '
+      + 'one account makes the primary deficit auditory-verbal short-term memory rather than '
+      + 'disconnection. Reducing it to a tract is a simplification this model makes knowingly.',
   },
   {
     id: 'anterior-and-posterior-dissociate',
     claim:
-      'A lesion of the dominant inferior frontal gyrus takes fluency with comprehension preserved; a lesion of the dominant posterior superior temporal region takes comprehension with fluency preserved.',
+      'A lesion of the dominant inferior frontal gyrus affects the output routes with the way in '
+      + 'preserved; a lesion of the dominant posterior superior temporal region does the reverse.',
     confidence: CONFIDENCE.SUPPORTED,
-    source: 'The standard clinical descriptions of Broca and Wernicke aphasia.',
-    validation: 'physiology: an anterior lesion takes fluency and a posterior one takes comprehension',
+    source: 'The standard clinical descriptions of the anterior and posterior perisylvian aphasias.',
+    sourceVerification: VERIFICATION.TEXTBOOK,
+    validation: 'physiology: an anterior lesion takes the output routes and a posterior one takes comprehension',
     layer: LAYER.EXTERNAL,
+    doesNotEstablish:
+      'That either picture follows from a lesion restricted to those gyri. Mohr et al. reported that '
+      + 'the full Broca picture requires damage well beyond the inferior frontal gyrus, and Dronkers '
+      + 'et al. that comprehension does not reduce to the posterior superior temporal gyrus. Neither '
+      + 'was retrieved beyond its citation for this entry.',
   },
   {
     id: 'outside-the-perisylvian-zone-repetition-survives',
     claim:
-      'Lesions that spare the perisylvian language cortex but separate it from the rest of the hemisphere leave repetition intact while taking initiation or meaning, which is what distinguishes the transcortical aphasias from the perisylvian ones.',
+      'Lesions that spare the perisylvian language cortex leave the repetition route reaching while '
+      + 'affecting self-initiation or meaning.',
     confidence: CONFIDENCE.SUPPORTED,
-    source: 'The standard clinical descriptions of the transcortical aphasias and their watershed territories.',
-    validation: 'physiology: a lesion outside the perisylvian zone leaves repetition intact',
+    source: 'The standard clinical descriptions of the transcortical aphasias.',
+    sourceVerification: VERIFICATION.TEXTBOOK,
+    validation: 'physiology: a lesion outside the perisylvian zone leaves the repetition route reaching',
     layer: LAYER.EXTERNAL,
+    doesNotEstablish:
+      'The vascular story. A border-zone infarct is a perfusion event, and this model has no blood '
+      + 'flow, no vascular territory and no individual variation in where a border zone falls.',
   },
   {
-    id: 'language-is-left-in-the-right-handed',
+    id: 'a-watershed-preset-is-not-a-perfusion-territory',
+    claim: 'The watershed presets are sets of structures chosen for teaching.',
+    confidence: CONFIDENCE.APPROXIMATION,
+    source: 'This repository\u2019s choice of which structures to include, with no perfusion model behind it.',
+    sourceVerification: VERIFICATION.DESIGN,
+    note:
+      'An approximation of the substrate, and declared on each preset. Flamand-Roze et al. report that '
+      + 'border-zone aphasia has a specific initial pattern and a good long-term prognosis, which is a '
+      + 'time course this model does not have; that citation was not retrieved beyond its bibliography.',
+  },
+  {
+    id: 'the-way-in-from-hearing-is-separable',
     claim:
-      'In a right-handed person, language and the formulas for skilled movement are, in the great majority of cases, in the left hemisphere.',
+      'The auditory way into language can be affected while reading, writing from meaning and '
+      + 'spontaneous output are not.',
     confidence: CONFIDENCE.SUPPORTED,
     source:
-      'Standard accounts of hemispheric dominance, which put left-hemisphere language at roughly nineteen in twenty right-handers. The model takes the representative case and refuses any other handedness.',
+      'Maffei et al., Cortex 2017;97:240, report a case of pure word deafness after left temporal '
+      + 'damage with intact processing of non-speech sounds and normal speech, reading and writing.',
+    sourceVerification: VERIFICATION.ABSTRACT,
+    validation: 'physiology: the way in from hearing is separate from the way out and from meaning',
+    layer: LAYER.EXTERNAL,
+    doesNotEstablish:
+      'That bilateral auditory cortex is what produces it. That case was unilateral, and the mechanism '
+      + 'is attributed to disconnection of the posterior temporal cortex from both auditory cortices '
+      + 'rather than to destruction of both. This model reaches the same dissociation by a bilateral '
+      + 'preset, which is a different lesion.',
+  },
+  {
+    id: 'hearing-itself-is-not-modelled',
+    claim:
+      'This model has no audiometry and no non-speech sounds, so it cannot separate a word-specific '
+      + 'auditory deficit from cortical deafness.',
+    confidence: CONFIDENCE.APPROXIMATION,
+    source: 'The task set: nothing in it tests sound detection or environmental sound recognition.',
+    sourceVerification: VERIFICATION.DESIGN,
+    note:
+      'Stated on the comprehension task itself. A reader who sees the auditory tasks affected must not '
+      + 'read that as pure word deafness, and the task says so.',
+  },
+  {
+    id: 'the-thalamus-is-not-an-obligatory-gate',
+    claim:
+      'Word production is not modelled as passing through an obligatory thalamic gate, and the '
+      + 'cortico-thalamic contribution is declared as not computed.',
+    confidence: CONFIDENCE.SUPPORTED,
+    source:
+      'Zhang et al., Neurobiology of Language 2026 (7), a chronic-phase study of 550 left-hemisphere '
+      + 'stroke survivors, report that lateral thalamic lesion load did not independently contribute '
+      + 'to naming once damage to the neighbouring subcortical-insular and temporoparietal regions was '
+      + 'accounted for, and that no thalamic nucleus showed an additive effect. Rangus et al., '
+      + 'Communications Biology 2024;7:700, associate the left ventral anterior and ventrolateral '
+      + 'nuclei with aphasia after thalamic stroke, and specifically with semantic and phonemic '
+      + 'fluency tasks and complex comprehension, by lesion-symptom and lesion-network mapping.',
+    sourceVerification: VERIFICATION.ABSTRACT,
+    validation: 'physiology: the thalamus is not an obligatory gate, and its absence is not "no effect"',
+    layer: LAYER.EXTERNAL,
+    doesNotEstablish:
+      'That a thalamic lesion has no effect on language. The 2024 study is an association, its network '
+      + 'component is estimated from a normative connectome rather than measured in the patients, and '
+      + 'the tasks it implicates are verbal-fluency tests rather than connected-speech fluency. The '
+      + 'atlas carries the ventral anterior nucleus and not the ventrolateral, so the structure this '
+      + 'model can name is half of the pair. Every language task the preset names carries the '
+      + 'uncomputed influence.',
+  },
+  {
+    id: 'the-insula-is-not-the-necessary-centre-for-speech-output',
+    claim:
+      'A lesion of the whole insular mesh is reported as affecting the spoken output route, and this '
+      + 'model takes no position on apraxia of speech.',
+    confidence: CONFIDENCE.SUPPORTED,
+    source:
+      'Hillis et al., Brain 2004;127:1479, examined 40 patients with and 40 without insular damage '
+      + 'using acute imaging and perfusion, and found no association between apraxia of speech and '
+      + 'lesions of the left insula, anterior insula or the superior tip of the precentral gyrus of '
+      + 'the insula; it was associated instead with structural damage or low blood flow in the left '
+      + 'posterior inferior frontal gyrus. The anterior-insula proposal is Dronkers, Nature 1996;384:159.',
+    sourceVerification: VERIFICATION.ABSTRACT,
+    validation: 'physiology: the insula preset affects the spoken route and claims nothing about speech quality',
+    layer: LAYER.EXTERNAL,
+    doesNotEstablish:
+      'Which region produces apraxia of speech. This model has no speech quality at all, so it cannot '
+      + 'test either proposal, and the preset is the whole undivided insular mesh rather than the '
+      + 'restricted anterior region either study is about.',
+  },
+  {
+    id: 'the-gerstmann-tetrad-is-not-produced',
+    claim:
+      'Acalculia, finger agnosia, left-right disorientation and agraphia are not separately '
+      + 'implemented, so the tetrad is declared not-modelled and cannot be produced from one gyrus.',
+    confidence: CONFIDENCE.SUPPORTED,
+    source:
+      'Rusconi et al., Annals of Neurology 2009;66:654, found no parietal overlap of the cortical '
+      + 'activation patterns for the four domains in healthy subjects, and concluded that the tetrad '
+      + 'does not share a common network — its co-occurrence after parietal injury reflecting '
+      + 'anatomical proximity of separate fibre tracts in the parietal white matter.',
+    sourceVerification: VERIFICATION.ABSTRACT,
+    validation: 'physiology: the angular gyrus does not produce a tetrad',
+    layer: LAYER.EXTERNAL,
+    doesNotEstablish:
+      'That the four never co-occur. What is asserted is that this model may not generate them as a '
+      + 'set from one cortical structure, which it used to do.',
+  },
+  {
+    id: 'language-is-left-in-the-representative-right-hander',
+    claim:
+      'This model assumes left-hemisphere language dominance and refuses any other handedness rather '
+      + 'than mirroring the brain.',
+    confidence: CONFIDENCE.SUPPORTED,
+    source:
+      'Standard accounts of hemispheric dominance. Knecht et al., Brain 2000, is the reference for '
+      + 'handedness and language dominance not being the same variable; it was not retrieved beyond '
+      + 'its citation.',
+    sourceVerification: VERIFICATION.TEXTBOOK,
     validation: 'physiology: language and praxis sit in one hemisphere in a right-handed brain',
     layer: LAYER.EXTERNAL,
+    doesNotEstablish:
+      'That a given right-hander is left-dominant. The assumption is about the representative case '
+      + 'this teaching model places, and it is stated as such rather than derived from handedness.',
   },
   {
     id: 'spatial-attention-is-not-in-the-language-hemisphere',
     claim:
-      'Spatial attention is not lateralised with language: hemispatial neglect follows lesions of the non-dominant parietal lobe, and the same lesion on the dominant side produces aphasic and apraxic deficits instead of neglect.',
+      'Spatial attention is not lateralised with language: the non-dominant parietal lobe is declared '
+      + 'to attend to both halves of space and the dominant one to a single half.',
     confidence: CONFIDENCE.SUPPORTED,
-    source: 'Standard clinical descriptions of hemispatial neglect and of the right parietal attention system.',
-    validation:
-      'physiology: spatial attention is not in the language hemisphere, so one parietal lobe is not the mirror of the other',
+    source: 'Standard clinical descriptions of hemispatial neglect and the right parietal attention system.',
+    sourceVerification: VERIFICATION.TEXTBOOK,
+    validation: 'physiology: spatial attention is not in the language hemisphere',
     layer: LAYER.EXTERNAL,
   },
   {
     id: 'a-new-memory-needs-one-medial-temporal-lobe',
     claim:
-      'Forming new episodic memories requires medial temporal structures on at least one side: unilateral damage does not produce an amnesic syndrome, and bilateral damage does.',
+      'Forming new episodic memories requires medial temporal structures on at least one side: '
+      + 'unilateral damage does not produce an amnesic syndrome and bilateral damage does.',
     confidence: CONFIDENCE.SUPPORTED,
-    source: 'Standard accounts of the amnesic syndrome and of the hippocampal\u2013fornix\u2013mamillary\u2013anterior thalamic circuit.',
+    source: 'Standard accounts of the amnesic syndrome and of the hippocampal-fornix-mamillary-anterior thalamic circuit.',
+    sourceVerification: VERIFICATION.TEXTBOOK,
     validation: 'physiology: a new memory needs a medial temporal lobe on one side or the other',
-    layer: LAYER.EXTERNAL,
-  },
-  {
-    id: 'reading-and-writing-dissociate',
-    claim:
-      'Reading can be lost while writing is preserved, when the visual route into the language hemisphere is interrupted rather than the language cortex itself; a lesion of the angular gyrus takes both together instead.',
-    confidence: CONFIDENCE.SUPPORTED,
-    source: 'D\u00e9jerine\u2019s account of alexia without agraphia, as given in standard texts, and the standard description of angular gyrus lesions.',
-    validation: 'physiology: reading needs the visual route into language and writing does not',
     layer: LAYER.EXTERNAL,
   },
   {
     id: 'the-callosum-carries-the-other-hand',
     claim:
-      'Skilled movement of the non-dominant hand depends on the corpus callosum, so a callosal lesion can leave one hand apraxic while the other is not.',
+      'Skilled movement of the non-dominant hand depends on the corpus callosum, so a callosal lesion '
+      + 'can leave one hand affected while the other is not.',
     confidence: CONFIDENCE.SUPPORTED,
     source: 'Standard descriptions of callosal disconnection and sympathetic (left-hand) apraxia.',
+    sourceVerification: VERIFICATION.TEXTBOOK,
     validation: 'physiology: the callosum carries the left hand, so cutting it spares the right',
     layer: LAYER.EXTERNAL,
   },
   {
-    id: 'naming-needs-the-word-form',
+    id: 'the-atlas-has-no-splenium',
     claim:
-      'Producing a word means retrieving its sound form before it can be planned, so naming fails when the posterior temporal store or the route out of it is damaged \u2014 not only when the frontal end is.',
-    confidence: CONFIDENCE.SUPPORTED,
-    source:
-      'The classical account of word production in the Wernicke\u2013Lichtheim scheme, and the clinical descriptions of Wernicke and conduction aphasia, both of which include prominent naming failure.',
-    validation: 'physiology: naming needs the word\u2019s sound form, so it fails wherever that is cut off',
-    layer: LAYER.EXTERNAL,
+      'The corpus callosum is one undivided mesh, so no preset here is a posterior callosal lesion.',
+    confidence: CONFIDENCE.APPROXIMATION,
+    source: 'The distributed atlas: one median `Corpus callosum`, with no splenium, body or genu.',
+    sourceVerification: VERIFICATION.DESIGN,
+    note:
+      'An approximation of the substrate. The preset takes the whole commissure and says so in its own '
+      + 'label; it used to take an invented 40% share, which read as a splenial lesion while being a '
+      + 'fraction of an undivided mesh.',
   },
   {
-    id: 'aphasia-is-supramodal',
+    id: 'the-writing-route-localisation-is-not-settled',
     claim:
-      'A language disorder shows itself in every modality at once, so a deficit confined to hearing speech, or confined to producing it, is not an aphasia: pure word deafness leaves reading and writing, and a lesion of the dominant insula leaves the same sentence writable.',
-    confidence: CONFIDENCE.SUPPORTED,
-    source:
-      'The standard definition of aphasia as a supramodal disorder of language, and the classical descriptions of pure word deafness and of apraxia of speech after dominant insular damage.',
-    validation: 'physiology: aphasia is supramodal, which is what tells it from its mimics',
-    layer: LAYER.EXTERNAL,
-  },
-  {
-    id: 'writing-fails-with-the-language',
-    claim:
-      'Writing runs through the same lexical and phonological stages as speech rather than straight from meaning to the hand, so agraphia accompanies the perisylvian aphasias and survives a lesion of the way out through the mouth.',
-    confidence: CONFIDENCE.SUPPORTED,
-    source:
-      'The standard clinical observation that the aphasias are accompanied by agraphia, and the phonological route of the dual-route accounts of writing.',
-    validation: 'physiology: writing fails with the language, not with the hand',
-    layer: LAYER.EXTERNAL,
-  },
-  {
-    id: 'the-repetition-question-separates-output-from-language',
-    claim:
-      'On the output side the discriminating question is repetition: a person who cannot start a sentence but can repeat a long one has a working channel and a language disorder, while one who can write what will not come out of the mouth has the opposite.',
-    confidence: CONFIDENCE.SUPPORTED,
-    source:
-      'The standard bedside classification of the aphasias, in which repetition separates the transcortical from the perisylvian syndromes and writing separates aphasia from apraxia of speech.',
-    validation: 'physiology: aphasia is supramodal, which is what tells it from its mimics',
-    layer: LAYER.EXTERNAL,
-  },
-  {
-    id: 'a-thalamic-lesion-can-produce-an-aphasia',
-    claim:
-      'A lesion of the dominant thalamus produces fluent speech with words missing and repetition preserved, which the model builds by making word production, and not repetition, pass through the anterior and pulvinar nuclei.',
+      'The model places whole-word spelling on the dominant angular gyrus and phoneme-to-grapheme '
+      + 'conversion on the dominant supramarginal gyrus, and a lesion of either is reported as '
+      + 'affecting that route and not the other.',
     confidence: CONFIDENCE.UNCERTAIN,
     source:
-      'The clinical descriptions of thalamic aphasia after dominant anterior and paramedian infarcts, in which the syndrome is agreed and the mechanism is not \u2014 gating of cortical language areas, a lexical role for the thalamus itself, and cortical diaschisis are all proposed.',
+      'Roeltgen and Heilman, Brain 1984;107:811, localised lexical agraphia to posterior angular '
+      + 'lesions sparing the supramarginal gyrus and phonological agraphia to supramarginal lesions '
+      + '(or the insula deep to it) sparing the angular gyrus — four patients in each group, on CT.',
+    sourceVerification: VERIFICATION.ABSTRACT,
     note:
-      'Known weakness. The dissociation shown \u2014 naming gone, repetition kept \u2014 is what is described; the route drawn through the thalamus is one of several accounts of why, and the model should not be read as evidence for that account. Thalamic aphasia also commonly recovers, and nothing here shows time.',
-    layer: LAYER.EXTERNAL,
+      'Known weakness, and the direction this part of the model is most likely to mislead in. The '
+      + '*functional* dissociation of the two routes is the supported claim; pinning each to one gyrus '
+      + 'rests on a small series from 1984, imaged with CT, and the meshes here are whole gyri rather '
+      + 'than the parts of them those cases implicated. A reader should not take a lesion of the '
+      + 'angular gyrus in this model as evidence about where spelling lives.',
+    doesNotEstablish: 'That either gyrus is necessary or sufficient for the route placed on it.',
   },
   {
-    id: 'the-perisylvian-zone-is-an-island',
-    claim:
-      'The watershed territories surround the perisylvian language cortex without entering it, so losing both at once takes comprehension and spontaneous speech while repetition survives.',
-    confidence: CONFIDENCE.SUPPORTED,
-    source: 'The standard description of mixed transcortical aphasia and of the border-zone territories it follows.',
-    validation: 'physiology: losing both watersheds at once spares repetition and nothing else',
-    layer: LAYER.EXTERNAL,
+    id: 'the-prefrontal-patterns-are-not-this-separate-in-people',
+    claim: 'The model produces three prefrontal patterns as three separable circuits, each with its own behaviour.',
+    confidence: CONFIDENCE.UNCERTAIN,
+    source:
+      'The circuits are anatomically distinct, but the syndromes named after them overlap heavily in '
+      + 'practice: real lesions rarely respect one circuit, and apathy, disinhibition and dysexecutive '
+      + 'features commonly appear together.',
+    sourceVerification: VERIFICATION.TEXTBOOK,
+    note:
+      'Known weakness. It will show a cleaner dissociation than a person presents with. The circuits '
+      + 'are the claim; the tidiness of the three pictures is not.',
   },
   {
     id: 'frontal-subcortical-circuits-share-a-signature',
     claim:
-      'The prefrontal cortex, the striatum, the pallidum and the mediodorsal thalamus form closed circuits, and a lesion anywhere along one produces the behavioural picture of a lesion of the cortex it starts from \u2014 which is why a small deep infarct can present as a frontal syndrome.',
+      'The prefrontal cortex, striatum, pallidum and mediodorsal thalamus form closed circuits, and a '
+      + 'lesion anywhere along one produces the behavioural picture of a lesion of the cortex it '
+      + 'starts from.',
     confidence: CONFIDENCE.SUPPORTED,
-    source:
-      'The frontal\u2013subcortical circuits as described by Alexander, DeLong and Strick and taken up in the clinical literature on caudate and thalamic infarcts.',
-    validation: 'physiology: a frontal\u2013subcortical circuit reads the same wherever it is cut',
+    source: 'The frontal-subcortical circuits as described by Alexander, DeLong and Strick, and the clinical literature on caudate and thalamic infarcts.',
+    sourceVerification: VERIFICATION.TEXTBOOK,
+    validation: 'physiology: a frontal–subcortical circuit reads the same wherever it is cut',
     layer: LAYER.EXTERNAL,
+    doesNotEstablish:
+      'The size of the effect, or that the three circuits come apart in a person as cleanly as they do '
+      + 'here. Real lesions rarely respect one circuit.',
   },
   {
-    id: 'three-prefrontal-patterns',
+    id: 'a-connection-has-a-side',
     claim:
-      'Dorsolateral, orbitofrontal and medial frontal damage take different things: the ability to change tack, the ability to hold a response back, and the drive to start at all.',
-    confidence: CONFIDENCE.SUPPORTED,
-    source: 'The standard clinical description of the three prefrontal syndromes.',
-    validation: 'physiology: the three prefrontal patterns come apart',
-    layer: LAYER.EXTERNAL,
-  },
-  {
-    id: 'the-prefrontal-patterns-are-not-this-separate-in-people',
-    claim:
-      'The model produces the three prefrontal patterns as three separable circuits, each with its own behaviour.',
-    confidence: CONFIDENCE.UNCERTAIN,
+      'A connection takes its integrity from the structures it runs within, on the side it runs on, so '
+      + 'a unilateral lesion cannot interrupt the same pathway on the other side.',
+    confidence: CONFIDENCE.APPROXIMATION,
     source:
-      'The circuits are anatomically distinct, but the syndromes named after them overlap heavily in practice: real lesions rarely respect one circuit, and apathy, disinhibition and dysexecutive features commonly appear together.',
+      'A decision, replacing a damage channel keyed by connection id. An id has no side, so selecting '
+      + 'one anterior thalamic radiation zeroed all three frontal circuits bilaterally.',
+    sourceVerification: VERIFICATION.DESIGN,
+    // No `validation` here on purpose. The test that holds it
+    // (`physiology: a unilateral lesion does not cut the other side’s
+    // connection`) lives in the external layer, and this registry refuses to
+    // let a property of the model be asserted as a physiological invariant —
+    // which is the right refusal: the arithmetic no longer doubles a one-sided
+    // lesion, and that is not a finding about people.
     note:
-      'Known weakness, and the direction this part of the model is most likely to mislead in: it will show a cleaner dissociation than a person presents with. The circuits are the claim; the tidiness of the three pictures is not.',
-    layer: LAYER.EXTERNAL,
+      'A property of this model, not a guarantee about people: it says the arithmetic no longer '
+      + 'doubles a one-sided lesion. It does not say a unilateral lesion spares the function.',
   },
   {
-    id: 'the-gerstmann-cluster-is-not-settled',
+    id: 'availability-is-a-product-of-steps',
     claim:
-      'The model produces agraphia, acalculia, finger agnosia and left\u2013right disorientation together from one dominant angular gyrus, as the classical teaching has it.',
-    confidence: CONFIDENCE.UNCERTAIN,
-    source:
-      'The classical localisation of the Gerstmann tetrad to the dominant angular gyrus, which later work has repeatedly questioned: the four rarely occur in isolation and may reflect damage to underlying white matter rather than one cortical area.',
-    note:
-      'Known weakness. This is the model\u2019s least secure claim and the direction it is most likely to be wrong in: the tetrad is drawn from one gyrus because that is what the classical account says, not because this model has evidence that the four dissociate together.',
-    layer: LAYER.EXTERNAL,
-  },
-  {
-    id: 'transmission-is-a-product-of-steps',
-    claim:
-      'How well a task gets through is computed as the product of the integrity of every node and connection along its route, and a task takes the best of its routes.',
+      'How far a task gets is the product of the integrity of every distinct node and connection on '
+      + 'its route, and a task takes the best of the routes it is eligible for.',
     confidence: CONFIDENCE.ILLUSTRATIVE,
     source:
-      'Invented arithmetic. No source gives a transmission for a cortical route; the product was chosen because a chain is no better than its worst link.',
+      'Invented arithmetic. No source gives an availability for a cortical route; the product was '
+      + 'chosen because a chain is no better than its worst link.',
+    sourceVerification: VERIFICATION.DESIGN,
     note:
-      'Illustrative. The number is not a measurement of anything and has no unit. What the model claims is the ordering it produces \u2014 more damage transmits less, and damage on one route does not touch another \u2014 never the value.',
+      'Illustrative. The number is not a measurement of anything and has no unit. What the model '
+      + 'claims is the ordering it produces — more damage transmits less, and damage on one route does '
+      + 'not touch another — never the value.',
   },
   {
-    id: 'the-three-step-thresholds',
-    claim: 'Where a transmission stops being called intact and starts being called impaired, and then lost.',
+    id: 'eligibility-is-by-stimulus',
+    claim:
+      'The maximum is taken over the routes a task is eligible to use for the stimulus it was probed '
+      + 'with, so a nonword cannot be rescued by a route through a lexicon.',
+    confidence: CONFIDENCE.APPROXIMATION,
+    source: 'A decision, and the thing that makes the two writing routes dissociate at all.',
+    sourceVerification: VERIFICATION.DESIGN,
+    // As above: the dissociation it produces is checked in the external layer
+    // under `two-writing-routes`, and the eligibility rule itself is a
+    // property of this model rather than a claim about anybody.
+    note:
+      'A property of this model. Which route a given person would use for a given word is not '
+      + 'something it predicts.',
+  },
+  {
+    id: 'the-two-band-cut-points',
+    claim: 'Where an availability stops being called high and starts being called intermediate, and then low.',
     confidence: CONFIDENCE.CALIBRATION,
     source:
-      'A calibration this repository chose so that a half-taken lesion reads as impaired rather than as lost, and a structure completely gone reads as lost.',
+      'A calibration this repository chose so that a half-taken lesion reads as the middle band and a '
+      + 'structure completely gone reads as the bottom one.',
+    sourceVerification: VERIFICATION.DESIGN,
     note:
-      'Calibration. Two cut points on a dimensionless scale, chosen so the three steps are reachable. No output of this model is a score, a severity scale or a test result.',
+      'Calibration. Two cut points on a dimensionless scale. `low` is the bottom band and not an '
+      + 'abolished function: only `declaredBlock`, which needs an element at exactly zero, says a '
+      + 'route in this model is stopped — and that is still a statement about the model.',
   },
   {
     id: 'one-mesh-per-named-structure',
     claim:
-      'A lesion is declared as named structures of the atlas, whole or as a stated share of one, because a named mesh is the smallest thing the atlas can show.',
+      'A lesion is declared as named structures of the atlas, whole or as a stated share of one, '
+      + 'because a named mesh is the smallest thing the atlas can show.',
     confidence: CONFIDENCE.APPROXIMATION,
     source:
-      'The distributed atlas: the corpus callosum is one mesh with no splenium, body or genu, and the precentral gyrus is one mesh with no somatotopy.',
+      'The distributed atlas: the precentral gyrus is one mesh with no somatotopy, and the insula is '
+      + 'one mesh with no anterior subdivision.',
+    sourceVerification: VERIFICATION.DESIGN,
     note:
-      'An approximation of the substrate, not of the medicine. A posterior callosal lesion is drawn as the whole commissure and a precentral lesion takes the mouth and the hand together, which is why some real dissociations cannot appear here.',
+      'An approximation of the substrate, not of the medicine. A precentral lesion takes the mouth and '
+      + 'the hand together, which is why the pen is its own stage and is not called agraphia. Each '
+      + 'preset whose meaning depends on a finer division carries the limit in its own declaration.',
   },
 ]);
+
 
 export const EVIDENCE_REGISTRIES = [
   CIRCULATION_EVIDENCE,

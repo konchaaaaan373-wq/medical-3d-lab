@@ -2,12 +2,16 @@
  * Copy, colours and controls for the higher-cortical-function scene.
  *
  * Two things have to stay apart here, and the whole scene turns on keeping them
- * apart. What the model solves is **which routes still carry** after a lesion.
- * What a reader arrives wanting is a **syndrome name** — Broca's, conduction,
- * neglect — and the names are the easiest thing in neurology to memorise
- * without understanding. So the read-out prints the tasks first and the name
- * last, and the scope panel says in as many words that the name is a reading of
- * the pattern rather than a thing the lesion contains.
+ * apart. What the model solves is **which routes still reach** after a lesion.
+ * What a reader arrives wanting is a **syndrome name**, and the names are the
+ * easiest thing in neurology to memorise without understanding.
+ *
+ * The scene used to hand one over: it printed a computed syndrome as the last
+ * and most emphasised row of the read-out. It does not now, and no copy in this
+ * file may supply one either — the read-out says which routes reach, what holds
+ * the traced one down, and what the value does not settle. The classical
+ * syndromes are in `src/data/aphasiaReference.js`, as descriptions a reader
+ * compares against rather than an answer handed to them.
  *
  * Every anatomical name here is also in the atlas. Nothing in this file may
  * name a structure the model does not point at.
@@ -462,14 +466,14 @@ export const MODEL_SCOPE = {
         '**1 つの課題は 1 本の経路であり、経路はその中で最も弱い段階以上には良くならない**こと。復唱・理解・呼称・読字・書字・道具使用・片側への注意・記憶の形成という各課題が、通過すべき構造の並びとして宣言されています。',
     },
     {
-      text: '**That the syndromes are readings of the pattern, not causes of it.** Nothing in the model stores "conduction aphasia". Cut the dorsal route between the posterior superior temporal gyrus and the inferior frontal gyrus, and repetition fails while comprehension and fluency do not — because repetition is the one task whose route uses it.',
+      text: '**That the model stops at the route, and does not name the syndrome.** Cut the dorsal bundle between the posterior superior temporal gyrus and the inferior frontal gyrus and a nonword can no longer be repeated, while a known word has a way round through its meaning — a stimulus effect, from the routes. What that picture is called is a separate question, and the features that answer it are not computed here.',
       textJa:
-        '**症候名は、その組み合わせを読んだ結果であって原因ではない**こと。モデルは「伝導失語」をどこにも保存していません。上側頭回後部と下前頭回をつなぐ背側経路（弓状束）を切ると、理解と流暢性は保たれたまま復唱だけが落ちます——復唱だけがその経路を使うからです。',
+        '**モデルは「経路」で止まり、症候名を出さない**こと。上側頭回後部と下前頭回をつなぐ背側の束を切ると非語の復唱ができなくなり、既知語は意味を経由する迂回路が残ります——刺激による差が、経路から出てきます。その像を何と呼ぶかは別の問いで、それを決める特徴はここでは計算していません。',
     },
     {
-      text: '**That handedness is an assumption, and it is stated.** This is the representative right-handed case: language on the left, praxis with it, and spatial attention on the right. The last one is why the same parietal lesion gives aphasia on one side and neglect on the other.',
+      text: '**That handedness is an assumption, and it is stated.** This is the representative right-handed case: language on the left, praxis with it, and spatial attention on the right. The last one is why the same parietal lesion affects the language routes on one side and the attention route on the other.',
       textJa:
-        '**利き手は仮定であり、それを明示している**こと。ここでは代表的な右利きの場合を扱います——言語は左、行為も左、空間性注意は右。最後の 1 つがあるために、同じ頭頂葉の病変が片側では失語を、反対側では無視を起こします。',
+        '**利き手は仮定であり、それを明示している**こと。ここでは代表的な右利きの場合を扱います——言語は左、行為も左、空間性注意は右。最後の 1 つがあるために、同じ頭頂葉の病変が、片側では言語の経路に、反対側では注意の経路に効きます。',
     },
     {
       text: '**That a behaviour can be lost without its cortex being touched.** The three frontal–subcortical circuits — dorsolateral, orbitofrontal, medial — run cortex → striatum → pallidum → thalamus → back, and a lesion anywhere along one reads like a lesion of the cortex it starts from. It is why a small deep infarct can present as a frontal syndrome.',
@@ -633,10 +637,10 @@ export const VISUAL_MAPPING = [
  */
 export const REEL_COPY = {
   hook: {
-    title: 'One word. Three lesions. Three places it stops.',
-    titleJa: '同じ 1 語。3 か所の病変。3 つの止まり方。',
-    subtitle: 'Repeat after me — asked of the same brain four times over',
-    subtitleJa: '「私のあとに続けて言ってください」——同じ脳に 4 回',
+    title: 'One nonsense word. Three cuts. Three places it stops.',
+    titleJa: '同じ 1 つの無意味語。3 か所の切断。3 つの止まり方。',
+    subtitle: 'A nonword has no meaning to go round by — so each cut stops it somewhere',
+    subtitleJa: '無意味語には迂回する意味がありません——だからどの切断でもどこかで止まります',
   },
   cards: {
     task: { label: 'Asked to repeat', labelJa: '復唱を求める' },
@@ -646,36 +650,38 @@ export const REEL_COPY = {
     label: 'One representative right-handed brain',
     labelJa: '代表的な右利きの脳 1 例',
   },
-  /** One caption per lesion, naming where the word got to. */
+  /** One caption per cut, naming where the word got to. No syndrome names. */
   segments: {
     intact: {
       caption: 'Nothing in the way: it goes in, and it comes out',
       captionJa: '何も邪魔していません。入って、出てきます',
     },
     broca: {
-      caption: 'Cut at the front: understood, and never spoken',
-      captionJa: '前で切れる：理解はされ、声にならない',
+      caption: 'Cut at the front: the word arrives, and the way out is gone',
+      captionJa: '前で切れる：語は届き、出口が失われます',
     },
     wernicke: {
-      caption: 'Cut at the back: heard, never understood — and speech still flows',
-      captionJa: '後ろで切れる：聞こえても意味にならない。それでも発話は流暢です',
+      caption: 'Cut at the back: the way in is gone, and the way out is not',
+      captionJa: '後ろで切れる：入口が失われ、出口は失われません',
     },
     conduction: {
-      caption: 'Cut in between: understood, spoken fluently, and not repeatable',
-      captionJa: 'あいだで切れる：理解でき、流暢に話せ、それでも復唱できません',
+      caption: 'Cut in between: both ends work, and the word still does not cross',
+      captionJa: 'あいだで切れる：両端は働いていて、それでも語は渡りません',
     },
   },
   takeHome: {
-    title: 'The name is where it stopped',
-    titleJa: '名前は「どこで止まったか」',
-    subtitle: 'Broca, Wernicke, conduction — one route, cut in three places',
+    title: 'The route is the finding',
+    titleJa: '所見は「経路」',
+    subtitle: 'Where a task stops is not the same question as what to call it',
     // No emphasis marks: the overlay writes these as text, so a `**` reaches
     // the closing frame of the video as two asterisks.
-    subtitleJa: 'Broca・Wernicke・伝導——1 本の経路を、3 か所で切っただけ',
+    subtitleJa: '課題がどこで止まるかと、それを何と呼ぶかは別の問いです',
   },
   note: {
-    text: 'Educational model. The order is the claim; the seconds are a rhythm, not a latency.',
-    textJa: '教育用モデル。主張は「順序」で、秒数は読みのためのリズムです（潜時ではありません）。',
+    text: 'Educational model. Route availability, not a diagnosis. The order is the claim; the seconds '
+      + 'are a rhythm, not a latency.',
+    textJa: '教育用モデル。示しているのは経路の通りやすさで、診断ではありません。'
+      + '主張は「順序」で、秒数は読みのためのリズムです（潜時ではありません）。',
   },
 };
 

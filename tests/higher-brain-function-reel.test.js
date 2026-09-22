@@ -114,7 +114,7 @@ test('the four runs stop in four different places', () => {
 
   // Nothing in the way: the word goes all the way through and an answer returns.
   reel.driveAt(midOf('intact'));
-  assert.equal(scene.tracedTask().status, 'intact');
+  assert.equal(scene.tracedTask().state, 'high');
   assert.equal(scene.answerStrength(), 1);
   assert.equal(scene.blockedFraction(), 1, 'nothing stops it yet');
 
@@ -126,10 +126,10 @@ test('the four runs stop in four different places', () => {
     const t = midOf(id);
     reel.driveAt(t);
     assert.equal(scene.controls.lesion, segmentAt(t).lesion, `${id} cuts its own site`);
-    assert.equal(scene.tracedTask().status, 'lost', `the word does not arrive in ${id}`);
+    assert.equal(scene.tracedTask().state, 'low', `the word does not arrive in ${id}`);
     assert.equal(scene.answerStrength(), 0);
     assert.ok(scene.blockedFraction() < 1, `${id} stops short of the end`);
-    stops.set(id, { at: scene.tracedTask().blockedAt.id, reach: scene.blockedFraction() });
+    stops.set(id, { at: scene.blockingStep().id, reach: scene.blockedFraction() });
   }
   assert.equal(stops.get('broca').at, 'phonological-output');
   assert.equal(stops.get('wernicke').at, 'phonological-analysis');
@@ -153,18 +153,18 @@ test('what survives each cut differs, so the rows are read and not printed', () 
     const rows = reel.readMetrics();
     return {
       comprehension: rows['auditory-comprehension'].ja,
-      fluency: rows['speech-fluency'].ja,
-      repetition: rows.repetition.ja,
+      initiation: rows['speech-initiation-route'].ja,
+      repetition: rows['repetition-nonword'].ja,
     };
   };
 
-  assert.deepEqual(rowsAt('intact'), { comprehension: '保たれる', fluency: '保たれる', repetition: '保たれる' });
+  assert.deepEqual(rowsAt('intact'), { comprehension: '経路は概ね通る', initiation: '経路は概ね通る', repetition: '経路は概ね通る' });
   // Understood and never spoken.
-  assert.deepEqual(rowsAt('broca'), { comprehension: '保たれる', fluency: '消失', repetition: '消失' });
+  assert.deepEqual(rowsAt('broca'), { comprehension: '経路は概ね通る', initiation: '経路はほとんど通らない', repetition: '経路はほとんど通らない' });
   // Heard, never understood, and speech still flows.
-  assert.deepEqual(rowsAt('wernicke'), { comprehension: '消失', fluency: '保たれる', repetition: '消失' });
+  assert.deepEqual(rowsAt('wernicke'), { comprehension: '経路はほとんど通らない', initiation: '経路は概ね通る', repetition: '経路はほとんど通らない' });
   // Both of those intact, and still not repeatable — the finding of the reel.
-  assert.deepEqual(rowsAt('conduction'), { comprehension: '保たれる', fluency: '保たれる', repetition: '消失' });
+  assert.deepEqual(rowsAt('conduction'), { comprehension: '経路は概ね通る', initiation: '経路は概ね通る', repetition: '経路はほとんど通らない' });
   scene.dispose();
 });
 
@@ -180,31 +180,31 @@ test('every word on screen is the solved state, not a sentence written into the 
 
   const conduction = cardsAt('conduction');
   assert.equal(conduction[0].label, lesionSiteById('dominant-arcuate').labelJa, 'the card names the cut it is showing');
-  assert.match(conduction.flatMap((item) => item.rows).join(' / '), /復唱: 消失/);
-  assert.match(conduction.flatMap((item) => item.rows).join(' / '), /聴覚的理解: 保たれる/);
-  assert.match(conduction.flatMap((item) => item.rows).join(' / '), /流暢性: 保たれる/);
+  assert.match(conduction.flatMap((item) => item.rows).join(' / '), /非語の復唱: 経路はほとんど通らない/);
+  assert.match(conduction.flatMap((item) => item.rows).join(' / '), /聞いた語 → 意味: 経路は概ね通る/);
+  assert.match(conduction.flatMap((item) => item.rows).join(' / '), /話し始める経路: 経路は概ね通る/);
 
   // A different beat of the same sequence says the opposite about the same two
   // rows, so the card is reading something rather than printing a constant.
   const wernicke = cardsAt('wernicke');
   assert.equal(wernicke[0].label, lesionSiteById('dominant-posterior-superior-temporal').labelJa);
-  assert.match(wernicke.flatMap((item) => item.rows).join(' / '), /聴覚的理解: 消失/);
+  assert.match(wernicke.flatMap((item) => item.rows).join(' / '), /聞いた語 → 意味: 経路はほとんど通らない/);
 
   const broca = cardsAt('broca');
-  assert.match(broca.flatMap((item) => item.rows).join(' / '), /流暢性: 消失/);
+  assert.match(broca.flatMap((item) => item.rows).join(' / '), /話し始める経路: 経路はほとんど通らない/);
 
   // And the opening beat, which cuts nothing, does not name a lesion at all.
   const intact = cardsAt('intact');
   assert.equal(intact[0].label, REEL_COPY.cards.task.labelJa);
-  assert.match(intact.flatMap((item) => item.rows).join(' / '), /復唱: 保たれる/);
+  assert.match(intact.flatMap((item) => item.rows).join(' / '), /非語の復唱: 経路は概ね通る/);
   scene.dispose();
 });
 
 test('the sequence takes the reader to the name last, and says what the seconds are not', () => {
   const metrics = {
-    repetition: { en: 'Lost', ja: '消失' },
-    'auditory-comprehension': { en: 'Intact', ja: '保たれる' },
-    'speech-fluency': { en: 'Intact', ja: '保たれる' },
+    'repetition-nonword': { en: 'Route barely available', ja: '経路はほとんど通らない' },
+    'auditory-comprehension': { en: 'Route available', ja: '経路は概ね通る' },
+    'speech-initiation-route': { en: 'Route available', ja: '経路は概ね通る' },
   };
   const opening = overlayAt(1.0, { language: 'ja', metrics });
   assert.equal(opening.title.text, REEL_COPY.hook.titleJa);
@@ -249,7 +249,7 @@ test('the sequence drives the scene from a reset, and a replay gives the same fr
   scene.resetModelControls();
   scene.setModelControl('task', 'reading');
   reel.driveAt(5.0);
-  assert.equal(scene.controls.task, 'repetition', 'the sequence asks for its own task');
+  assert.equal(scene.controls.task, 'repetition-nonword', 'the sequence asks for its own task');
   assert.equal(scene.controls.lesion, 'dominant-inferior-frontal');
 
   const first = scene.pulse.position.clone();

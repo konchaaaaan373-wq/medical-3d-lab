@@ -19,38 +19,58 @@ the other?
 
 ## 2. Model type
 
-A **route model** over named anatomy, solved rather than looked up. Each
-clinical task — understanding speech, repeating, speaking fluently, saying
-something with content, naming, reading, writing, calculating, using a tool with
-either hand, attending to either side of space, laying down a memory, changing
-tack, holding a response back, starting something unprompted — is declared as
-the structures it passes through, in order, with the connection between each
-pair anchored in the mesh that connection runs inside.
+A **route-availability model** over named anatomy, solved rather than looked up.
+Each task is declared with its input, its output, the stimulus it is probed
+with, and the route or routes it is **eligible** to use. A lesion damages
+structures and connections; what is solved is how far each eligible route still
+reaches, and where along it the availability falls.
 
-Three of those routes are **closed loops**: the frontal–subcortical circuits run
+Three of the routes are **closed loops**: the frontal–subcortical circuits run
 cortex → striatum → pallidum → mediodorsal thalamus → back to the same cortex.
 They are in this model for the same reason the language routes are — they are
 routes — and they are what lets it say that a behaviour can be lost without its
 cortex being touched.
 
-A lesion damages structures and connections. Everything after that is solved:
-how far each task's best route still carries, where along it the signal stops,
-and what the pattern of surviving tasks is called.
+### What it computes, and what it refuses to
 
-**No syndrome is stored.** "Conduction aphasia" appears nowhere as a cause. Cut
-the arcuate fasciculus and repetition fails while comprehension and fluency do
-not, because repetition is the one task whose route uses it; the name is then a
-reading of that pattern, produced by the same function that would produce a
-different name from a different pattern.
+**It does not name a syndrome, and it does not rule one out.** There is no
+classifier. An earlier version had one: the solved tasks went through a chain of
+conditions — comprehension, then repetition, then fluency, first match wins —
+and the name it landed on was printed as the read-out's most emphasised row,
+together with a verdict of "not aphasia" for two patterns it had rules to
+exclude. That was wrong three times over. A first-match chain turns four
+dimensionless route values into a clinical category whose answer depends on the
+order the conditions were written in. The features that actually separate the
+aphasias — paraphasia, agrammatism, effort, phrase length, the stimulus a task
+was probed with — are not computed here at all, so the chain was standing on
+the self-initiation route as a proxy for clinical fluency. And "not aphasia" is
+the stronger claim of the two, needing an examination this model does not do.
 
-Because the names are readings rather than entries, the classical aphasias come
-out of the anatomy rather than being listed: the eight — Broca, Wernicke,
-conduction, global, the three transcortical patterns and anomic — are each the
-pattern a different declared lesion leaves behind. So are the three pictures
-that are **not** aphasias: pure word deafness, a disorder of speech output, and
-alexia without agraphia. Telling those from the aphasias is the supramodal test
-— whether the same language is lost on the page and in the hand, or only in one
-channel — and the model applies it before it uses the word.
+The classical syndromes are now in
+[`src/data/aphasiaReference.js`](../../src/data/aphasiaReference.js) as
+**reference reading**: each one described as relative sparing and variable
+features, with a list of what this model cannot evaluate about it. It cannot be
+imported by the model, and two tests hold that.
+
+### Two modes, and they do not mix
+
+| Mode | What is changed | What a result means |
+| --- | --- | --- |
+| `atlas_lesion` | Named structures of the atlas, whole or as a stated share | The declared routes through those structures |
+| `conceptual_intervention` | One declared cognitive process, switched off | A thought experiment on this model's graph |
+
+The conceptual mode exists because the atlas cannot separate everything the
+model distinguishes — letter form from object form, most notably — and because
+some declared processes have no mesh at all. **A conceptual result is not a
+prediction about any real lesion**, the read-out says so while one is running,
+and the solver throws if it is handed both a lesion and an intervention.
+
+### Three computation states
+
+`computed` is a band. `indeterminate` means an eligible route runs through
+something this mode cannot evaluate, so no value is reported. `not_modeled`
+means no route is declared for the task at all — it is absent, which is neither
+normal nor abolished, and it may not be used to tell one picture from another.
 
 ## 3. What it is not
 
@@ -58,35 +78,70 @@ channel — and the model applies it before it uses the word.
 one normal specimen. The lesions are whole named structures drawn on it. Nothing
 in it is anybody's imaging, and no output of it says where a patient's lesion is.
 
+**It is not a diagnosis, and no row of it is a finding about a person.** A band
+is a band on a dimensionless scale. `low` is the bottom band, not "the patient
+cannot do this": a route at 0.2 is not a route at zero, and only
+`declaredBlock` — which needs an element at exactly zero — says a route in this
+model is stopped.
+
 There is **no quality of speech** here: no paraphasia, no agrammatism, no
-prosody, no dysarthria, no perseveration. The model says whether a route
-carries, never what comes out of it.
+prosody, no dysarthria, no perseveration, no rate and no phrase length.
+Connected-speech fluency is declared and reports `not_modeled`. Reading aloud
+is declared and reports `not_modeled`. Calculation, finger knowledge and
+left–right orientation are declared together and report `not_modeled`.
+
+There is **no hearing**: no audiometry and no non-speech sounds, so this model
+cannot separate a word-specific auditory deficit from cortical deafness.
 
 There is **no course over time**: no oedema, no penumbra, no diaschisis, no
 recovery, no rehabilitation, no plasticity. How far a lesion has been taken is
 an input on a slider and never a prediction about a day, a week or a year.
 
+There is **no script**: no kanji/kana and no regular/irregular distinction. The
+nonword tasks are abstract — they show the routes coming apart, and predict
+nothing about a particular word in a particular language.
+
 **Executive function is here as the circuits, and no further.** Mood,
 personality, insight, social cognition and anything a scale would score are not
-routes and are not in this model. Nor is any psychiatric or degenerative
-diagnosis: an orbitofrontal lesion reading as disinhibition is a statement about
-the circuit, not about frontotemporal dementia or about anybody's behaviour.
+routes and are not in this model.
 
 ## 4. Inputs
 
 | Input | Range | Meaning |
 | --- | --- | --- |
-| `handedness` | `right` only | Which hemisphere every `dominant` side resolves to. Any other value is **refused** |
-| `lesions` | one of the declared sites in `LESION_SITES` | Which structures are gone and which connections are cut |
-| `extent` | 0–1 | How far the lesion has been taken. An input, never a prediction |
+| `handedness` | `right` only | Which hemisphere every `dominant` side resolves to. Any other value is **refused**, because left-handedness is not the mirror image of right-handedness |
+| `mode` | `atlas_lesion` \| `conceptual_intervention` | Which kind of intervention. Passing inputs for both is an error, not a merge |
+| `lesions` | declared sites in `LESION_SITES` | Which structures are damaged, and by how much of each |
+| `interventions` | declared node or connection ids | Which processes are switched off. Conceptual mode only |
+| `extent` | 0–1 | How far the lesions have been taken. An input, never a prediction. Outside the range it throws rather than clamping |
 
 ## 5. Outputs
 
-- An integrity for every node and connection
-- For each task: how far its best route carries, its status (intact / impaired /
-  lost), the step it stopped at, and the whole route in order
-- The syndromes the surviving pattern spells
-- The structures the lesion touched, by atlas label and side
+Per node and connection: an integrity, whether this mode can evaluate it, and
+whether it is a process taken as available because no lesion can reach it.
+
+Per task:
+
+| Field | What it is |
+| --- | --- |
+| `computationStatus` | `computed` / `indeterminate` / `not_modeled` |
+| `availability` | 0–1, or `null` when there is no value |
+| `state` | `high` / `intermediate` / `low`, or `null` |
+| `route` | The reported route, in order, with each step's integrity |
+| `evaluatedRouteIds` | The eligible routes this mode could evaluate |
+| `ineligibleRouteIds` | Routes declared for the task and not eligible for its stimulus |
+| `unevaluatedRouteIds` | Eligible routes this mode cannot evaluate |
+| `limitingSteps` | The steps below the top band on the reported route |
+| `declaredBlock` | True only when every evaluated route has an element at exactly zero |
+| `coverageLimitations` | What this value does not settle — a shared mesh, an unmapped process, a deficit the routes do not produce |
+| `unmodelledInfluences` | Influences a chosen lesion declares and this model does not compute |
+| `excludes` | What the task itself is not about |
+
+Plus the structures the lesion touched, by atlas label and side, and the
+uncomputed influences of the chosen lesion.
+
+**There is no syndrome field.** Nothing in the solved state carries a name, and
+a test walks every declared lesion to confirm it.
 
 ## 6. State variables
 
@@ -96,34 +151,67 @@ extent. There is no integration and no time.
 ## 7. Governing relations
 
 ```text
-node integrity       = 1 − mean(damage over its structures)        (composite)
+element integrity    = 1 − mean(damage over its structures)        (composite)
                      = best side's integrity                       (paired)
-route transmission   = ∏ integrity over the distinct nodes and connections on it
-task transmission    = max over the task's declared routes
-status               = intact ≥ 0.85 > impaired ≥ 0.25 > lost
+                     = 1, unevaluated                             (no atlas mapping)
+route availability   = ∏ integrity over the distinct nodes and connections on it
+task availability    = max over the routes the task is ELIGIBLE for
+band                 = high ≥ 0.85 > intermediate ≥ 0.25 > low
 ```
 
-*Distinct*, because a closed loop passes its first node twice and counting one
-structure twice would make a cortical lesion weigh double for no reason anybody
-could defend.
+A **connection** obeys the same rule as a node: its integrity comes from the
+structures it runs within, on the side it runs on. It used to be a channel of
+its own that a lesion set by id — and an id has no side, so selecting one
+internal capsule interrupted the same pathway on both sides. There is one
+damage input now, and it is sided.
+
+*Eligible*, because `max()` over every declared route would let a route through
+a lexicon rescue a nonword. Each route may declare the stimuli it serves, and
+the maximum is over the subset that serves the one the task was probed with.
+
+*Distinct*, because a closed loop passes its first node twice — and so does the
+route that repeats a word by way of its meaning. Counting one structure twice
+would make a lesion of it weigh double for no reason anybody could defend.
 
 A product and not an average, because a route is a chain: a step that carries
 nothing leaves nothing for the rest of the route to carry.
 
 **Nothing searches the network for an alternative route.** Where an alternative
-is real it is declared — printed words reach the dominant hemisphere either
-directly or across the corpus callosum, and that is the only such place.
+is real it is declared: printed words reach the dominant hemisphere directly or
+across the commissure, a known word can be repeated round through its meaning,
+and a known word can be spelled lexically or phonologically. Those are the only
+such places, and each is written down.
+
+### The conservative rules
+
+These live in one pure function (`resolveTaskResult`) because each is a way this
+model could lie:
+
+- **No eligible route is not availability zero.** `max([])` has no value.
+- **An unevaluated route is not a blocked one.** If every route this mode could
+  evaluate is in the bottom band and an eligible route remains that it cannot
+  evaluate, the answer is `indeterminate`.
+- **A known value is not "the best route" while an eligible route is unknown.**
+- **The bottom band is not a blockade.** `declaredBlock` needs a zero.
+- Ties go to declaration order, so the same input always explains itself with
+  the same route.
 
 ## 8. Constants and calibration
 
-Three things were chosen and none is a measurement.
+Nothing here is a measurement.
 
-The **product rule** is invented arithmetic: no source gives a transmission for
-a cortical route. The **two thresholds** are cut points on a dimensionless
-scale, chosen so that a half-taken lesion reads as impaired and a complete one
-as lost. The **shares** on a few lesion sites — how much of a large structure a
-site takes — are chosen so a site can say "the white matter under the
-supramarginal gyrus" without claiming a hemisphere.
+The **product rule** is invented arithmetic: no source gives an availability for
+a cortical route. The **two cut points** are places to draw a line on a
+dimensionless scale, chosen so that a half-taken lesion reads as the middle band
+and a structure completely gone reads as the bottom one. The **shares** on a few
+lesion sites — how much of a large structure a site takes — are chosen so a site
+can say "the white matter under the supramarginal gyrus" without claiming a
+hemisphere.
+
+One share was removed in the revision: the occipital preset took 40% of the
+corpus callosum, an invented number standing in for the splenium, which made the
+preset read as a posterior callosal lesion while being a fraction of an
+undivided mesh. It takes the whole commissure now and says so.
 
 No parameter here is calibrated to a dataset, and no output is a score, a
 severity scale or a test result.
@@ -149,7 +237,9 @@ severity scale or a test result.
   by, carried, and either answered or not. **The order is the claim and the
   seconds are a rhythm** — nothing in this model is a latency, a conduction time
   or a reaction time, and the sequence says so on screen. The answer at the far
-  end is the task's own status: full, faint, or absent.
+  end is the task's own band: full, faint, or absent — and absent for a task
+  with no value at all, whose read-out row says whether the reason is
+  "cannot be determined" or "not modelled".
 - **Whatever a route runs through that the cortex hides is drawn in front of
   it**, in its own place — tracts, commissures and deep grey alike, with the
   bulk telencephalic white matter the one stated exception. Cutting the arcuate fasciculus is this model's signature claim and the
@@ -166,6 +256,13 @@ severity scale or a test result.
   reveal existed to show.
 - Nothing moves, resizes or deforms any anatomy. A lesion is a colour, not a
   hole.
+- **Which kind of intervention is on screen is on the read-out**, as its first
+  and most emphasised row. A conceptual knockout and a lesion produce the same
+  kind of picture, so the picture alone cannot say which one it is.
+- **Not yet honest enough**: a connection this model declares as conceptual is
+  drawn the same way as one anchored in a real tract mesh. A reader cannot tell
+  from the 3D which lines are tractography-shaped claims and which are
+  functional arrows. `docs/follow-ups.md` F-188.
 
 ## 9.5 Where else this model is read
 
@@ -186,59 +283,90 @@ loaded with the scene, so a withheld model cannot reach a published bundle. See
 
 ## 9.6 The fifteen-second sequence
 
-One word, asked four times of the same brain: once with nothing in the way, then
-with the front cut, the back cut, and the bundle between them cut. Each run is a
-whole examination — asked, carried, answered or not — and the four are given the
-same length, so the only thing that differs between them is **how far the word
-got**. The name of each is the place it stopped, and the closing frame says so.
+One **nonsense word**, asked four times of the same brain: once with nothing in
+the way, then with the front cut, the back cut, and the bundle between them cut.
+Each run is a whole examination — asked, carried, answered or not — and the four
+are given the same length, so the only thing that differs between them is **how
+far the word got**.
 
-The sequence shows three aphasias rather than one because conduction aphasia on
-its own is the least useful of the three: a reader who has not watched the other
-two has nothing to compare it against, and the name stays a name. The lesions,
-the stopping places and every row on screen are read from the solved state each
-frame; the storyboard holds only times and camera distance. The scene is driven
-by absolute sequence time (`renderAtSeconds`), so the same second renders
-identically on any machine and at any frame rate.
+The word is a nonword on purpose. Repeating a *known* word has a way round
+through its meaning, so a dorsal cut leaves it in the middle band and the
+sequence would show two stopping places and one partial. A nonword has no
+lexical entry and therefore no way round, so each of the three cuts stops it
+somewhere different — which is the claim the fifteen seconds make, and which is
+also the stimulus effect the conduction-aphasia descriptions report.
+
+**The closing frame does not name the three syndromes.** It used to: the
+take-home read "the name is where it stopped", over the three names. That was
+the classifier's claim, and with the classifier gone the sequence says what it
+actually shows — the route is the finding, and what to call the picture is a
+separate question. The rows are read from the solved state each frame; the
+storyboard holds only times and camera distance. The scene is driven by absolute
+sequence time (`renderAtSeconds`), so the same second renders identically on any
+machine and at any frame rate.
 
 **The seconds are a rhythm, not a latency.** The model has no time in it, and
 the overlay says that for the whole fifteen seconds.
 
 ## 10. Known failure modes
 
-- **The atlas has no splenium**: the corpus callosum is one mesh, so a posterior
-  callosal lesion is drawn as the whole commissure.
-- **The atlas has no somatotopy**: the precentral gyrus is one mesh, so a lesion
-  there takes the mouth and the hand together.
-- **Reading and visual naming share one visual route**, so the model cannot show
-  pure alexia sparing object naming — a real and well-described dissociation.
-- **Transcortical motor aphasia keeps naming here**, where in a person naming is
-  variably impaired.
-- **Writing is lost wherever the language routes are**, including conduction
-  aphasia, where in a person writing is variably affected and is often better
-  than repetition. The model routes writing through the phonological stages
-  because the alternative — writing intact in Broca and Wernicke aphasia — was
-  further from what those patients do. It states the dissociation and overstates
-  its completeness.
-- **The aphasia of a striatocapsular lesion is not here.** The model has no
-  declared site for it, because what it would produce — output affected,
-  comprehension kept — is not distinguishable in this model from a lesion of the
-  way out through the mouth, and naming it aphasia or not would be a coin toss.
-  Leaving it out is the honest option, not an oversight.
-- **The route drawn through the thalamus is one account of thalamic aphasia and
-  not the settled one.** The dissociation it produces — naming gone, repetition
-  kept — is what is described; why it happens is disputed. The dossier marks it
-  `uncertain`.
-- **The three prefrontal pictures come apart more cleanly here than in a
-  person.** The circuits are anatomically separate; the syndromes named after
-  them overlap heavily, and real lesions rarely respect one circuit.
+**Substrate — what the atlas cannot divide.**
+
+- **No splenium.** The corpus callosum is one mesh, so no preset here is a
+  posterior callosal lesion. The one that used to imply it takes the whole
+  commissure and says so in its own label.
+- **No somatotopy.** The precentral gyrus is one mesh, so a lesion there takes
+  the mouth and the hand together, and "graphomotor output" is explicitly not
+  "the hand area".
+- **No anterior insula.** One insular mesh, so the restricted region proposed
+  for apraxia of speech cannot be selected — and this model has no speech
+  quality to test that proposal against anyway.
+- **Letter form and object form share one occipitotemporal mesh.** A lesion
+  takes both. The dissociation is available only as a conceptual intervention,
+  and both tasks report the shared mesh as a limit of their value. So the
+  object-naming sparing that defines pure alexia **cannot be shown from a
+  lesion here**.
 - **The middle frontal gyrus is one mesh**, so the premotor cortex a praxis
   route uses and the dorsolateral prefrontal cortex an executive circuit starts
-  from are the same structure here: a lesion of one takes the other.
-- **The Gerstmann tetrad is drawn from one gyrus** because that is the classical
-  account; later work has repeatedly questioned it. It is the model's least
-  secure claim, and the evidence dossier marks it `uncertain`.
-- The tract meshes this scene draws have **never been reviewed by an anatomist**
-  and have never been rendered for visual review in this repository.
+  from are the same structure: a lesion of one takes the other.
+
+**Medicine — what the routes get wrong or leave out.**
+
+- **Agraphia does not accompany the perisylvian aphasias here.** A lesion of the
+  inferior frontal gyrus leaves both spelling routes reaching, because neither
+  passes through it. In a person that picture comes with agraphia. This is
+  declared as a coverage limitation on every writing result rather than fixed by
+  pushing a value down to match a label — the previous version had the opposite
+  error, routing all writing through the oral output planner so that any dorsal
+  cut abolished every kind of writing.
+- **Where the two spelling routes sit is not settled.** The angular and
+  supramarginal placements come from four patients per group on CT in 1984, and
+  the meshes are whole gyri. The dossier marks it `uncertain`.
+- **Naming stays available after the anterior border-zone preset**, where in a
+  person it is variably affected. An artefact of the routes, and the reference
+  layer says so.
+- **The thalamus is off the routes.** A thalamic lesion changes no route value,
+  and the influence this model does not compute is attached to six language
+  tasks so that cannot read as "no effect". What it will not do is put a number
+  on it.
+- **Striatocapsular aphasia is not here.** In this model it would produce
+  "output affected, comprehension kept", which is what the insular preset
+  produces; the contributions that distinguish it — cortical hypoperfusion,
+  lesion extent, time course — are outside the model. That two different lesions
+  give the same output is not itself a defect.
+- **The three prefrontal pictures come apart more cleanly than in a person.**
+  Real lesions rarely respect one circuit.
+
+**Verification — what has not been checked.**
+
+- **No full text was read for any claim in the dossier.** Every publisher domain
+  is blocked by this build environment's network policy; the strongest
+  verification any row carries is `abstract-only`. See §0 of the dossier.
+- **No clinician has reviewed any of this.** The review state below is
+  `pending`, and this revision does not change it.
+- The tract meshes this scene draws have **never been reviewed by an anatomist**.
+- **The 3D view does not yet distinguish a conceptual connection from a real
+  tract** in its legend (`docs/follow-ups.md` F-188).
 
 ## 11. Where it will mislead
 
@@ -246,22 +374,25 @@ the overlay says that for the whole fifteen seconds.
 an image nor a segmentation of one. Whole named structures of one normal
 specimen, coloured.
 
-**Every picture with a language row in it reads as an aphasia.** Two of the
-declared sites produce one that is not: both auditory cortices gone is pure word
-deafness, and a dominant insular lesion is a disorder of speech output. The
-model applies the supramodal test — is the same language lost on the page and in
-the hand, and not only in one channel — and refuses the name in those two cases.
-A reader watching one row will not see that distinction.
+**A band reads as an ability.** "Route barely available" is the bottom third of
+a dimensionless number computed over declared steps. It is not a statement that
+a person cannot do the task, and the bands were drawn rather than found.
 
-**Naming failing reads as aphasia.** When the lesion is at the visual end, the
-name was never reached. The model reads *where* a route broke before it calls
-anything anomic, and reports the reading failure instead — but a reader watching
-only the naming row will not see that distinction unless they look at the route.
+**A conceptual result reads as a lesion's consequence.** Switching off letter
+processing and watching reading go while object naming stays is a thought
+experiment about this model's graph. No lesion in this atlas does that, and the
+read-out says so while the mode is running — but a screenshot of it does not.
 
-**Three named steps read as a severity scale.** Intact / impaired / lost are
-three steps on an ordering, and the lines between them were drawn, not found.
+**`not_modeled` reads as normal.** Reading aloud, connected-speech fluency and
+the Gerstmann tetrad have no routes here. A reader comparing a picture against
+the reference layer must not fill those in from the rows that do have values.
 
-**A syndrome name reads as a diagnosis.** It is a reading of which routes
-survived in this model. It says nothing about any person, and diagnosis,
-treatment selection, dose selection, prognosis and procedure planning are all
-prohibited uses.
+**An absent effect reads as a demonstrated absence.** The thalamus changes no
+route value in this model. That is a statement about the routes it declares,
+not evidence that thalamic lesions spare language.
+
+**The reference layer reads as a checklist.** Its cells describe relative
+sparing and variable features on purpose. Matching a computed picture against
+one of them is not a diagnosis, and diagnosis, treatment selection, dose
+selection, prognosis and procedure planning are all prohibited uses.
+
