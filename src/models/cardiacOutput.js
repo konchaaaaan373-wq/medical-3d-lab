@@ -467,6 +467,154 @@ const COMPARTMENT_FLOWS = Object.freeze([
 ]);
 
 /**
+ * Books for one beat: what crossed each compartment's boundaries, against what
+ * its volume did, over the whole beat and over short windows inside it.
+ *
+ * ## Why this is its own thing, and why it takes its wiring as an argument
+ *
+ * Two reasons, and the first is that it was wrong. `walkBeat` calls its
+ * visitor **before** integrating the step, so the volumes a visit receives are
+ * the state at the *start* of the interval whose flows it is handed. The first
+ * version of this accounting closed a window with those volumes after
+ * accumulating that interval, so every window compared an integral over
+ * `[t_a, t_b]` with a volume difference over `[t_a, t_b − dt]`. One step of
+ * slip, in every window, reported as quadrature error. An external reviewer
+ * found it by reading the two functions together.
+ *
+ * A window is now closed on the **following** visit, whose volumes are the end
+ * of the interval just accumulated, and the last window is closed with the
+ * state `walkBeat` returns. So every window's integral and its volume
+ * difference span exactly the same `[t_a, t_b]`, and the windows tile the beat
+ * without overlap or gap whether or not the step count divides evenly.
+ *
+ * An instantaneous form was tried before the windowed one and abandoned, and
+ * the reason is discretisation rather than that misalignment. Re-measured with
+ * a forward difference over the same interval its flows act on, the residual
+ * with the loop wired correctly is **43.2 mL/s at 960 steps** and 12.2 at
+ * 3840 — falling with the step size, as a finite-difference error does. (The
+ * figure first recorded for this, 85 mL/s, is not reproducible as stated; a
+ * backward difference gives 45.1 at 960.) Either way it dwarfs the
+ * millilitres-per-second a mis-wiring would have to be found in. Integrating
+ * over a window removes it.
+ *
+ * The second reason is that a check nobody can drive with known inputs is a
+ * check nobody knows the sensitivity of. The wiring, the names and the volume
+ * indices are arguments, so a test can build a two-compartment ledger whose
+ * true answer is arithmetic and ask what this detects — which is how the
+ * tolerances below were chosen rather than guessed.
+ *
+ * @param {{
+ *   flows: ReadonlyArray<{in: string, out: string}>,
+ *   names: ReadonlyArray<string>,
+ *   indices: ReadonlyArray<number>,
+ *   keys: ReadonlyArray<string>,
+ *   windowSteps: number,
+ * }} wiring
+ */
+export function createFlowLedger({ flows, names, indices, keys, windowSteps }) {
+  const zero = () => Object.fromEntries(keys.map((key) => [key, 0]));
+  const beat = zero();
+  let window = zero();
+
+  let beatStart = null;
+  let windowStart = null;
+  let stepsInWindow = 0;
+  let closePending = false;
+  let steps = 0;
+
+  let windowResidualMl = 0;
+  let worstWindowCompartment = names[0];
+  let windowsClosed = 0;
+  let coveredSteps = 0;
+
+  const compare = (from, to, totals) => {
+    let worst = 0;
+    let where = names[0];
+    for (let slot = 0; slot < indices.length; slot++) {
+      const index = indices[slot];
+      const { in: inflow, out: outflow } = flows[slot];
+      const imbalance = Math.abs(totals[inflow] - totals[outflow] - (to[index] - from[index]));
+      if (imbalance > worst) {
+        worst = imbalance;
+        where = names[slot];
+      }
+    }
+    return { worst, where };
+  };
+
+  const closeWindow = (volumes) => {
+    const { worst, where } = compare(windowStart, volumes, window);
+    if (worst > windowResidualMl) {
+      windowResidualMl = worst;
+      worstWindowCompartment = where;
+    }
+    windowsClosed += 1;
+    coveredSteps += stepsInWindow;
+    window = zero();
+    windowStart = Float64Array.from(volumes);
+    stepsInWindow = 0;
+    closePending = false;
+  };
+
+  return {
+    /**
+     * One step of the walk. `volumes` is the state at the **start** of the
+     * interval this step's `flows` act over — which is what `walkBeat` hands a
+     * visitor, and the whole reason the close is deferred.
+     */
+    observe({ dt, flows: sample, volumes }) {
+      if (beatStart === null) {
+        beatStart = Float64Array.from(volumes);
+        windowStart = Float64Array.from(volumes);
+      }
+      // The window that filled up last time ends here, at the volumes this
+      // visit was given.
+      if (closePending) closeWindow(volumes);
+
+      for (const key of keys) {
+        beat[key] += sample[key] * dt;
+        window[key] += sample[key] * dt;
+      }
+      steps += 1;
+      stepsInWindow += 1;
+      if (stepsInWindow >= windowSteps) closePending = true;
+    },
+
+    /**
+     * The state one full beat on, which no visit sees. Closes whatever window
+     * is open — including a short remainder when the step count does not divide
+     * by the window count — so the beat is covered exactly once.
+     */
+    finish(endVolumes) {
+      if (beatStart === null) return this;
+      if (stepsInWindow > 0 || closePending) closeWindow(endVolumes);
+      const whole = compare(beatStart, endVolumes, beat);
+      this.balanceResidualMl = whole.worst;
+      this.worstBalanceCompartment = whole.where;
+      this.windowResidualMl = windowResidualMl;
+      this.worstWindowCompartment = worstWindowCompartment;
+      this.integrals = beat;
+      // Reported so a test can assert the tiling rather than trust it: every
+      // step belongs to exactly one window, and no step belongs to two.
+      this.windowsClosed = windowsClosed;
+      this.coveredSteps = coveredSteps;
+      this.steps = steps;
+      return this;
+    },
+
+    balanceResidualMl: 0,
+    worstBalanceCompartment: names[0],
+    windowResidualMl: 0,
+    worstWindowCompartment: names[0],
+    windowsClosed: 0,
+    coveredSteps: 0,
+    steps: 0,
+    integrals: beat,
+  };
+}
+
+
+/**
  * Walks one further beat at full resolution and reports what it found.
  *
  * Everything here has to follow the real trajectory: evaluating flows at one
@@ -493,55 +641,32 @@ function measureBeat(solution, parameters, steps) {
   let elapsed = 0;
 
   /**
-   * The same balance, asked of short windows instead of the whole beat.
+   * The books for this beat: the whole-beat balance and the windowed one.
    *
-   * This is the one that catches **wiring**, which the whole-beat balance
+   * The windowed form is what catches **wiring**, which the whole-beat form
    * cannot: at periodic steady state every through-flow in a series loop
    * integrates to the same stroke volume, so connecting a compartment to the
-   * wrong neighbour changes its beat total by a few thousandths of a
-   * millilitre and passes. Over a twenty-fourth of a cycle the flows are
-   * nothing like equal — the aortic valve is shut for two thirds of it — so
-   * the same mistake leaves tens of millilitres unaccounted for.
+   * wrong neighbour changes its beat total by thousandths of a millilitre and
+   * passes. Inside a window the flows are nothing like equal — the aortic
+   * valve is shut for two thirds of the cycle — so the same mistake leaves
+   * millilitres unaccounted for.
    *
-   * An instantaneous form was tried first and does not work: `flows` is
-   * evaluated at the step boundary while ΔV is the average over the step, and
-   * at a valve opening the flow slews by a hundred millilitres a second
-   * inside one step. The finite-difference error was 85 mL/s with the loop
-   * wired correctly, which leaves nothing to detect a mistake against.
-   * Integrating over a window removes it.
+   * `createFlowLedger` owns the interval arithmetic, because getting it wrong
+   * is how the first version of this reported one step of slip as quadrature
+   * error.
    */
   const WINDOWS = 24;
-  const windowSteps = Math.max(1, Math.round(steps / WINDOWS));
-  let windowStart = Float64Array.from(solution.volumes);
-  const windowIntegrals = Object.fromEntries(Object.keys(integrals).map((key) => [key, 0]));
-  let stepsInWindow = 0;
-  let windowResidualMl = 0;
-  let worstWindowCompartment = COMPARTMENT_NAMES[0];
-
-  const closeWindow = (volumes) => {
-    for (let slot = 0; slot < COMPARTMENT_ORDER.length; slot++) {
-      const index = COMPARTMENT_ORDER[slot];
-      const { in: inflow, out: outflow } = COMPARTMENT_FLOWS[slot];
-      const imbalance = Math.abs(
-        windowIntegrals[inflow] - windowIntegrals[outflow] - (volumes[index] - windowStart[index])
-      );
-      if (imbalance > windowResidualMl) {
-        windowResidualMl = imbalance;
-        worstWindowCompartment = COMPARTMENT_NAMES[slot];
-      }
-    }
-    for (const key of Object.keys(windowIntegrals)) windowIntegrals[key] = 0;
-    windowStart = Float64Array.from(volumes);
-    stepsInWindow = 0;
-  };
+  const ledger = createFlowLedger({
+    flows: COMPARTMENT_FLOWS,
+    names: COMPARTMENT_NAMES,
+    indices: COMPARTMENT_ORDER,
+    keys: Object.keys(integrals),
+    windowSteps: Math.max(1, Math.round(steps / WINDOWS)),
+  });
 
   const end = walkBeat(solution, parameters, steps, ({ dt, pressures, flows, volumes }) => {
-    for (const key of Object.keys(integrals)) {
-      integrals[key] += flows[key] * dt;
-      windowIntegrals[key] += flows[key] * dt;
-    }
-    stepsInWindow += 1;
-    if (stepsInWindow >= windowSteps) closeWindow(volumes);
+    ledger.observe({ dt, flows, volumes });
+    for (const key of Object.keys(integrals)) integrals[key] += flows[key] * dt;
     for (const valve of ['mitral', 'aortic', 'tricuspid', 'pulmonic']) {
       valveBackflow = Math.min(valveBackflow, flows[valve]);
     }
@@ -552,10 +677,11 @@ function measureBeat(solution, parameters, steps) {
     for (const value of Object.values(pressures)) if (!Number.isFinite(value)) finite = false;
   });
 
+  // The books close against the state one beat on, which no visit saw.
+  ledger.finish(end);
+
   let periodicResidualMl = 0;
   let worstCompartment = COMPARTMENT_NAMES[0];
-  let balanceResidualMl = 0;
-  let worstBalanceCompartment = COMPARTMENT_NAMES[0];
   let total = 0;
   for (let slot = 0; slot < COMPARTMENT_ORDER.length; slot++) {
     const index = COMPARTMENT_ORDER[slot];
@@ -563,18 +689,6 @@ function measureBeat(solution, parameters, steps) {
     if (drift > periodicResidualMl) {
       periodicResidualMl = drift;
       worstCompartment = COMPARTMENT_NAMES[slot];
-    }
-    // What crossed this compartment's two boundaries over the beat, against
-    // what its volume actually did. Independent of the periodic residual: a
-    // compartment can return to where it started while the flows either side
-    // of it disagree about how it got there.
-    const { in: inflow, out: outflow } = COMPARTMENT_FLOWS[slot];
-    const imbalance = Math.abs(
-      integrals[inflow] - integrals[outflow] - (end[index] - start[index])
-    );
-    if (imbalance > balanceResidualMl) {
-      balanceResidualMl = imbalance;
-      worstBalanceCompartment = COMPARTMENT_NAMES[slot];
     }
     total += end[index];
     if (!Number.isFinite(end[index])) finite = false;
@@ -590,10 +704,12 @@ function measureBeat(solution, parameters, steps) {
     finite,
     periodicResidualMl,
     worstCompartment,
-    balanceResidualMl,
-    worstBalanceCompartment,
-    windowResidualMl,
-    worstWindowCompartment,
+    balanceResidualMl: ledger.balanceResidualMl,
+    worstBalanceCompartment: ledger.worstBalanceCompartment,
+    windowResidualMl: ledger.windowResidualMl,
+    worstWindowCompartment: ledger.worstWindowCompartment,
+    windowsClosed: ledger.windowsClosed,
+    windowCoveredSteps: ledger.coveredSteps,
     conservedVolumeMl: total,
     integrals,
     valveBackflowMlPerS: valveBackflow,
@@ -695,6 +811,12 @@ export function solveCardiacOutput(input, options = {}) {
 
   const failures = [];
   if (!solution.converged) failures.push(`the beat had not settled after ${solution.beats} beats`);
+  // Said as itself rather than as "a value is not finite". End-diastole is an
+  // event, and a beat that has no mitral closure to locate it at has no
+  // filling pressure — not a filling pressure of zero.
+  if (!cycle.endDiastole) {
+    failures.push('no mitral closure was found in the beat, so end-diastole could not be located');
+  }
   if (!measured.finite || !cycleFinite) failures.push('the solution contains a value that is not finite');
   if (measured.periodicResidualMl > DIAGNOSTIC_TOLERANCES.periodicResidualMl) {
     failures.push(
@@ -759,6 +881,10 @@ export function solveCardiacOutput(input, options = {}) {
     worstBalanceCompartment: measured.worstBalanceCompartment,
     windowResidualMl: measured.windowResidualMl,
     worstWindowCompartment: measured.worstWindowCompartment,
+    // Reported so the tiling is auditable rather than assumed: every step in
+    // exactly one window, none in two, and the remainder closed.
+    windowsClosed: measured.windowsClosed,
+    windowCoveredSteps: measured.windowCoveredSteps,
     displayedMeanGapMmHg,
     fineMeanArterialPressureMmHg: measured.meanArterialPressureMmHg,
     beatFlowsMl: Object.freeze({ ...measured.integrals }),
@@ -839,7 +965,23 @@ function metricsFrom(cycle, parameters, measured) {
     meanSystemicFlowMlPerS: measured.meanSystemicFlowMlPerS,
     ejectionStartPhase: cycle.ejectionStartPhase,
     ejectionEndPhase: cycle.ejectionEndPhase,
+    /**
+     * Where the ventricle is **largest**, which is the phase that poses the
+     * model at end-diastolic volume. It is the end of the volume plateau, and
+     * it is **not** the instant `endDiastolicPressureMmHg` is read at — see
+     * below. The two are deliberately different and a fraction of a
+     * millilitre apart; pairing this phase with that pressure would describe a
+     * point on the loop that the beat never passed through.
+     */
     endDiastolePhase: cycle.edvPhase,
+    /**
+     * The located mitral closure: the instant `endDiastolicPressureMmHg` and
+     * `endDiastolicVolumeAtClosureMl` both come from, and how many closures
+     * the beat had to choose between.
+     */
+    mitralClosurePhase: cycle.endDiastole.phase,
+    endDiastolicVolumeAtClosureMl: cycle.endDiastole.volume,
+    mitralClosuresInBeat: cycle.endDiastole.closures,
     endSystolePhase: cycle.esvPhase,
     cycleLengthSeconds: cycle.cycleLength,
     /** Geometry inputs, which the circulation does not determine. */

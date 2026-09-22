@@ -88,6 +88,13 @@ const extremes = {
 let worstPeriodic = 0;
 let worstBeats = 0;
 let slowestMs = 0;
+// The two balances, at scale. The window tolerance is chosen from the gap
+// between these and the mis-wiring residuals, so the number it is chosen from
+// has to be measured over the whole domain rather than a corner or two.
+let worstWholeBalance = 0;
+let worstWholeAt = null;
+let worstWindowBalance = 0;
+let worstWindowAt = null;
 
 for (const input of cases) {
   const t0 = Date.now();
@@ -95,6 +102,14 @@ for (const input of cases) {
   slowestMs = Math.max(slowestMs, Date.now() - t0);
   worstBeats = Math.max(worstBeats, result.diagnostics.beats ?? 0);
   worstPeriodic = Math.max(worstPeriodic, result.diagnostics.periodicResidualMl ?? 0);
+  if ((result.diagnostics.balanceResidualMl ?? 0) > worstWholeBalance) {
+    worstWholeBalance = result.diagnostics.balanceResidualMl;
+    worstWholeAt = { ...input, compartment: result.diagnostics.worstBalanceCompartment };
+  }
+  if ((result.diagnostics.windowResidualMl ?? 0) > worstWindowBalance) {
+    worstWindowBalance = result.diagnostics.windowResidualMl;
+    worstWindowAt = { ...input, compartment: result.diagnostics.worstWindowCompartment };
+  }
   if (result.status !== RESULT_STATUS.VALID) {
     failures.push({ input, status: result.status, problems: result.problems });
     continue;
@@ -110,6 +125,14 @@ for (const id of CONTROL_IDS) console.log(`  ${id}: ${domain[id].min} .. ${domai
 console.log(`\n${cases.length} conditions, ${Date.now() - started} ms total, slowest solve ${slowestMs} ms`);
 console.log(`most beats to settle: ${worstBeats}`);
 console.log(`largest periodic residual: ${worstPeriodic.toFixed(4)} mL`);
+const at = (row) =>
+  row
+    ? ` (${row.compartment}, ` +
+      CONTROL_IDS.map((id) => `${id}=${typeof row[id] === 'number' ? row[id].toFixed(2) : row[id]}`).join(' ') +
+      ')'
+    : '';
+console.log(`largest whole-beat balance residual: ${worstWholeBalance.toFixed(4)} mL${at(worstWholeAt)}`);
+console.log(`largest window balance residual: ${worstWindowBalance.toFixed(4)} mL${at(worstWindowAt)}`);
 console.log(`\nfailures: ${failures.length}`);
 for (const failure of failures.slice(0, 24)) {
   const where = CONTROL_IDS.map((id) => `${id}=${failure.input[id].toFixed(2)}`).join(' ');

@@ -74,46 +74,123 @@ for (const loading of Object.keys(LOADINGS)) {
 }
 
 const key = (row) => `${row.loading}@${row.progress}`;
-const before = new Map(previous.map((row) => [key(row), row]));
-const moves = [];
-for (const row of recorded) {
-  const old = before.get(key(row));
-  if (!old) {
-    moves.push(`${key(row)}: new case`);
-    continue;
+
+/**
+ * Every stored number, not a chosen subset.
+ *
+ * The first version compared `state`'s numeric fields and `beats`, and left
+ * `cavityVolume` out — so a change to the five sampled cavity volumes would
+ * have been written while the report said nothing moved. An external reviewer
+ * asked for the whole record, including fields that **stopped** being numbers
+ * and fields that appeared or vanished, because those are the changes a
+ * summary is most likely to lose.
+ *
+ * @param {object} row
+ * @returns {Map<string, number|null>} `null` marks present-but-not-a-number
+ */
+function flatten(row) {
+  const out = new Map();
+  for (const [field, value] of Object.entries(row.state ?? {})) {
+    out.set(`state.${field}`, typeof value === 'number' && Number.isFinite(value) ? value : null);
   }
-  for (const [field, value] of Object.entries(row.state)) {
-    const was = old.state?.[field];
-    if (typeof was !== 'number') {
-      moves.push(`${key(row)}: ${field} was not pinned before`);
-      continue;
-    }
-    if (Math.abs(value - was) > 1e-9 && Math.abs(value - was) > 1e-8 * Math.abs(was)) {
-      moves.push(`${key(row)}: ${field} ${was} -> ${value}`);
-    }
-  }
-  if (old.beats !== row.beats) moves.push(`${key(row)}: beats ${old.beats} -> ${row.beats}`);
-}
-for (const row of previous) {
-  if (!recorded.some((entry) => key(entry) === key(row))) moves.push(`${key(row)}: no longer recorded`);
+  out.set('beats', typeof row.beats === 'number' && Number.isFinite(row.beats) ? row.beats : null);
+  (row.cavityVolume ?? []).forEach((value, i) => {
+    out.set(`cavityVolume[${i}]`, typeof value === 'number' && Number.isFinite(value) ? value : null);
+  });
+  return out;
 }
 
+const moved = (was, now) =>
+  Math.abs(now - was) > 1e-9 && Math.abs(now - was) > 1e-8 * Math.abs(was);
+
+/**
+ * @param {object[]} previous
+ * @param {object[]} recorded
+ */
+function compare(previous, recorded) {
+  const before = new Map(previous.map((row) => [key(row), row]));
+  const after = new Map(recorded.map((row) => [key(row), row]));
+  const notes = [];
+  /** @type {Map<string, {changed:number, unchanged:number, up:number, down:number, worst:number, at:string|null, from:number, to:number}>} */
+  const byField = new Map();
+
+  for (const [id, row] of after) {
+    const old = before.get(id);
+    if (!old) {
+      notes.push(`${id}: new case`);
+      continue;
+    }
+    const oldValues = flatten(old);
+    const newValues = flatten(row);
+    for (const field of new Set([...oldValues.keys(), ...newValues.keys()])) {
+      const was = oldValues.get(field);
+      const now = newValues.get(field);
+      if (!newValues.has(field)) {
+        notes.push(`${id}: ${field} is no longer recorded`);
+        continue;
+      }
+      if (!oldValues.has(field)) {
+        notes.push(`${id}: ${field} was not recorded before`);
+        continue;
+      }
+      if (was === null || now === null) {
+        if (was !== now) notes.push(`${id}: ${field} ${was === null ? 'was not a finite number' : 'is no longer a finite number'}`);
+        continue;
+      }
+      const stat =
+        byField.get(field) ??
+        { changed: 0, unchanged: 0, up: 0, down: 0, worst: 0, at: null, from: 0, to: 0 };
+      if (moved(was, now)) {
+        stat.changed += 1;
+        if (now > was) stat.up += 1;
+        else stat.down += 1;
+        if (Math.abs(now - was) > stat.worst) {
+          stat.worst = Math.abs(now - was);
+          stat.at = id;
+          stat.from = was;
+          stat.to = now;
+        }
+      } else {
+        stat.unchanged += 1;
+      }
+      byField.set(field, stat);
+    }
+  }
+  for (const id of before.keys()) if (!after.has(id)) notes.push(`${id}: no longer recorded`);
+  return { byField, notes, cases: after.size };
+}
+
+const baselineAt = process.argv.indexOf('--baseline');
+const baseline = baselineAt >= 0
+  ? JSON.parse(readFileSync(process.argv[baselineAt + 1], 'utf8'))
+  : previous;
 const write = process.argv.includes('--write');
+
+const { byField, notes, cases } = compare(baseline, recorded);
+const changedFields = [...byField.entries()].filter(([, stat]) => stat.changed > 0);
+
 console.log(`${recorded.length} case(s) recorded from the current solver`);
-if (moves.length === 0) {
-  console.log('nothing moved: the committed fixture already matches');
+console.log(`compared against ${baseline.length} case(s)${baselineAt >= 0 ? ` from ${process.argv[baselineAt + 1]}` : ' in the committed fixture'}`);
+for (const note of notes) console.log(`  ${note}`);
+
+if (changedFields.length === 0 && notes.length === 0) {
+  console.log('nothing moved: every stored number is unchanged');
 } else {
-  console.log(`\n${moves.length} move(s):`);
-  for (const move of moves.slice(0, 40)) console.log(`  ${move}`);
-  if (moves.length > 40) console.log(`  ... and ${moves.length - 40} more`);
-  const fields = new Set(moves.map((move) => move.split(': ')[1]?.split(' ')[0]).filter(Boolean));
-  console.log(`\nfields affected: ${[...fields].sort().join(', ')}`);
+  console.log(`\n${changedFields.length} field(s) moved, out of ${byField.size} compared across ${cases} case(s):`);
+  for (const [field, stat] of changedFields.sort((a, b) => b[1].worst - a[1].worst)) {
+    console.log(
+      `  ${field}\n` +
+        `      changed in ${stat.changed} case(s), unchanged in ${stat.unchanged}; ` +
+        `${stat.up} up, ${stat.down} down\n` +
+        `      largest |Δ| ${stat.worst.toFixed(6)} at ${stat.at}: ${stat.from} → ${stat.to}`
+    );
+  }
 }
 
 if (write) {
   writeFileSync(FIXTURE_PATH, `${JSON.stringify(recorded, null, 2)}\n`);
   console.log('\nwritten.');
-} else if (moves.length > 0) {
+} else if (changedFields.length > 0 || notes.length > 0) {
   console.log('\nNot written. Re-run with --write once the moves above are the ones you meant.');
   process.exitCode = 1;
 }

@@ -674,7 +674,7 @@ export const BETA_PUBLICATION_DECISIONS = Object.freeze([
     // This is a correction to a figure a reader is shown, not a presentation
     // change, so the decision record says what moved and by how much rather
     // than reporting a pin that happened to pass.
-    sceneRevision: Object.freeze({ cardRevision: 7, modelDigest: '62aa45633791a39c' }),
+    sceneRevision: Object.freeze({ cardRevision: 9, modelDigest: 'f635134f0823ca1c' }),
     scope: Object.freeze({
       structures: Object.freeze([
         'the left ventricle, built from the solved end-diastolic and end-systolic volumes rather than posed',

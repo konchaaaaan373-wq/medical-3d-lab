@@ -327,11 +327,28 @@ equation evaluated twice:
   0.8 / filling 980 mL / SVR 1.1 / 50 min⁻¹), tolerance 0.5 mL.
 - **The same over a twenty-fourth of the beat.** This is the one that catches a
   mis-wired loop, which the whole-beat form cannot: in a series circulation at
-  steady state every flow integrates to the same stroke volume. 0.29 mL wired
-  correctly, 18.3 mL mis-wired, tolerance 3 mL — set from the separation rather
-  than chosen. An instantaneous form was tried first and abandoned: the
-  finite-difference error at a valve opening is 85 mL/s, which leaves nothing
-  to detect a mistake against.
+  steady state every flow integrates to the same stroke volume, and all three
+  mis-wirings below leave the whole-beat residual at 0.007 mL. Correctly
+  wired, the worst residual over the 865-condition sweep is **0.5289 mL**;
+  mis-wired it is **18.32 / 5.87 / 4.91 mL** for three different mistakes, all
+  refused. The tolerance, **1.6 mL**, is the geometric midpoint of those two
+  populations — 3.0× above the worst honest residual and 3.1× below the
+  smallest error detected.
+
+  The window endpoints were **one step out** until 2026-09-22: `walkBeat`
+  visits before integrating, so a window closed with the volumes its last
+  visit was given compared an integral over one interval with a volume
+  difference over another. Corrected, and the ledger that does the arithmetic
+  is driven directly with known inputs by
+  `tests/cardiac-output-ledger.test.js`. The slip was real and was not the
+  dominant term: the reference residual moved 0.2937 → 0.3025 mL.
+
+  An instantaneous form was tried before the windowed one and abandoned, for
+  discretisation rather than that slip: measured with a forward difference
+  over the interval its flows act on, the residual with the loop wired
+  correctly is 43.2 mL/s at 960 steps and 12.2 at 3840. **The figure first
+  recorded here, 85 mL/s, is not reproducible as stated** — a backward
+  difference gives 45.1 at 960.
 
 **No figure this scene shows moved.** Every recorded reference value is
 bit-identical to what the previous revision produced; the change adds
