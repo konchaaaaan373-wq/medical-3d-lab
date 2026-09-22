@@ -18,7 +18,7 @@
  * The cases here are the ones `tests/cardiac-mechanics.test.js` asserts the
  * coverage of; that test fails if this file starts recording fewer.
  */
-import { readFileSync, writeFileSync } from 'node:fs';
+import { existsSync, readFileSync, writeFileSync } from 'node:fs';
 
 import { STAGES } from '../src/data/heartFailure.js';
 import {
@@ -185,6 +185,48 @@ if (changedFields.length === 0 && notes.length === 0) {
         `      largest |Δ| ${stat.worst.toFixed(6)} at ${stat.at}: ${stat.from} → ${stat.to}`
     );
   }
+}
+
+// The aggregate, where a test can read it. `--against-main` names the baseline
+// a report should quote: "what this branch changes" is a comparison with main,
+// not with whatever the fixture happened to hold mid-review.
+const recordAt = process.argv.indexOf('--record');
+if (recordAt >= 0) {
+  const path = process.argv[recordAt + 1] ?? 'docs/model-evidence/cardiac-output-measurements.json';
+  const existing = existsSync(path) ? JSON.parse(readFileSync(path, 'utf8')) : {};
+  writeFileSync(
+    path,
+    `${JSON.stringify(
+      {
+        ...existing,
+        recordedAt: new Date().toISOString().slice(0, 10),
+        fixtureImpact: {
+          baseline: baselineAt >= 0 ? process.argv[baselineAt + 1] : 'the committed fixture',
+          cases,
+          fieldsCompared: byField.size,
+          fields: Object.fromEntries(
+            changedFields.map(([field, stat]) => [
+              field,
+              {
+                changed: stat.changed,
+                unchanged: stat.unchanged,
+                up: stat.up,
+                down: stat.down,
+                largestAbsoluteDelta: stat.worst,
+                at: stat.at,
+                from: stat.from,
+                to: stat.to,
+              },
+            ])
+          ),
+          notes,
+        },
+      },
+      null,
+      2
+    )}\n`
+  );
+  console.log(`\nrecorded to ${path}`);
 }
 
 if (write) {

@@ -31,6 +31,10 @@ import {
 const probe = process.argv.includes('--probe');
 const rateWalk = process.argv.includes('--rate');
 const stepStudy = process.argv.includes('--steps');
+const recordAt = process.argv.indexOf('--record');
+/** Filled by whichever modes ran, and written out at the end when asked. */
+let rateRecord = null;
+let sweepRecord = null;
 
 /** Deterministic sampler: a survey that differs between runs cannot be cited. */
 function seededRandom(seed) {
@@ -133,6 +137,14 @@ const at = (row) =>
     : '';
 console.log(`largest whole-beat balance residual: ${worstWholeBalance.toFixed(4)} mL${at(worstWholeAt)}`);
 console.log(`largest window balance residual: ${worstWindowBalance.toFixed(4)} mL${at(worstWindowAt)}`);
+sweepRecord = {
+  conditions: cases.length,
+  failures: failures.length,
+  largestPeriodicResidualMl: worstPeriodic,
+  largestWholeBeatBalanceMl: worstWholeBalance,
+  largestWindowBalanceMl: worstWindowBalance,
+  largestWindowBalanceAt: worstWindowAt,
+};
 console.log(`\nfailures: ${failures.length}`);
 for (const failure of failures.slice(0, 24)) {
   const where = CONTROL_IDS.map((id) => `${id}=${failure.input[id].toFixed(2)}`).join(' ');
@@ -252,7 +264,46 @@ if (rateWalk) {
     '\nThis is a finite grid. It says no fall was found at these points; it says' +
       '\nnothing about the points between them, and nothing about why.'
   );
+
+  // A run that measured less than it set out to is not a run that found
+  // nothing. Without this, a refused solve or a narrowed grid would print
+  // "falls found: 0" and exit 0, and the card would go on quoting a record
+  // that no longer had anything behind it.
+  const expectedStates = EES.length * FILL.length * SVR.length * rates.length;
+  const expectedComparisons = EES.length * FILL.length * SVR.length * (rates.length - 1);
+  if (nonValid > 0) {
+    console.error(`\n${nonValid} state(s) did not settle; the record below is incomplete.`);
+    process.exitCode = 1;
+  }
+  if (states !== expectedStates || comparisons !== expectedComparisons) {
+    console.error(
+      `\nexpected ${expectedStates} states and ${expectedComparisons} comparisons, ` +
+        `walked ${states} and ${comparisons}.`
+    );
+    process.exitCode = 1;
+  }
   if (decreases.length > 0) process.exitCode = 1;
+
+  rateRecord = {
+    axes: { contractilityEesMmHgPerMl: EES, fillingVolumeMl: FILL, systemicResistanceMmHgSPerMl: SVR },
+    rate: { min: rateMin, max: rateMax, step: RATE_STEP, values: rates.length },
+    combination: 'the full product of the four axes',
+    states,
+    nonValid,
+    comparisons,
+    toleranceLMin: DECREASE_TOLERANCE_L_MIN,
+    fallsFound: decreases.length,
+    smallestChange: smallest
+      ? {
+          deltaLMin: smallest.delta,
+          contractilityEesMmHgPerMl: smallest.contractilityEesMmHgPerMl,
+          fillingVolumeMl: smallest.fillingVolumeMl,
+          systemicResistanceMmHgSPerMl: smallest.systemicResistanceMmHgSPerMl,
+          fromPerMin: smallest.from,
+          toPerMin: smallest.to,
+        }
+      : null,
+  };
 }
 
 
@@ -363,4 +414,30 @@ if (stepStudy) {
     console.log(`  ${row.key}  ${where}\n      ${row.note}`);
   }
   if (outside.length > 0) process.exitCode = 1;
+}
+
+
+/**
+ * The numbers the documents quote, written where a test can read them.
+ *
+ * Not a reporting framework: one file, the figures this script measured, and
+ * `tests/cardiac-output-claims.test.js` checking that the model card quotes
+ * these and not something a previous run produced. The card carried "85 mL/s"
+ * and "1.4 mmHg" long after neither was reproducible, and a guard that only
+ * pins the card's own strings cannot notice that.
+ */
+if (recordAt >= 0) {
+  const { writeFileSync } = await import('node:fs');
+  const path = process.argv[recordAt + 1] ?? 'docs/model-evidence/cardiac-output-measurements.json';
+  const existing = await import('node:fs').then(({ existsSync, readFileSync }) =>
+    existsSync(path) ? JSON.parse(readFileSync(path, 'utf8')) : {}
+  );
+  const record = {
+    ...existing,
+    recordedAt: new Date().toISOString().slice(0, 10),
+    ...(sweepRecord ? { sweep: sweepRecord } : {}),
+    ...(rateRecord ? { rateWalk: rateRecord } : {}),
+  };
+  writeFileSync(path, `${JSON.stringify(record, null, 2)}\n`);
+  console.log(`\nrecorded to ${path}`);
 }

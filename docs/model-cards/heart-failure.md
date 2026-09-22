@@ -84,7 +84,7 @@ The scene predates the current versioned Clinical Review standard. This model ca
 
 ### Revision 5 — the filling pressure this scene shows moved, and why
 
-**A displayed number changed, by up to 1.4 mmHg.** End-diastolic pressure is
+**A displayed number changed, by up to 2.186 mmHg.** End-diastolic pressure is
 now read at mitral-valve closure instead of at the sample where
 left-ventricular volume is highest.
 
@@ -100,17 +100,21 @@ holds the maximum decides the figure: 17.67 / 16.25 / 15.69 / 15.46 mmHg at
 finest, while the **volume** agreed to 0.002 mL throughout. Read at valve
 closure the same four give 15.275 to 15.295.
 
-**What this means for the progression.** Filling pressure is lower than it was
-at every point, most at mid-progression under loading (afterloadMin at 0.42:
-15.41 → 14.06 mmHg) and by 0.009 mmHg at progress 0. Nothing else moved: the
-fixture that pins every figure this circulation produces, at every authored
-stage under every loading, reports `endDiastolicPressureMmHg` and no other
-field. The congestion the scene draws is unchanged.
+**What this means for the progression**, aggregated over every stored number
+rather than a field read by eye (`npm run fixture:cardiac -- --baseline
+<main's copy> --record`): of **32 fields across 30 cases, one moved** —
+`endDiastolicPressureMmHg`, in **all 30**, 29 of them lower and **one higher**.
+The largest change is **2.186 mmHg**, at `preloadMax` / progress 0.18, from
+17.653 to 15.467. At progress 0 under default loading it is 0.001 mmHg.
 
-The direction is the one to expect — the old reading had crept into the start
-of contraction, so it was high — and the stage wording, which describes filling
-pressure rising with the progression rather than quoting a value, is unchanged
-and still accurate.
+An earlier note here said "up to 1.4 mmHg … always downward". Both halves were
+wrong — the figure came from an intermediate definition, and one case rises.
+The congestion the scene draws is unchanged, and the stage wording, which
+describes filling pressure rising with the progression rather than quoting a
+value, is unchanged and still accurate.
+
+The direction is the one to expect for the twenty-nine: the old reading had
+crept into the start of contraction, so it was high.
 
 `tests/cardiac-output-model.test.js` now requires the figure to agree between
 240 and 960 steps per beat. `scripts/record-cardiac-fixture.mjs` re-records

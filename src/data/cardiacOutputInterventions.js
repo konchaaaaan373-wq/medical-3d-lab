@@ -31,8 +31,8 @@ export const INTERVENTION_OPTIONS = [
     value: INTERVENTION_IDS.DOBUTAMINE,
     label: 'Dobutamine, a schematic example (rate held)',
     labelJa: 'ドブタミン作用の模式例（心拍数は固定）',
-    effect: 'elastance up · resistance down · rate held, to separate the two',
-    effectJa: 'エラスタンス ↑・血管抵抗 ↓・心拍数は固定（2 つの作用を分けて見るため）',
+    effect: 'elastance up and resistance down together · rate held',
+    effectJa: 'エラスタンス ↑ と血管抵抗 ↓ を同時に・心拍数は固定',
   },
 ];
 
@@ -63,9 +63,9 @@ export const INTERVENTION_SCOPE = [
   },
   {
     text:
-      '**Holding the heart rate is a choice made for this scene, not a property of the drug.** It is held so that the elastance and the resistance can be read apart. Dobutamine’s manufacturer’s labelling describes both cases: output rising without a marked increase in rate, and rate rising, with tachycardia among the adverse reactions. One study this repository has read — thirteen patients with cardiomyopathic heart failure, 2.5–10 µg/kg/min — reports no change in rate, and one study in one population is not a general rule. Read the fixed rate as this scene’s condition.',
+      '**This is a compound change with the heart rate held, not two actions separated.** Elastance and systemic resistance move together, and nothing here varies one while holding the other — so it shows what a set change in both does, and cannot attribute the result to either. Holding the rate is a choice made for this scene rather than a property of the drug. Dobutamine’s manufacturer’s labelling describes both cases: output rising without a marked increase in rate, and rate rising, with tachycardia among the adverse reactions. One study this repository has read — thirteen patients with cardiomyopathic heart failure, 2.5–10 µg/kg/min — reports no change in rate, and one study in one population is not a general rule. Read the fixed rate as this scene’s condition.',
     textJa:
-      '**心拍数を固定しているのは、このシーンのための条件であって、薬剤の性質ではありません。** エラスタンスと血管抵抗の作用を分けて読むために固定しています。製造販売元の添付文書には、著明な心拍数増加を伴わずに拍出が増える場合と、心拍数増加・頻脈が起こり得ることの**両方**が記載されています。このリポジトリが読んだ研究（心筋症性心不全 13 例・2.5〜10 µg/kg/min）は心拍数に変化なしと報告していますが、**1 つの集団の 1 つの研究は一般則ではありません。**',
+      '**これは心拍数を固定した複合変化の模式例であって、2 つの作用を分離したものではありません。** エラスタンスと血管抵抗は同時に動き、片方だけを変える比較はこのシーンにありません——**設定した複合変化の結果**を見せるもので、どちらの作用によるものかは言えません。心拍数の固定は、薬剤の性質ではなくこのシーンの条件です。製造販売元の添付文書には、著明な心拍数増加を伴わずに拍出が増える場合と、心拍数増加・頻脈が起こり得ることの**両方**が記載されています。このリポジトリが読んだ研究（心筋症性心不全 13 例・2.5〜10 µg/kg/min）は心拍数に変化なしと報告していますが、**1 つの集団の 1 つの研究は一般則ではありません。**',
   },
   {
     text:

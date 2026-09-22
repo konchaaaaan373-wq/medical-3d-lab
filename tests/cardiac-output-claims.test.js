@@ -28,6 +28,10 @@ import { INTERVENTION_OPTIONS, INTERVENTION_SCOPE } from '../src/data/cardiacOut
 const read = (path) => readFileSync(new URL(`../${path}`, import.meta.url), 'utf8');
 
 const CARD = 'docs/model-cards/cardiac-output.md';
+const MEASUREMENTS = JSON.parse(read('docs/model-evidence/cardiac-output-measurements.json'));
+
+/** Numbers as the documents write them, so a comparison is about the value. */
+const rounded = (value, digits) => Number(value).toFixed(digits);
 
 test('claims: the retracted rate assertion cannot come back unnoticed', () => {
   const card = read(CARD);
@@ -131,8 +135,17 @@ test('claims: the controls name model quantities, not clinical ones', () => {
   assert.match(cautions, /基準の異なる 2 種類の容積/, 'the scope panel defines the conserved quantity');
   assert.match(cautions, /中心静脈圧ではありません/, 'and says what the venous pressure is not');
   assert.match(cautions, /出力まで固定することではありません/, 'holding an input does not hold the outputs');
-  assert.match(cautions, /「改善」ではありません/, 'a larger output is not an improvement');
-  assert.match(cautions, /駆出率の変化は収縮力の変化ではなく/, 'EF is not contractility and not a diagnosis');
+  assert.match(
+    cautions,
+    /拍出の増加だけでは、循環状態の改善とは判断できません/,
+    'a rise in output alone does not establish improvement — stated as a limit on inference, ' +
+      'not as the reverse claim that it never is one'
+  );
+  assert.match(
+    cautions,
+    /駆出率の変化だけから、収縮力の変化は判断できません/,
+    'a change in EF alone does not establish a change in contractility'
+  );
 
   const excludes = MODEL_SCOPE.excludes.map((entry) => entry.textJa).join('\n');
   assert.match(excludes, /肺動脈楔入圧/, 'the pulmonary venous pressure is not a wedge pressure');
@@ -148,7 +161,12 @@ test('claims: the drug carries its assumption in its own name', () => {
   assert.match(dobutamine.labelJa, /心拍数は固定/);
 
   const scope = INTERVENTION_SCOPE.map((entry) => entry.textJa).join('\n');
-  assert.match(scope, /薬剤の性質ではありません/, 'the held rate is the scene’s condition, not the drug’s property');
+  assert.match(
+    scope,
+    /複合変化の模式例であって、2 つの作用を分離したものではありません/,
+    'the drug is a compound change, not two actions read apart — nothing varies one and holds the other'
+  );
+  assert.match(scope, /このシーンの条件です/, 'the held rate is the scene’s condition, not the drug’s property');
   assert.match(scope, /両方/, 'the labelling describes both a marked rate rise and none');
   assert.match(scope, /1 つの集団の 1 つの研究は一般則ではありません/);
   assert.match(scope, /用量反応から導いたものではなく/, 'the effect sizes say where they came from');
@@ -159,4 +177,84 @@ test('claims: the drug carries its assumption in its own name', () => {
   const card = read(CARD);
   assert.match(card, /the reason is not that there is no\s+venous compartment/is);
   assert.doesNotMatch(card, /a model\s+with no venous capacitance/is);
+});
+
+
+test('claims: the documents quote the measurements that are on file', () => {
+  // A guard that only pins a document's own strings cannot notice that the
+  // strings stopped being true. The card carried "85 mL/s" and "1.4 mmHg" long
+  // after neither was reproducible; both passed every string check, because
+  // both were exactly what the card said.
+  //
+  // So the figures are measured into
+  // `docs/model-evidence/cardiac-output-measurements.json` by the scripts that
+  // produce them, and this asks the documents to agree with that file.
+  const { rateWalk, sweep, fixtureImpact } = MEASUREMENTS;
+  const documents = {
+    [CARD]: read(CARD),
+    'docs/beta-publication/cardiac-output.md': read('docs/beta-publication/cardiac-output.md'),
+    'docs/model-cards/heart-failure.md': read('docs/model-cards/heart-failure.md'),
+  };
+
+  // The rate walk, in the card that quotes it.
+  assert.ok(documents[CARD].includes(`${rateWalk.states} states solved`), 'the state count');
+  assert.ok(documents[CARD].includes(`${rateWalk.comparisons} adjacent pairs in rate`), 'the comparison count');
+  assert.ok(
+    documents[CARD].includes(`+${rounded(rateWalk.smallestChange.deltaLMin, 3)} L/min`),
+    `the smallest change, ${rounded(rateWalk.smallestChange.deltaLMin, 3)}`
+  );
+  assert.equal(rateWalk.fallsFound, 0, 'the record behind "no fall was found"');
+  assert.equal(rateWalk.nonValid, 0, 'a record with refused states is not a record');
+
+  // The balances.
+  assert.ok(
+    documents[CARD].includes(`**${rounded(sweep.largestWindowBalanceMl, 4)} mL**`),
+    `the worst window residual, ${rounded(sweep.largestWindowBalanceMl, 4)}`
+  );
+
+  // The fixture impact, in all three documents that state it.
+  const moved = fixtureImpact.fields['state.endDiastolicPressureMmHg'];
+  assert.ok(moved, 'the fixture impact is on file');
+  assert.equal(Object.keys(fixtureImpact.fields).length, 1, 'exactly one field moved');
+  const largest = rounded(moved.largestAbsoluteDelta, 3);
+  for (const [path, text] of Object.entries(documents)) {
+    assert.ok(text.includes(`${largest} mmHg`), `${path} quotes the largest change (${largest} mmHg)`);
+    assert.ok(
+      text.includes(`${moved.changed} of 30`) || text.includes(`all ${moved.changed}`),
+      `${path} says how many cases moved (${moved.changed})`
+    );
+    assert.ok(
+      /one higher|1 higher|one rises|one case rises/i.test(text),
+      `${path} says that not every case fell — ${moved.up} rose`
+    );
+  }
+
+  // And the retracted figures are gone as **claims**. Quoting one inside a
+  // retraction is how the correction stays legible, so text between quotation
+  // marks — straight or curly — is removed before asking. A document may say a
+  // figure was wrong; it may not state it.
+  for (const [path, text] of Object.entries(documents)) {
+    const withoutQuotations = text.replace(/[\u201c"][^\u201d"]*[\u201d"]/g, '');
+    assert.doesNotMatch(withoutQuotations, /up to 1\.4 mmHg/, `${path} still states 1.4 mmHg as a figure`);
+    assert.doesNotMatch(withoutQuotations, /85 mL\/s/, `${path} still states 85 mL\/s as a figure`);
+  }
+});
+
+
+test('claims: the superseded review request says so at the top', () => {
+  // It was written as "paste this into a review" and half of it is now known
+  // to be wrong — the LVEDP definition, the 1,820-condition figure, the
+  // causal assertions, the control names. Keeping it is right; leaving it
+  // readable as current is not (R152-05B).
+  const history = read('docs/reviews/cardiac-output-external-review-request.md');
+  const header = history.slice(0, 2000);
+  assert.match(header, /現行ではありません/, 'the title says it is not current');
+  assert.match(header, /監査履歴/, 'and what it is instead');
+  assert.match(header, /be1d6e15/, 'the commit it describes');
+  assert.match(header, /2026-09-22/, 'when it was written');
+  assert.match(header, /後継/, 'and what replaced it');
+  // The specific retractions, so trimming the header to a one-liner fails.
+  for (const retraction of [/1,820 条件/, /固定比率の収縮期が原因/, /拡張期だけが大きく上がる/]) {
+    assert.match(header, retraction, `the header names what in it is wrong: ${retraction}`);
+  }
 });

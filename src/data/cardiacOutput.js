@@ -450,12 +450,12 @@ export const MODEL_SCOPE = {
       textJa: '**1 つの入力を固定することは、出力まで固定することではありません。** 心拍数を動かしても循環充満量はそのままですが、拡張末期容積・充満圧・動脈圧は動きます——それらは閉ループが落ち着いた結果だからです。',
     },
     {
-      text: '**A larger output is not an improvement.** Nothing here measures oxygen delivery or consumption, and filling pressure can rise with it. Read both.',
-      textJa: '**拍出が増えることは「改善」ではありません。** 酸素の需給はこのモデルにありませんし、充満圧が一緒に上がることもあります。両方を読んでください。',
+      text: '**A rise in output alone does not tell you the circulation improved.** Nothing here measures oxygen delivery or consumption, and filling pressure can rise with it. Read both.',
+      textJa: '**拍出の増加だけでは、循環状態の改善とは判断できません。** 酸素の需給はこのモデルにありませんし、充満圧が一緒に上がることもあります。両方を読んでください。',
     },
     {
-      text: '**A change in ejection fraction is not a change in contractility, and not a diagnosis.** It moves when filling or resistance moves, with elastance untouched.',
-      textJa: '**駆出率の変化は収縮力の変化ではなく、診断でもありません。** エラスタンスを触らずに充満や抵抗を動かしても変わります。',
+      text: '**A change in ejection fraction alone does not tell you contractility changed**, and it is not a diagnosis. It moves when filling or resistance moves, with elastance untouched.',
+      textJa: '**駆出率の変化だけから、収縮力の変化は判断できません。** 診断でもありません。エラスタンスを触らずに充満や抵抗を動かしても変わります。',
     },
     {
       text: '**The reduced-contractility preset is one parameter lowered, not the heart-failure syndrome** — no remodelling, no fluid retention, no neurohormonal activation.',

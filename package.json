@@ -43,6 +43,7 @@
     "build:preview": "VITE_ALLOW_PREVIEW=1 VITE_SUPABASE_URL=https://stub.invalid VITE_SUPABASE_PUBLISHABLE_KEY=stub-publishable-key vite build --outDir dist-preview",
     "lessons": "node scripts/lessons.mjs",
     "sweep:cardiac-output": "node scripts/sweep-cardiac-output.mjs",
+    "fixture:cardiac": "node scripts/record-cardiac-fixture.mjs",
     "follow-ups": "node scripts/follow-ups-ledger.mjs"
   },
   "dependencies": {

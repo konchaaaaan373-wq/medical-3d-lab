@@ -63,7 +63,7 @@ multiplier on anything below them.
 | Intervention | Changes | Deliberately does not change |
 | --- | --- | --- |
 | More circulating filling | stressed volume, +120 mL | resistance, elastance, rate |
-| Dobutamine (representative) | elastance ×1.5, resistance ×0.85 | **rate**, filling |
+| Dobutamine, a schematic example (rate held) | elastance ×1.5 **and** resistance ×0.85, together | **rate**, filling |
 
 Both are computed from the preset's starting condition, so choosing the same
 one twice produces the same condition twice — and clearing one, or moving a
@@ -73,10 +73,17 @@ meaning changes silently across a sequence or a lesson. An effect that falls out
 verified range is refused rather than clamped — dobutamine from the reference
 heart is, which is why it is offered on the condition its evidence comes from.
 
-**Dobutamine holds the heart rate, and that is the finding rather than a
-simplification.** The one study read for this reports no change in heart rate
-over 2.5–10 µg/kg/min in thirteen patients with cardiomyopathic heart failure.
-The magnitudes are illustrative; see §9.
+**Dobutamine here is a compound change with the heart rate held.** Elastance and
+resistance move together and nothing varies one while holding the other, so the
+result cannot be attributed to either: it shows what a chosen pair of changes
+does, not what each contributes.
+
+**Holding the rate is this scene's condition, not a property of the drug.** The
+one study read for this reports no change in heart rate over 2.5–10 µg/kg/min in
+thirteen patients with cardiomyopathic heart failure; the manufacturer's
+labelling describes both an output rise without a marked increase in rate and a
+rise in rate with tachycardia among the adverse reactions. One study in one
+population is not a general rule. The magnitudes are illustrative; see §9.
 
 ## 5. Outputs
 
@@ -295,11 +302,23 @@ per beat at one corner, still falling at the finest. End-diastolic *volume*
 agreed to 0.002 mL across the same four. Read at valve closure: 15.275 /
 15.286 / 15.292 / 15.295.
 
-**What moved.** Filling pressure only — every other figure in the fixture is
-unchanged. At this scene's reference condition, 7.212 → 7.203 mmHg. Across the
-heart-failure progression, which shares this solver, up to 1.4 mmHg at
-mid-progression under loading, all downward: the old reading had crept into the
-isovolumic upstroke. `docs/model-cards/heart-failure.md` carries its own note.
+**What moved, against `main`** — re-aggregated over every stored number in the
+fixture, not a field chosen by hand (`npm run fixture:cardiac -- --baseline
+<main's copy> --record`, saved in
+[`../model-evidence/cardiac-output-measurements.json`](../model-evidence/cardiac-output-measurements.json)):
+
+| | |
+| --- | --- |
+| fields compared | 32, across 30 cases |
+| fields that moved | **1** — `endDiastolicPressureMmHg` |
+| cases it moved in | **30 of 30**; 29 lower, **1 higher** |
+| largest change | **2.186 mmHg** at `preloadMax@0.18`, 17.653 → 15.467 |
+| at this scene's reference | 7.2120 → 7.2108, a change of 0.0011 |
+
+An earlier revision of this section said "up to 1.4 mmHg … all downward". Both
+halves were wrong: the figure came from an intermediate definition and a
+partial comparison, and one of the thirty cases rises.
+`docs/model-cards/heart-failure.md` carries its own note.
 
 `tests/cardiac-output-model.test.js` now requires the figure to agree between
 240 and 960 steps per beat, which the old definition fails by 3.5 mmHg. The
@@ -347,8 +366,10 @@ equation evaluated twice:
   discretisation rather than that slip: measured with a forward difference
   over the interval its flows act on, the residual with the loop wired
   correctly is 43.2 mL/s at 960 steps and 12.2 at 3840. **The figure first
-  recorded here, 85 mL/s, is not reproducible as stated** — a backward
-  difference gives 45.1 at 960.
+  recorded here, “85 mL/s”, is not reproducible as stated** — a backward
+  difference gives 45.1 at 960. (It is in quotation marks because
+  `tests/cardiac-output-claims.test.js` reads an unquoted figure as a claim:
+  a document may say a number was wrong, not state it.)
 
 **No figure this scene shows moved.** Every recorded reference value is
 bit-identical to what the previous revision produced; the change adds
