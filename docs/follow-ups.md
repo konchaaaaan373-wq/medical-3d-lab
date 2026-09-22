@@ -203,6 +203,13 @@ pinned model source（`docs/model-cards/revisions.json`）なので、関数を 
 ——`base-bc88fca.json` / `head-838ef44.json`（検査が書いた JSON そのまま）と、
 両者を突き合わせた `classification.json`。
 
+共有コンポーネントを触ったので **`verify:anatomy` も同条件で比べました**
+（production ビルド、同じ検査、1 本ずつ）。**3 件の問題が両方に、
+文中の数値まで同一で**出ます——開いたときと「表示を戻す」あとの画角の違い、
+tour の 1 点が指すべき構造、頭を反対側へ回しても残るラベル。
+`anatomy-base-bc88fca.txt` / `anatomy-head-c19f585.txt` に出力そのままを
+置いています。**解剖側の回帰も 0 件**です。
+
 **結果: base 53 件 / head 53 件。54 の finding 分類のうち 52 が完全に同一。**
 
 | 分類 | 件数 | 内容 |
