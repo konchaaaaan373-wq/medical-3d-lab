@@ -183,6 +183,60 @@ test('raising the rate does not by itself raise cardiac output', () => {
   );
 });
 
+test('no fall in output with rate at any sampled point — a characterization test', () => {
+  // **A characterization test of this build, not a rule of physiology.** It
+  // records what the model does today so that a change to it is noticed; a red
+  // run here is a prompt to re-read the model card, not evidence that the
+  // model has become wrong about hearts.
+  //
+  // The card used to assert the opposite — that a condition existed inside the
+  // range where raising the rate lowered output — and nothing had measured it
+  // (L-105). The first correction then overshot and called the model
+  // "monotonic", which a finite sweep cannot establish. So what is asserted
+  // here is bounded the way the card's wording is: no fall **at these points**,
+  // with nothing claimed about the conditions between them and nothing claimed
+  // about why.
+  //
+  // The wider survey the card quotes is `npm run sweep:cardiac-output -- --rate`
+  // (2600 states, 2400 adjacent pairs). This is the subset cheap enough to run
+  // on every `npm test`.
+  const axes = {
+    contractilityEesMmHgPerMl: [0.8, 1.4, 2.74, 4.0],
+    fillingVolumeMl: [540, 710, 980],
+    systemicResistanceMmHgSPerMl: [0.7, 1.1, 1.8],
+  };
+  let measured = 0;
+  for (const ees of axes.contractilityEesMmHgPerMl) {
+    for (const fillingVolumeMl of axes.fillingVolumeMl) {
+      for (const systemicResistanceMmHgSPerMl of axes.systemicResistanceMmHgSPerMl) {
+        let previous = null;
+        for (let heartRatePerMin = 50; heartRatePerMin <= 110; heartRatePerMin += 10) {
+          const result = solve({
+            contractilityEesMmHgPerMl: ees,
+            fillingVolumeMl,
+            systemicResistanceMmHgSPerMl,
+            heartRatePerMin,
+          });
+          assert.equal(result.status, 'valid');
+          const output = result.metrics.cardiacOutputLMin;
+          if (previous) {
+            assert.ok(
+              output > previous.output,
+              `Ees ${ees}, filling ${fillingVolumeMl}, SVR ${systemicResistanceMmHgSPerMl}: output ` +
+                `${previous.output.toFixed(3)} → ${output.toFixed(3)} from ${previous.rate} to ` +
+                `${heartRatePerMin}/min. If this is now a turn-over the model can reach, §14 of the ` +
+                'model card is wrong again and has to be rewritten.'
+            );
+            measured += 1;
+          }
+          previous = { rate: heartRatePerMin, output };
+        }
+      }
+    }
+  }
+  assert.ok(measured >= 200, `only ${measured} rate steps were compared`);
+});
+
 test('filling more raises filling pressure faster than it raises output', () => {
   // The end-diastolic pressure-volume relationship is exponential, so the
   // pressure cost of the last increment of filling is larger than the output

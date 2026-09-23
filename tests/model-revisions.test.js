@@ -158,3 +158,27 @@ test('repository: every scene with a stale review is presented as stale, not rev
       `${record.sceneId}: stale without saying what changed`);
   }
 });
+
+test('repository: a card that numbers its revisions is numbered up to the one it is pinned at', () => {
+  // Most cards do not number their history, and this does not ask them to.
+  // The three that do had drifted: `cardiac-output` pinned revision 9 under a
+  // newest heading of 7, and `heart-failure` pinned 6 under a heading of 5 —
+  // both because `revisions:adopt` ran again while one documented change was
+  // still being measured. A reader comparing the pin in
+  // `src/catalog/release.js` against the card finds no entry for it, which
+  // reads as a card that stopped being kept (L-108).
+  //
+  // A heading may carry a range ("Revisions 7–9") for one change adopted
+  // several times; what the rule asks is that the largest number a card names
+  // is the one the registry pins.
+  for (const entry of revisions) {
+    const headings = [...read(entry.card).matchAll(/^#+ *Revisions? ([0-9]+(?:\s*[–—-]\s*[0-9]+)?)/gm)];
+    if (headings.length === 0) continue;
+    const highest = Math.max(...headings.flatMap((m) => [...m[1].matchAll(/[0-9]+/g)].map((n) => Number(n[0]))));
+    assert.equal(
+      highest,
+      entry.cardRevision,
+      `${entry.sceneId}: the registry pins revision ${entry.cardRevision}, the card's numbering stops at ${highest}`
+    );
+  }
+});

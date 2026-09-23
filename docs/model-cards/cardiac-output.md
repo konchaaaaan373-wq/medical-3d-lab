@@ -63,7 +63,7 @@ multiplier on anything below them.
 | Intervention | Changes | Deliberately does not change |
 | --- | --- | --- |
 | More circulating filling | stressed volume, +120 mL | resistance, elastance, rate |
-| Dobutamine (representative) | elastance ×1.5, resistance ×0.85 | **rate**, filling |
+| Dobutamine, a schematic example (rate held) | elastance ×1.5 **and** resistance ×0.85, together | **rate**, filling |
 
 Both are computed from the preset's starting condition, so choosing the same
 one twice produces the same condition twice — and clearing one, or moving a
@@ -73,10 +73,17 @@ meaning changes silently across a sequence or a lesson. An effect that falls out
 verified range is refused rather than clamped — dobutamine from the reference
 heart is, which is why it is offered on the condition its evidence comes from.
 
-**Dobutamine holds the heart rate, and that is the finding rather than a
-simplification.** The one study read for this reports no change in heart rate
-over 2.5–10 µg/kg/min in thirteen patients with cardiomyopathic heart failure.
-The magnitudes are illustrative; see §9.
+**Dobutamine here is a compound change with the heart rate held.** Elastance and
+resistance move together and nothing varies one while holding the other, so the
+result cannot be attributed to either: it shows what a chosen pair of changes
+does, not what each contributes.
+
+**Holding the rate is this scene's condition, not a property of the drug.** The
+one study read for this reports no change in heart rate over 2.5–10 µg/kg/min in
+thirteen patients with cardiomyopathic heart failure; the manufacturer's
+labelling describes both an output rise without a marked increase in rate and a
+rise in rate with tachycardia among the adverse reactions. One study in one
+population is not a general rule. The magnitudes are illustrative; see §9.
 
 ## 5. Outputs
 
@@ -167,6 +174,25 @@ stenosis.
 - A warm start from a distant condition is rescaled to the requested conserved
   volume, which is a numerical initialisation and not a physiological
   redistribution.
+- **End-diastolic pressure was sampled where the step grid decided, not at an
+  event.** It was read at the sample of highest left-ventricular volume, and at
+  end-diastole the volume is on a plateau while the pressure is on the
+  isovolumic upstroke — so the figure depended on which sample happened to hold
+  the maximum. It did not converge: at Ees 2.74 / filling 980 mL / SVR 1.8 /
+  50 min⁻¹ it read 17.67, 16.25, 15.69 and 15.46 mmHg at 240, 480, 960 and 1920
+  steps per beat, while the **volume** agreed to 0.002 mL. It is now read at
+  mitral-valve closure, which is what end-diastole is, and the same four
+  resolutions give 15.275 to 15.295. Fixed 2026-09-22; found by the step study
+  in §16.
+- **One of the boundary's own checks measures nothing, and now says so.**
+  `systemicOhmRelative` compares mean flow × resistance with the mean systemic
+  gradient. The systemic flow *is* defined as (P_sa − P_sv) / R, and R is
+  constant, so the comparison is an identity: it returns 5×10⁻¹⁶ at the
+  reference and 1.5×10⁻¹⁵ at the corners, and it would do so however wrong the
+  integration was. It is kept as a wiring check — it would catch a resistance
+  read from the wrong parameter — and it is **not** evidence of numerical
+  accuracy. An external reviewer found this; the checks that do carry that
+  evidence are in §16.
 
 ## 12. What it must never be used for
 
@@ -178,10 +204,17 @@ is no right atrium in this model.
 
 And specifically of the interventions: reading either as a dose, combining
 them, reading the volume intervention as a fluid bolus, or reading the
-dobutamine response as what a person would do. **Noradrenaline is absent on
-purpose** — it cannot be represented as a resistance change alone, and a model
-with no venous capacitance would reduce it to "the drug that raises
-resistance", which is the misconception rather than the teaching.
+dobutamine response as what a person would do.
+
+**Noradrenaline is absent on purpose, and the reason is not that there is no
+venous compartment** — there is one, with a compliance. What is missing is a
+way for a *drug* to act on it: no venous tone, no change in unstressed volume,
+no redistribution between compartments. Without that, noradrenaline reduces to
+"the drug that raises resistance", and the observed response is not that: in
+septic shock with life-threatening hypotension, early noradrenaline has been
+reported to raise preload and cardiac output as well. Neither that study's
+population nor its effect sizes transfer here, and none is claimed; what it
+supports is refusing to publish the reduction.
 
 ## 13. Uncertainty
 
@@ -209,9 +242,41 @@ resistance", which is the misconception rather than the teaching.
   reflection and the aortic valve are all part of what the ventricle works
   against, and only the first of those exists here, held constant.
 - **A reader may take "raise the rate and output rises" from playing with the
-  rate control.** It is not true in general and it is not true everywhere in
-  this model; the tests deliberately refuse to encode it, and there is a
-  condition inside the declared range where raising the rate lowers the output.
+  rate control, and nothing this model has been observed to do will contradict
+  them.** Stroke volume does fall as the rate rises — each beat fills less —
+  but the product rose at every sampled pair.
+
+  What was measured, exactly (`npm run sweep:cardiac-output -- --rate`,
+  2026-09-22): Ees at 0.8, 1.2, 1.6, 2.0, 2.4, 2.74, 3.2, 4.0 mmHg/mL; filling
+  at 540, 650, 710, 830, 980 mL; SVR at 0.7, 1.0, 1.1, 1.4, 1.8 mmHg·s/mL;
+  rate from 50 to 110/min in steps of 5. The full product of the four axes:
+  **2600 states solved, all valid, 2400 adjacent pairs in rate compared at
+  fixed everything else.** A fall counted at more than 1×10⁻⁶ L/min. **No fall
+  was found.** The smallest change seen was **+0.023 L/min**, at Ees 0.8,
+  filling 540 mL, SVR 1.8, going from 105 to 110/min.
+
+  **That is a finite grid, and it is all it is.** It says nothing about the
+  conditions between those points, and the controls are continuous within their
+  steps. This section does **not** claim the model is monotonic in rate over
+  its whole domain.
+
+  **Why is not established.** The limitation in §13 — systole is a fixed
+  fraction of the cycle, so filling time is lost more slowly here than in a
+  person — is the obvious candidate, and it is a **hypothesis this repository
+  has not tested**: doing so needs the time model changed and the two compared,
+  which has not been done. Whether a turn-over exists outside the declared
+  range is likewise **unmeasured**; an earlier version of this section asserted
+  one inside it, from the same kind of reasoning, and it was not there.
+
+  The tests refuse to encode "faster is more" as a fact about hearts. What they
+  pin is that stroke volume falls, that output is the product rather than the
+  rate, and — as a **characterization test of the current build, not a rule of
+  physiology** — that the sampled grid still contains no fall, so that a change
+  to the time model is noticed rather than absorbed.
+
+  An earlier version of this section claimed the opposite — that a condition
+  inside the range existed where raising the rate lowered output. Nothing had
+  measured it, and measuring it found none (L-105).
 - **Two conditions shown side by side look like a before and an after.** They
   are two settled states. The time between them on screen is the time the
   browser took.
@@ -223,6 +288,135 @@ resistance", which is the misconception rather than the teaching.
 ## 15. Review status
 
 **Catalog status:** `alpha`
+
+### Revisions 7–9 — end-diastole is an event, not the tallest sample
+
+*One change, three adoptions: `npm run revisions:adopt` ran again each time the
+model files moved while this was being measured, so the registry pins 9. The
+heading carries the range rather than the first of them, because a card whose
+newest heading is lower than the revision it is pinned at reads as a card that
+stopped being updated.*
+
+**A displayed number changed.** End-diastolic pressure is read at mitral-valve
+closure instead of at the sample where left-ventricular volume is highest.
+
+The old definition is ill-conditioned exactly where it is used. At end-diastole
+dV/dt → 0 while dP/dt is large, so the sample that happens to hold the maximum
+volume decides the pressure, and the answer moves with the step size without
+converging: 17.67 / 16.25 / 15.69 / 15.46 mmHg at 240 / 480 / 960 / 1920 steps
+per beat at one corner, still falling at the finest. End-diastolic *volume*
+agreed to 0.002 mL across the same four. Read at valve closure: 15.275 /
+15.286 / 15.292 / 15.295.
+
+**What moved, against `main`** — re-aggregated over every stored number in the
+fixture, not a field chosen by hand (`npm run fixture:cardiac -- --baseline
+<main's copy> --record`, saved in
+[`../model-evidence/cardiac-output-measurements.json`](../model-evidence/cardiac-output-measurements.json)):
+
+| | |
+| --- | --- |
+| fields compared | 32, across 30 cases |
+| fields that moved | **1** — `endDiastolicPressureMmHg` |
+| cases it moved in | **30 of 30**; 29 lower, **1 higher** |
+| largest change | **2.186 mmHg** at `preloadMax@0.18`, 17.653 → 15.467 |
+| at this scene's reference | 7.2120 → 7.2108, a change of 0.0011 |
+
+An earlier revision of this section said "up to 1.4 mmHg … all downward". Both
+halves were wrong: the figure came from an intermediate definition and a
+partial comparison, and one of the thirty cases rises.
+`docs/model-cards/heart-failure.md` carries its own note.
+
+`tests/cardiac-output-model.test.js` now requires the figure to agree between
+240 and 960 steps per beat, which the old definition fails by 3.5 mmHg. The
+fixture that pins the shared solver has a recorder,
+`scripts/record-cardiac-fixture.mjs`, so that accepting a deliberate change is
+a command with a printed diff rather than thirty rows of hand-edited JSON.
+
+Found by the step study an external reviewer asked for. Nothing in the scene's
+own tests could have found it: they compared the model against itself at one
+resolution.
+
+### Revision 6 — two checks that measure something, and one that never did
+
+An external review asked what the boundary's checks actually establish. One of
+them establishes nothing: `systemicOhmRelative` is an identity (§11), returning
+machine epsilon regardless of how the integration went. It stays as a wiring
+check and is no longer counted as numerical evidence.
+
+Two checks were added in its place, both about the loop rather than about one
+equation evaluated twice:
+
+- **Per-compartment balance over the beat.** For each of the seven
+  compartments, integrated inflow minus integrated outflow against its own
+  volume change. Worst over the declared domain: 0.0162 mL (left ventricle, Ees
+  0.8 / filling 980 mL / SVR 1.1 / 50 min⁻¹), tolerance 0.5 mL.
+- **The same over a twenty-fourth of the beat.** This is the one that catches a
+  mis-wired loop, which the whole-beat form cannot: in a series circulation at
+  steady state every flow integrates to the same stroke volume, and all three
+  mis-wirings below leave the whole-beat residual at 0.007 mL. Correctly
+  wired, the worst residual over the 865-condition sweep is **0.5289 mL**;
+  mis-wired it is **18.32 / 5.87 / 4.91 mL** for three different mistakes, all
+  refused. The tolerance, **1.6 mL**, is the geometric midpoint of those two
+  populations — 3.0× above the worst honest residual and 3.1× below the
+  smallest error detected.
+
+  The window endpoints were **one step out** until 2026-09-22: `walkBeat`
+  visits before integrating, so a window closed with the volumes its last
+  visit was given compared an integral over one interval with a volume
+  difference over another. Corrected, and the ledger that does the arithmetic
+  is driven directly with known inputs by
+  `tests/cardiac-output-ledger.test.js`. The slip was real and was not the
+  dominant term: the reference residual moved 0.2937 → 0.3025 mL.
+
+  An instantaneous form was tried before the windowed one and abandoned, for
+  discretisation rather than that slip: measured with a forward difference
+  over the interval its flows act on, the residual with the loop wired
+  correctly is 43.2 mL/s at 960 steps and 12.2 at 3840. **The figure first
+  recorded here, “85 mL/s”, is not reproducible as stated** — a backward
+  difference gives 45.1 at 960. (It is in quotation marks because
+  `tests/cardiac-output-claims.test.js` reads an unquoted figure as a claim:
+  a document may say a number was wrong, not state it.)
+
+**No figure this scene shows moved.** Every recorded reference value is
+bit-identical to what the previous revision produced; the change adds
+measurement and removes nothing. The publication decision was re-pinned to this
+revision on that basis, and the gate closed in between — which is the mechanism
+working, not a problem: it cannot tell a new diagnostic from a changed model,
+so it stops and asks.
+
+### Correction to revision 5 (2026-09-22) — §14 asserted a condition that does not exist
+
+§14 warned that a reader might take "faster is more" from the rate control, and
+then said the model would contradict them somewhere inside the declared range.
+**No such point was found.** The claim was written from the shape of the
+physics — each beat fills less, so at some rate the product must turn over —
+and nothing measured whether that point falls inside the range this model
+solves.
+
+`npm run sweep:cardiac-output -- --rate` now measures it and prints what it
+measured: 2600 states over the full product of four axes, 2400 adjacent pairs
+in rate, no fall above 1×10⁻⁶ L/min, smallest change +0.023 L/min. §14 quotes
+those numbers and says in its own words that a finite grid is a finite grid.
+
+**A first attempt at this correction overshot** and wrote that output "is
+monotonically increasing in rate", which is a claim about the whole continuous
+domain that a sweep cannot support, and asserted §13's fixed-fraction systole
+as the cause and a turn-over outside the range as a fact. All three are now
+marked as what they are: a sampled result, an untested hypothesis, and an
+unmeasured question. The reviewer who caught this is credited in
+`docs/reviews/cardiac-output-external-review-request.md`.
+
+`tests/cardiac-output-physiology.test.js` pins the sampled result as a
+characterization test of the current build, and
+`tests/cardiac-output-claims.test.js` pins the card's own wording, so that the
+retracted sentence cannot come back without a test going red.
+
+**No model source changed**, so the registry revision does not move and the
+publication decision stays pinned to revision 5 — this is a correction to what
+the card said about a model that is unchanged, not a change to the model.
+
+Found while writing an external-review request that quoted the card back at
+itself and checked the quote. L-105.
 
 ### Revision 5 — the hidden undo target, and the beat that jumped
 
@@ -304,8 +498,32 @@ to it.
 - **Model integrity:** `node --test tests/cardiac-output-model.test.js` — the
   definitions, the units both ways, refusal outside the range, route
   independence, and the whole declared domain settling into a periodic beat.
-- **The range itself:** `node scripts/sweep-cardiac-output.mjs`, and
-  `--probe` to see where it gives way outside.
+- **Every compartment's books balance, twice.** Over the whole beat, what
+  crossed each compartment's two boundaries equals what its volume did: worst
+  0.0162 mL over the declared domain, against a 0.5 mL tolerance. And over a
+  twenty-fourth of the beat, which is the check that catches a **mis-wired
+  loop** — over a whole beat in a series circulation every flow integrates to
+  the same stroke volume, so connecting a compartment to the wrong neighbour
+  changes its beat total by thousandths of a millilitre and passes. Within a
+  window it does not: 0.29 mL wired correctly, 18.3 mL with the systemic veins
+  connected to the pulmonic valve, and the solve refused.
+- **What the claims say, as opposed to what the model does:**
+  `node --test tests/cardiac-output-claims.test.js` — a string-level check on
+  this card, because a sentence it does not support is invisible to every
+  numeric test in this list. It exists because §14 carried one for four days
+  (L-105).
+- **Does the step size change the answer:** `npm run sweep:cardiac-output -- --steps`
+  — 81 conditions solved to steady state **independently** at 240, 480 and 960
+  steps per beat, compared against the finest on absolute *and* relative
+  tolerances together. Checking a 240-step solution with a 960-step closing
+  beat only establishes that the 240-step state is periodic, which is a
+  different question; an external reviewer pointed that out, and asking this
+  one found the end-diastolic pressure defect in §11. As of 2026-09-22 every
+  other figure agrees to better than 0.03%: cardiac output 4.6×10⁻⁴ L/min,
+  stroke volume 5.9×10⁻³ mL, mean arterial pressure 1.4×10⁻² mmHg.
+- **The range itself:** `npm run sweep:cardiac-output`, `--probe` to see where
+  it gives way outside, and `--rate` for the rate axis walked and reported as
+  the finite grid it is.
 - **Interventions and the lesson:** `node --test tests/cardiac-output-interventions.test.js
   tests/cardiac-output-learning.test.js` — inputs only, no accumulation, refusal
   rather than clamping, the two modes' state, and every stored answer re-derived.

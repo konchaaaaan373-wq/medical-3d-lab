@@ -137,7 +137,11 @@ export function sampleHemodynamics(progress, options = {}) {
     meanPulmonaryArterialPressureMmHg: cycle.meanPulmonaryArterialPressure,
     ejectionStartPhase: cycle.ejectionStartPhase,
     ejectionEndPhase: cycle.ejectionEndPhase,
+    // The phase the ventricle is **largest** at, which is what poses the model.
+    // It is not the instant the filling pressure is read at — that is mitral
+    // closure, `mitralClosurePhase`, and the two are deliberately different.
     endDiastolePhase: cycle.edvPhase,
+    mitralClosurePhase: cycle.endDiastole?.phase ?? null,
     endSystolePhase: cycle.esvPhase,
 
     // --- mechanical parameters, for the read-out and the pressure-volume plot

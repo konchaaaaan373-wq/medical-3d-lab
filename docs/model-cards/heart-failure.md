@@ -82,6 +82,48 @@ The scene predates the current versioned Clinical Review standard. This model ca
 
 ## 10. Revision history
 
+### Revisions 5–6 — the filling pressure this scene shows moved, and why
+
+*One change, two adoptions, for the reason the cardiac-output card gives at the
+same revision: the registry pins 6.*
+
+**A displayed number changed, by up to 2.186 mmHg.** End-diastolic pressure is
+now read at mitral-valve closure instead of at the sample where
+left-ventricular volume is highest.
+
+This scene did not ask for the change and is not the reason for it: the defect
+was found by a step-size study run against `cardiac-output`, which shares this
+solver. But it is this scene's number too, and raised filling pressure is what
+this scene is about, so it is recorded here rather than only there.
+
+The old definition does not converge. At end-diastole the ventricle's volume is
+on a plateau while its pressure is on the isovolumic upstroke, so which sample
+holds the maximum decides the figure: 17.67 / 16.25 / 15.69 / 15.46 mmHg at
+240 / 480 / 960 / 1920 steps per beat at one condition, still moving at the
+finest, while the **volume** agreed to 0.002 mL throughout. Read at valve
+closure the same four give 15.275 to 15.295.
+
+**What this means for the progression**, aggregated over every stored number
+rather than a field read by eye (`npm run fixture:cardiac -- --baseline
+<main's copy> --record`): of **32 fields across 30 cases, one moved** —
+`endDiastolicPressureMmHg`, in **all 30**, 29 of them lower and **one higher**.
+The largest change is **2.186 mmHg**, at `preloadMax` / progress 0.18, from
+17.653 to 15.467. At progress 0 under default loading it is 0.001 mmHg.
+
+An earlier note here said "up to 1.4 mmHg … always downward". Both halves were
+wrong — the figure came from an intermediate definition, and one case rises.
+The congestion the scene draws is unchanged, and the stage wording, which
+describes filling pressure rising with the progression rather than quoting a
+value, is unchanged and still accurate.
+
+The direction is the one to expect for the twenty-nine: the old reading had
+crept into the start of contraction, so it was high.
+
+`tests/cardiac-output-model.test.js` now requires the figure to agree between
+240 and 960 steps per beat. `scripts/record-cardiac-fixture.mjs` re-records
+this scene's fixture and prints what moved, so the next deliberate change to
+the shared solver is accepted with its diff visible.
+
 ### Revision 4 — the solver says whether it settled
 
 **No claim in this card changed, and no number in this model moved.** Two

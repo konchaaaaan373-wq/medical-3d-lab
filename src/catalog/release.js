@@ -667,7 +667,38 @@ export const BETA_PUBLICATION_DECISIONS = Object.freeze([
     record: 'docs/beta-publication/cardiac-output.md',
     /** Procedural geometry: no external asset, so nothing to pin but the scene. */
     assetRevisions: Object.freeze({}),
-    sceneRevision: Object.freeze({ cardRevision: 5, modelDigest: '9482474ed50d1090' }),
+    // Re-pinned twice on 2026-09-22, both times after the gate closed on the
+    // old pin — which is the mechanism working: it cannot tell a new
+    // measurement from a changed model, so it stops and asks.
+    //
+    // Revision 6 added diagnostics only (a per-compartment flow balance, and
+    // the same balance over a twenty-fourth of the beat, which is what catches
+    // a mis-wired loop). Every figure was bit-identical.
+    //
+    // **Revisions 7–9 changed a displayed number**, and that is why this
+    // comment is longer than the last one. End-diastolic pressure is now read
+    // at mitral-valve closure instead of at the sample of highest volume. The
+    // old definition was ill-conditioned where it is used — volume on a
+    // plateau, pressure on the isovolumic upstroke — and did not converge:
+    // 17.67 / 16.25 / 15.69 / 15.46 mmHg at 240 / 480 / 960 / 1920 steps per
+    // beat at one corner, still moving. Read at closure the same four give
+    // 15.275 to 15.295.
+    //
+    // What moved, re-aggregated over every number the shared fixture stores
+    // rather than a field picked by hand: one field of 32, in all 30 cases,
+    // 29 of them lower and **one higher**; largest 2.186 mmHg. At this scene's
+    // own reference condition, 7.2120 → 7.2108. The figures are in
+    // `docs/model-evidence/cardiac-output-measurements.json`, which
+    // `tests/cardiac-output-claims.test.js` holds the documents to.
+    //
+    // An earlier version of this comment said "up to 1.4 mmHg … nothing else
+    // moved", from an intermediate definition and a partial comparison. The
+    // count is right; the size was not, and one case rises.
+    //
+    // This is a correction to a figure a reader is shown, not a presentation
+    // change, so the decision record says what moved and by how much rather
+    // than reporting a pin that happened to pass.
+    sceneRevision: Object.freeze({ cardRevision: 9, modelDigest: 'f635134f0823ca1c' }),
     scope: Object.freeze({
       structures: Object.freeze([
         'the left ventricle, built from the solved end-diastolic and end-systolic volumes rather than posed',

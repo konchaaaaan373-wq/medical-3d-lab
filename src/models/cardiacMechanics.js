@@ -262,6 +262,37 @@ function rescaleTo(volumes, total) {
 }
 
 /** Walks one more beat, sampling it evenly and summarising it. */
+/**
+ * Which mitral closure in a beat is end-diastole.
+ *
+ * End-diastole is the closure that ends the filling **ejection follows**, so
+ * it is the one the shortest way *backwards* from the start of ejection. The
+ * direction is the whole rule: a beat can close the mitral valve, re-open it
+ * on an atrial bump and close it again, and the one that matters is the last
+ * before ejection rather than the nearest in either direction.
+ *
+ * Measured cyclically, because filling straddles phase 0 in every beat this
+ * model settles into — the reference closes at 0.92 and ejects from 0.06 — so
+ * a rule that could not wrap would pick the wrong one on every beat.
+ *
+ * Exported because the circulation the scene solves has exactly one closure
+ * per beat, which means no run of it can tell a correct rule from a wrong one.
+ * `tests/cardiac-output-end-diastole.test.js` drives it with lists this model
+ * does not produce.
+ *
+ * @param {ReadonlyArray<{phase:number}>} closures in the order they were found
+ * @param {number} ejectionStartPhase
+ * @returns {object|null} the chosen closure, or null when there is none
+ */
+export function selectEndDiastole(closures, ejectionStartPhase) {
+  if (!closures || closures.length === 0) return null;
+  const back = (phase) => {
+    const d = ejectionStartPhase - phase;
+    return d - Math.floor(d);
+  };
+  return closures.reduce((best, closure) => (back(closure.phase) < back(best.phase) ? closure : best));
+}
+
 function recordCycle(volumes, p, cycleLength, dt, stepsPerBeat, samples, scratch) {
   const every = Math.max(1, Math.round(stepsPerBeat / samples));
   const trace = { phase: [], lvVolume: [], lvPressure: [], aorticPressure: [], atrialPressure: [], pulmonaryVenousPressure: [] };
@@ -275,7 +306,16 @@ function recordCycle(volumes, p, cycleLength, dt, stepsPerBeat, samples, scratch
   let pulmonaryVenousIntegral = 0;
   let pulmonaryArterialIntegral = 0;
   let systemicVenousIntegral = 0;
-  let endDiastolicPressure = 0;
+  /**
+   * Every downward crossing of the atrio-ventricular gradient in this beat,
+   * localised between samples. Which one is end-diastole is decided after the
+   * walk, because it is defined relative to ejection.
+   */
+  const mitralClosures = [];
+  let previousGradient = null;
+  let previousPhase = 0;
+  let previousLvPressure = 0;
+  let previousLvVolume = 0;
   let peakSystolic = -Infinity;
   let aorticPeak = -Infinity;
   let aorticTrough = Infinity;
@@ -291,9 +331,40 @@ function recordCycle(volumes, p, cycleLength, dt, stepsPerBeat, samples, scratch
 
     if (volumes[LV] > edv) {
       edv = volumes[LV];
-      // End-diastolic pressure is read at the moment of maximum filling.
-      endDiastolicPressure = pressures.lv;
     }
+    // Mitral closure is collected as an **event**, not as a running sample.
+    //
+    // The valve is an ideal one-way resistance, so it is open exactly while
+    // the atrium is above the ventricle: `q.mitral > 0` iff `P_la > P_lv`. A
+    // closure is therefore the downward zero crossing of that gradient, and
+    // the crossing has a time between two samples rather than at one of them.
+    //
+    // This replaces "the pressure at the last sample with positive mitral
+    // flow", which an external reviewer pointed out is not an event: it does
+    // not see the transition, it cannot say which closure it found when there
+    // is more than one, and it silently reports the loop's initial value when
+    // there is none. Which of those a beat produced now comes out of the same
+    // detection as the pressure.
+    const gradient = pressures.la - pressures.lv;
+    if (previousGradient !== null && previousGradient > 0 && gradient <= 0) {
+      // Linear in the gradient, which is what is crossing zero. The pressure
+      // and the volume are interpolated over the same fraction of the same
+      // interval, so the three belong to one instant.
+      const span = previousGradient - gradient;
+      const u = span > 0 ? previousGradient / span : 0;
+      mitralClosures.push({
+        phase: previousPhase + u * (phase - previousPhase),
+        pressure: previousLvPressure + u * (pressures.lv - previousLvPressure),
+        volume: previousLvVolume + u * (volumes[LV] - previousLvVolume),
+        fraction: u,
+        index: i,
+      });
+    }
+    previousGradient = gradient;
+    previousPhase = phase;
+    previousLvPressure = pressures.lv;
+    previousLvVolume = volumes[LV];
+
     if (volumes[LV] < esv) {
       esv = volumes[LV];
       esvPhase = phase;
@@ -339,9 +410,47 @@ function recordCycle(volumes, p, cycleLength, dt, stepsPerBeat, samples, scratch
     }
   }
 
+  /**
+   * Which closure is end-diastole, and what to do when there is not one.
+   *
+   * End-diastole is the closure that **ends the filling ejection follows**, so
+   * it is the last one at or before the start of ejection, measured cyclically
+   * so that a beat whose filling straddles phase 0 is handled the same as one
+   * whose does not. With no ejection to measure against — a beat that never
+   * opened the aortic valve — the rule has nothing to anchor to.
+   *
+   * A beat with no closure at all, or with none identifiable, returns `null`
+   * rather than the loop's initial value. "No event was found" and "the
+   * pressure was 0 mmHg" are the same number and not the same fact, and the
+   * boundary in `cardiacOutput.js` refuses a beat whose end-diastole it cannot
+   * locate instead of showing one.
+   */
+  const endDiastole = selectEndDiastole(mitralClosures, ejectionStartPhase ?? 0);
+  const endDiastolicPressure = endDiastole ? endDiastole.pressure : null;
+
   const strokeVolume = edv - esv;
   return {
     trace,
+    /**
+     * The located event, so that a caller reading the pressure can also ask
+     * when it was, what the volume was at that same instant, how many
+     * candidates the beat had, and whether one was found at all — rather than
+     * pairing this pressure with a volume measured somewhere else.
+     *
+     * `volume` is **not** `edv`: end-diastolic volume is the maximum over the
+     * beat, which is a well-conditioned extremum, and the two are deliberately
+     * different instants a fraction of a millilitre apart. Stroke volume and
+     * ejection fraction are built from the extremum; the filling pressure is
+     * read at the event.
+     */
+    endDiastole: endDiastole
+      ? {
+          phase: endDiastole.phase,
+          pressure: endDiastole.pressure,
+          volume: endDiastole.volume,
+          closures: mitralClosures.length,
+        }
+      : null,
     ejectionStartPhase: ejectionStartPhase ?? 0,
     ejectionEndPhase: ejectionEndPhase ?? 0.34,
     edv,
