@@ -34,6 +34,7 @@ Last updated: 2026-09-06（現在地の数値は §3 参照）
 | モデルカードの改訂とレビューの陳腐化検知 | [`model-cards/README.md`](model-cards/README.md) |
 | **いま何が公開されていて、何がロックされているか** | [`beta-release.md`](beta-release.md) |
 | 公開βを「解剖だけ」にした判断と、それが何を上書きし何を維持したか | [`architecture/adr-2026-09-08-anatomy-only-beta.md`](architecture/adr-2026-09-08-anatomy-only-beta.md) |
+| その「解剖だけ」を外した判断と、外さなかったもの | [`architecture/adr-2026-09-22-mechanism-scene-in-beta.md`](architecture/adr-2026-09-22-mechanism-scene-in-beta.md) |
 | UI が読む「いま公開しているモデル」の一覧と契約 | [`../src/catalog/publicManifest.js`](../src/catalog/publicManifest.js)（コードが契約） |
 | 公開までのゲートと実装順（進捗台帳） | [`public-release-roadmap.md`](public-release-roadmap.md) |
 | マージ済みだが未確認・未決定・先送りの個別事項（残課題台帳） | [`follow-ups.md`](follow-ups.md) |
@@ -81,7 +82,7 @@ Last updated: 2026-09-06（現在地の数値は §3 参照）
 | --- | --- |
 | シーン数 | 27（production 2 / reviewed 3 / alpha 8 / prototype 14） |
 | カタログ | 11 系統・22 臓器（未カバー臓器は explorer 上で backlog として可視） |
-| 公開モデル | **β 公開は 1 件（`brain-anatomy`）**。公開βは「脳と心臓の解剖」に限定し、病態モデルは開発を続けたうえで出していません（[ADR](architecture/adr-2026-09-08-anatomy-only-beta.md)）。カタログ上「公開可能な水準にある」のは 13 件（うち病態 12）で、これは公開状態とは別の軸です |
+| 公開モデル | **件数はここに書きません**——この欄は長く「β 公開は 1 件（`brain-anatomy`）」と書いており、間違っていました。数えるのは `npm run verify:site`（`publishes N`）、公開一覧は [`src/catalog/publicManifest.js`](../src/catalog/publicManifest.js) です。公開しているのは解剖シーンと、名指しで加えた機序シーン（[ADR 2026-09-08](architecture/adr-2026-09-08-anatomy-only-beta.md)／[ADR 2026-09-22](architecture/adr-2026-09-22-mechanism-scene-in-beta.md)）。カタログ上「公開可能な水準にある」ことは、公開状態とは別の軸です |
 | 医学モデル層（`src/models/`） | asthma / cardiacMechanics / circulation / copd / coronaryTerritories / hepatorenal / myocardialIschemia / pneumonia / portalHypertension / pulmonaryEdema / pulmonaryEmbolism / renalFiltration の 12 本 + 共通ユーティリティ |
 | 主張の種類（model profile） | 非 prototype のシーンすべてが `src/catalog/modelProfiles.js` に登録済み（`tests/model-profiles.test.js` が数を固定）。全シーンが representative で、診断・治療選択・用量選択を禁止用途に明示 |
 | コード規模 | src 配下およそ 160 ファイル・3.2 万行。依存は `three` のみ |

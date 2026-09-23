@@ -7,30 +7,47 @@
  * developed — it is simply answered with "to be updated" instead of being
  * opened.
  *
- * ## Anatomy, and only anatomy
+ * ## Anatomy, and the mechanism scenes named one at a time
  *
- * The beta is the **3D anatomy of the brain and the heart**, and nothing else.
- * Looking at an organ and being able to name what you are looking at is the
- * product being published; the disease and physiology models keep being built
- * behind it.
+ * The beta began as the **3D anatomy** of a few organs and nothing else, and
+ * that is still what most of it is. Looking at an organ and being able to name
+ * what you are looking at is a product in its own right.
  *
- * This replaces the earlier rule, which opened every non-prototype scene under
- * the two organs. That rule reasoned: the heart has no anatomy-grade scene, so
- * opening the heart means opening heart failure, low cardiac output and
- * myocardial ischaemia, numbers included. The decision now is the other way
- * round — **an unfinished heart anatomy is not published as a disease model
- * instead.** If `heart-anatomy` is not registered, or is registered and does
- * not pass, the beta opens one organ and says so. It never substitutes.
+ * **On 2026-09-22 the repository owner decided to stop making it the only
+ * one.** The rule it replaced was "mechanism level `none`, read off the model
+ * profile", and its reason was sound: a disease model is not an anatomy model
+ * wearing the name, and while the heart had no atlas the pressure was to
+ * publish heart failure *instead* of one. That substitution is still refused —
+ * what changed is that a mechanism scene may now be published **in addition**,
+ * named here one at a time, with its own decision record.
+ *
+ * So there are two candidate lists, and they do not share a claim rule:
+ *
+ * - `BETA_ANATOMY_CANDIDATES` keeps the original rule exactly. An entry there
+ *   must claim structure and nothing more, and `anatomyClaimProblems` is
+ *   unchanged, so restoring the old substitution still fails loudly.
+ * - `BETA_MECHANISM_CANDIDATES` is the new one. It allows a mechanism claim and
+ *   nothing else about the gate is relaxed: no patient-specific model, no
+ *   clinical intended use, and — the rule that matters most — **a scene that
+ *   explains a mechanism to a patient still needs a current clinical review**,
+ *   exactly as the next release demands. What may be published without one is a
+ *   scene addressed to a learner, badged with the review state it actually has.
+ *
+ * `docs/architecture/adr-2026-09-22-mechanism-scene-in-beta.md` records the
+ * decision, what it knowingly accepts, and who took it.
  *
  * ## Naming a scene is not opening it
  *
- * `BETA_ANATOMY_CANDIDATES` is a list of *candidates*. Matching a string there
- * grants nothing. A candidate opens only when every one of
+ * Both lists are lists of *candidates*. Matching a string in either grants
+ * nothing. A candidate opens only when every one of
  * `betaPublicationProblems()` is empty:
  *
  *  1. it is registered in the catalogue, with a status the taxonomy knows;
- *  2. it makes an anatomy claim and no pathophysiological or clinical one —
- *     read off the model profile, not off the scene's name;
+ *  2. it makes the claim its list allows and no clinical one — read off the
+ *     model profile, not off the scene's name. For an anatomy candidate that is
+ *     structure and nothing more; for a mechanism candidate it is anything
+ *     short of a patient-specific or clinical claim, and a patient-facing one
+ *     needs a current review;
  *  3. every asset its profile names passes the asset release gate (licence,
  *     obligations, hashes, QA), and it rests on no *candidate* asset — a file
  *     still under examination has no licence decision, no discharged
@@ -94,6 +111,7 @@ import { sceneRevisionPin } from './modelRevisions.js';
 import { PATIENT_GUIDE_SCENE_IDS } from '../data/patientGuideIndex.js';
 import {
   CLINICAL_INTENDED_USES,
+  INTENDED_USE,
   MECHANISM_LEVEL,
   PATIENT_SPECIFIC_PERSONALIZATION,
   modelProfileForScene,
@@ -180,6 +198,38 @@ export const BETA_ANATOMY_CANDIDATES = Object.freeze([
   'lung-anatomy',
   'liver-anatomy',
 ]);
+
+/**
+ * The mechanism scenes the beta opens, named one at a time.
+ *
+ * Empty until 2026-09-22, when the repository owner decided that the beta
+ * should stop being anatomy-only and asked for `cardiac-output` specifically.
+ * It is a separate list rather than a wider rule because "any mechanism scene
+ * whose records are in order" would open a dozen of them on one decision, and
+ * the decision was about one.
+ *
+ * `cardiac-output` is what this list was opened for. What makes it the scene
+ * this was possible with, rather than a general loosening:
+ *
+ * - it declares `general-education` and `medical-education`, and **not**
+ *   `patient-explanation`, so the rule that a patient-facing mechanism needs a
+ *   current clinical review does not apply to it and is not weakened for it;
+ * - `personalization: representative` — it is a model of a circulation, not of
+ *   anybody's;
+ * - it prohibits diagnosis, treatment-selection, dose-selection and prognosis
+ *   in its own profile, and the scope panel says so on screen;
+ * - its boundary refuses an input outside the range it was swept over and
+ *   reports **no figures at all** for a beat that did not settle, so the thing
+ *   a reader is shown is never an unconverged number wearing units.
+ *
+ * **It has no clinical review, and this list does not pretend otherwise.**
+ * The registry records it as `pending`, the scene carries its `alpha` badge and
+ * a "医学レビュー：未完了" chip, and the publication decision below says in its
+ * own words that no clinician has read the model. That is the same footing the
+ * brain atlas is published on, extended — knowingly, by the owner — to a scene
+ * that solves a mechanism. See the ADR.
+ */
+export const BETA_MECHANISM_CANDIDATES = Object.freeze(['cardiac-output']);
 
 /**
  * The next release **adds to** this one rather than replacing it.
@@ -416,12 +466,19 @@ export const BETA_PUBLICATION_DECISIONS = Object.freeze([
     sceneRevision: Object.freeze({ cardRevision: 26, modelDigest: '20ae31ab7bafd24f' }),
     scope: Object.freeze({
       // The authored tour in `SCENE_POINTS`, not whatever a run measured: four
-      // named parts at four recorded points, crossing both adopted files.
+      // named parts at four recorded points, crossing both adopted files —
+      // three great vessels from the vasculature file and a chamber from the
+      // heart one, which the drive prints as their places in the hierarchy.
+      //
+      // Re-measured 2026-09-22, with the brain's and for the same reason: the
+      // opening framing stopped being discarded (F-133), so the model moved.
+      // The old fourth point named the left ventricle where it was authored
+      // for the artery that runs across it.
       structures: Object.freeze([
-        'Right atrium',
-        'Right ventricle',
-        'Left anterior descending artery',
+        'Superior vena cava',
+        'Arch of the aorta',
         'Ascending aorta',
+        'Left atrium',
       ]),
       views: Object.freeze([
         'six authored viewpoints offered and one applied by the drive: anterior, posterior, left and right lateral, from the base, from the apex',
@@ -492,11 +549,18 @@ export const BETA_PUBLICATION_DECISIONS = Object.freeze([
       // first run. Three of the four points were wrong and two of those had
       // come to name the same structure, so the scope below would have
       // claimed four distinct parts that a run could only show three of.
+      // Re-measured 2026-09-22, the third time. Same cause as the second and
+      // the opposite direction: the scene had gone back to opening at a
+      // framing it abandons the moment anything re-frames it (F-133), and
+      // fixing that moved the model again — this time towards filling the
+      // frame. The fourth point had been naming "Orbital gyri" where it is
+      // authored for its neighbour, under both framings, because it was last
+      // measured three framing changes ago.
       structures: Object.freeze([
-        'Precentral gyrus',
+        'Middle frontal gyrus',
+        'Superior parietal lobule',
+        'Inferior frontal sulcus',
         'Supramarginal gyrus',
-        'Angular gyrus',
-        'Orbital part of inferior frontal gyrus',
       ]),
       views: Object.freeze([
         'left-lateral (applied by the interaction drive)',
@@ -579,6 +643,76 @@ export const BETA_PUBLICATION_DECISIONS = Object.freeze([
       'the posterior and inferior viewpoints were rendered and read by an engineer; no anatomist has confirmed what they show',
       'no reader with colour-vision deficiency has used this scene — the palette clears floors measured against a simulation of dichromacy, which is a model of what someone sees rather than a report from one, and those floors are a deliberate partial measure (ΔE 4-5) chosen over higher ones that cost the central sulcus',
       'inside one colour family the structures are separated by lightness and saturation, which dichromacy compresses: that separation is not claimed for those readers, and anomalous trichromacy at partial severity and monochromacy are unmeasured',
+    ]),
+  }),
+
+  /**
+   * The first mechanism scene the beta opens, and the first decision that has
+   * to say so in its own words.
+   *
+   * The role is `engineering`, which here means what it has always meant: the
+   * software puts on screen what the model solved, and every surface reads the
+   * same solved beat. It is **not** a statement that the physiology is right
+   * for teaching, and the record says so at the top rather than at the bottom.
+   */
+  Object.freeze({
+    sceneId: 'cardiac-output',
+    decidedAt: '2026-09-22',
+    decidedBy: Object.freeze({
+      name:
+        "Repository owner's decision of 2026-09-22 to publish this scene and to stop the beta being anatomy-only; " +
+        'carried out and recorded by Claude Code (AI engineering agent)',
+      role: 'engineering',
+    }),
+    record: 'docs/beta-publication/cardiac-output.md',
+    /** Procedural geometry: no external asset, so nothing to pin but the scene. */
+    assetRevisions: Object.freeze({}),
+    sceneRevision: Object.freeze({ cardRevision: 5, modelDigest: '9482474ed50d1090' }),
+    scope: Object.freeze({
+      structures: Object.freeze([
+        'the left ventricle, built from the solved end-diastolic and end-systolic volumes rather than posed',
+        'the mitral and aortic valves, opening on the solved cycle',
+        'ejected and residual blood, drawn from the same beat',
+        'the systemic circuit — an explicitly schematic loop, with the arteriolar resistance marked as a zone and one node standing for the right heart and the lungs',
+      ]),
+      views: Object.freeze([
+        'the 3D scene at its opening pose and under comparison, where the baseline heart is drawn beside the current one',
+        'the Data view, with the pressure-volume loop and the pressure waveform both drawn',
+        'the metric read-out, including the reference rows comparison adds',
+        'the 15-second sequence, recorded through the consent screen and played back from the written file',
+      ]),
+      interactions: Object.freeze([
+        'each of the four controls moved across its declared range and reset',
+        'both presets, and both interventions, including clearing one',
+        'the lesson walked end to end, with its before/after table read on screen',
+        'model reset returning the scene to the state it opened in',
+      ]),
+    }),
+    evidence: Object.freeze([
+      'docs/model-cards/cardiac-output.md',
+      'docs/model-evidence/cardiac-output.md',
+      'docs/beta-publication/cardiac-output.md',
+      'docs/architecture/adr-2026-09-22-mechanism-scene-in-beta.md',
+      'scripts/sweep-cardiac-output.mjs',
+      'scripts/check-disease-interaction.mjs',
+      'tests/cardiac-output-model.test.js',
+      'tests/cardiac-output-physiology.test.js',
+      'tests/cardiac-output-scene.test.js',
+      'tests/cardiac-output-interventions.test.js',
+      'tests/cardiac-output-learning.test.js',
+    ]),
+    /** Stated, not implied. An empty list here would itself be a claim. */
+    unverified: Object.freeze([
+      'no clinical review — the registry records this scene as pending, and no clinician has read the model, its reference condition, its presets, its intervention magnitudes or its wording',
+      'no physiologist has read it either; nothing here is an external validation',
+      'the reference condition is a calibration chosen so a healthy case lands where textbooks put it, not a measurement',
+      'the reduced-contractility preset and both intervention magnitudes are illustrative; the cited dobutamine study\'s effect sizes are not transferable to this model\'s parameters and are not claimed',
+      'the dobutamine source was read as its published abstract only — the full text was not read',
+      'no reflex regulation is modelled, so "change one thing" is the model\'s response and not a person\'s',
+      'whether the edges of the declared domain are sensible teaching, as opposed to merely solvable, is open (F-180)',
+      'one browser engine on a desktop viewport: no real iPhone Safari, and no Firefox or WebKit recording (F-184)',
+      'on a phone the 3D sits under the console, the same way heart-failure does (F-188)',
+      'no reader has been observed using it; whether four controls at once is the right number to hand somebody is unanswered',
     ]),
   }),
 ]);
@@ -696,6 +830,59 @@ export function anatomyClaimProblems(scene, { profiles } = {}) {
 }
 
 /**
+ * A scene that may solve a mechanism, and still may not do the other things.
+ *
+ * This is `anatomyClaimProblems` with exactly one line removed — the one that
+ * refuses a mechanism claim — and one added, which is the reason removing it is
+ * safe. Everything else is the same object, checked the same way, off the same
+ * registry.
+ *
+ * **The added line is the load-bearing one.** A scene addressed to a patient is
+ * a scene somebody may read about their own illness, and the next release
+ * already refuses to publish one of those on a review that is not current. That
+ * rule does not get a hole cut in it here: a mechanism candidate that declares
+ * `patient-explanation`, or that ships a patient view, needs the same current
+ * review it would need there. What the beta may now publish without one is a
+ * mechanism addressed to a learner, badged with the review state it has.
+ *
+ * Note what is *not* here: `scene.disease`. A disease model is not refused by
+ * name any more — it is refused by the two lists, because it is not on one.
+ *
+ * @param {object|null} scene a catalogue entry
+ * @param {{profiles?: object[], hasReview?: (scene:object) => boolean,
+ *   resolveReview?: (scene:object) => object|null}} [options]
+ * @returns {string[]} the reasons this scene may not be published as a mechanism
+ */
+export function mechanismClaimProblems(scene, {
+  profiles,
+  hasReview = hasCurrentClinicalReviewState,
+  resolveReview = clinicalReviewStateForScene,
+} = {}) {
+  const problems = [];
+  const profile = profiles ? modelProfileForScene(scene, profiles) : modelProfileForScene(scene);
+  if (!profile) {
+    problems.push('has no model profile, so what it claims is not written down anywhere a test can read');
+    return problems;
+  }
+  if (PATIENT_SPECIFIC_PERSONALIZATION.includes(profile.personalization)) {
+    problems.push(`is personalised (${profile.personalization}); the beta publishes representative models only`);
+  }
+  for (const use of profile.intendedUses ?? []) {
+    if (CLINICAL_INTENDED_USES.includes(use)) problems.push(`declares the clinical use "${use}"`);
+  }
+
+  const forPatients = (profile.intendedUses ?? []).includes(INTENDED_USE.PATIENT_EXPLANATION) || scene?.patient === true;
+  if (forPatients && !hasReview(scene)) {
+    const state = resolveReview(scene)?.reviewStatus ?? 'no record';
+    problems.push(
+      `its clinical review is "${state}", and it explains a mechanism to a patient, ` +
+        'which a scene cannot do on a review that is not current'
+    );
+  }
+  return problems;
+}
+
+/**
  * Everything standing between a scene and the beta, as readable lines.
  *
  * Returned rather than thrown so the tests, the handoff and a dev-mode console
@@ -729,7 +916,7 @@ export function betaPublicationProblems(candidate, options = {}) {
   // rather than by asking for it to be skipped — so nothing can ever ask this
   // module whether a scene would be open if only it were listed and receive an
   // empty answer.
-  if (!BETA_ANATOMY_CANDIDATES.includes(id)) {
+  if (!BETA_ANATOMY_CANDIDATES.includes(id) && !BETA_MECHANISM_CANDIDATES.includes(id)) {
     return [`"${id ?? '(no id)'}" is not one of the scenes this release opens`];
   }
 
@@ -769,7 +956,16 @@ function publicationRecordProblems(id, {
     problems.push("is a Prototype, whose shape and motion are provisional by definition");
   }
 
-  problems.push(...anatomyClaimProblems(scene, { profiles }));
+  // Which claim rule applies is decided by which list the scene is on, and by
+  // nothing else — not by its organ, not by its name, and not by what its
+  // profile happens to say. A scene that drifted from structure to mechanism
+  // while staying on the anatomy list must close the gate, which is what makes
+  // `anatomyClaimProblems` worth keeping unchanged.
+  problems.push(
+    ...(BETA_MECHANISM_CANDIDATES.includes(id)
+      ? mechanismClaimProblems(scene, { profiles, hasReview, resolveReview })
+      : anatomyClaimProblems(scene, { profiles }))
+  );
 
   const profile = profiles ? modelProfileForScene(scene, profiles) : modelProfileForScene(scene);
   const assetIds = profile?.assets ?? [];
@@ -1157,8 +1353,15 @@ export const LOCKED_SCENES = SCENES.filter((scene) => !isSceneReleased(scene));
  * each deducing it.
  */
 export const BETA_CANDIDATE_STATUS = Object.freeze(
-  BETA_ANATOMY_CANDIDATES.map((id) =>
-    Object.freeze({ sceneId: id, open: isSceneReleased(sceneById(id)), problems: Object.freeze(betaPublicationProblems(id)) })
+  [...BETA_ANATOMY_CANDIDATES, ...BETA_MECHANISM_CANDIDATES].map((id) =>
+    Object.freeze({
+      sceneId: id,
+      // Which list it came from, so a reader of this status does not have to
+      // infer from the scene's name which claim rule it was held to.
+      claim: BETA_MECHANISM_CANDIDATES.includes(id) ? 'mechanism' : 'anatomy',
+      open: isSceneReleased(sceneById(id)),
+      problems: Object.freeze(betaPublicationProblems(id)),
+    })
   )
 );
 

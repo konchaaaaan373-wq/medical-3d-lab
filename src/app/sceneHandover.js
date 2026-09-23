@@ -7,7 +7,7 @@
  * animation loop and a multi-megabyte atlas, and `createApp` captures its
  * `SceneClass` in some thirty closures, so there is no teardown to trust and no
  * cheap way to swap a scene inside a live viewer. That is real work and it is
- * not done here — `docs/follow-ups.md` F-197 holds it.
+ * not done here — `docs/follow-ups.md` F-200 holds it.
  *
  * What a reader actually complains about is not that a document was replaced.
  * It is that **the model they were looking at disappeared**, was replaced by a

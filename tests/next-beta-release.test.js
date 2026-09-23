@@ -31,7 +31,13 @@ test('next-beta: registering the policy changes nothing about what is published'
   // it still selects `beta`; a policy that is registered and not selected
   // publishes nothing by existing.
   assert.equal(RELEASE_CHANNEL, 'beta');
-  assert.deepEqual(RELEASED_SCENES.map((scene) => scene.id), ['brain-anatomy', 'heart-anatomy', 'lung-anatomy', 'liver-anatomy']);
+  assert.deepEqual(
+    RELEASED_SCENES.map((scene) => scene.id),
+    ['brain-anatomy', 'heart-anatomy', 'cardiac-output', 'lung-anatomy', 'liver-anatomy']
+  );
+  // `cardiac-output` is open on the **beta**, by the owner's decision of
+  // 2026-09-22, and not because this channel exists. The four disease
+  // candidates below are still closed, which is what this test is about.
 });
 
 test('next-beta ⊇ beta: switching the channel can only ever add', () => {

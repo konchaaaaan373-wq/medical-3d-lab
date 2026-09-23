@@ -112,7 +112,13 @@ test('public manifest: it publishes what is open and cannot publish anything els
   // was finished, and the rule that produced both answers is the same one.
   assert.equal(organIsPublished('brain'), true);
   assert.equal(organIsPublished('heart'), true);
-  assert.deepEqual(publicModelsForOrgan('heart').map((model) => model.sceneId), ['heart-anatomy']);
+  // Two since 2026-09-22 — the atlas and one mechanism scene. `organIsPublished`
+  // answers about the organ; this answers about its models, and the two are
+  // different questions as soon as an organ has more than one.
+  assert.deepEqual(
+    publicModelsForOrgan('heart').map((model) => model.sceneId),
+    ['heart-anatomy', 'cardiac-output']
+  );
   // An organ with nothing published is still absent, and still answers no.
   assert.equal(organIsPublished('lung'), false);
   assert.deepEqual(publicModelsForOrgan('lung'), []);
