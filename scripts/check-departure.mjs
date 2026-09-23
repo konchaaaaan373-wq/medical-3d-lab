@@ -162,15 +162,40 @@ const shot = async (page, name) => {
   if (shotsDir) await page.screenshot({ path: join(shotsDir, `${name}.png`) }).catch(() => {});
 };
 
-// Nothing here should take minutes, and a check that can hang is a check that
-// stops being run. The backstop path deliberately holds a request open, so the
-// failure mode is real rather than hypothetical.
+/**
+ * The budget, and why it is not three minutes any more.
+ *
+ * A check that can hang is a check that stops being run, and the backstop path
+ * here deliberately holds a request open — so the failure mode this guards is
+ * real rather than hypothetical. That part has not changed.
+ *
+ * What changed is the work. This script was written with eight checks; it now
+ * drives sixteen, and **two of them load a real 3D model**: "a model still gets
+ * a document of its own" and the veil-naming pair. Under a software rasteriser
+ * that is 54 s locally and 65 s on a GitHub runner, for one of them — a third
+ * of the old budget in a single check.
+ *
+ * The result was a watchdog that fired *while the last check was reading*, so
+ * the run reported `veil said undefined` — a made-up product defect — and then
+ * timed out 90 ms later. It failed that way on CI and had already done it once
+ * locally. A deadline that turns "the machine is slow" into "the veil is
+ * broken" is worse than no deadline, because somebody then goes looking for
+ * the veil.
+ *
+ * Seven minutes is not a target: a healthy run is about three. It is the
+ * headroom a slow runner needs before a hang and a queue become
+ * indistinguishable. The elapsed time is printed with the timeout so the next
+ * person can see which it was rather than guess.
+ */
+const BUDGET_MS = 420_000;
+const startedAt = Date.now();
 const watchdog = setTimeout(() => {
-  console.error('\nTimed out after 3 minutes with the run unfinished.');
+  const elapsed = Math.round((Date.now() - startedAt) / 1000);
+  console.error(`\nTimed out after ${elapsed}s (budget ${BUDGET_MS / 1000}s) with the run unfinished.`);
   console.error('What had been driven:');
   for (const entry of results) console.error(`  ${entry.ok === true ? 'ok' : entry.ok === null ? 'skip' : 'FAIL'}  ${entry.name}`);
   process.exit(1);
-}, 180_000);
+}, BUDGET_MS);
 watchdog.unref?.();
 
 try {
@@ -619,8 +644,17 @@ try {
     const named = typeof during.veilText === 'string' && during.veilText.includes('心臓');
     record(
       'the veil names the model it is opening, not just that it is opening one',
-      named,
-      `veil said ${JSON.stringify(during.veilText)}`
+      // `null` — skipped — when the page could not be read at all, rather than
+      // `false`. `ask()` answers `{unreadable}` on a timeout or a destroyed
+      // context, which leaves `veilText` undefined; reporting that as a failure
+      // printed `veil said undefined` and sent somebody looking for a broken
+      // veil when what had actually happened was the run hitting its own
+      // deadline on a slow runner. Same class as L-102 and L-103: a check that
+      // reports a defect the product does not have.
+      during.unreadable ? null : named,
+      during.unreadable
+        ? `the page could not be read: ${during.unreadable}`
+        : `veil said ${JSON.stringify(during.veilText)}`
     );
 
     // And the arriving document says the same thing, from `index.html`, before
@@ -633,8 +667,10 @@ try {
     })()`);
     record(
       'the arriving document carries the same sentence',
-      typeof arriving.text === 'string' && arriving.text.includes('心臓'),
-      `arriving veil said ${JSON.stringify(arriving.text)}`
+      arriving.unreadable ? null : typeof arriving.text === 'string' && arriving.text.includes('心臓'),
+      arriving.unreadable
+        ? `the page could not be read: ${arriving.unreadable}`
+        : `arriving veil said ${JSON.stringify(arriving.text)}`
     );
     await context.close();
   }
