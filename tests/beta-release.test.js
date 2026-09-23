@@ -563,14 +563,31 @@ test('beta release: a locked deep link still answers as a page', () => {
       assert.equal(isRouteReleased(resolveRoute(href)), true, href);
     }
 
-    // One way out, plus home, plus the brand. The page used to offer the
-    // Explorer, "Home" and a list headed "Open now" — three controls reaching
-    // two destinations, one of them via a catalogue of a single entry.
+    // One way out, plus home. The card used to offer the Explorer, "Home" and
+    // a list headed "Open now" — three controls reaching two destinations, one
+    // of them via a catalogue of a single entry.
+    //
+    // Measured on the card rather than on the page, because the page now wears
+    // the same shell header as every other surface. That header is the fix for
+    // a different fault (this page had no way back to anywhere except by
+    // guessing the wordmark was a link) and its destinations are the product's
+    // top level, not this page's own offer. The rule the original guard was
+    // holding — that a locked page never offers a route the release will not
+    // honour — is asserted over *every* link above, header included.
+    const card = findByClass(surface.element, 'locked-card')[0];
+    assert.ok(card, 'the locked card');
     assert.deepEqual(
-      [...new Set(hrefs)].sort(),
+      [...new Set(links(card))].sort(),
       [openModelDestination().route, '#/'].sort(),
       'exactly one model destination and home'
     );
+
+    // And the header is the shared one, so this surface cannot drift into
+    // having a fifth navigation of its own.
+    assert.equal(findByClass(surface.element, 'shell-header').length, 1);
+    // Never the gated destination: `#/lab` is locked during the beta, and the
+    // loop above would catch it, but naming it here says why it is absent.
+    assert.equal(hrefs.includes('#/lab'), false, 'a locked page must not offer a locked route');
   } finally {
     restoreDocument();
   }
@@ -593,29 +610,59 @@ test('beta release: the locked route names the surface even when it is not a sce
 
 test('beta release: a locked route never downloads the scene it is refusing to show', () => {
   const main = read('src/main.js');
-  const gate = main.indexOf('if (!open) {');
+  const surfaces = read('src/app/documentSurfaces.js');
+
+  // `open` is computed from the route before anything is imported to render
+  // it, and it is what sends a gated route to the locked surface instead of
+  // its own.
+  const gate = main.indexOf('const open = routeOpen(route);');
   assert.ok(gate > 0, 'main.js has to decide before it routes');
   assert.ok(gate < main.indexOf("import('./app/App.js')"), 'the gate runs before the scene app loads');
-  assert.ok(gate < main.indexOf("import('./app/Landing.js')"));
+  // `shellNavigation.js` is the single import that pulls in the mount table and,
+  // through it, every surface module. Nothing may be fetched before `open` is
+  // known.
+  assert.ok(gate < main.indexOf("import('./app/shellNavigation.js')"), 'and before any surface loads');
+  assert.doesNotMatch(
+    main,
+    /import\('\.\/app\/documentSurfaces\.js'\)/,
+    'the mount table is reached through the shell, not fetched separately in front of it'
+  );
   assert.match(main, /if \(open && route\.kind === 'scene'\) recordSceneVisit/);
+  // A gated route is rendered as `locked`, whatever it was going to be.
+  assert.match(main, /isDocumentSurface\(open \? route : \{ kind: 'locked' \}\)/);
 
-  // The locked branch imports the plain-DOM surface and nothing heavier.
-  const branch = main.slice(gate, main.indexOf("if (route.kind === 'landing')"));
-  assert.match(branch, /import\('\.\/app\/LockedSurface\.js'\)/);
+  // And the locked branch of the mount table imports the plain-DOM surface and
+  // nothing heavier. Measured on the branch, not on the file: the table also
+  // imports the landing page a few lines down, and a check over the whole file
+  // would pass for the wrong reason.
+  const branchStart = surfaces.indexOf('if (locked) {');
+  assert.ok(branchStart > 0, 'the mount table decides `locked` first');
+  const branch = surfaces.slice(branchStart, surfaces.indexOf("} else if (kind === 'landing')"));
+  assert.match(branch, /import\('\.\/LockedSurface\.js'\)/);
   assert.doesNotMatch(branch, /App\.js|loadScene|Viewer/);
+  // Nothing in the whole table reaches the scene app — that is `main.js`'s
+  // other branch, and it is only reached when the route is not a document.
+  assert.doesNotMatch(surfaces, /App\.js|loadScene|from 'three'/);
 });
 
 test('beta release: an already-paying customer keeps their account, whatever the models do', () => {
   // Closing models must never close the door on somebody's own subscription.
   // The account control is mounted on every surface, the locked one included,
   // so a customer can always reach billing, invoices and cancellation.
+  // The mount table hands the same button to every surface it builds, so
+  // "every surface" is one place to check rather than five call sites.
   const main = read('src/main.js');
-  assert.match(main, /createLockedSurface\(\{ ui, route, accountButton: access\.accountButton \}\)/);
-  for (const surface of ['Landing', 'Trust', 'Legal']) {
-    assert.match(main, new RegExp(`create${surface}\\(\\{[\\s\\S]{0,200}accountButton`), surface);
+  const surfaces = read('src/app/documentSurfaces.js');
+  assert.match(main, /accountButton: access\.accountButton/, 'the shell owns the one button');
+  assert.match(surfaces, /createLockedSurface\(\{ ui, route, accountButton \}\)/);
+  for (const surface of ['Landing', 'Trust', 'Legal', 'Explorer']) {
+    assert.match(surfaces, new RegExp(`create${surface}\\(\\{[\\s\\S]{0,240}accountButton`), surface);
   }
   const locked = read('src/app/LockedSurface.js');
   assert.match(locked, /accountButton/);
+  // And it is not rebuilt per surface: a second account button would be a
+  // second account state, and signing in on one page would not show on the next.
+  assert.doesNotMatch(surfaces, /createAccessManager/);
 
   // And the legal and support documents stay reachable without a model.
   for (const route of ['#/terms', '#/privacy', '#/commerce', '#/support']) {
@@ -628,9 +675,24 @@ test('beta release: the catalogue surfaces read the same gate rather than their 
   const landing = read('src/app/Landing.js');
   const locked = read('src/app/LockedSurface.js');
 
-  for (const source of [explorer, landing]) {
-    assert.match(source, /from '\.\.\/catalog\/release\.js'|from '\.\/releaseGate\.js'/);
+  // Three ways a surface may learn what is open, and no fourth. The manifest
+  // counts because it is a projection of the same decision and nothing can be
+  // added to it by hand (`publicManifest.js` says so, and
+  // `tests/public-manifest.test.js` holds it) — the landing page reads that
+  // rather than the gate directly, which is the stricter of the two.
+  const readsTheGate =
+    /from '\.\.\/catalog\/release\.js'|from '\.\/releaseGate\.js'|from '\.\.\/catalog\/publicManifest\.js'/;
+  for (const [name, source] of [['Explorer.js', explorer], ['Landing.js', landing]]) {
+    assert.match(source, readsTheGate, name);
   }
+  // And the header those surfaces now share, which decides whether the
+  // Experimental destination is offered at all. It moved there when the four
+  // hand-rolled headers became one, and a header that guessed would offer a
+  // locked route from every page at once.
+  const header = read('src/components/ShellHeader.js');
+  assert.match(header, /from '\.\.\/app\/releaseGate\.js'/);
+  assert.match(header, /gated: true/, 'the Experimental destination is marked as gated');
+  assert.match(header, /item\.gated \|\| showLab/, 'and is filtered on that mark');
   // The public index is what is open, not what is open plus a roadmap.
   assert.match(explorer, /beta \? RELEASED_SCENES : PUBLIC_SCENES/);
   assert.doesNotMatch(landing, /landing-locked-row|landing-locked-list/);

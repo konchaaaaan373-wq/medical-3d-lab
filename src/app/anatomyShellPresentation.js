@@ -52,10 +52,16 @@ export function mountAnatomyShellPresentation({
       : null;
 
     disclosure = el('details', { class: 'anatomy-shell-about' }, [
-      el('summary', { class: 'anatomy-shell-about-toggle' }, dual(
-        'Info & settings',
-        '情報・設定'
-      )),
+      el('summary', { class: 'anatomy-shell-about-toggle' }, [
+        // Where the model's name goes on a phone. Empty at every other width,
+        // and filled by moving the title lines into it rather than by writing
+        // them twice — see `applyWidth` below.
+        el('span', { class: 'anatomy-shell-about-identity' }),
+        el('span', { class: 'anatomy-shell-about-label' }, dual(
+          'Info & settings',
+          '情報・設定'
+        )),
+      ]),
       el('div', { class: 'anatomy-shell-about-copy' }, [
         el('section', { class: 'anatomy-shell-model-info' }, [
           el('h3', { class: 'anatomy-shell-section-title' }, dual(
@@ -85,13 +91,36 @@ export function mountAnatomyShellPresentation({
    * Moved rather than duplicated, and moved back when there is room again: two
    * copies of a review state is how one of them comes to be wrong.
    */
+  /**
+   * What the disclosure is called, and why it changes with the width.
+   *
+   * On a desktop the model's name is a heading beside it and this control is
+   * what it says: information and settings. On a phone the card stops being a
+   * card, the name moves inside this disclosure, and the result — measured at
+   * 390×844 on `#/brain-anatomy` — was a screen with **no model name on it at
+   * all** behind a control labelled 情報・設定.
+   *
+   * Two things were wrong with that. The reader could not tell which model was
+   * open except from a one-character chip in the header; and the one link to
+   * the model's medical basis lives in this disclosure, so "how do I check
+   * what this is based on" was hidden behind a word that does not suggest it.
+   *
+   * So on a phone the summary carries the model's name. It is the same nodes,
+   * moved — `titleEn` and `titleJa` go into the summary instead of into the
+   * body — because two copies of a title is how one of them comes to be wrong,
+   * which is the rule the width switch below already follows for the review
+   * state.
+   */
   const NARROW = '(max-width: 430px)';
   const narrow = typeof window !== 'undefined' && window.matchMedia
     ? window.matchMedia(NARROW)
     : null;
   /** Where each moved node sat, so putting it back is putting it back. */
   const homeOf = new Map();
-  const movable = [titleEn, titleJa, trustStatus].filter(Boolean);
+  /** Into the disclosure's body on a phone: the review state and the link with it. */
+  const movable = [trustStatus].filter(Boolean);
+  /** Into the disclosure's own summary on a phone: what the model is called. */
+  const titleLines = [titleEn, titleJa].filter(Boolean);
 
   function applyWidth() {
     if (destroyed) return;
@@ -117,6 +146,7 @@ export function mountAnatomyShellPresentation({
         restoreNode(railButtons);
       }
     }
+    const identity = disclosure?.querySelector?.('.anatomy-shell-about-identity');
     if (narrow?.matches) {
       // Reverse order with `prepend`, so they arrive in the order they are in.
       for (const node of [...movable].reverse()) {
@@ -124,8 +154,13 @@ export function mountAnatomyShellPresentation({
         if (!homeOf.has(node)) homeOf.set(node, [node.parentNode, node.nextSibling]);
         copy.prepend?.(node);
       }
+      for (const node of titleLines) {
+        if (identity?.contains?.(node)) continue;
+        if (!homeOf.has(node)) homeOf.set(node, [node.parentNode, node.nextSibling]);
+        identity?.append?.(node);
+      }
     } else {
-      for (const node of movable) restoreNode(node);
+      for (const node of [...movable, ...titleLines]) restoreNode(node);
     }
   }
 

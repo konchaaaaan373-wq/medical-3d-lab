@@ -57,9 +57,30 @@ test('anchors: no shell can forget the check, because no shell makes it', () => 
     assert.match(source, /installDeparture\(/, `${name} never installs the shared departure`);
   }
 
-  // Every surface `main.js` can render, each returning right after it installs.
-  const installs = main.match(/leaveOnRouteChange\(\);/g) ?? [];
-  assert.ok(installs.length >= 6, `expected one per surface, found ${installs.length}`);
+  // There is now one installation for all the document surfaces, rather than
+  // one per branch: `shellNavigation.js` installs the door once and keeps it
+  // across route changes, because a route change between reading surfaces no
+  // longer replaces the document. Counting call sites would therefore be
+  // counting the wrong thing — what matters is that every surface is behind
+  // one, and that nobody opened a side door.
+  const shell = read('src/app/shellNavigation.js');
+  assert.match(shell, /installDeparture\(\{/, 'the document surfaces share one door');
+  assert.doesNotMatch(
+    shell,
+    /addEventListener\('hashchange'/,
+    'shellNavigation.js decides for itself what a hash change means'
+  );
+
+  // The scene keeps its own, because it owns a document of its own; the
+  // fallback keeps one for the same reason. Two, and both are the shared one.
+  assert.match(main, /leaveOnRouteChange\(\);/, 'the scene-failure surface is covered');
+  assert.match(app, /installDeparture\(\{/, 'the scene is covered');
+
+  // No surface may route by hand. `documentSurfaces.js` builds pages and must
+  // never grow an opinion about navigation.
+  const surfaces = read('src/app/documentSurfaces.js');
+  assert.doesNotMatch(surfaces, /addEventListener\('hashchange'/);
+  assert.doesNotMatch(surfaces, /location\.reload/);
 });
 
 test('anchors: the scene view is covered by the same door, because a reload there costs the session', () => {
@@ -83,4 +104,45 @@ test('fallback: the WebGL failure screen can navigate', () => {
   const main = read('src/main.js');
   const fallback = main.slice(main.indexOf('createSceneFailureFallback({'));
   assert.match(fallback, /leaveOnRouteChange\(\);/, 'the fallback has no navigation listener');
+});
+
+test('the skip link is in the document before anything the shell floats into it', () => {
+  // A keyboard user's first Tab must reach "skip to content". Two things append
+  // straight to `#ui` behind dynamic imports — the surface (which brings the
+  // skip link) and observability (which brings a floating feedback button) —
+  // and starting the second before awaiting the first made them a race. When
+  // observability won, the first Tab stop was the feedback button. Measured at
+  // about one load in six on the model index, whose module is the largest and
+  // so lost most often.
+  //
+  // `verify:ui` reported it on four consecutive full runs, on a different
+  // surface and viewport each time, which is what a race looks like from the
+  // outside — and is why it was nearly written off as a flaky check. This
+  // guard is deterministic so nobody has to win that argument again.
+  const surfaces = read('src/app/documentSurfaces.js');
+
+  const observeCall = surfaces.indexOf('startObservability()');
+  const firstImport = surfaces.indexOf("await import('./LockedSurface.js')");
+  assert.ok(firstImport > 0, 'the mount table imports its surfaces');
+  assert.ok(
+    observeCall > firstImport,
+    'observability must be started after the surface is built, or its floating trigger ' +
+      'can be appended to #ui ahead of the surface\'s skip link'
+  );
+
+  // And the thing that makes it easy to get wrong: the promise must not be
+  // kicked off at the top and merely awaited later. Checked on the *variable's
+  // initialiser* rather than on the text before the imports — the helper that
+  // starts it is declared up there, and a first version of this guard matched
+  // the declaration and failed against the fixed code.
+  assert.match(
+    surfaces,
+    /let observabilityReady = null;/,
+    'observability must start as unstarted; assigning the promise at the top is the race'
+  );
+  assert.match(
+    surfaces,
+    /observabilityReady = startObservability\(\);/,
+    'and be started once, after the surface is built'
+  );
 });

@@ -594,6 +594,34 @@ a.explorer-scene:focus-visible {
   margin-top: 7px;
 }
 
+/* And on a scene whose backdrop is pale.
+   `#ffd8a8` on the near-white inspection card measured 1.16:1 — the badge
+   that says a model is Alpha, printed in a colour that cannot be read, on the
+   one surface where the reader is looking at the model it describes. The
+   values are the Explorer's pale set below, so the same state is the same hue
+   wherever it appears. Scoped on `data-background` because the ground decides
+   the ink; see the matching block in `clinical-review.css`. */
+#ui[data-background='studio'] .title-card .status-badge,
+#ui[data-background='paper'] .title-card .status-badge {
+  background: rgba(128, 91, 40, 0.08);
+  box-shadow: inset 0 0 0 1px rgba(128, 91, 40, 0.24);
+  color: #805b28;
+}
+
+#ui[data-background='studio'] .title-card .status-badge.is-reviewed,
+#ui[data-background='paper'] .title-card .status-badge.is-reviewed {
+  background: rgba(40, 105, 77, 0.08);
+  box-shadow: inset 0 0 0 1px rgba(40, 105, 77, 0.24);
+  color: #28694d;
+}
+
+#ui[data-background='studio'] .title-card .status-badge.is-planned,
+#ui[data-background='paper'] .title-card .status-badge.is-planned {
+  background: rgba(16, 47, 59, 0.05);
+  box-shadow: inset 0 0 0 1px rgba(16, 47, 59, 0.16);
+  color: #465c63;
+}
+
 /* On the catalogue, maturity is quiet metadata rather than the headline. */
 .explorer .status-badge {
   gap: 3px;
@@ -1094,7 +1122,13 @@ html[data-route='explorer'] .public-models-actions .landing-model-action {
 }
 
 .public-models-footer {
-  padding: 24px 4px 0;
+  /* The bottom padding is the floating feedback trigger's room. It is
+     `position: fixed` at the bottom right (`telemetry.css`), and the footer's
+     links run to the same corner — at 768 px "Support" ended up underneath it,
+     which `npm run verify:ui` reports as a control with something painted over
+     it. Reserving the space is the fix that does not depend on how many links
+     the footer happens to have this month. */
+  padding: 24px 4px 72px;
   border-top: 1px solid var(--explorer-rule);
   background: transparent;
   box-shadow: none;
@@ -1114,8 +1148,15 @@ html[data-route='explorer'] .public-models-actions .landing-model-action {
 }
 
 .public-models-footer-links {
+  /* Right-aligned, in the same corner the floating feedback trigger is fixed
+     to. The bottom padding on `.public-models-footer` keeps the *rows* clear
+     of it, and this keeps the last row's right end clear as well, so the
+     collision cannot come back at whatever scroll position and link count
+     happen to line up. `.public-models-actions` above reserves the same gutter
+     for the same reason. */
   justify-content: flex-end;
   gap: 4px 16px;
+  padding-right: 72px;
 }
 
 .public-models-footer-links .explorer-shell-link {
@@ -1218,4 +1259,22 @@ html[data-route='explorer'] .public-models-actions .landing-model-action {
     max-width: 4.8rem;
     line-height: 1.1;
   }
+}
+
+/* The hero's own "sources & limits" link, on a light ground.
+   ------------------------------------------------------------------------
+   `landingOrganHero.js` builds one link per organ and it follows the organ the
+   reader selected — which is why the model index uses the hero's link rather
+   than a fixed one of its own. What it inherited with it is
+   `.landing-model-info-link`'s colour, `var(--ink-dim)`: a pale grey chosen for
+   the landing page's near-black ground. On this page that measured 1.83:1.
+
+   The link that says a model has limits is the last one to make hard to read. */
+html[data-route='explorer'] .landing-model-info-link {
+  color: var(--explorer-accent-strong, #045564);
+}
+
+html[data-route='explorer'] .landing-model-info-link:hover,
+html[data-route='explorer'] .landing-model-info-link:focus-visible {
+  color: var(--explorer-ink, #102f3a);
 }

@@ -55,6 +55,25 @@ body {
   overscroll-behavior: none;
 }
 
+/* Present to assistive technology, absent from the page. The shell's route
+   announcer uses it: a swap between surfaces replaces the page without a
+   document load, so nothing tells a screen reader that a new page arrived
+   unless something says so out loud.
+
+   Six stylesheets declare their own copy of this rule. This is the shared one;
+   see docs/follow-ups.md for merging the rest into it. */
+.visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  padding: 0;
+  overflow: hidden;
+  white-space: nowrap;
+  border: 0;
+  clip-path: inset(50%);
+}
+
 #stage {
   position: fixed;
   inset: 0;
@@ -339,4 +358,64 @@ body.has-build-marker .console {
      state, not the tween — and a check measuring that state reads a settled
      value rather than one caught mid-transition. */
   #ui, .panel { transition: none; }
+}
+
+/* The model the reader was looking at, carried across the document that
+   replaced it.
+   --------------------------------------------------------------------------
+   A model needs its own document (see `sceneHandover.js`), so the canvas cannot
+   survive the navigation. The blank rectangle between the two documents is what
+   a reader actually feels, and a picture of the outgoing frame removes it: the
+   brain stays on screen, dimmed, under the sentence naming the heart, until the
+   heart is ready to cross-fade in over it.
+
+   Dimmed and blurred on purpose. It is a still, and a still that looked live
+   would invite a drag that does nothing. This reads as "the thing you were
+   looking at, on its way out", which is what it is. */
+.loading[data-handover] {
+  background-color: var(--bg);
+  background-image: var(--handover-image);
+  background-size: cover;
+  background-position: center;
+}
+
+.loading[data-handover]::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  /* Enough to say "on its way out", not so much that the model stops being
+     recognisable — recognising it is the entire job. */
+  background: rgba(4, 6, 12, 0.5);
+  backdrop-filter: blur(5px);
+  -webkit-backdrop-filter: blur(5px);
+}
+
+/* The sentence and the bar sit above the wash. */
+.loading[data-handover] > * {
+  position: relative;
+  z-index: 1;
+}
+
+/* The sentence carries its own ground.
+   Behind it is a photograph, and a photograph is whatever colour it happens to
+   be: the brain's pale parietal lobe and the liver's dark red both end up under
+   this text. A wash tuned for one of them fails for the other, so the label
+   stops depending on the wash at all. */
+.loading[data-handover] > span:first-child {
+  padding: 10px 18px;
+  border-radius: 999px;
+  background: rgba(4, 6, 12, 0.82);
+  color: #eaf2ff;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.45);
+}
+
+.loading[data-handover] .loading-bar {
+  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.5);
+}
+
+/* Arriving over a carried frame is a cross-fade rather than a cut: the still
+   and the live model are the same subject from the same angle, so a cut reads
+   as a flicker where a fade reads as the picture coming to life. */
+.loading[data-handover].is-done {
+  transition: opacity 320ms ease;
 }

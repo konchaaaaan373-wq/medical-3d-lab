@@ -14,7 +14,7 @@ import {
 } from '../src/catalog/publicManifest.js';
 import { RELEASED_SCENES, isSceneReleased } from '../src/catalog/release.js';
 import { SCENES, sceneById } from '../src/catalog/index.js';
-import { resolveRoute } from '../src/app/router.js';
+import { resolveRoute, trustFocusOf } from '../src/app/router.js';
 
 const read = (path) => readFileSync(new URL(`../${path}`, import.meta.url), 'utf8');
 const fileExists = (path) => existsSync(new URL(`../${path}`, import.meta.url));
@@ -44,6 +44,7 @@ test('public manifest: the row shape is the contract, and it is fixed', () => {
       'modelCard',
       'modelInfoRoute',
       'organId',
+      'organLabel',
       'organLabelJa',
       'posterKind',
       'posterPath',
@@ -52,11 +53,28 @@ test('public manifest: the row shape is the contract, and it is fixed', () => {
       'titleEn',
       'titleJa',
     ]);
-    for (const key of ['sceneId', 'organId', 'organLabelJa', 'titleJa', 'titleEn', 'route']) {
+    // `organLabel` is in this list, not only in the key set above. A bilingual
+    // control reads both names and renders an empty span for a missing one —
+    // which is how the scene header's model strip shipped with no English
+    // labels at all while every structural check stayed green.
+    for (const key of [
+      'sceneId',
+      'organId',
+      'organLabel',
+      'organLabelJa',
+      'titleJa',
+      'titleEn',
+      'route',
+    ]) {
       assert.equal(typeof model[key], 'string', `${model.sceneId}.${key}`);
       assert.ok(model[key].trim(), `${model.sceneId}.${key} is empty`);
     }
-    assert.equal(model.modelInfoRoute, MODEL_INFO_ROUTE);
+    // The record route names its own model. It was the bare `MODEL_INFO_ROUTE`
+    // for every row, which is how a link labelled "model information",
+    // followed from one model, arrived at the top of a page listing seventy.
+    assert.equal(model.modelInfoRoute, `${MODEL_INFO_ROUTE}?model=${model.sceneId}`);
+    assert.equal(trustFocusOf(model.modelInfoRoute), model.sceneId, 'and the router reads it back');
+    assert.equal(resolveRoute(model.modelInfoRoute).kind, 'trust', 'and it is still the trust route');
     assert.equal(model.posterKind, 'link-preview-card');
     assert.match(model.route, /^#\/[a-z0-9-]+$/);
     assert.ok(model.modelCard === null || model.modelCard.startsWith('docs/'));

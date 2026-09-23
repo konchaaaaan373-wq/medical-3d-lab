@@ -3,10 +3,12 @@ import { Viewer } from './Viewer.js';
 import { loadScene, sceneById, systemsWithScenes, resolveSceneId } from './sceneRegistry.js';
 import { SCENES, structureFunctionScene } from '../catalog/index.js';
 import { RELEASED_SCENES } from '../catalog/release.js';
-import { betaUnlocked, sceneOpen } from './releaseGate.js';
-import { structureOf } from './router.js';
+import { betaUnlocked, routeOpen, sceneOpen } from './releaseGate.js';
+import { resolveRoute, structureOf } from './router.js';
 import { hasDataOnlySurface } from './dataView.js';
 import { installDeparture } from './departure.js';
+import { openingMessage } from './destinationName.js';
+import { keepFrameForHandover } from './sceneHandover.js';
 import { Playback } from '../utils/Playback.js';
 import { damp } from '../utils/math.js';
 import { ZOOM_RANGE, clampZoom, steppedZoom, zoomedDistance as zoomed } from './zoom.js';
@@ -1974,6 +1976,42 @@ export async function createApp({ stage, ui, onRetryModel = null }) {
   installDeparture({
     shownHash: window.location.hash,
     language: ui.dataset.lang === 'en' ? 'en' : 'ja',
+    // What is opening, not that something is. The arriving document paints the
+    // same sentence from the same function, so the two halves of a model
+    // switch read as one wait rather than as a false start.
+    describe: (hash) => openingMessage(hash, ui.dataset.lang === 'en' ? 'en' : 'ja', {
+      open: routeOpen(resolveRoute(hash)),
+    }),
+    // This scene renders until its document goes away. On a model switch that
+    // leaves the outgoing model drawing frames nobody can see while the
+    // incoming document builds a second WebGL context and a second atlas.
+    // Measured on the built site: 5977→4760, 4353→3539, 3527→3010 ms.
+    //
+    // Undoable, and undone by `installDeparture` if the reader comes back to
+    // this route before the reload commits — otherwise Back would land on a
+    // model that had quietly stopped moving.
+    onDepart: () => {
+      if (!viewer?.running) return undefined;
+      // The frame goes with the reader, before the loop stops.
+      //
+      // A model needs its own document, so the canvas cannot survive the
+      // navigation — but a picture of it can, and the blank rectangle between
+      // the two documents is the whole of what a reader feels. `snapshot()`
+      // re-renders and reads the buffer in the same task, which is the only
+      // moment it is readable with `preserveDrawingBuffer: false`.
+      try {
+        viewer.snapshot();
+        keepFrameForHandover({
+          canvas: viewer.renderer?.domElement,
+          toHash: window.location.hash,
+          fromSceneId: entry?.id ?? meta?.id ?? null,
+        });
+      } catch (error) {
+        console.warn('[handover] the outgoing frame could not be carried', error);
+      }
+      viewer.stop();
+      return () => viewer.start();
+    },
   });
 
   // Exposed for debugging and for automated screenshots.

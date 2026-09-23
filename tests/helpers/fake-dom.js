@@ -69,6 +69,11 @@ export class FakeElement {
     this.style = new FakeStyle();
     this.hidden = false;
     this.disabled = false;
+    // Real form controls always have one, and code that reads `.value` before
+    // anybody has typed is normal rather than defensive. Leaving it `undefined`
+    // made a `value.trim()` throw inside a component that works in a browser,
+    // which is the fake disagreeing with the DOM rather than a bug being found.
+    this.value = '';
     this.textContent = '';
     this.parentElement = null;
   }
@@ -114,6 +119,38 @@ export class FakeElement {
       }
       this.children.push(child);
     }
+  }
+
+  /**
+   * `append`, at the front.
+   *
+   * Absent until a component that uses it could not be tested: production code
+   * writes `node.prepend?.(child)` so that it degrades rather than throws, and
+   * against a fake without this the call was a **silent no-op** — the move it
+   * performs was asserted nowhere and would have passed with the feature
+   * removed. A fake missing a method does not fail; it agrees with whatever
+   * you expected.
+   */
+  prepend(...children) {
+    for (const child of [...children].reverse()) {
+      if (child instanceof FakeElement) {
+        if (child.parentElement) {
+          const siblings = child.parentElement.children;
+          const at = siblings.indexOf(child);
+          if (at >= 0) siblings.splice(at, 1);
+        }
+        child.parentElement = this;
+      }
+      this.children.unshift(child);
+    }
+  }
+
+  /** Whether this node is, or contains, the given one. */
+  contains(node) {
+    for (let at = node; at; at = at.parentElement) {
+      if (at === this) return true;
+    }
+    return false;
   }
 
   replaceChildren(...children) {

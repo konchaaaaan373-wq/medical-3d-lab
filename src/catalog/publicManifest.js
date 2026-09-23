@@ -67,13 +67,19 @@ function revisionOf(models) {
  * @typedef {object} PublicModel
  * @property {string} sceneId       catalogue id, stable, appears in the URL
  * @property {string} organId       the organ it is filed under
+ * @property {string} organLabel    the organ's English name, from the taxonomy
  * @property {string} organLabelJa  the organ's Japanese name, from the taxonomy
  * @property {string} titleJa       the model's Japanese name
  * @property {string} titleEn       the model's English name
  * @property {string} route         where a link must actually go: `#/<slug>`
  * @property {string|null} posterPath  build-relative link-preview image
  * @property {'link-preview-card'} posterKind  what that image actually is
- * @property {string} modelInfoRoute   in-app route for sources and review state
+ * @property {string} modelInfoRoute   in-app route for **this model's** sources
+ *   and review state. It carries `?model=<slug>`, which opens that model's own
+ *   record rather than the top of a page with seventy on it. It used to be the
+ *   bare route for every model, which is how a link labelled "model
+ *   information", followed from a model, arrived somewhere that said nothing
+ *   about it.
  * @property {string|null} modelCard   repository-relative model card, if one exists
  */
 
@@ -83,13 +89,18 @@ const rowFor = (scene) => {
   return Object.freeze({
     sceneId: scene.id,
     organId: scene.organ,
+    // Both languages, because every surface that shows one shows the other:
+    // the row carried only the Japanese name, so a bilingual control built
+    // from the manifest rendered an empty English span and the page silently
+    // lost half its labels at the `lang-en` breakpoint.
+    organLabel: organ?.label ?? scene.organ,
     organLabelJa: organ?.labelJa ?? scene.organ,
     titleJa: scene.titleJa,
     titleEn: scene.titleEn,
     route: sceneRoute(scene),
     posterPath: posterPathFor(scene),
     posterKind: 'link-preview-card',
-    modelInfoRoute: MODEL_INFO_ROUTE,
+    modelInfoRoute: `${MODEL_INFO_ROUTE}?model=${scene.slug}`,
     modelCard: modelCardForScene(scene) ?? scene.modelCard ?? null,
   });
 };

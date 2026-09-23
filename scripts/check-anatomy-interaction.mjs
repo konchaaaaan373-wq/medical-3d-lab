@@ -1734,7 +1734,14 @@ try {
         return true;
       };
       return [...document.querySelectorAll('button, a[href], input, select, textarea')]
-        .filter((node) => !sheet.contains(node) && node.getClientRects().length > 0 && live(node))
+        .filter((node) =>
+          !sheet.contains(node) &&
+          // As above: a closed `<details>` still lays its contents out here,
+          // and a control nobody can see is not a control that is "still
+          // live" while a modal is open.
+          !node.closest('details:not([open])') &&
+          node.getClientRects().length > 0 &&
+          live(node))
         .map((node) => `${node.tagName.toLowerCase()}.${node.className}`.slice(0, 60));
     });
     if (outsideReachable.length) {
@@ -1903,9 +1910,20 @@ try {
 
     // And the background genuinely works again: a control outside the panel
     // takes focus, which `inert` would refuse.
+    //
+    // `details:not([open])` is excluded, and it is not a nicety. Chromium
+    // gives the contents of a *closed* disclosure a client rect, so this
+    // picked "許可しない" out of the collapsed usage-recording settings — a
+    // button nobody can see and nothing can focus — and reported the
+    // background as dead. It had been picking the model drawer's trigger
+    // instead, and only stopped because that drawer was removed. Same gap as
+    // L-102 in `docs/verification-lessons.md`, at a second site.
     const backgroundWorks = await page.evaluate(() => {
       const outside = [...document.querySelectorAll('button')].find(
-        (node) => !node.closest('.anatomy-panel') && node.getClientRects().length > 0
+        (node) =>
+          !node.closest('.anatomy-panel') &&
+          !node.closest('details:not([open])') &&
+          node.getClientRects().length > 0
       );
       if (!outside) return null;
       outside.focus();

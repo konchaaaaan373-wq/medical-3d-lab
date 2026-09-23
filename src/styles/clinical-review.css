@@ -21,7 +21,28 @@
 
 /* The one link out of a scene's own screen to its Trust record — carries
    `?model=<id>` so it lands already open there instead of the flat top of
-   the page. See `docs/architecture-rules.md` and `Trust.js`'s `focusId`. */
+   the page. See `docs/architecture-rules.md` and `Trust.js`'s `focusId`.
+
+   ## Two things that were wrong with it, and one rule that fixes both
+
+   It was `color: rgba(221, 229, 240, 0.82)` — an ink written for a dark card.
+   The anatomy scenes then moved the title card to a pale ground
+   (`data-anatomy-shell='calm'`), and this rule did not move with it, so on
+   every published model the one link to the model's medical basis was
+   near-white text on a near-white card. Screenshotted at 1280×860 on
+   `#/brain-anatomy`: the sentence is there and cannot be read.
+
+   `color: inherit` is the fix rather than a second rule for the calm shell,
+   because a second rule is exactly what produced the first bug: a colour
+   declared per context has to be remembered per context. Inheriting means the
+   link is legible on whatever the card is, including the next ground somebody
+   gives it.
+
+   And it read as a footnote next to a coloured `医学レビュー：未完了` pill —
+   the loudest thing on the card was the caveat, and the way to check the
+   caveat was the quietest. It is a control now: its own line, a boxed
+   affordance, and text at the size of the model's own subtitle. The badges
+   are untouched; what changed is the thing beside them. */
 .title-trust-link {
   /* WCAG 2.5.8's 24 px obligation, applied locally the way `.anatomy-source`
      and the stage button in `ui.css` do rather than through a shared
@@ -30,17 +51,30 @@
      further, to 44 px, at phone widths. */
   display: inline-flex;
   align-items: center;
-  min-height: 24px;
-  color: rgba(221, 229, 240, 0.82);
-  font-size: 0.72rem;
-  font-weight: 600;
+  min-height: 30px;
+  /* Its own line under the badges. A link that wraps into a row of status
+     pills is read as a fourth pill. */
+  flex-basis: 100%;
+  width: fit-content;
+  margin-top: 3px;
+  padding: 0 10px;
+  color: inherit;
+  font-size: 0.78rem;
+  font-weight: 650;
   text-decoration: none;
-  border-bottom: 1px solid rgba(157, 175, 203, 0.4);
-  padding-bottom: 1px;
+  border: 1px solid;
+  /* The border carries the affordance, the ink carries the reading. This was
+     `opacity: 0.78` on the whole box, which dimmed the text as well — and an
+     element opacity is invisible to a contrast check, which reads
+     `style.color`. A box drawn faintly and text drawn fully is both the
+     better look and the honest one. */
+  border-color: color-mix(in srgb, currentColor 34%, transparent);
+  border-radius: 8px;
 }
 
-.title-trust-link:hover {
-  color: #fff;
+.title-trust-link:hover,
+.title-trust-link:focus-visible {
+  border-color: color-mix(in srgb, currentColor 70%, transparent);
 }
 
 .title-card .clinical-review-badge {
@@ -77,6 +111,56 @@
   color: #c7d3ec;
   background: rgba(132, 153, 205, 0.1);
   box-shadow: inset 0 0 0 1px rgba(132, 153, 205, 0.28);
+}
+
+/* ---- The same badges on a pale scene ground --------------------------------
+   `.title-card`'s badge colours above are written for a dark card, and the
+   anatomy scenes paint a pale inspection backdrop with a near-white card on
+   it. Measured on `#/brain-anatomy` at 1280×860: `医学レビュー：未完了` was
+   1.19:1 and `アルファ` 1.32:1 — the model's clinical-review caveat and its
+   maturity, the two things this product is most obliged to state plainly,
+   printed in a colour a reader cannot see.
+
+   The values are the pale-ground set the Explorer already uses, so the same
+   state is the same hue in both places and neither is a new palette.
+
+   Scoped on `data-background`, not on the calm shell: the ground is what
+   decides an ink, and `studio` / `paper` is where the ground is declared
+   (`base.css`). A rule scoped to the shell would go wrong again the next time
+   a pale backdrop reaches a scene that does not use it. */
+#ui[data-background='studio'] .title-card .clinical-review-badge,
+#ui[data-background='paper'] .title-card .clinical-review-badge {
+  color: #465c63;
+  background: rgba(16, 47, 59, 0.05);
+  box-shadow: inset 0 0 0 1px rgba(16, 47, 59, 0.16);
+}
+
+#ui[data-background='studio'] .title-card .clinical-review-badge.is-reviewed,
+#ui[data-background='paper'] .title-card .clinical-review-badge.is-reviewed {
+  color: #28694d;
+  background: rgba(40, 105, 77, 0.08);
+  box-shadow: inset 0 0 0 1px rgba(40, 105, 77, 0.24);
+}
+
+#ui[data-background='studio'] .title-card .clinical-review-badge.is-stale,
+#ui[data-background='paper'] .title-card .clinical-review-badge.is-stale {
+  color: #8d493f;
+  background: rgba(141, 73, 63, 0.08);
+  box-shadow: inset 0 0 0 1px rgba(141, 73, 63, 0.24);
+}
+
+#ui[data-background='studio'] .title-card .clinical-review-badge.is-pending,
+#ui[data-background='paper'] .title-card .clinical-review-badge.is-pending {
+  color: #805b28;
+  background: rgba(128, 91, 40, 0.08);
+  box-shadow: inset 0 0 0 1px rgba(128, 91, 40, 0.24);
+}
+
+#ui[data-background='studio'] .title-card .clinical-review-badge.is-legacy-unversioned,
+#ui[data-background='paper'] .title-card .clinical-review-badge.is-legacy-unversioned {
+  color: #536582;
+  background: rgba(83, 101, 130, 0.08);
+  box-shadow: inset 0 0 0 1px rgba(83, 101, 130, 0.24);
 }
 
 .explorer .clinical-review-badge {

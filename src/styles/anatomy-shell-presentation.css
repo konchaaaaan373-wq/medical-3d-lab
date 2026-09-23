@@ -244,3 +244,102 @@
     scroll-behavior: auto;
   }
 }
+
+/* ---- The disclosure's own summary, on a phone ------------------------------
+   `applyWidth()` moves the model's title lines into
+   `.anatomy-shell-about-identity` at 430px and under, because at that width
+   the title card has stopped being a card and the screen had no model name on
+   it at all. The summary therefore reads as the model, and 「情報・設定」 drops
+   to a quiet second line under it — the label is still there for a screen
+   reader and for anyone wondering what opening it will show.
+
+   Above 430px the identity span is empty and this collapses to nothing, so the
+   control is exactly what it was.
+
+   Every branch below is scoped to `#ui[data-anatomy-shell='calm']`, because
+   this stylesheet may not reach a scene the adapter has not opted in, and
+   `tests/anatomy-shell-presentation.test.js` checks each one. The first
+   version of this block used `#ui[data-anatomy]` as well and went red there —
+   which is also what made a mutation run further up look like it had caught
+   something it had not. */
+#ui[data-anatomy-shell='calm'] .anatomy-shell-about-identity:empty {
+  display: none;
+}
+
+@media (max-width: 430px) {
+  #ui[data-anatomy-shell='calm'] .anatomy-shell-about-toggle {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 1px;
+    min-width: 0;
+  }
+
+  #ui[data-anatomy-shell='calm'] .anatomy-shell-about-identity {
+    /* A column, so the children stack without this rule having to give them a
+       `display` of their own. It did, and `display: block` on
+       `h1.title.lang-en` beat `#ui[data-lang='ja'] .lang-en { display: none }`
+       — same specificity, later sheet — so the phone showed the model's name
+       in both languages at once while every other surface showed one.
+       A layout rule that sets `display` on something with a language class is
+       a language switch it does not know it is overriding. */
+    display: flex;
+    flex-direction: column;
+    min-width: 0;
+    max-width: 100%;
+    overflow: hidden;
+    color: var(--ink);
+    font-size: 13px;
+    font-weight: 700;
+    line-height: 1.24;
+    letter-spacing: -0.01em;
+  }
+
+  /* The title lines keep their own `lang-en` / `lang-ja` switching; what they
+     must not keep is the heading margin they had as a card heading. */
+  #ui[data-anatomy-shell='calm'] .anatomy-shell-about-identity > * {
+    margin: 0;
+    font-size: inherit;
+    font-weight: inherit;
+    line-height: inherit;
+    /* Two lines, not an ellipsis. `触れて学ぶ脳の解剖` truncated to the width
+       that is left beside the chrome chips reads `触れて学ぶ…` — Japanese puts
+       the noun last, so a tail ellipsis removes exactly the word the reader
+       needs. Wrapping costs one 16 px line and keeps 脳. */
+    display: -webkit-box;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 2;
+    line-clamp: 2;
+    overflow: hidden;
+  }
+
+  /* `display: -webkit-box` above would otherwise re-show the hidden language,
+     for the same reason the first version of this block did: it is a `display`
+     on an element carrying `lang-en` / `lang-ja`. The language switch is
+     restated here, at a specificity that wins, rather than left to chance. */
+  #ui[data-anatomy-shell='calm'][data-lang='ja'] .anatomy-shell-about-identity > .lang-en,
+  #ui[data-anatomy-shell='calm'][data-lang='en'] .anatomy-shell-about-identity > .lang-ja {
+    display: none;
+  }
+
+  /* The model's name takes the room that is left and no more. Without this the
+     summary sized to its text and pushed the chrome chips beside it into a
+     vertical stack down the right-hand edge. */
+  #ui[data-anatomy-shell='calm'] .title-card > .anatomy-shell-about {
+    flex: 1 1 auto;
+    min-width: 0;
+  }
+
+  #ui[data-anatomy-shell='calm'] .title-card > .rail-buttons {
+    flex: 0 0 auto;
+  }
+
+  #ui[data-anatomy-shell='calm'] .anatomy-shell-about-label {
+    /* 12px, not 11: `tests/type-floor.test.js` holds a floor for this product
+       and a secondary label is exactly the kind of text that gets shrunk to
+       fit and then cannot be read on the device it was shrunk for. */
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--ink-dim);
+  }
+}

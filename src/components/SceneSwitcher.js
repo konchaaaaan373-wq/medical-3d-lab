@@ -1,6 +1,7 @@
 import { el } from '../utils/dom.js';
 import { inLanguage } from '../utils/language.js';
 import { EXPLORER_ROUTE, LAB_ROUTE, LANDING_ROUTE, organById } from '../catalog/index.js';
+import { PUBLIC_MANIFEST } from '../catalog/publicManifest.js';
 import { activeUsesForSceneEntry } from '../access/sceneUses.js';
 import { readSceneLibrary, toggleSceneFavorite } from '../app/sceneLibrary.js';
 import { resolveRoute } from '../app/router.js';
@@ -336,10 +337,108 @@ export function createSceneSwitcher({ groups, currentId, showLab = true }) {
     });
     return el('span', { class: `global-nav-current-label lang-${lang}` }, children);
   };
-  const currentLocation = el('div', { class: 'global-nav-current', 'aria-label': 'Current model / 現在のモデル' }, [
-    breadcrumb([currentGroup.label, organEn, sceneEn], 'en'),
-    breadcrumb([currentGroup.labelJa, organJa, sceneJa], 'ja'),
-  ]);
+  /**
+   * The published models, as one press each, inside the viewer.
+   *
+   * ## Why this replaces the breadcrumb
+   *
+   * What stood here was `神経 › 脳 › 解剖`: correct, and an answer to a question
+   * nobody was asking. The question a reader actually has on a 3D model is
+   * *"how do I see the heart?"*, and the only answer was a `モデル ⌄` button in
+   * the far corner that opens a sheet — a control a first-time visitor has no
+   * reason to press, because nothing about it says it holds the other models.
+   *
+   * A row of organ names, with the one you are looking at marked, answers both
+   * questions at once: where am I, and how do I go somewhere else. It is the
+   * same set and the same wording as the chips on the landing page, so the
+   * gesture a reader learned before they opened anything still works.
+   *
+   * Switching models is the product's main loop. It should not require leaving
+   * the model, and it should not require finding a menu.
+   *
+   * The set comes from `PUBLIC_MANIFEST`, so it can only ever offer what the
+   * release has opened — the strip cannot become a row of links to pages that
+   * say "in development". When the current scene is not one of them (a
+   * prototype under the preview unlock), there is nothing to mark and the
+   * breadcrumb stands in.
+   */
+  const publishedModels = PUBLIC_MANIFEST?.models ?? [];
+  const onPublishedModel = publishedModels.some((model) => model.sceneId === currentScene.id);
+
+  /**
+   * What to call each model on the strip.
+   *
+   * The organ's name, because that is the word a reader came with — "the
+   * heart", not "Heart anatomy (adult, structural)". It is only safe while one
+   * model per organ is open, so the ambiguity is measured rather than assumed:
+   * the moment two open models share an organ, both fall back to their own
+   * titles and the strip stops offering two chips that read the same.
+   */
+  const organChipCount = new Map();
+  for (const model of publishedModels) {
+    organChipCount.set(model.organId, (organChipCount.get(model.organId) ?? 0) + 1);
+  }
+  const chipLabel = (model) =>
+    organChipCount.get(model.organId) === 1
+      ? { en: model.organLabel, ja: model.organLabelJa }
+      : { en: model.titleEn, ja: model.titleJa };
+
+  const organStrip = onPublishedModel && publishedModels.length > 1
+    ? el(
+        'div',
+        {
+          class: 'global-nav-strip',
+          role: 'group',
+          'aria-label': inLanguage('Published models', '公開中のモデル'),
+        },
+        publishedModels.map((model) => {
+          const here = model.sceneId === currentScene.id;
+          const label = chipLabel(model);
+          return el(
+            'a',
+            {
+              class: `global-nav-strip-link${here ? ' is-current' : ''}`,
+              href: model.route,
+              ...(here ? { 'aria-current': 'page' } : {}),
+            },
+            [
+              el('span', { class: 'lang-en', text: label.en }),
+              el('span', { class: 'lang-ja', text: label.ja }),
+            ]
+          );
+        })
+      )
+    : null;
+
+  const currentLocation = organStrip
+    ?? el('div', { class: 'global-nav-current', 'aria-label': 'Current model / 現在のモデル' }, [
+      breadcrumb([currentGroup.label, organEn, sceneEn], 'en'),
+      breadcrumb([currentGroup.labelJa, organJa, sceneJa], 'ja'),
+    ]);
+
+  /**
+   * When the strip is the whole catalogue, the drawer beside it is a second
+   * door onto the same room.
+   *
+   * With the beta's published set on screen as chips, `モデル ⌄` opened a sheet
+   * listing the same models under the same names — and it sat immediately to
+   * the right of them, so the header offered "models" twice with two different
+   * gestures and no way to tell what the second one added. It added nothing.
+   *
+   * The condition is measured, not assumed: the drawer stands down only when
+   * every scene it could list is already a chip, and only while the strip is
+   * short enough to read at a glance. Under the preview unlock `scenes` is the
+   * whole seventy-model catalogue and this is false on its first term, so the
+   * drawer — its accordion, its favourites, its index links — is untouched
+   * there. `tests/scene-switcher.test.js` fixes both directions, because the
+   * failure mode this class of change already caused once (`is-single`, F-111)
+   * was a 3D scene left with no navigation control on it at all.
+   */
+  const STRIP_STANDS_ALONE_MAX = 6;
+  const stripIsTheCatalogue =
+    Boolean(organStrip) &&
+    publishedModels.length === scenes.length &&
+    publishedModels.length <= STRIP_STANDS_ALONE_MAX;
 
   const element = el(
     'nav',
@@ -349,12 +448,16 @@ export function createSceneSwitcher({ groups, currentId, showLab = true }) {
       // — one open model — left a 3D scene with no navigation control on it at
       // all, and the shelf links inside the drawer unreachable. The class is a
       // layout hint; it is not a reason to take the way out away.
-      class: `global-scene-nav${isLab ? ' is-lab' : ' is-public'}${hasChoices ? '' : ' is-single'}`,
+      class:
+        `global-scene-nav${isLab ? ' is-lab' : ' is-public'}${hasChoices ? '' : ' is-single'}` +
+        (stripIsTheCatalogue ? ' has-model-strip' : ''),
       // Names the landmark, rather than repeating the brand: a screen reader
       // reading a list of landmarks needs to hear what this one is.
       'aria-label': inLanguage('Site navigation', 'サイトナビゲーション'),
     },
-    [brand, currentLocation, trigger, backdrop, panel]
+    stripIsTheCatalogue
+      ? [brand, currentLocation]
+      : [brand, currentLocation, trigger, backdrop, panel]
   );
 
   // One body system is open at a time on every viewport. This keeps a fourteen-
@@ -490,6 +593,28 @@ export function createSceneSwitcher({ groups, currentId, showLab = true }) {
   });
 
   renderLibrary();
+
+  /**
+   * Open the strip showing where you are.
+   *
+   * The row can be wider than the header, and the current model is not always
+   * first in it — standing on the liver with the row starting at the brain
+   * means the one chip that answers "which model is this" is off-screen at the
+   * moment the reader most needs it.
+   *
+   * `scrollLeft` rather than `scrollIntoView`: the latter is free to scroll
+   * every scrollable ancestor, and the nearest one here is the page.
+   */
+  function centreCurrentChip() {
+    if (!organStrip) return;
+    const here = organStrip.querySelector('.global-nav-strip-link.is-current');
+    if (!here || typeof organStrip.scrollLeft !== 'number') return;
+    const centred = here.offsetLeft - (organStrip.clientWidth - here.offsetWidth) / 2;
+    organStrip.scrollLeft = Math.max(0, centred);
+  }
+  if (organStrip && typeof requestAnimationFrame === 'function') {
+    requestAnimationFrame(centreCurrentChip);
+  }
 
   return { element, close: () => setOpen(false) };
 }

@@ -5,6 +5,7 @@ import './styles/anatomy-panel.css';
 import './styles/anatomy-shell-presentation.css';
 import './styles/public-diagnostics.css';
 import './styles/navigation.css';
+import './styles/shell-header.css';
 import './styles/scene-library.css';
 import './styles/access.css';
 import './styles/subscription-access.css';
@@ -32,10 +33,13 @@ import './styles/patient-consultation.css';
 // the consultation view above included.
 import './styles/phone-touch-targets.css';
 import { createBuildMarker } from './components/BuildMarker.js';
-import { resolveRoute } from './app/router.js';
+import { isDocumentSurface, resolveRoute } from './app/router.js';
+import { openingMessage } from './app/destinationName.js';
+import { takeHandover } from './app/sceneHandover.js';
 import { installDeparture } from './app/departure.js';
 import { looksLikeAuthRedirect } from './access/authRedirect.js';
-import { routeOpen } from './app/releaseGate.js';
+import { betaUnlocked, routeOpen } from './app/releaseGate.js';
+import { redirectFor } from './app/routeRedirects.js';
 import { recordSceneVisit } from './app/sceneLibrary.js';
 import {
   installFinalPagehideCleanup,
@@ -88,9 +92,28 @@ async function boot() {
   // the landing page. A query flag is not a route the way a token fragment is;
   // the hash beside it is still a perfectly good one, and the recovery dialog
   // is a modal that opens over whatever it names.
-  const route = looksLikeAuthRedirect(window.location.hash)
-    ? { kind: 'landing' }
-    : resolveRoute(window.location.hash);
+  const authRedirect = looksLikeAuthRedirect(window.location.hash);
+
+  // A route that no longer has a page of its own is corrected before anything
+  // renders, and corrected in the address bar too — arriving at the landing
+  // page under `#/organs` is the state where the shell's own Home link looks
+  // inert, which is the bug the auth-redirect handling above exists to avoid.
+  //
+  // `replaceState`, not an assignment: this is not a place the reader chose to
+  // leave, so it must not cost them a Back press to get out of. It also does
+  // not fire `hashchange`, so nothing here can loop.
+  if (!authRedirect) {
+    const corrected = redirectFor(window.location.hash, { unlocked: betaUnlocked() });
+    if (corrected) {
+      try {
+        window.history.replaceState(window.history.state, '', corrected);
+      } catch {
+        window.location.hash = corrected;
+      }
+    }
+  }
+
+  const route = authRedirect ? { kind: 'landing' } : resolveRoute(window.location.hash);
   const open = routeOpen(route);
 
   if (open && route.kind === 'scene') recordSceneVisit(route.sceneId);
@@ -122,6 +145,12 @@ async function boot() {
   const leaveOnRouteChange = () => installDeparture({
     shownHash,
     language: readUiLanguagePreference(),
+    describe: (hash) => openingMessage(hash, readUiLanguagePreference(), {
+      open: routeOpen(resolveRoute(hash)),
+    }),
+    // No `onDepart` here. This departure covers the scene-*failure* surface,
+    // which has no renderer to release; `App.js` installs the one that does,
+    // where the viewer is in scope rather than behind a debugging global.
   });
 
   const { createAccessManager } = await import('./access/AccessManager.js');
@@ -133,70 +162,40 @@ async function boot() {
     console.error('access init', error);
   });
 
-  if (!open) {
-    document.documentElement.dataset.route = 'locked';
-    const { createLockedSurface } = await import('./app/LockedSurface.js');
-    createLockedSurface({ ui, route, accountButton: access.accountButton });
-    void observe({ ui, surface: 'landing' });
-    void accessReady;
-    leaveOnRouteChange();
-    return;
-  }
+  if (isDocumentSurface(open ? route : { kind: 'locked' })) {
+    // `index.html` decides whether to paint the veil from the hash alone, and
+    // `resolveRoute` is the authority. They agree for every route the product
+    // has — `tests/boot-veil.test.js` fixes that — but an auth redirect is a
+    // fragment rather than a route, and it resolves to the landing page *here*,
+    // after the parser has already seen a hash it does not recognise. Take the
+    // veil down rather than leave a reading surface under it.
+    //
+    // Inside this branch, not before it: removing it unconditionally would
+    // throw away the pre-paint veil for the one route it exists for.
+    document.getElementById('boot-veil')?.remove();
 
-  if (route.kind === 'landing') {
-    document.documentElement.dataset.route = 'landing';
-    const { createLanding } = await import('./app/Landing.js');
-    const observabilityReady = observe({ ui, surface: 'landing' });
-    createLanding({
+    // One import, not two awaited in turn. `shellNavigation.js` already imports
+    // the mount table, so fetching it separately here only added a serial
+    // round-trip in front of every reading surface's first paint — and with it
+    // the skip link, which is the first thing a keyboard user reaches for.
+    const { installShellNavigation } = await import('./app/shellNavigation.js');
+    await installShellNavigation({
       ui,
+      route,
+      open,
       accountButton: access.accountButton,
-      onRendererFailure: async (error, context) => {
-        const observability = await observabilityReady;
-        observability?.reporter.captureRendererFailure(error, {
+      observe,
+      language: readUiLanguagePreference(),
+      onRendererFailure: (error, context) => {
+        context?.observability?.reporter?.captureRendererFailure(error, {
           scene: context?.sceneId ?? 'landing-hero',
-          device: observability.deviceClass,
+          device: context.observability.deviceClass,
           reason: rendererFailureReason(error),
           fallbackShown: true,
         });
       },
     });
-    void observabilityReady;
     void accessReady;
-    leaveOnRouteChange();
-    return;
-  }
-
-  if (route.kind === 'trust') {
-    document.documentElement.dataset.route = 'trust';
-    const { createTrust } = await import('./app/Trust.js');
-    await createTrust({ ui, accountButton: access.accountButton, focusId: route.focusId });
-    void observe({ ui, surface: 'trust' }).then((installed) => installed?.telemetry.record('trust.open', {}));
-    void accessReady;
-    leaveOnRouteChange();
-    return;
-  }
-
-  if (route.kind === 'legal') {
-    document.documentElement.dataset.route = 'legal';
-    const { createLegal } = await import('./app/Legal.js');
-    createLegal({ ui, docId: route.docId, accountButton: access.accountButton });
-    void observe({ ui, surface: 'landing' });
-    void accessReady;
-    leaveOnRouteChange();
-    return;
-  }
-
-  if (route.kind === 'explorer' || route.kind === 'lab') {
-    document.documentElement.dataset.route = 'explorer';
-    const { createExplorer } = await import('./app/Explorer.js');
-    createExplorer({
-      ui,
-      accountButton: access.accountButton,
-      scope: route.kind === 'lab' ? 'lab' : 'public',
-    });
-    void observe({ ui, surface: route.kind === 'lab' ? 'lab' : 'explorer' });
-    void accessReady;
-    leaveOnRouteChange();
     return;
   }
 
@@ -209,14 +208,53 @@ async function boot() {
   ui.dataset.lang = sceneLanguage;
   document.documentElement.setAttribute('lang', sceneLanguage);
 
-  const veil = document.createElement('div');
+  // The veil `index.html` already painted, adopted rather than replaced.
+  //
+  // Creating a second one here meant the reader saw a blank document first —
+  // the gap between the new document committing and this module running was
+  // caught in a screenshot 400 ms into a brain → heart switch, and it is what
+  // "the app disappears when I change pages" was describing.
+  //
+  // What this adds is the destination's name. `index.html` cannot know it (the
+  // catalogue is in the bundle) so it writes the generic sentence; this
+  // replaces it with the one the *departing* document's veil already showed,
+  // built by the same function. Two documents are involved in opening a model
+  // and the reader should not be able to tell.
+  //
+  // The veil is opaque (`.loading` paints `--bg`), and so is the body behind it
+  // before any JS runs, so the handover never shows a colour that is not this
+  // one. Measured rather than assumed: the body's background *does* change from
+  // near-black to the studio backdrop part-way through start-up, underneath a
+  // veil nobody can see through.
+  const veil = document.getElementById('boot-veil') ?? document.createElement('div');
   veil.className = 'loading';
+  // The frame the previous document was showing, if it left one for this hash.
+  //
+  // Painted behind the wait instead of the opaque `--bg` rectangle, so the
+  // reader's eye is never asked to start from nothing: the model they were
+  // looking at stays under the sentence naming the one that is opening, and
+  // the real model cross-fades in over it. See `sceneHandover.js` for why this
+  // is a picture rather than the viewer itself.
+  try {
+    const carried = takeHandover({ hash: window.location.hash });
+    if (carried) {
+      veil.style.setProperty('--handover-image', `url("${carried.image}")`);
+      veil.dataset.handover = '';
+    }
+  } catch (error) {
+    console.warn('[handover] the carried frame could not be painted', error);
+  }
   veil.setAttribute('lang', sceneLanguage);
-  veil.innerHTML = [
-    `<span>${sceneLanguage === 'en' ? 'Loading 3D model' : '3Dモデルを読み込んでいます'}</span>`,
-    '<span class="loading-bar"></span>',
-  ].join('');
-  document.body.append(veil);
+  veil.setAttribute('role', 'status');
+  const veilLabel = document.createElement('span');
+  veilLabel.textContent =
+    openingMessage(window.location.hash, sceneLanguage) ??
+    (sceneLanguage === 'en' ? 'Loading 3D model' : '3Dモデルを読み込んでいます');
+  const veilBar = document.createElement('span');
+  veilBar.className = 'loading-bar';
+  veil.replaceChildren(veilLabel, veilBar);
+  veil.hidden = false;
+  if (!veil.isConnected) document.body.append(veil);
 
   const fallbackStartedAt = Date.now();
   const elapsedSinceNavigation = () =>

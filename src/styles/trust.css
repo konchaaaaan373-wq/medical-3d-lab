@@ -1,25 +1,16 @@
 .trust-page {
   min-height: 100vh;
-  background: #f5f3ee;
-  color: #1c2528;
+  /* Was `#f5f3ee`, a warm cream that appeared on this page and nowhere else in
+     the product — the explorer beside it was `#edf3f5`, cool. Two reading
+     surfaces, two grounds, and the reader crossing between them had to decide
+     whether they were still in the same place. `--reading-bg` is the one
+     ground, declared in `shell-header.css`. */
+  background: var(--reading-bg);
+  color: var(--reading-ink);
   padding: 0 0 64px;
 }
 
-.trust-nav {
-  min-height: 64px;
-  display: grid;
-  grid-template-columns: 1fr auto 1fr;
-  align-items: center;
-  gap: 20px;
-  padding: 0 28px;
-  border-bottom: 1px solid rgba(28, 37, 40, 0.14);
-  background: rgba(245, 243, 238, 0.94);
-}
 
-.trust-brand { color: inherit; text-decoration: none; font-weight: 700; letter-spacing: -0.02em; }
-.trust-nav-links { display: flex; gap: 22px; }
-.trust-nav-links a { color: #425054; text-decoration: none; font-size: 0.9rem; }
-.trust-nav-actions { justify-self: end; display: flex; align-items: center; gap: 10px; }
 
 .trust-hero { max-width: 1040px; margin: 0 auto; padding: 72px 28px 46px; }
 .trust-kicker { margin: 0 0 14px; text-transform: uppercase; letter-spacing: 0.12em; font-size: 0.72rem; color: #657176; }
@@ -28,29 +19,85 @@
 .trust-principles { margin-top: 30px; display: grid; gap: 8px; color: #2e3b3f; font-size: 0.9rem; }
 .trust-principles > span::before { content: '— '; color: #8d6d4b; }
 
-/* Table of contents — one entry per model Trust renders, plus the short
-   shared sections. Exists so a reader does not have to scroll past every
-   other model's full record to reach the one they came for. */
-.trust-toc { max-width: 1040px; margin: 0 auto 28px; padding: 0 28px; }
-.trust-toc-label { margin: 0 0 12px; font-size: 0.78rem; font-weight: 700; letter-spacing: 0.04em; text-transform: uppercase; color: #616c70; }
-.trust-toc-list { list-style: none; margin: 0; padding: 0; display: flex; flex-wrap: wrap; gap: 8px; }
-.trust-toc-item { margin: 0; }
-.trust-toc-link {
+/* ---- One model's record, when the route named one --------------------------
+   `#/trust?model=<slug>` is pressed from inside a model and asks about that
+   model. The heading is therefore the model's name, at a size that does not
+   shout over the record under it — a 4.8rem headline is right for a page
+   called "model status and medical review" and wrong for one called "触れて学ぶ
+   脳の解剖", which the reader can already see on the model they came from. */
+.trust-hero.is-model {
+  padding-bottom: 26px;
+}
+
+.trust-hero.is-model h1 {
+  font-size: clamp(1.7rem, 3.6vw, 2.6rem);
+  line-height: 1.12;
+  letter-spacing: -0.03em;
+}
+
+.trust-hero.is-model .trust-lead {
+  margin-top: 16px;
+}
+
+/* What the two badges mean, in a sentence. Sized as body text and not as a
+   note: it is the first thing on the page that a reader who has not learned
+   this product's vocabulary can actually use. */
+.trust-standing {
+  max-width: 760px;
+  margin: 18px 0 0;
+  padding: 14px 16px;
+  border-left: 3px solid #8d6d4b;
+  border-radius: 0 8px 8px 0;
+  background: rgba(141, 109, 75, 0.07);
+  color: #2e3b3f;
+  line-height: 1.7;
+}
+
+.trust-back-to-model {
   display: inline-flex;
   align-items: center;
-  gap: 8px;
+  /* WCAG 2.5.8: this is a primary way out of a long reading page. */
   min-height: 44px;
-  padding: 6px 12px;
-  border: 1px solid rgba(28, 37, 40, 0.18);
-  border-radius: 6px;
-  background: #fff;
+  margin-top: 20px;
+  padding: 0 16px;
+  border: 1px solid rgba(28, 37, 40, 0.22);
+  border-radius: 999px;
+  background: #ffffff;
   color: #1c2528;
+  font-size: 0.92rem;
+  font-weight: 620;
   text-decoration: none;
-  font-size: 0.86rem;
 }
-.trust-toc-link:hover { border-color: #8e999b; }
-.trust-toc-shared { list-style: none; margin: 12px 0 0; padding: 0; display: flex; flex-wrap: wrap; gap: 16px; }
-.trust-toc-shared-link { display: inline-flex; align-items: center; justify-content: center; min-height: 44px; min-width: 44px; color: #425b60; font-size: 0.86rem; text-decoration: underline; }
+
+.trust-back-to-model:hover {
+  border-color: rgba(28, 37, 40, 0.4);
+}
+
+.trust-back-to-model:focus-visible {
+  outline: 2px solid #8d6d4b;
+  outline-offset: 2px;
+}
+
+.trust-lead-record {
+  max-width: 1040px;
+  margin: 0 auto 38px;
+  padding: 0 28px;
+}
+
+/* The ledger under the record, introduced as what it now is. It is a boundary
+   as much as a heading — without it the seventy other models read as a
+   continuation of the one record above them. */
+.trust-others-heading {
+  max-width: 1040px;
+  margin: 0 auto;
+  padding: 26px 28px 0;
+  border-top: 1px solid rgba(28, 37, 40, 0.14);
+  font-size: 1.05rem;
+  font-weight: 620;
+  letter-spacing: -0.01em;
+  color: #2e3b3f;
+}
+
 
 .trust-grid { max-width: 1040px; margin: 0 auto; padding: 0 28px; display: grid; gap: 16px; }
 
@@ -117,11 +164,11 @@
 .trust-footer { max-width: 1040px; margin: 40px auto 0; padding: 24px 28px 0; border-top: 1px solid rgba(28, 37, 40, 0.14); color: #687377; font-size: 0.8rem; }
 
 @media (max-width: 720px) {
-  .trust-nav { grid-template-columns: 1fr auto; padding: 0 16px; }
-  .trust-nav-links { display: none; }
   .trust-hero { padding: 46px 18px 34px; }
-  .trust-toc { padding: 0 14px; }
-  .trust-grid { padding: 0 14px; }
+  .trust-hero.is-model { padding-top: 34px; padding-bottom: 20px; }
+  .trust-lead-record { padding: 0 14px; margin-bottom: 26px; }
+  .trust-others-heading { padding: 20px 14px 0; }
+    .trust-grid { padding: 0 14px; }
   .trust-card-summary { display: block; padding: 18px 20px; }
   .trust-card-badges { margin-top: 10px; }
   .trust-card-body { padding: 0 20px 20px; }
@@ -165,4 +212,165 @@
   color: var(--ink-faint);
   border-style: dashed;
   cursor: default;
+}
+
+/* ---------------------------------------------------------------- the filter
+
+   One control over one set. It replaced a seventy-chip jump list that sat
+   above seventy cards carrying the same names — see `trustFilter` in
+   `Trust.js` for why that shape could not survive the catalogue growing. */
+
+.trust-filter {
+  max-width: 1040px;
+  margin: 0 auto 28px;
+  padding: 0 28px;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px 16px;
+}
+
+.trust-filter-label {
+  font-size: 0.78rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--reading-muted);
+}
+
+.trust-filter-field {
+  flex: 1 1 15rem;
+  min-height: 44px;
+  padding: 0 12px;
+  border: 1px solid var(--reading-rule-strong);
+  border-radius: 10px;
+  background: var(--reading-surface);
+  color: var(--reading-ink);
+  font: inherit;
+  font-size: 0.95rem;
+}
+
+.trust-filter-field:focus-visible {
+  outline: 2px solid var(--reading-accent);
+  outline-offset: 1px;
+}
+
+.trust-filter-scopes {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.trust-filter-scope {
+  min-height: 44px;
+  padding: 0 14px;
+  border: 1px solid var(--reading-rule-strong);
+  border-radius: 999px;
+  background: var(--reading-surface);
+  color: var(--reading-muted);
+  font: inherit;
+  font-size: 0.86rem;
+  cursor: pointer;
+}
+
+.trust-filter-scope[aria-pressed='true'] {
+  background: var(--reading-accent);
+  border-color: var(--reading-accent);
+  color: #ffffff;
+  font-weight: 600;
+}
+
+.trust-filter-count {
+  margin: 0;
+  flex-basis: 100%;
+  /* `--reading-muted`, not `--reading-faint`: measured at 3.59:1 on this ground
+     at 13.4px, which is below WCAG 1.4.3 AA. It is the only thing that tells a
+     reader the filter did anything, so it is not a whisper. */
+  color: var(--reading-muted);
+  font-size: 0.84rem;
+}
+
+/* A record the filter has excluded. `hidden` alone loses to the `display` the
+   card's own rule sets, and a card that is hidden from sight but not from Tab
+   is worse than one that is simply there. */
+.trust-card[hidden] {
+  display: none;
+}
+
+@media (max-width: 720px) {
+  .trust-filter {
+    padding: 0 14px;
+  }
+}
+
+/* Nothing matched. Shown where the records would have been, not tucked under
+   the control that emptied the page. */
+.trust-empty {
+  max-width: 1040px;
+  margin: 0 auto 28px;
+  padding: 26px 28px;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 18px;
+}
+
+.trust-empty[hidden] {
+  display: none;
+}
+
+.trust-empty-line {
+  margin: 0;
+  color: var(--reading-ink);
+  font-size: 1rem;
+}
+
+.trust-empty-clear {
+  min-height: 44px;
+  padding: 0 16px;
+  border: 1px solid var(--reading-accent);
+  border-radius: 999px;
+  background: transparent;
+  color: var(--reading-accent-strong);
+  font: inherit;
+  font-size: 0.9rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.trust-empty-clear:hover {
+  background: var(--reading-accent);
+  color: #ffffff;
+}
+
+.trust-empty-clear:focus-visible {
+  outline: 2px solid var(--reading-accent);
+  outline-offset: 2px;
+}
+
+@media (max-width: 720px) {
+  .trust-empty { padding: 20px 14px; }
+}
+
+/* ---- The promoted record ----------------------------------------------------
+   A `<section>` rather than a `<details>`, so it needs the padding the summary
+   and body were carrying between them, and a frame that reads as "this is the
+   record" rather than as the first of seventy-one rows. */
+.trust-card.is-lead {
+  display: block;
+  padding: 0;
+}
+
+.trust-card-lead-badges {
+  padding: 18px 22px 0;
+}
+
+.trust-card.is-lead > .trust-card-body {
+  padding-top: 12px;
+}
+
+@media (max-width: 720px) {
+  .trust-card-lead-badges {
+    padding: 16px 20px 0;
+  }
 }

@@ -75,7 +75,7 @@ export function structureOf(hash = '') {
  * The model a Trust route should open focused, if it names one.
  *
  * `#/trust?model=heart-failure` is the same idea as `structureOf` above, one
- * level up: a scene's "Model information" link can hand the reader to Trust
+ * level up: a scene's "sources & limits" link can hand the reader to Trust
  * already pointed at *its own* record instead of the flat top of a page with
  * 69 headings on it. It is a query, not a path segment, for the same reason —
  * Trust is one page, and which record starts open is state inside it, not a
@@ -128,6 +128,56 @@ export function resolveRoute(hash = '') {
   if (LEGAL_ALIASES.has(slug)) return { kind: 'legal', docId: slug };
   return { kind: 'scene', sceneId: resolveSceneId(hash), structureId: structureOf(hash) };
 }
+
+/**
+ * Every slug that is **not** a scene.
+ *
+ * The complement of "is this a model", as a flat list, because one consumer
+ * cannot run this module: `index.html` decides before any JavaScript loads
+ * whether to paint the loading veil, and it has to decide from the hash alone.
+ *
+ * That inline copy is the only duplication of this list in the product, and
+ * `tests/boot-veil.test.js` fails if the two ever disagree — which is the
+ * whole reason this is exported rather than left as four private `Set`s.
+ * Adding a route and forgetting the copy would flash a "loading a 3D model"
+ * veil over a page with no model on it.
+ */
+export const DOCUMENT_ROUTE_SLUGS = Object.freeze([
+  ...LANDING_ALIASES,
+  ...EXPLORER_ALIASES,
+  ...LAB_ALIASES,
+  ...TRUST_ALIASES,
+  ...LEGAL_ALIASES,
+].sort());
+
+/**
+ * The route kinds that are a document rather than a viewport.
+ *
+ * Kept here, beside `resolveRoute`, rather than in the module that mounts them:
+ * `main.js` has to ask the question before it imports anything, and a predicate
+ * that lived with the mount table would drag the whole table into the entry
+ * chunk to answer it. `'locked'` is not a kind `resolveRoute` returns — it is
+ * what any route becomes when the release gate holds it closed — and it is a
+ * document like the rest.
+ */
+export const DOCUMENT_ROUTE_KINDS = Object.freeze([
+  'landing',
+  'explorer',
+  'lab',
+  'trust',
+  'legal',
+]);
+
+/**
+ * Whether this route can be rendered into the document that is already open.
+ *
+ * The complement of `routeNeedsDocument` in `departure.js`, which asks the same
+ * question of the one kind that answers no.
+ *
+ * @param {{kind?: string}|null} route
+ */
+export const isDocumentSurface = (route) =>
+  route?.kind === 'locked' || DOCUMENT_ROUTE_KINDS.includes(route?.kind);
 
 /**
  * Whether a hash names a scene that actually exists.

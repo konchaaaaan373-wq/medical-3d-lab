@@ -222,8 +222,12 @@ test('legal: the pages are reachable from the shell and need no renderer', () =>
   const legal = read('src/app/Legal.js');
   assert.ok(!legal.includes("from 'three'"), 'the terms must be readable without WebGL');
 
-  const main = read('src/main.js');
-  assert.match(main, /route\.kind === 'legal'/);
+  // The route-to-surface table moved out of `main.js` when route changes
+  // between reading surfaces stopped replacing the document.
+  const surfaces = read('src/app/documentSurfaces.js');
+  assert.match(surfaces, /kind === 'legal'/);
+  assert.match(surfaces, /import\('\.\/Legal\.js'\)/);
+  assert.match(surfaces, /legal: 'legal'/, 'and it renders on its own document state');
 
   for (const source of [read('src/app/Landing.js'), read('src/app/Trust.js')]) {
     for (const slug of LEGAL_SLUGS) {

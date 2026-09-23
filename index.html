@@ -24,6 +24,45 @@
     <!-- The renderer canvas is appended here; all UI lives in #ui as an overlay. -->
     <div id="stage"></div>
     <div id="ui"></div>
+
+    <!--
+      The wait, painted by the parser rather than by the bundle.
+
+      Opening a model is a document load, and there was a gap between the new
+      document committing and `main.js` running far enough to create a loading
+      element. For the length of that gap the reader looked at an empty page —
+      measured, and caught in a screenshot 400 ms into a brain → heart switch:
+      the build marker was painted and nothing else was. That blank is what
+      "the app disappears when I change pages" was describing, and no amount of
+      work inside the bundle can close it, because the bundle is what is being
+      waited for.
+
+      So this is markup, and the decision below is nine lines of inline script
+      that run before the first paint. It costs no request and no module.
+
+      `DOCUMENT_ROUTE_SLUGS` in `src/app/router.js` is the same list, and
+      `tests/boot-veil.test.js` fails if the two disagree — the failure mode
+      otherwise is a "loading a 3D model" veil flashing over the terms page.
+    -->
+    <div id="boot-veil" class="loading" role="status" hidden>
+      <span id="boot-veil-label"></span>
+      <span class="loading-bar"></span>
+    </div>
+    <script>
+      (function () {
+        var DOCUMENT_ROUTES = ['', 'commerce', 'evidence', 'experimental', 'explore', 'home', 'lab', 'organs', 'privacy', 'support', 'terms', 'trust'];
+        var slug = String(location.hash || '').replace(/^#\/?/, '').split('?')[0].trim();
+        if (DOCUMENT_ROUTES.indexOf(slug) !== -1) return;
+        var veil = document.getElementById('boot-veil');
+        var label = document.getElementById('boot-veil-label');
+        var ja = String(document.documentElement.lang || 'ja').indexOf('en') !== 0;
+        // Deliberately generic. The organ's name needs the catalogue, which is
+        // in the bundle; `main.js` replaces this the moment it knows, and the
+        // departing document's veil already said the name.
+        label.textContent = ja ? '3Dモデルを読み込んでいます' : 'Loading 3D model';
+        veil.hidden = false;
+      })();
+    </script>
     <script type="module" src="/src/main.js"></script>
   </body>
 </html>

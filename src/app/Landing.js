@@ -1,22 +1,13 @@
-import {
-  EXPLORER_ROUTE,
-  LAB_ROUTE,
-  LANDING_ROUTE,
-} from '../catalog/index.js';
-import {
-  MODEL_INFO_ROUTE,
-  PUBLIC_MANIFEST,
-} from '../catalog/publicManifest.js';
+import { MODEL_INFO_ROUTE, PUBLIC_MANIFEST } from '../catalog/publicManifest.js';
 import { createLanguageToggle } from '../components/LanguageToggle.js';
-import { inLanguage } from '../utils/language.js';
 import {
   HERO_ORGANS,
   heroOrgansForModels,
 } from '../data/landingHero.js';
 import { NECO_LINKS } from '../data/necoLinks.js';
 import { createLandingOrganHero } from './landingOrganHero.js';
-import { betaUnlocked } from './releaseGate.js';
 import { el, skipLink } from '../utils/dom.js';
+import { createShellHeader } from '../components/ShellHeader.js';
 
 const dual = (en, ja, className = '') => [
   el('span', { class: `${className} lang-en`.trim(), text: en }),
@@ -96,22 +87,11 @@ export function createLanding({
   });
 
   const element = el('main', { class: 'landing' }, [
-    el('header', { class: 'landing-nav' }, [
-      el('a', { class: 'landing-brand', href: '#/', 'aria-label': inLanguage('Medical 3D Lab home', 'Medical 3D Lab トップ') }, [
-        el('span', { class: 'landing-brand-mark', 'aria-hidden': 'true' }, [
-          el('span', { text: 'M' }),
-          el('i'),
-          el('span', { text: '3' }),
-        ]),
-        el('span', { class: 'landing-brand-name', text: 'Medical 3D Lab' }),
-      ]),
-      el('nav', { class: 'landing-nav-links', 'aria-label': 'Product navigation / 製品ナビゲーション' }, [
-        shellLink(EXPLORER_ROUTE, '3D models', '3Dモデル', 'landing-nav-link'),
-        shellLink(MODEL_INFO_ROUTE, 'Model information', 'モデル情報', 'landing-nav-link'),
-        betaUnlocked() ? shellLink(LAB_ROUTE, 'Experimental', '実験モデル', 'landing-nav-link') : null,
-      ]),
-      el('div', { class: 'landing-nav-actions' }, [accountButton, languageToggle.element]),
-    ]),
+    createShellHeader({
+      current: 'home',
+      accountButton,
+      languageToggle: languageToggle.element,
+    }),
 
     el('section', {
       class: 'landing-hero',
@@ -133,8 +113,8 @@ export function createLanding({
                 class: 'landing-empty-state',
                 role: 'status',
               }, dual(
-                'Please check model information for the current publication status.',
-                '現在の公開状況はモデル情報から確認できます。'
+                'The current publication status is under Publication & review.',
+                '現在の公開状況は「公開とレビュー」から確認できます。'
               )),
         ]),
       ]),
@@ -142,12 +122,9 @@ export function createLanding({
       organHero
         ? el('div', { class: 'landing-hero-actions' }, [
             organHero.actionElement,
-            shellLink(
-              primaryModel.modelInfoRoute ?? MODEL_INFO_ROUTE,
-              'Model information',
-              'モデル情報',
-              'landing-model-info-link landing-cta'
-            ),
+            // The hero's own, so it names the organ on screen rather than the
+            // first one in the manifest.
+            organHero.infoElement,
           ])
         : null,
     ]),
@@ -163,14 +140,25 @@ export function createLanding({
         'See the source, licence, revision, represented structures and known limits for each model.',
         '各モデルの出典、ライセンス、改訂履歴、収録している構造、既知の限界を確認できます。'
       )),
-      el('nav', { class: 'landing-method-links', 'aria-label': 'Model information and support / モデル情報・サポート' }, [
+      // One link, and it is the one this section is about.
+      //
+      // There were two: this destination *and* "report a problem", which the
+      // footer already offers. Removing the wrong one of the two left a heading
+      // reading "check the model before using it", a paragraph listing what the
+      // record contains, and then a link to a bug report — a section that
+      // described a destination and no longer offered it, which is worse scent
+      // than the duplication it was meant to fix.
+      //
+      // It is worded as the destination, matching the header and the page it
+      // opens. The hero's link beside it is not a duplicate of this one: that
+      // one carries `?model=<slug>` and follows the organ on screen.
+      el('nav', { class: 'landing-method-links', 'aria-label': 'Model records / モデルの記録' }, [
         shellLink(
           MODEL_INFO_ROUTE,
-          'View model information',
-          'モデル情報を見る',
+          'Publication & review',
+          '公開とレビュー',
           'landing-method-link is-primary landing-cta'
         ),
-        shellLink('#/support', 'Report a problem', '不具合を連絡する', 'landing-method-link'),
       ]),
     ]),
 
@@ -214,7 +202,6 @@ export function createLanding({
         el('a', { class: 'landing-footer-link', href: '#/privacy' }, dual('Privacy', 'プライバシー')),
         el('a', { class: 'landing-footer-link', href: '#/commerce' }, dual('Commercial disclosure', '特定商取引法に基づく表記')),
         el('a', { class: 'landing-footer-link', href: '#/support' }, dual('Support', 'サポート')),
-        shellLink(MODEL_INFO_ROUTE, 'Model information', 'モデル情報', 'landing-footer-link'),
       ]),
     ]),
   ].filter(Boolean));
@@ -283,20 +270,17 @@ export function createPublicModelsExplorer({
     : ['3D anatomical models', '3D解剖モデル'];
 
   const element = el('main', { class: 'explorer public-models' }, [
+    createShellHeader({
+      current: 'models',
+      accountButton,
+      languageToggle: languageToggle.element,
+    }),
     el('header', {
       class: 'explorer-header public-models-header',
       id: 'content',
       tabindex: '-1',
       'data-skip-target': '',
     }, [
-      el('div', { class: 'public-models-appbar' }, [
-        el('a', { class: 'public-models-brand', href: LANDING_ROUTE, text: 'Medical 3D Lab' }),
-        el('nav', { class: 'explorer-header-actions', 'aria-label': 'Model navigation / モデルナビゲーション' }, [
-          el('a', { class: 'explorer-shell-link', href: '#/trust' }, dual('Model information', 'モデル情報')),
-          accountButton,
-          languageToggle.element,
-        ]),
-      ]),
       el('p', { class: 'eyebrow' }, dual(
         models.length === 0 ? 'Publication status' : '3D anatomy model',
         models.length === 0 ? '公開状況' : '3D解剖モデル'
@@ -318,8 +302,8 @@ export function createPublicModelsExplorer({
             '利用できる3D解剖モデルがある場合に、モデルへのボタンを表示します。'
           )),
           el('a', { class: 'explorer-shell-link', href: '#/trust' }, dual(
-            'View model information',
-            'モデル情報を見る'
+            'Publication & review',
+            '公開とレビューを見る'
           )),
         ]),
     organHero
@@ -328,10 +312,7 @@ export function createPublicModelsExplorer({
           'aria-label': 'Selected model actions / 選択中モデルの操作',
         }, [
           organHero.actionElement,
-          el('a', { class: 'explorer-shell-link', href: MODEL_INFO_ROUTE }, dual(
-            'Model information',
-            'モデル情報'
-          )),
+          organHero.infoElement,
         ])
       : null,
     el('footer', { class: 'explorer-footer public-models-footer' }, [
@@ -343,7 +324,6 @@ export function createPublicModelsExplorer({
         )),
       ]),
       el('nav', { class: 'public-models-footer-links', 'aria-label': 'Legal and support / 規約・サポート' }, [
-        el('a', { class: 'explorer-shell-link', href: '#/trust' }, dual('Model information', 'モデル情報')),
         el('a', { class: 'explorer-shell-link', href: '#/terms' }, dual('Terms', '利用規約')),
         el('a', { class: 'explorer-shell-link', href: '#/privacy' }, dual('Privacy', 'プライバシー')),
         el('a', { class: 'explorer-shell-link', href: '#/commerce' }, dual('Commercial disclosure', '特定商取引法に基づく表記')),
