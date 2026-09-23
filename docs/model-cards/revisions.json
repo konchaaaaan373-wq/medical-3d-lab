@@ -49,8 +49,8 @@
       "src/models/cardiacMechanics.js",
       "src/scenes/cardiovascular/scenes/heartFailure/hemodynamics.js"
     ],
-    "cardRevision": 4,
-    "modelDigest": "76c6289b6aec87ea",
+    "cardRevision": 6,
+    "modelDigest": "6c780d2c28064878",
     "cardUpdatedAt": "2026-09-22"
   },
   {
@@ -61,8 +61,8 @@
       "src/models/cardiacInterventions.js",
       "src/models/cardiacMechanics.js"
     ],
-    "cardRevision": 5,
-    "modelDigest": "9482474ed50d1090",
+    "cardRevision": 9,
+    "modelDigest": "f635134f0823ca1c",
     "cardUpdatedAt": "2026-09-22"
   },
   {

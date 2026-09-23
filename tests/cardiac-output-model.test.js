@@ -366,6 +366,41 @@ test('every condition in the declared domain settles into a genuinely periodic b
   assert.ok(worstStroke < 0.2, `worst stroke-volume mismatch ${worstStroke.toFixed(4)} mL`);
 });
 
+test('end-diastolic pressure does not depend on how finely the beat was integrated', () => {
+  // The check that caught the definition this replaces. End-diastolic pressure
+  // used to be read at the sample where left-ventricular volume was highest,
+  // and at that instant the volume is on a plateau while the pressure is on
+  // the isovolumic upstroke — so which sample happened to hold the maximum
+  // decided the figure a reader was shown.
+  //
+  // Measured at Ees 2.74, filling 980 mL, SVR 1.8, 50/min: **the volume**
+  // agreed to 0.002 mL across 240/480/960/1920 steps per beat while the
+  // pressure ran 17.67 / 16.25 / 15.69 / 15.46 mmHg and was still moving.
+  // Read at mitral-valve closure, which is what end-diastole is, the same
+  // four give 15.275 / 15.286 / 15.292 / 15.295.
+  //
+  // So this is not a tolerance somebody chose to make a number pass: it is the
+  // difference between a quantity that converges and one that does not.
+  const corners = [
+    { contractilityEesMmHgPerMl: 2.74, fillingVolumeMl: 980, systemicResistanceMmHgSPerMl: 1.8, heartRatePerMin: 50 },
+    { contractilityEesMmHgPerMl: 0.8, fillingVolumeMl: 710, systemicResistanceMmHgSPerMl: 1.1, heartRatePerMin: 70 },
+    { contractilityEesMmHgPerMl: 4.0, fillingVolumeMl: 540, systemicResistanceMmHgSPerMl: 0.7, heartRatePerMin: 110 },
+    referenceInput(),
+  ];
+  for (const input of corners) {
+    const coarse = solveCardiacOutput(input, { stepsPerBeat: 240, diagnosticSteps: 960 });
+    const fine = solveCardiacOutput(input, { stepsPerBeat: 960, diagnosticSteps: 3840 });
+    assert.equal(coarse.status, 'valid');
+    assert.equal(fine.status, 'valid');
+    const gap = Math.abs(coarse.metrics.endDiastolicPressureMmHg - fine.metrics.endDiastolicPressureMmHg);
+    assert.ok(
+      gap < 0.1,
+      `end-diastolic pressure moved ${gap.toFixed(3)} mmHg between 240 and 960 steps per beat at ` +
+        `${JSON.stringify(input)} — it is being sampled somewhere the step grid decides, not at an event`
+    );
+  }
+});
+
 test('what enters the ventricle over a beat is what leaves it', () => {
   // Continuity, at every junction of the loop rather than at the one that is
   // drawn. In a steady beat the mitral and aortic throughputs are equal, the

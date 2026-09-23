@@ -666,6 +666,94 @@ test('whatever the reader has done, every panel is reading one solved beat', asy
   assert.equal(checked, 36, 'the whole product was walked');
 });
 
+test('the comparison says which inputs moved, how far, and how many are held', async () => {
+  const { CardiacOutputScene } = await import(
+    '../src/scenes/cardiovascular/scenes/cardiacOutput/CardiacOutputScene.js'
+  );
+  // D-12 of the external review. Two hearts side by side show that something
+  // differs; they do not show *which* of the four it was, and "I changed one
+  // thing" is the claim the whole scene rests on.
+  const session = new ExperimentSession();
+  const scene = { session, comparing: false, state: session.view.metrics };
+
+  const rowsFor = (comparing) => {
+    scene.comparing = comparing;
+    scene.state = session.view.metrics;
+    return CardiacOutputScene.prototype.getMetrics.call(scene);
+  };
+
+  // Emitted whether or not the second heart is drawn: it is the answer to
+  // "what have I done", and a row that only appears while comparing would be
+  // appended below every other row by the panel and land under the fold.
+  const off = rowsFor(false).find((row) => row.id === 'changed');
+  assert.ok(off, 'the row is there without the comparison');
+  assert.match(off.valueJa, /^なし$/);
+  assert.equal(rowsFor(false)[0].id, 'changed', 'and it leads the panel');
+
+  const untouched = rowsFor(true).find((row) => row.id === 'changed');
+  assert.ok(untouched, 'the comparison names what is being compared');
+  assert.match(untouched.valueJa, /^なし$/);
+
+  // One slider: named, with both values and the number held.
+  session.setControl('systemicResistanceMmHgSPerMl', 1.6);
+  const one = rowsFor(true).find((row) => row.id === 'changed');
+  assert.equal(one.valueJa, '抵抗 1.1 → 1.6（他 3 固定）', 'one moved control is spelled out, with the rest counted');
+  assert.equal(one.unit, '', 'the unit slot renders one language only, so nothing bilingual goes in it');
+
+  // Two sliders: it says two rather than letting a multi-input condition read
+  // as a one-factor comparison.
+  session.setControl('heartRatePerMin', 90);
+  const two = rowsFor(true).find((row) => row.id === 'changed');
+  assert.equal(two.valueJa, '2 つ: 抵抗・心拍数（他 2 固定）', 'two or more are named, not spelled out');
+
+  // The drug is a multi-input change by construction, and is reported as one.
+  session.selectPreset(PRESET_IDS.REDUCED_CONTRACTILITY);
+  session.selectIntervention('dobutamine');
+  const drug = rowsFor(true).find((row) => row.id === 'changed');
+  assert.match(drug.valueJa, /他 2 固定/, 'dobutamine moves elastance and resistance, so two are held');
+});
+
+test('a refused condition never leaves the previous answer standing as the current one', async () => {
+  const { CardiacOutputScene } = await import(
+    '../src/scenes/cardiovascular/scenes/cardiacOutput/CardiacOutputScene.js'
+  );
+  // 6.5 of the external review. Every reachable slider position is inside the
+  // verified domain, so this is the path that "should never" run — which is
+  // exactly why it is exercised rather than assumed.
+  const session = new ExperimentSession();
+  const solved = session.view.metrics;
+  assert.ok(solved, 'the opening condition solves');
+
+  session.setInput({ ...session.input, heartRatePerMin: 400 });
+  assert.equal(session.applied, false, 'the requested condition was refused');
+  assert.ok(session.problems.length > 0, 'and the session says why');
+
+  // The design is not to blank the screen: the previous beat stays drawn, and
+  // the panel says in its first row that this is what a reader is looking at.
+  // What must never happen is the previous numbers standing unlabelled as the
+  // current ones.
+  const scene = { session, comparing: false, state: session.view.metrics };
+  const rows = CardiacOutputScene.prototype.getMetrics.call(scene);
+  const notice = rows[0];
+  assert.equal(notice.id, 'unsolved', 'the notice leads the panel');
+  assert.match(notice.labelJa, /1 つ前の条件/);
+  assert.match(notice.valueJa, /反映されていません/);
+  assert.equal(notice.emphasis, true);
+
+  // And the comparison describes the condition the figures came from, not the
+  // one that was asked for and refused.
+  scene.comparing = true;
+  const changed = CardiacOutputScene.prototype.getMetrics.call(scene).find((row) => row.id === 'changed');
+  assert.doesNotMatch(changed.valueJa, /400/, 'a refused request is not reported as a change that happened');
+
+  // Solving again clears it rather than leaving the notice stuck.
+  session.setInput({ ...session.baseline.input });
+  assert.equal(session.applied, true);
+  const after = CardiacOutputScene.prototype.getMetrics.call({ session, comparing: false, state: session.view.metrics });
+  assert.ok(!after.some((row) => row.id === 'unsolved'));
+  assert.equal(after.find((row) => row.id === 'co').value, Number(solved.cardiacOutputLMin.toFixed(1)).toFixed(1));
+});
+
 test('every one of those states survives being captured and restored', async () => {
   // The second defect was here: the medical state came back and the mode did
   // not. Round-tripping every combination is what makes that a property rather

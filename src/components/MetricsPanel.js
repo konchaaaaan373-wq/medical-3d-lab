@@ -6,10 +6,61 @@ import { el } from '../utils/dom.js';
  *
  * The values come from the scene's own model, so what the panel says and what
  * the 3D view shows are the same numbers.
+ *
+ * ## The panel shows the rows it was handed, in the order it was handed them
+ *
+ * It did not. New ids were appended and rows that stopped being sent were
+ * left where they were, so a row a scene emits conditionally arrived at the
+ * **bottom** of the panel however early it sat in the array, and stayed there
+ * after the scene stopped sending it.
+ *
+ * That is not a cosmetic difference for a row whose job is to say the numbers
+ * beside it are stale: `cardiac-output` leads with "showing the previous
+ * condition" when a condition is refused, and under the old behaviour that
+ * notice appeared under eleven numbers and then never went away. The scene's
+ * own tests read the array and could not see it (R152-03).
+ *
+ * Every scene that hands the same rows every time is unaffected — the nodes
+ * are reused, and reordering a list that has not changed order does nothing.
  */
 export function createMetricsPanel() {
   const element = el('div', { class: 'panel metrics' });
   const rows = new Map();
+
+  /**
+   * The few rows worth a phone's space, and the way to the rest.
+   *
+   * Opt-in: a scene marks rows `compact: true` and this appears; a scene that
+   * marks none gets exactly what it got before. The alternative in the
+   * stylesheet — hide everything that is not `is-key` unless the panel is
+   * `is-primary` — decided a read-out's phone layout from a *controls*
+   * property, and `cardiac-output` fell on the wrong side of it: eleven rows
+   * on a 390-wide screen, with the filling pressure below the fold and no way
+   * to reach it. The teaching this scene exists for is that output and filling
+   * pressure move together, so a phone that shows one without the other is
+   * showing the wrong half (R152-04).
+   */
+  let expanded = false;
+  const moreLabelEn = el('span', { class: 'lang-en' });
+  const moreLabelJa = el('span', { class: 'lang-ja' });
+  const setMoreLabel = () => {
+    moreLabelEn.textContent = expanded ? 'Fewer figures' : 'All figures';
+    moreLabelJa.textContent = expanded ? '主要な数値だけ' : 'すべての数値';
+  };
+  const more = el('button', {
+    class: 'metrics-more',
+    type: 'button',
+    'aria-expanded': 'false',
+    on: {
+      click: () => {
+        expanded = !expanded;
+        element.classList.toggle('is-expanded', expanded);
+        more.setAttribute('aria-expanded', String(expanded));
+        setMoreLabel();
+      },
+    },
+  }, [moreLabelEn, moreLabelJa]);
+  setMoreLabel();
 
   return {
     element,
@@ -56,7 +107,6 @@ export function createMetricsPanel() {
             ]),
             el('span', { class: 'metric-figure' }, [reference, value, valueJa, unit, change]),
           ]);
-          element.append(node);
           row = { value, valueJa, reference, unit, change, node };
           rows.set(metric.id, row);
         }
@@ -76,6 +126,30 @@ export function createMetricsPanel() {
           row.node.removeAttribute('aria-label');
         }
       }
+
+      // What this update did **not** contain is as much a part of it as what
+      // it did. Rows that stopped being sent are dropped, and the survivors
+      // are put in the order they arrived in — one `replaceChildren` rather
+      // than a diff, because the nodes are the same objects either way and the
+      // list is a dozen long.
+      // Pruning the map is hygiene rather than behaviour — `replaceChildren`
+      // already decides what is on screen, and a mutation that skips this line
+      // is not observable. It is here so `highlight` and the row cache do not
+      // accumulate nodes nothing will ever show again.
+      const wanted = new Set(metrics.map((metric) => metric.id));
+      for (const id of [...rows.keys()]) if (!wanted.has(id)) rows.delete(id);
+
+      // Which rows survive a small screen is the scene's call, declared per
+      // row. The stylesheet decides at what width it matters.
+      for (const metric of metrics) {
+        rows.get(metric.id).node.dataset.compact = metric.compact ? 'key' : 'extra';
+      }
+      const anyCompact = metrics.some((metric) => metric.compact);
+      element.classList.toggle('has-compact', anyCompact);
+      element.replaceChildren(
+        ...metrics.map((metric) => rows.get(metric.id).node),
+        ...(anyCompact ? [more] : [])
+      );
     },
   };
 }

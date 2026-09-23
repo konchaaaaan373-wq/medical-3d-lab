@@ -1,0 +1,114 @@
+{
+  "recordedAt": "2026-09-22",
+  "sweep": {
+    "conditions": 865,
+    "failures": 0,
+    "largestPeriodicResidualMl": 0.07457003652802996,
+    "largestWholeBeatBalanceMl": 0.019379856953207764,
+    "largestWindowBalanceMl": 0.5288953043178601,
+    "largestWindowBalanceAt": {
+      "fillingVolumeMl": 980,
+      "systemicResistanceMmHgSPerMl": 0.7,
+      "contractilityEesMmHgPerMl": 4,
+      "heartRatePerMin": 50,
+      "compartment": "leftVentricle"
+    }
+  },
+  "rateWalk": {
+    "axes": {
+      "contractilityEesMmHgPerMl": [
+        0.8,
+        1.2,
+        1.6,
+        2,
+        2.4,
+        2.74,
+        3.2,
+        4
+      ],
+      "fillingVolumeMl": [
+        540,
+        650,
+        710,
+        830,
+        980
+      ],
+      "systemicResistanceMmHgSPerMl": [
+        0.7,
+        1,
+        1.1,
+        1.4,
+        1.8
+      ]
+    },
+    "rate": {
+      "min": 50,
+      "max": 110,
+      "step": 5,
+      "values": 13
+    },
+    "combination": "the full product of the four axes",
+    "states": 2600,
+    "nonValid": 0,
+    "comparisons": 2400,
+    "toleranceLMin": 0.000001,
+    "fallsFound": 0,
+    "smallestChange": {
+      "deltaLMin": 0.022626124435880968,
+      "contractilityEesMmHgPerMl": 0.8,
+      "fillingVolumeMl": 540,
+      "systemicResistanceMmHgSPerMl": 1.8,
+      "fromPerMin": 105,
+      "toPerMin": 110
+    }
+  },
+  "fixtureImpact": {
+    "baseline": "tests/fixtures/cardiac-mechanics.json as committed on origin/main at 7068b6cf",
+    "cases": 30,
+    "fieldsCompared": 32,
+    "fields": {
+      "state.endDiastolicPressureMmHg": {
+        "changed": 30,
+        "unchanged": 0,
+        "up": 1,
+        "down": 29,
+        "largestAbsoluteDelta": 2.1857675446196794,
+        "at": "preloadMax@0.18",
+        "from": 17.65290196061552,
+        "to": 15.46713441599584
+      }
+    },
+    "notes": [
+      "default@0: state.mitralClosurePhase was not recorded before",
+      "default@0.18: state.mitralClosurePhase was not recorded before",
+      "default@0.42: state.mitralClosurePhase was not recorded before",
+      "default@0.5: state.mitralClosurePhase was not recorded before",
+      "default@0.64: state.mitralClosurePhase was not recorded before",
+      "default@1: state.mitralClosurePhase was not recorded before",
+      "preloadMin@0: state.mitralClosurePhase was not recorded before",
+      "preloadMin@0.18: state.mitralClosurePhase was not recorded before",
+      "preloadMin@0.42: state.mitralClosurePhase was not recorded before",
+      "preloadMin@0.5: state.mitralClosurePhase was not recorded before",
+      "preloadMin@0.64: state.mitralClosurePhase was not recorded before",
+      "preloadMin@1: state.mitralClosurePhase was not recorded before",
+      "preloadMax@0: state.mitralClosurePhase was not recorded before",
+      "preloadMax@0.18: state.mitralClosurePhase was not recorded before",
+      "preloadMax@0.42: state.mitralClosurePhase was not recorded before",
+      "preloadMax@0.5: state.mitralClosurePhase was not recorded before",
+      "preloadMax@0.64: state.mitralClosurePhase was not recorded before",
+      "preloadMax@1: state.mitralClosurePhase was not recorded before",
+      "afterloadMin@0: state.mitralClosurePhase was not recorded before",
+      "afterloadMin@0.18: state.mitralClosurePhase was not recorded before",
+      "afterloadMin@0.42: state.mitralClosurePhase was not recorded before",
+      "afterloadMin@0.5: state.mitralClosurePhase was not recorded before",
+      "afterloadMin@0.64: state.mitralClosurePhase was not recorded before",
+      "afterloadMin@1: state.mitralClosurePhase was not recorded before",
+      "afterloadMax@0: state.mitralClosurePhase was not recorded before",
+      "afterloadMax@0.18: state.mitralClosurePhase was not recorded before",
+      "afterloadMax@0.42: state.mitralClosurePhase was not recorded before",
+      "afterloadMax@0.5: state.mitralClosurePhase was not recorded before",
+      "afterloadMax@0.64: state.mitralClosurePhase was not recorded before",
+      "afterloadMax@1: state.mitralClosurePhase was not recorded before"
+    ]
+  }
+}

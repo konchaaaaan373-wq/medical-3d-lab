@@ -16,7 +16,7 @@ import {
   resistanceAt,
 } from './reelStoryboard.js';
 import { ExperimentSession } from './experimentSession.js';
-import { CONTROL_DOMAIN, PRESET_IDS, REFERENCE_GEOMETRY } from '../../../../models/cardiacOutput.js';
+import { CONTROL_DOMAIN, CONTROL_IDS, PRESET_IDS, REFERENCE_GEOMETRY } from '../../../../models/cardiacOutput.js';
 import {
   advanceCardiacPhase,
   beatPhaseAt,
@@ -534,6 +534,64 @@ export class CardiacOutputScene {
       });
     }
 
+    // Say **what is being compared** before saying what came of it. An
+    // external review asked for this: "I only changed one thing" is the claim
+    // the whole scene rests on, and nothing on screen said which one.
+    //
+    // Emitted on every update, not only while comparing, for two reasons. It
+    // is the answer to "what have I done" whether or not the second heart is
+    // drawn — and `MetricsPanel` appends a row the first time it sees its id,
+    // so a row that appears later lands at the bottom of the panel, below the
+    // fold, which is where the first version of this went.
+    {
+      // `view.input`, not `session.input`: the row describes the condition the
+      // numbers beside it came from. When a condition is refused the two
+      // differ — the controls hold what was asked for, the screen holds what
+      // was solved — and a row that described the request would name a change
+      // the figures do not contain.
+      const shown = this.session.view.input;
+      const baseline = this.session.baseline.input;
+      const moved = CONTROL_IDS.filter((id) => shown[id] !== baseline[id]);
+      const held = CONTROL_IDS.length - moved.length;
+      const format = (value) => (Number.isInteger(value) ? value : Number(value.toFixed(2)));
+      const name = (id, ja) => {
+        const control = CONTROLS.find((entry) => entry.id === id);
+        return (ja ? control?.shortJa : control?.short) ?? id;
+      };
+      // Short on purpose. The first version spelled out every moved control
+      // with both its values, and a four-control condition rendered as two
+      // lines of large type that widened the read-out across the model. One
+      // moved control is the case worth spelling out — it is the one-factor
+      // comparison this scene is for — and beyond that the count and the
+      // names are what a reader needs.
+      // The held count rides in the value rather than in `unit`, which
+      // `MetricsPanel` renders in one language only — a bilingual string in a
+      // single-language slot shows both to everybody.
+      const describe = (ja) => {
+        if (moved.length === 0) return ja ? 'なし' : 'none';
+        const rest = held === 0 ? '' : ja ? `（他 ${held} 固定）` : ` (${held} held)`;
+        if (moved.length === 1) {
+          const id = moved[0];
+          return `${name(id, ja)} ${format(baseline[id])} → ${format(shown[id])}${rest}`;
+        }
+        const list = moved.map((id) => name(id, ja)).join(ja ? '・' : ', ');
+        return ja ? `${moved.length} つ: ${list}${rest}` : `${moved.length}: ${list}${rest}`;
+      };
+      rows.push({
+        id: 'changed',
+        label: 'Changed',
+        labelJa: '変えたもの',
+        value: describe(false),
+        valueJa: describe(true),
+        unit: '',
+        emphasis: true,
+        // One of the four a phone shows without being asked. Which four is a
+        // teaching decision: what you changed, what came out, the pressure it
+        // came out against, and the pressure it cost. The rest is a press away.
+        compact: true,
+      });
+    }
+
     rows.push(
       {
         id: 'co',
@@ -543,6 +601,7 @@ export class CardiacOutputScene {
         reference: ref ? ref.cardiacOutputLMin.toFixed(1) : undefined,
         unit: 'L/min',
         emphasis: true,
+        compact: true,
       },
       {
         id: 'sv',
@@ -561,6 +620,7 @@ export class CardiacOutputScene {
         reference: ref ? mmHg(ref.meanArterialPressureMmHg) : undefined,
         unit: 'mmHg',
         emphasis: true,
+        compact: true,
       },
       {
         id: 'lvedp',
@@ -571,6 +631,24 @@ export class CardiacOutputScene {
         labelJa: '左室拡張末期圧',
         value: mmHg(m.endDiastolicPressureMmHg),
         reference: ref ? mmHg(ref.endDiastolicPressureMmHg) : undefined,
+        unit: 'mmHg',
+        emphasis: true,
+        compact: true,
+      },
+      {
+        id: 'pvp',
+        // Promoted alongside the filling pressure for the same reason: raising
+        // the filling raises output *and* the pressure behind the left heart,
+        // and a reader who sees only the first has been shown half of it.
+        // Reviewed externally 2026-09-22 and asked for explicitly.
+        //
+        // It is this model's pulmonary venous compartment and nothing more —
+        // not a wedge pressure, not a capillary pressure, and no threshold in
+        // it is read as oedema. The scope panel says so on the same screen.
+        label: 'Mean pulmonary venous pressure',
+        labelJa: '平均肺静脈圧',
+        value: mmHg(m.meanPulmonaryVenousPressureMmHg),
+        reference: ref ? mmHg(ref.meanPulmonaryVenousPressureMmHg) : undefined,
         unit: 'mmHg',
         emphasis: true,
       },
@@ -632,16 +710,6 @@ export class CardiacOutputScene {
         value: Math.round(m.systemicResistanceDynSCm5),
         reference: ref ? Math.round(ref.systemicResistanceDynSCm5) : undefined,
         unit: 'dyn·s·cm⁻⁵',
-      },
-      {
-        id: 'pvp',
-        // Named for what it is. There is no right atrium in this model, so
-        // nothing here is a central venous pressure.
-        label: 'Mean pulmonary venous pressure',
-        labelJa: '平均肺静脈圧',
-        value: mmHg(m.meanPulmonaryVenousPressureMmHg),
-        reference: ref ? mmHg(ref.meanPulmonaryVenousPressureMmHg) : undefined,
-        unit: 'mmHg',
       }
     );
     return rows;

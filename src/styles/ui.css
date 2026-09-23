@@ -1160,6 +1160,27 @@
 }
 
 /* A guided lesson asking the learner to watch these rows. Presentation only. */
+/* Hidden until a small screen asks for it — see the compact rules below. */
+.metrics-more {
+  display: none;
+  margin-top: 4px;
+  padding: 7px 10px;
+  min-height: 32px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: transparent;
+  color: var(--ink-dim);
+  font: inherit;
+  font-size: 12px;
+  line-height: 1.2;
+  cursor: pointer;
+}
+
+.metrics-more:hover {
+  color: var(--ink);
+  border-color: var(--line-strong, var(--line));
+}
+
 .metrics.is-focused .metric:not(.is-watched) {
   display: none;
 }
@@ -3074,6 +3095,54 @@
     display: flex;
   }
 
+  /* A panel whose scene declared which rows matter on a small screen shows
+     those, and offers the rest. This wins over the `is-primary` rule above,
+     which decided a read-out's phone layout from a controls property. */
+  .metrics.has-compact .metric[data-compact='extra'] {
+    display: none;
+  }
+
+  /* Wider and tighter, so the four labels that are left do not wrap to two
+     lines each and push the last one out of the rail. Measured at 375x667:
+     at the inherited 176px the filling pressure fell outside the viewport. */
+  .metrics.has-compact {
+    min-width: 204px;
+    gap: 2px;
+    padding: 8px 10px;
+  }
+
+  .metrics.has-compact .metric {
+    gap: 8px;
+  }
+
+  .metrics.has-compact.is-expanded .metric[data-compact='extra'] {
+    display: flex;
+  }
+
+  .metrics.has-compact .metrics-more {
+    display: block;
+  }
+
+  /* The console is what leaves the read-out no room on a phone, not the
+     read-out. Measured at 375x667 before this: the console occupied 378 of
+     667 CSS pixels and the rail was left 133, of which the four figures need
+     about 175. At 844x390 the console took 307 of 390 and the rail collapsed
+     to nothing.
+
+     So the console is capped and scrolls, rather than growing until the
+     figures it is driving are off the screen. Nothing is removed — every
+     preset, every intervention and all four sliders are still there, a short
+     scroll away inside their own panel — and a scene with a small console
+     never reaches the cap.
+
+     (Hiding the per-option explanations was tried first and changed nothing:
+     an existing rule already hides them at this width.) */
+  .model-controls.is-primary {
+    max-height: 46vh;
+    overflow-y: auto;
+    overscroll-behavior: contain;
+  }
+
   .model-controls.is-tactile {
     padding: 8px 9px 9px;
   }
@@ -3199,6 +3268,14 @@
   .model-controls:not(.is-primary) {
     display: none;
   }
+  /* On a landscape phone the rail has room for one panel. A scene that
+     declared a compact read-out has said which one matters; the legend comes
+     back the moment there is height for it. */
+  .metrics.has-compact ~ .legend,
+  .legend:has(~ .metrics.has-compact) {
+    display: none;
+  }
+
 }
 
 @media (max-width: 560px) {
@@ -3335,6 +3412,16 @@
      the title and the review badge all stay. */
   .top-bar {
     max-height: 20dvh !important;
+  }
+
+  /* What the bar must keep is what the scene said it must keep. A read-out
+     that declared a compact set has named the rows a reader cannot do without,
+     and 20dvh is 133px against 667 — three of `cardiac-output`'s four, with
+     the filling pressure cut off, which is the wrong half of what that scene
+     teaches. 30dvh is 200px and holds all four with the legend above them.
+     Scenes that declare nothing are untouched. */
+  .top-bar:has(.metrics.has-compact) {
+    max-height: 30dvh !important;
   }
 
   .console {

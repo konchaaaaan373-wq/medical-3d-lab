@@ -25,3 +25,7 @@ viewport-report.json
 dev-assets/
 dist-preview
 node_modules
+
+# Scratch output from the capture scripts. Evidence that is worth keeping goes
+# to docs/screenshots/<tag>/ with a README, which is the reviewable form.
+shots/
