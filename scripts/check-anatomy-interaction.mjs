@@ -83,6 +83,10 @@ import { differingPixels, settledPixels } from './lib/frames.mjs';
 import { serveDist } from './lib/serve-dist.mjs';
 import { join, resolve } from 'node:path';
 import { DEV_ASSET_ROOT } from '../src/catalog/devAssets.js';
+import { assetById } from '../src/catalog/assetManifest.js';
+import { modelProfileForScene } from '../src/catalog/modelProfiles.js';
+import { RELEASED_SCENES } from '../src/catalog/release.js';
+import { buildScenePreloads } from './scene-preloads.js';
 
 const argv = process.argv.slice(2);
 const flag = (name) => argv.includes(name);
@@ -503,7 +507,39 @@ const unexpected = (url) => !EXPECTED_FAILURES.some((pattern) => pattern.test(ur
  */
 const CANCELLED = 'net::ERR_ABORTED';
 
+/** A model file, as `scripts/asset-delivery.js` counts formats. */
+const MODEL_FILE = /\.(glb|gltf|bin|drc)$/i;
+
 page.on('pageerror', (error) => problems.push(`uncaught error: ${error}`));
+
+/**
+ * Every request for a model file, by path. `main.js` preloads a released
+ * scene's files before the scene code arrives, and the scene's loader is meant
+ * to be answered from that preload. When the two disagree — a `crossorigin`
+ * that does not match the loader's request, a URL spelt differently — nothing
+ * fails: the file is simply downloaded twice, which is slower than no preload
+ * at all. Counting is the only way to see it.
+ */
+const modelRequests = new Map();
+// Every value the veil's bar was given, recorded from inside the page because
+// the veil is gone by the time the part tree exists.
+await page.addInitScript(() => {
+  window.__veilProgress = [];
+  new MutationObserver(() => {
+    const bar = document.querySelector('#boot-veil .loading-bar[role="progressbar"]');
+    const value = bar?.style.getPropertyValue('--progress');
+    if (!value) return;
+    const progress = Number(value);
+    const last = window.__veilProgress.at(-1);
+    if (last?.progress !== progress) window.__veilProgress.push({ progress, detail: bar.nextElementSibling?.textContent ?? '' });
+  }).observe(document, { subtree: true, attributes: true, attributeFilter: ['style'] });
+});
+page.on('request', (request) => {
+  const path = new URL(request.url()).pathname;
+  // Model formats, and the decoder the prefetch fetches with them.
+  if (!MODEL_FILE.test(path) && !/\/draco\/draco_[^/]+$/.test(path)) return;
+  modelRequests.set(path, (modelRequests.get(path) ?? 0) + 1);
+});
 page.on('requestfailed', (request) => {
   const reason = request.failure()?.errorText ?? 'unknown';
   if (reason === CANCELLED) return;
@@ -542,6 +578,47 @@ try {
   });
   observed.selectableCount = await page.locator('.anatomy-tree-leaf').count();
   if (!observed.selectableCount) problems.push('the part tree reports no selectable structures');
+
+  // The model files were asked for once each, and the ones the build prefetches
+  // were asked for before the loader code had even arrived — see
+  // `src/app/sceneAssetPreload.js`. A scene the release does not open has no
+  // prefetch, and is only held to "once".
+  const releasedScene = RELEASED_SCENES.find((scene) => scene.slug === sceneSlug);
+  const prefetched = releasedScene
+    ? (buildScenePreloads({ scenes: [releasedScene], profileFor: modelProfileForScene, assetFor: assetById, root: process.cwd() })[releasedScene.id] ?? []).map((file) => file.url)
+    : [];
+  for (const [path, count] of modelRequests) {
+    if (count > 1) {
+      problems.push(`${path} was requested ${count} times: the prefetch did not hand the file to the scene's loader, so the model downloaded twice`);
+    }
+  }
+  const timings = await page.evaluate(() =>
+    performance.getEntriesByType('resource').map((entry) => [new URL(entry.name).pathname, entry.startTime])
+  );
+  const loaderCode = timings.find(([path]) => /\/GLTFLoader-[^/]*\.js$/.test(path));
+  for (const url of prefetched) {
+    const model = timings.find(([path]) => path.endsWith(`/${url}`));
+    if (!model) {
+      problems.push(`${url} was never requested, though the build prefetches it for this scene`);
+    } else if (loaderCode && model[1] >= loaderCode[1]) {
+      problems.push(
+        `${url} was requested at ${Math.round(model[1])} ms, after the loader code (${Math.round(loaderCode[1])} ms): ` +
+          'the scene waited for its own code before asking for its model — src/app/sceneAssetPreload.js'
+      );
+    }
+  }
+  // What the reader saw while waiting: the veil's bar, as `main.js` set it.
+  const veilProgress = await page.evaluate(() => window.__veilProgress ?? []);
+  if (prefetched.length) {
+    const values = veilProgress.map((entry) => entry.progress);
+    if (!values.length) {
+      problems.push('the loading veil never showed how much of the model had arrived');
+    } else if (values.some((value, i) => i > 0 && value < values[i - 1])) {
+      problems.push(`the loading veil's progress went backwards: ${values.join(' → ')}`);
+    } else if (values.at(-1) !== 1) {
+      problems.push(`the loading veil's progress stopped at ${values.at(-1)}, not at the whole model`);
+    }
+  }
 
   // The consent question is a one-time overlay and it sits over the canvas —
   // over the lower middle of it, which is where the clicks below go.

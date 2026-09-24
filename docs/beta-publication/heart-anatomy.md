@@ -8,11 +8,11 @@ clinician has judged this geometry or these labels**, and every surface says so
 
 | | |
 | --- | --- |
-| **Decided at** | 2026-09-21 (re-taken: the scene now opens in Natural) |
-| **Decided by** | Claude Code (AI engineering agent), re-pinning after a presentation-only change; the 2026-09-15 acceptance of what this scene names still stands |
+| **Decided at** | 2026-09-24 (re-taken: both files are Draco-compressed) |
+| **Decided by** | Claude Code (AI engineering agent), at the owner's direction, re-pinning after the served files were compressed; the 2026-09-15 acceptance of what this scene names still stands |
 | **Role** | `engineering` — software behaviour, not anatomical or clinical judgement |
-| **Asset revisions** | `hubmap-vh-m-heart` @ `sha256:46d375e36d8181c161b70e1f0b8f0d778364f0a8414eebce4e4fda1cea73eb3d`<br>`hubmap-vh-m-blood-vasculature` @ `sha256:a95ff0825431953d8fff210cf29d9e65aeed5da55f623717ab613864a9435502` |
-| **Scene revision** | model card revision **26**, source digest `20ae31ab7bafd24f` |
+| **Asset revisions** | `hubmap-vh-m-heart` @ `sha256:994a86380bd30bc9744c08edd9812825ab22b340339665a422be6ba545fbbf8a`<br>`hubmap-vh-m-blood-vasculature` @ `sha256:de4170610a12b3cd0595be79c2254735de63b0375252448c32fefa210aad11b9` |
+| **Scene revision** | model card revision **27**, source digest `5b1357058b22960b` |
 | **Scene sources under that digest** | [`src/data/heartAnatomy.js`](../../src/data/heartAnatomy.js), [`src/scenes/cardiovascular/scenes/heartAnatomy/HeartAnatomyScene.js`](../../src/scenes/cardiovascular/scenes/heartAnatomy/HeartAnatomyScene.js) |
 | **Adoption decision** | [`../decisions/HEART-ASSET-ADOPTION.md`](../decisions/HEART-ASSET-ADOPTION.md) |
 
@@ -37,6 +37,40 @@ by exactly what was removed.
 That is the one thing this record most wants a later reader to know: a claim was
 not smuggled in with a repair. `npm run assets:repair:verify` rebuilds the exact
 hashes above from the pinned sources and reports the validator clean.
+
+## Re-taken on 2026-09-24 — both files are Draco-compressed
+
+The gate closed twice over, which is the mechanism working: both asset hashes
+moved, and the scene's loader changed (it now needs the Draco decoder), which
+moved the source digest.
+
+**Why.** A reader waited about nine seconds on a 4G link for 6.9 MB of
+uncompressed geometry (`docs/follow-ups.md` F-210). The owner chose to ship the
+compressed files after seeing what compression costs.
+
+**What changed in the files.** Positions are quantized: no vertex is more than
+12.2 µm from where the repair left it, normals agree to 0.19° at p99, and
+names, hierarchy, extras, materials, triangle counts, closedness and each
+enclosed volume to 0.1 mL are unchanged (`docs/asset-qa/measurements/draco-compression.json`).
+**The earlier sentence "nothing else" in the section below is true of the
+repair, and no longer of what is served.**
+
+**What was re-checked, on the compressed files.**
+
+- `npm run verify:anatomy -- --scene heart-anatomy`, the full drive: the same
+  46 structures in the tree; the four tour points name the same four structures
+  (superior vena cava, arch of the aorta, ascending aorta, left atrium); drag is
+  not click; isolation hides and restores; the six viewpoints and both colour
+  modes leave the selection where it was; opening framing equals reset framing.
+- Six viewpoints × two colour modes rendered before and after on the same build:
+  60–160 differing pixels per frame, under the renderer's own jitter
+  (`docs/asset-qa/heart-hubmap-vh-m-heart.md`).
+- `npm run assets:compress:verify`: the same hashes twice from the repair's
+  output, validator 0 errors / 0 warnings.
+
+**Not re-checked:** the landing hero's keyboard pass (`verify:hero-input`) — the
+hero draws its own light model, not these files; and the interior views of
+2026-09-15, which the position and closedness bounds stand in for.
 
 ## Re-taken on 2026-09-21 — the scene opens in Natural
 

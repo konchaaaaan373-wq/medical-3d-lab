@@ -443,10 +443,10 @@ export const BETA_PUBLICATION_DECISIONS = Object.freeze([
   }),
   Object.freeze({
     sceneId: 'heart-anatomy',
-    decidedAt: '2026-09-21',
+    decidedAt: '2026-09-24',
     decidedBy: Object.freeze({
       name:
-        "Repository owner's approval of 2026-09-15 for what this scene names; re-pinned 2026-09-21 by Claude Code (AI engineering agent) after the scene's opening colour mode changed, at the owner's direction",
+        "Repository owner's approval of 2026-09-15 for what this scene names; re-pinned 2026-09-21 by Claude Code (AI engineering agent) after the scene's opening colour mode changed, and again 2026-09-24 after both files were Draco-compressed, each at the owner's direction",
       role: 'engineering',
     }),
     record: 'docs/beta-publication/heart-anatomy.md',
@@ -458,12 +458,17 @@ export const BETA_PUBLICATION_DECISIONS = Object.freeze([
      * here is the derivative that repairs them and changes nothing else. The
      * adoption decision is docs/decisions/HEART-ASSET-ADOPTION.md and the
      * change is measured in docs/asset-qa/measurements/normal-repair.json.
+     *
+     * Since 2026-09-24 the pinned files are those derivatives Draco-compressed
+     * (6.9 MB → 0.85 MB, for the time a reader waits): vertices quantized by at
+     * most 12.2 µm, and names, hierarchy, closedness and printed volumes
+     * unchanged — docs/asset-qa/measurements/draco-compression.json.
      */
     assetRevisions: Object.freeze({
-      'hubmap-vh-m-heart': '46d375e36d8181c161b70e1f0b8f0d778364f0a8414eebce4e4fda1cea73eb3d',
-      'hubmap-vh-m-blood-vasculature': 'a95ff0825431953d8fff210cf29d9e65aeed5da55f623717ab613864a9435502',
+      'hubmap-vh-m-heart': '994a86380bd30bc9744c08edd9812825ab22b340339665a422be6ba545fbbf8a',
+      'hubmap-vh-m-blood-vasculature': 'de4170610a12b3cd0595be79c2254735de63b0375252448c32fefa210aad11b9',
     }),
-    sceneRevision: Object.freeze({ cardRevision: 26, modelDigest: '20ae31ab7bafd24f' }),
+    sceneRevision: Object.freeze({ cardRevision: 27, modelDigest: '5b1357058b22960b' }),
     scope: Object.freeze({
       // The authored tour in `SCENE_POINTS`, not whatever a run measured: four
       // named parts at four recorded points, crossing both adopted files —
@@ -500,6 +505,8 @@ export const BETA_PUBLICATION_DECISIONS = Object.freeze([
       'scripts/check-hero-input.mjs',
       'scripts/repair-candidate-gltf.mjs',
       'docs/asset-qa/measurements/normal-repair.json',
+      'scripts/compress-heart-assets.mjs',
+      'docs/asset-qa/measurements/draco-compression.json',
       'docs/asset-qa/heart-hubmap-vh-m-heart.md',
       'docs/asset-qa/heart-hubmap-vh-m-blood-vasculature.md',
       'docs/decisions/HEART-ASSET-ADOPTION.md',

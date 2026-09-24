@@ -18,9 +18,9 @@
       "src/data/heartAnatomy.js",
       "src/scenes/cardiovascular/scenes/heartAnatomy/HeartAnatomyScene.js"
     ],
-    "cardRevision": 26,
-    "modelDigest": "20ae31ab7bafd24f",
-    "cardUpdatedAt": "2026-09-21"
+    "cardRevision": 27,
+    "modelDigest": "5b1357058b22960b",
+    "cardUpdatedAt": "2026-09-24"
   },
   {
     "sceneId": "circulation",

@@ -48,6 +48,10 @@ glTF 2.0, exported by "babylon.js glTF exporter for Autodesk MAYA 2022.2".
 No extensions used or required — **no Draco**, so it decodes without the
 vendored decoder the brain needs.
 
+*(2026-09-24: what ships is no longer this file as-is. The repaired derivative
+is Draco-compressed and needs the decoder the brain already ships — see
+"Compressed — 2026-09-24" below.)*
+
 | | |
 | --- | --- |
 | Nodes | 18 (14 with geometry, 4 grouping) |
@@ -169,6 +173,33 @@ Genus 26 on a trabeculated cavity cast is unsurprising and is recorded rather
 than explained. **What these surfaces represent — cavity cast, wall, or
 something in between — is not established by any of it**, and no interior view
 is offered, because there is no measured basis for drawing one.
+
+## Compressed — 2026-09-24
+
+Both repaired files are Draco-compressed by `scripts/compress-heart-assets.mjs`
+(the numbers are in `measurements/draco-compression.json`; the decision is the
+2026-09-24 section of `docs/decisions/HEART-ASSET-ADOPTION.md`).
+
+`npm run shots:anatomy -- --scene heart-anatomy` rendered all six viewpoints in
+both colour modes on the same build, before and after the files were swapped:
+
+| Viewpoint | Natural | Parts |
+| --- | ---: | ---: |
+| anterior | 158 | 146 |
+| posterior | 126 | 103 |
+| left lateral | 122 | 100 |
+| right lateral | 88 | 60 |
+| from the base | 111 | 96 |
+| from the apex | 160 | 123 |
+
+Pixels (of 921 600) differing by more than a quantisation step
+(`scripts/lib/frames.mjs`). The renderer's own frame-to-frame jitter on a
+settled view is up to 920 (`settledPixels`), so no frame differs by more than
+the renderer differs from itself. At 8× amplified difference only a faint
+outline is left: [`../screenshots/heart/08-draco-before-after.png`](../screenshots/heart/08-draco-before-after.png).
+
+**What this does not cover:** the interior views below were not re-rendered;
+the bounds on positions (≤ 12.2 µm) and on closedness are what carry them.
 
 ## Rendered — 2026-09-15
 

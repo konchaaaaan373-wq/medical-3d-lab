@@ -147,7 +147,7 @@ repository does not repair the publisher's data.
 | Warnings | 0 |
 | Hints | 3 — `BUFFER_VIEW_TARGET_MISSING` |
 | Triangles / vertices | 359,598 / 182,788 across 104 draw calls |
-| Extensions | none (no Draco) |
+| Extensions | none (no Draco) — *this is the source; the derivative shipped since 2026-09-24 is Draco-compressed, see `heart-hubmap-vh-m-heart.md`, "Compressed — 2026-09-24"* |
 
 Every error is a **degenerate vertex normal** — a normal of zero or near-zero
 length — and they are confined to two meshes: 21 of the superior vena cava's

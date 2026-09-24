@@ -347,6 +347,35 @@ body.has-build-marker .console {
   animation: slide 1.1s ease-in-out infinite;
 }
 
+/* While the model's bytes are counted the bar is a real fraction, not a
+   sweep: `main.js` sets `--progress` from the download. */
+.loading-bar.is-determinate::after {
+  width: calc(var(--progress, 0) * 100%);
+  animation: none;
+  transform: none;
+  transition: width 200ms linear;
+}
+
+/* Below the bar, out of the grid: the veil is painted by `index.html` without
+   this line and `main.js` adds it, and as a grid item it pushed the sentence
+   up 13 px at that moment. The handover rule gives every child
+   `position: relative`, hence the second selector. */
+.loading > .loading-detail,
+.loading[data-handover] > .loading-detail {
+  position: absolute;
+  top: calc(50% + 24px);
+  left: 0;
+  right: 0;
+  text-align: center;
+}
+
+.loading-detail {
+  font-size: 12px;
+  letter-spacing: 0.04em;
+  text-transform: none;
+  font-variant-numeric: tabular-nums;
+}
+
 @keyframes slide {
   0% { transform: translateX(-100%); }
   100% { transform: translateX(250%); }
@@ -354,6 +383,7 @@ body.has-build-marker .console {
 
 @media (prefers-reduced-motion: reduce) {
   .loading-bar::after { animation: none; }
+  .loading-bar.is-determinate::after { transition: none; }
   /* The way back's fade included: a reader who asked for less motion gets the
      state, not the tween — and a check measuring that state reads a settled
      value rather than one caught mid-transition. */
