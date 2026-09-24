@@ -27,6 +27,12 @@ test('product shell: public explorer and experimental lab have distinct routes',
   assert.equal(sameRoute(EXPLORER_ROUTE, LAB_ROUTE), false);
 });
 
+test('product shell: a Trust record and the model picker are distinct document states', () => {
+  assert.equal(sameRoute('#/trust', '#/trust?model=heart-anatomy'), false);
+  assert.equal(sameRoute('#/trust?model=heart-anatomy', '#/trust?model=brain-anatomy'), false);
+  assert.equal(sameRoute('#/trust?model=heart-anatomy', '#/trust?model=heart-anatomy'), true);
+});
+
 test('product shell: every scene is on exactly one of the public or Lab shelves', () => {
   const publicIds = new Set(PUBLIC_SCENES.map((scene) => scene.id));
   const labIds = new Set(LAB_SCENES.map((scene) => scene.id));

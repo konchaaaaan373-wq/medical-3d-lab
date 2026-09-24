@@ -114,6 +114,11 @@ test('a hash change is one of three things, and an anchor is the third', () => {
   // is the case a `kind`-only comparison gets wrong, and the next surface to
   // be written might be reachable from both.
   assert.equal(hashChangeAction('#/privacy', '#/terms'), 'leave', 'two legal documents are two routes');
+  assert.equal(
+    hashChangeAction('#/trust', '#/trust?model=heart-anatomy', { canSwap: true }),
+    'swap',
+    'returning from a model record must show the model picker'
+  );
 });
 
 // ------------------------------------------------------------ the way out
