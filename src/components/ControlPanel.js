@@ -214,19 +214,19 @@ export function createControlPanel({
       : null,
     // Ordered by weight: the guided sequence first, then the two ways of
     // looking wider, then the utilities.
-    el('div', { class: 'button-row' }, [
-      storyButton?.element,
-      compareButton?.element,
-      dataButton?.element,
-      el('span', { class: 'button-gap' }),
-      playButton?.element,
-      progressionEnabled ? button('reset', ['Reset model', 'モデル初期化'], onReset, 'utility').element : null,
-      cameraGroup,
-      inspectionButton?.element,
-      learnButton?.element,
-      reelButton?.element,
-      capture.element,
-    ]),
+    el('div', { class: 'button-row' }, overflowed([
+      ['story', storyButton?.element],
+      ['compare', compareButton?.element],
+      ['data', dataButton?.element],
+      ['gap', el('span', { class: 'button-gap' })],
+      ['play', playButton?.element],
+      ['reset', progressionEnabled ? button('reset', ['Reset model', 'モデル初期化'], onReset, 'utility').element : null],
+      ['zoom', cameraGroup],
+      ['inspection', inspectionButton?.element],
+      ['learn', learnButton?.element],
+      ['reel', reelButton?.element],
+      ['capture', capture.element],
+    ], meta.console?.overflow ?? [])),
     // The notice must always be visible, so a shorter wording is swapped in on
     // narrow screens rather than the notice being dropped.
     el('p', { class: 'disclaimer' }, [
@@ -284,6 +284,58 @@ export function createControlPanel({
       playButton?.setLabel(playing ? ['Pause', '一時停止'] : ['Progression', '進行']);
     },
   };
+}
+
+/**
+ * The console's buttons, with the ones a scene names moved behind "More".
+ *
+ * Every button is still built and still wired exactly as it was — this decides
+ * only where it sits. A scene whose subject is a handful of choices declares
+ * which tools are secondary to them (`meta.console.overflow`, by the ids used
+ * below), because nine buttons of equal weight under the choices told a reader
+ * that the camera and the image export mattered as much as the experiment.
+ * A scene that declares nothing gets the row it always had.
+ *
+ * @param {[string, Element|null|undefined][]} entries in row order
+ * @param {string[]} overflow ids to move into the menu
+ */
+function overflowed(entries, overflow) {
+  const moved = new Set(overflow);
+  const kept = entries.filter(([id, node]) => node && !moved.has(id)).map(([, node]) => node);
+  const hidden = entries.filter(([id, node]) => node && moved.has(id)).map(([, node]) => node);
+  if (hidden.length === 0) return kept;
+
+  const menu = el('div', { class: 'console-more-menu', id: 'console-more-menu' }, hidden);
+  const trigger = button('more', ['More', 'その他'], () => toggle(), 'utility');
+  trigger.element.setAttribute('aria-expanded', 'false');
+  trigger.element.setAttribute('aria-controls', 'console-more-menu');
+  const element = el('div', { class: 'console-more' }, [trigger.element, menu]);
+
+  const onDocumentClick = (event) => {
+    if (!element.contains(event.target)) close();
+  };
+  const onKey = (event) => {
+    if (event.key === 'Escape') {
+      close();
+      trigger.element.focus();
+    }
+  };
+  function open() {
+    element.classList.add('is-open');
+    trigger.element.setAttribute('aria-expanded', 'true');
+    document.addEventListener('click', onDocumentClick, true);
+    document.addEventListener('keydown', onKey);
+  }
+  function close() {
+    element.classList.remove('is-open');
+    trigger.element.setAttribute('aria-expanded', 'false');
+    document.removeEventListener('click', onDocumentClick, true);
+    document.removeEventListener('keydown', onKey);
+  }
+  function toggle() {
+    element.classList.contains('is-open') ? close() : open();
+  }
+  return [...kept, element];
 }
 
 /** PNG button with a small popover of export sizes. */

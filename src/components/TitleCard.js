@@ -47,6 +47,33 @@ function pairedSceneLinks(meta) {
   ]);
 }
 
+/**
+ * The trust row folded into one quiet line, for a scene that asks for it.
+ *
+ * Everything in the row is still there — maturity, clinical review, the link to
+ * the full record — and the scene's scope panel is put inside it by the shell,
+ * so "sources and limits" is one place rather than a card and a panel beside
+ * it saying the same thing. What changes is that two amber badges and a
+ * bordered link are no longer the loudest thing above a model whose subject is
+ * a circulation. The maturity stays on the closed line in plain text: a model
+ * that has not been through review keeps saying so without being opened.
+ */
+function trustFold(status, badges) {
+  return el('details', { class: 'title-trust-fold' }, [
+    el('summary', { class: 'title-trust-summary' }, [
+      el('span', { class: 'lang-en', text: 'Sources & limits' }),
+      el('span', { class: 'lang-ja', text: '根拠と限界' }),
+      status?.badge
+        ? el('span', { class: 'title-trust-maturity' }, [
+            el('span', { class: 'lang-en', text: status.label }),
+            el('span', { class: 'lang-ja', text: status.labelJa }),
+          ])
+        : null,
+    ]),
+    badges,
+  ]);
+}
+
 /** Top-left identity block. Sized to survive a 1080x1350 crop for social posts. */
 export function createTitleCard(meta) {
   // Catalogue maturity and clinical review are deliberately separate. A mature
@@ -118,7 +145,7 @@ export function createTitleCard(meta) {
     el('p', { class: 'eyebrow', text: 'medical-3d-lab' }),
     el('h1', { class: 'title lang-en', text: meta.title }),
     el('p', { class: 'title-ja lang-ja', text: meta.titleJa }),
-    trustBadges,
+    meta.titleCard?.foldTrust && trustBadges ? trustFold(status, trustBadges) : trustBadges,
     el('p', { class: 'subtitle' }, [
       el('span', { class: 'lang-ja', text: meta.subtitleJa }),
       el('span', { class: 'lang-en', text: meta.subtitle }),

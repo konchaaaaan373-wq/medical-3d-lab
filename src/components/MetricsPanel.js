@@ -78,7 +78,7 @@ export function createMetricsPanel() {
       for (const [id, row] of rows) row.node.classList.toggle('is-watched', wanted.has(id));
       element.classList.toggle('is-focused', wanted.size > 0);
     },
-    /** @param {{id:string,label:string,labelJa:string,value:number|string,unit:string,emphasis?:boolean}[]} metrics */
+    /** @param {{id:string,label:string,labelJa:string,value:number|string,unit:string,emphasis?:boolean,reference?:number|string,delta?:string,deltaSign?:'up'|'down'|'flat'}[]} metrics */
     update(metrics) {
       for (const metric of metrics) {
         let row = rows.get(metric.id);
@@ -93,27 +93,38 @@ export function createMetricsPanel() {
           const reference = el('span', { class: 'metric-reference' });
           const unit = el('span', { class: 'metric-unit', text: metric.unit });
           const change = el('span', { class: 'metric-change', 'aria-hidden': 'true' });
+          // The signed difference from `reference`, already rounded by the
+          // scene to the precision of the value beside it. Empty when there is
+          // nothing to compare, so a row does not carry a "±0" nobody asked for.
+          const delta = el('span', { class: 'metric-delta' });
           // A qualitative row carries words, and `.metric-figure` holds numbers
           // on one line — right for "1.24", wrong for 「超皮質性感覚失語」, which
           // could only widen the panel until it left the side of a phone. The
           // class says which kind of value this is; the stylesheet decides what
           // that means.
+          // Kept, so a row whose *name* depends on the state — "what you did"
+          // is named after the intervention that was chosen — can be renamed
+          // in place rather than keeping the name it was first built with.
+          const labelEn = el('span', { class: 'lang-en', text: metric.label });
+          const labelJa = el('span', { class: 'lang-ja', text: metric.labelJa });
           const node = el('div', {
             class: `metric${metric.emphasis ? ' is-key' : ''}${bilingual ? ' is-qualitative' : ''}`,
           }, [
-            el('span', { class: 'metric-label' }, [
-              el('span', { class: 'lang-en', text: metric.label }),
-              el('span', { class: 'lang-ja', text: metric.labelJa }),
-            ]),
-            el('span', { class: 'metric-figure' }, [reference, value, valueJa, unit, change]),
+            el('span', { class: 'metric-label' }, [labelEn, labelJa]),
+            el('span', { class: 'metric-figure' }, [reference, value, valueJa, unit, change, delta]),
           ]);
-          row = { value, valueJa, reference, unit, change, node };
+          row = { value, valueJa, reference, unit, change, delta, labelEn, labelJa, node };
           rows.set(metric.id, row);
         }
+        if (row.labelEn.textContent !== metric.label) row.labelEn.textContent = metric.label;
+        if (row.labelJa.textContent !== metric.labelJa) row.labelJa.textContent = metric.labelJa;
         row.value.textContent = String(metric.value);
         if (row.valueJa) row.valueJa.textContent = String(metric.valueJa);
         row.unit.textContent = metric.unit;
         row.reference.textContent = metric.reference == null ? '' : `${metric.reference} →`;
+        row.delta.textContent = metric.delta == null ? '' : String(metric.delta);
+        if (metric.delta == null) delete row.node.dataset.delta;
+        else row.node.dataset.delta = metric.deltaSign ?? 'flat';
         row.change.textContent = metric.change === 'up' ? '↑' : metric.change === 'down' ? '↓' : metric.change === 'flat' ? '≈' : '';
         if (metric.change) {
           row.node.dataset.change = metric.change;

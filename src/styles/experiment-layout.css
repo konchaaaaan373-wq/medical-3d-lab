@@ -1,0 +1,566 @@
+/*
+ * The one-factor experiment layout — `#ui[data-layout='experiment']`.
+ *
+ * A scene opts in by declaring `meta.layout = 'experiment'` (cardiac-output is
+ * the first). Nothing here is keyed on a scene name.
+ *
+ * What it is for. The shell's default arrangement is a dashboard: a title card
+ * top-left, a read-out rail top-right, and a console along the bottom that on
+ * this scene measured 447 px of a 900 px window — so the band the camera frames
+ * the heart into was 390 px tall and the heart itself about 200. The reader's
+ * loop is *choose a condition → do one thing → watch the heart → read the
+ * figures*, and the layout is arranged in that order instead:
+ *
+ *   - the model in the middle, as large as the band allows;
+ *   - "what you did" and "what came of it" in one column beside it, with the
+ *     value it started at and the signed change on every headline figure;
+ *   - two captioned rows of choices directly under it, the four raw inputs one
+ *     press away, and the tools that are not the experiment behind "More".
+ *
+ * Stable geometry is a requirement, not a nicety. The camera is refitted
+ * whenever the console or the rail changes size (App.js, "Re-frame when the
+ * bands move"), and a camera that moves when the reader presses dobutamine
+ * breaks the before/after comparison the scene exists for. So nothing a choice
+ * changes may change the console's box: the choice rows are fixed, the "what
+ * changed" line lives in the rail (which is a band by its left edge, not its
+ * height), and the four sliders open in the empty column left of the model
+ * rather than growing the console.
+ */
+
+/* ---------- at every width ---------- */
+
+/* The stage read-out repeats the scene title in a larger face ("One factor at a
+   time" above "Choose a condition…"). The console's own title says what to do. */
+#ui[data-layout='experiment'] .console > .stage-readout {
+  display: none;
+}
+
+#ui[data-layout='experiment'] .model-controls.is-primary {
+  padding: 0;
+  border: 0;
+  background: none;
+  box-shadow: none;
+  gap: 10px;
+}
+
+#ui[data-layout='experiment'] .model-controls-head {
+  align-items: baseline;
+}
+
+#ui[data-layout='experiment'] .model-controls-title {
+  font-size: 15px;
+  font-weight: 650;
+  letter-spacing: 0;
+  color: var(--ink);
+}
+
+#ui[data-layout='experiment'] .model-control-reset {
+  font-size: 13px;
+}
+
+/* One row per kind of choice: its caption, then its options side by side. */
+#ui[data-layout='experiment'] .model-control-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+#ui[data-layout='experiment'] .model-control.is-choice.has-caption {
+  display: grid;
+  grid-template-columns: 7.5em minmax(0, 1fr);
+  align-items: center;
+  gap: 10px;
+}
+
+#ui[data-layout='experiment'] .model-choice-caption {
+  font-size: 13px;
+  font-weight: 650;
+  color: var(--ink-dim);
+  white-space: nowrap;
+}
+
+#ui[data-layout='experiment'] .model-choice-group {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+#ui[data-layout='experiment'] .model-choice-button {
+  flex: 0 1 auto;
+  min-height: 44px;
+  padding: 0 18px;
+  justify-content: center;
+  border-radius: 999px;
+  border: 1px solid rgba(167, 182, 206, 0.22);
+  background: rgba(255, 255, 255, 0.03);
+}
+
+#ui[data-layout='experiment'] .model-choice-label {
+  font-size: 14px;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+#ui[data-layout='experiment'] .model-choice-button:has(.model-choice-tag) {
+  align-items: center;
+  gap: 0;
+  line-height: 1.15;
+}
+
+#ui[data-layout='experiment'] .model-choice-tag {
+  font-size: 12px;
+  font-weight: 500;
+  opacity: 0.75;
+  white-space: nowrap;
+}
+
+/*
+ * The two rows answer different questions, and their selected states say so.
+ * The condition is *where you are* — a quiet, solid chip. The intervention is
+ * *what you did* — the accent, the same colour as the figures it moved. With
+ * both rows lit in one style, a reader could not tell which lit card was which.
+ */
+#ui[data-layout='experiment'] .model-control[data-control='preset'] .model-choice-button.is-selected,
+#ui[data-layout='experiment'] .model-control[data-control='intervention'] .model-choice-button[data-value='none'].is-selected {
+  color: var(--ink);
+  background: rgba(214, 226, 245, 0.16);
+  border-color: rgba(214, 226, 245, 0.55);
+  box-shadow: none;
+}
+
+/* "None" selected is the quiet chip above: the accent means something was
+   done, and on the opening screen it lit "none" as the brightest thing there. */
+#ui[data-layout='experiment'] .model-control[data-control='intervention'] .model-choice-button.is-selected:not([data-value='none']) {
+  color: var(--accent-ink, #04212a);
+  background: var(--accent);
+  border-color: var(--accent);
+  box-shadow: none;
+}
+
+#ui[data-layout='experiment'] .model-control[data-control='intervention'] .model-choice-button.is-selected:not([data-value='none']) .model-choice-label {
+  color: inherit;
+}
+
+/* ---------- the four inputs, one press away ---------- */
+
+#ui[data-layout='experiment'] .model-controls-advanced > summary {
+  list-style: none;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 40px;
+  padding: 0 14px;
+  border-radius: 999px;
+  border: 1px solid rgba(167, 182, 206, 0.22);
+  font-size: 13px;
+  color: var(--ink-dim);
+}
+
+#ui[data-layout='experiment'] .model-controls-advanced > summary::-webkit-details-marker {
+  display: none;
+}
+
+#ui[data-layout='experiment'] .model-controls-advanced > summary::before {
+  content: '';
+  width: 7px;
+  height: 7px;
+  border-right: 1.5px solid currentColor;
+  border-bottom: 1.5px solid currentColor;
+  transform: rotate(-135deg) translate(-1px, -1px);
+  transition: transform 160ms ease;
+}
+
+#ui[data-layout='experiment'] .model-controls-advanced[open] > summary {
+  color: var(--ink);
+  border-color: rgba(214, 226, 245, 0.55);
+}
+
+#ui[data-layout='experiment'] .model-controls-advanced[open] > summary::before {
+  transform: rotate(45deg) translate(-2px, -2px);
+}
+
+#ui[data-layout='experiment'] .model-controls-advanced > summary:hover {
+  color: var(--ink);
+}
+
+#ui[data-layout='experiment'] .model-controls-advanced-note {
+  margin: 0 0 10px;
+  font-size: 12px;
+  line-height: 1.5;
+  color: var(--ink-faint);
+}
+
+#ui[data-layout='experiment'] .model-controls-advanced-body .model-control-list {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+/* ---------- the tools that are not the experiment ---------- */
+/* Not scoped to the layout: the menu exists whenever a scene declares
+   `meta.console.overflow`, and a menu without these rules is a menu that is
+   permanently open. */
+
+.console-more {
+  position: relative;
+}
+
+.console-more-menu {
+  display: none;
+  position: absolute;
+  right: 0;
+  bottom: calc(100% + 8px);
+  z-index: 5;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 6px;
+  padding: 8px;
+  min-width: 190px;
+  border-radius: 12px;
+  border: 1px solid var(--border);
+  /* Opaque: it opens over the console's own controls. */
+  background: #0c121c;
+  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.45);
+}
+
+.console-more.is-open .console-more-menu {
+  display: flex;
+}
+
+.console-more-menu > .btn,
+.console-more-menu > .capture > .btn {
+  width: 100%;
+  justify-content: flex-start;
+}
+
+.console-more-menu > .camera-group {
+  display: flex;
+  justify-content: space-between;
+}
+
+/* The export sizes open to the side of the menu rather than over it. */
+.console-more-menu .capture-menu {
+  left: auto;
+  right: calc(100% + 8px);
+  bottom: 0;
+}
+
+/* ---------- title: the name, and one quiet line for sources and limits ---------- */
+
+#ui[data-layout='experiment'] .title-card {
+  padding: 12px 16px;
+}
+
+#ui[data-layout='experiment'] .title-card .eyebrow,
+#ui[data-layout='experiment'] .title-card .subtitle {
+  display: none;
+}
+
+#ui[data-layout='experiment'] .title-trust-fold {
+  margin-top: 6px;
+}
+
+#ui[data-layout='experiment'] .title-trust-summary {
+  list-style: none;
+  cursor: pointer;
+  display: inline-flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0 8px;
+  white-space: nowrap;
+  min-height: 32px;
+  font-size: 13px;
+  color: var(--ink-dim);
+}
+
+#ui[data-layout='experiment'] .title-trust-summary::-webkit-details-marker {
+  display: none;
+}
+
+#ui[data-layout='experiment'] .title-trust-summary::after {
+  content: '＋';
+  font-size: 12px;
+  opacity: 0.7;
+}
+
+#ui[data-layout='experiment'] .title-trust-fold[open] .title-trust-summary::after {
+  content: '−';
+}
+
+#ui[data-layout='experiment'] .title-trust-summary:hover {
+  color: var(--ink);
+}
+
+#ui[data-layout='experiment'] .title-trust-maturity {
+  font-size: 12px;
+  color: var(--ink-faint);
+}
+
+#ui[data-layout='experiment'] .title-trust-maturity::before {
+  content: '· ';
+}
+
+#ui[data-layout='experiment'] .title-trust-fold .title-trust-badges {
+  margin-top: 6px;
+}
+
+#ui[data-layout='experiment'] .title-trust-fold .model-scope {
+  margin-top: 8px;
+  border: 0;
+  background: none;
+  padding: 0;
+  box-shadow: none;
+}
+
+/* The first read-out row is a sentence about what was done, not a figure: it
+   must not wear the large accent face the figures under it use — on a phone
+   that turned it into five lines of 20 px cyan above the numbers. */
+#ui[data-layout='experiment'] .metrics .metric.is-qualitative .metric-value {
+  font-size: 14px;
+  font-weight: 650;
+  line-height: 1.4;
+  color: var(--ink);
+}
+
+#ui[data-layout='experiment'] .title-card .title-ja {
+  white-space: nowrap;
+}
+
+/* ---------- desktop: the model in the middle, the read-out beside it ---------- */
+
+@media (min-width: 900px) and (min-height: 600px) {
+  #ui[data-layout='experiment'] {
+    --experiment-rail: 300px;
+    /* In viewport units rather than percentages, so the slider panel — which
+       is positioned inside the console — can undo the console's offset and
+       sit against the left edge. `#ui` is inset 14 px on each side. */
+    --experiment-width: calc(100vw - 28px);
+    --experiment-console: min(900px, calc(var(--experiment-width) - var(--experiment-rail) - 24px));
+    --experiment-console-offset: max(0px, calc((var(--experiment-width) - var(--experiment-rail) - 12px - var(--experiment-console)) / 2));
+  }
+
+  /* The console is centred under the model and stops short of the read-out
+     column, so the column may run the whole height of the window beside it.
+     Confined to the space above the console, a 720 px laptop cut the last
+     headline figure and the way to the rest off the bottom. The top bar is
+     drawn under the console (it comes first in the document) and only the
+     rail reaches that far down. */
+  #ui[data-layout='experiment'] .top-bar {
+    flex: 1 1 auto;
+    margin-bottom: calc(-1 * var(--console-height, 0px) - 12px);
+  }
+
+  #ui[data-layout='experiment'] .top-left {
+    max-width: 360px;
+    align-self: flex-start;
+  }
+
+  #ui[data-layout='experiment'] .title-card {
+    max-width: 360px;
+  }
+
+  /* The read-out column: tall enough to cross the middle of the frame at every
+     window height, so the framing always reserves it as the right-hand band —
+     a column that crossed the middle only when it held more rows would move
+     the camera whenever a row appeared. */
+  #ui[data-layout='experiment'] .rail {
+    width: var(--experiment-rail);
+    min-height: calc(50vh - 40px);
+    align-items: stretch;
+  }
+
+  /* The figures first and the key after them: in Data view the key opens to
+     seven rows, and above the read-out it pushed the headline figures under
+     the console. */
+  #ui[data-layout='experiment'] .rail > .metrics {
+    order: -1;
+  }
+
+  #ui[data-layout='experiment'] .rail > .legend {
+    align-self: flex-end;
+  }
+
+  #ui[data-layout='experiment'] .rail > .rail-buttons {
+    margin-top: auto;
+  }
+
+  #ui[data-layout='experiment'] .metrics {
+    width: 100%;
+    padding: 14px 16px 12px;
+    gap: 0;
+  }
+
+  /* Every row: the name on one line, the figures under it. */
+  #ui[data-layout='experiment'] .metrics .metric {
+    display: flex;
+    flex-direction: column;
+    align-items: stretch;
+    gap: 2px;
+    padding: 9px 0;
+    margin: 0;
+    border-bottom: 1px solid rgba(167, 182, 206, 0.12);
+  }
+
+  #ui[data-layout='experiment'] .metrics .metric:last-of-type {
+    border-bottom: 0;
+  }
+
+  #ui[data-layout='experiment'] .metrics .metric .metric-label {
+    font-size: 12.5px;
+    color: var(--ink-dim);
+  }
+
+  #ui[data-layout='experiment'] .metrics .metric .metric-figure {
+    justify-content: flex-start;
+    gap: 5px;
+  }
+
+  #ui[data-layout='experiment'] .metrics .metric.is-key .metric-value {
+    font-size: 26px;
+    line-height: 1.1;
+  }
+
+  #ui[data-layout='experiment'] .metrics .metric .metric-unit {
+    font-size: 12px;
+  }
+
+  /* Where it started, quiet, before the value. */
+  #ui[data-layout='experiment'] .metrics .metric .metric-reference {
+    font-size: 15px;
+    opacity: 1;
+    color: var(--ink-faint);
+  }
+
+  /* And how far it moved, after it: the thing a reader otherwise has to work
+     out by remembering the number from before they pressed anything. */
+  #ui[data-layout='experiment'] .metrics .metric .metric-delta {
+    margin-left: auto;
+    font-size: 15px;
+    font-weight: 700;
+    color: var(--ink-dim);
+  }
+
+  #ui[data-layout='experiment'] .metrics .metric[data-delta='up'] .metric-delta,
+  #ui[data-layout='experiment'] .metrics .metric[data-delta='down'] .metric-delta {
+    color: var(--ink);
+  }
+
+  /* The first row says what was done: a sentence, so it reads as one. */
+  #ui[data-layout='experiment'] .metrics .metric.is-qualitative {
+    padding: 2px 0 12px;
+    border-bottom: 1px solid rgba(167, 182, 206, 0.28);
+  }
+
+  #ui[data-layout='experiment'] .metrics .metric.is-qualitative .metric-label {
+    font-size: 12px;
+    color: var(--ink-faint);
+  }
+
+  #ui[data-layout='experiment'] .metrics .metric.is-qualitative .metric-figure {
+    text-align: left;
+    justify-content: flex-start;
+  }
+
+  #ui[data-layout='experiment'] .metrics .metric.is-qualitative .metric-value {
+    font-size: 15px;
+    font-weight: 650;
+    line-height: 1.45;
+    color: var(--ink);
+  }
+
+  /* The headline figures only, until asked. */
+  #ui[data-layout='experiment'] .metrics .metric:not(.is-key) {
+    display: none;
+  }
+
+  #ui[data-layout='experiment'] .metrics.is-expanded .metric:not(.is-key) {
+    display: flex;
+  }
+
+  #ui[data-layout='experiment'] .metrics .metric:not(.is-key) .metric-value {
+    font-size: 15px;
+  }
+
+  #ui[data-layout='experiment'] .metrics .metrics-more {
+    display: block;
+    align-self: flex-start;
+    margin-top: 8px;
+  }
+
+  /*
+   * The console, directly under the model: centred on the band the rail
+   * leaves, which is where the camera centres the heart. Its two panels are
+   * flattened into one grid so the four inputs' toggle and the tools share a
+   * line instead of stacking.
+   */
+  #ui[data-layout='experiment'] .console {
+    position: relative;
+    align-self: flex-start;
+    width: var(--experiment-console);
+    margin-left: var(--experiment-console-offset);
+    display: grid;
+    grid-template-columns: auto minmax(0, 1fr);
+    align-items: center;
+    gap: 10px 12px;
+    padding: 14px 18px 10px;
+  }
+
+  #ui[data-layout='experiment'] .console > * {
+    grid-column: 1 / -1;
+  }
+
+  #ui[data-layout='experiment'] .console > .model-controls.is-primary,
+  #ui[data-layout='experiment'] .console > .controls {
+    display: contents;
+  }
+
+  #ui[data-layout='experiment'] .console .model-controls-head,
+  #ui[data-layout='experiment'] .console .model-control-list,
+  #ui[data-layout='experiment'] .console .controls > .disclaimer {
+    grid-column: 1 / -1;
+  }
+
+  #ui[data-layout='experiment'] .console .model-controls-advanced {
+    grid-column: 1;
+  }
+
+  #ui[data-layout='experiment'] .console .controls > .button-row {
+    grid-column: 2;
+    justify-content: flex-end;
+    flex-wrap: nowrap;
+    margin: 0;
+  }
+
+  #ui[data-layout='experiment'] .console .controls > .button-row > .button-gap {
+    display: none;
+  }
+
+  /* Opened, the four inputs stand in the empty column left of the model —
+     never in the console, because a console that grew would re-frame the
+     camera, and never over the model, because the first version of this sat
+     on the ventricle's apex, which is the part a reader is watching change. */
+  #ui[data-layout='experiment'] .model-controls-advanced[open] > .model-controls-advanced-body {
+    position: absolute;
+    left: calc(-1 * var(--experiment-console-offset));
+    width: min(330px, calc(var(--experiment-console-offset) + var(--experiment-console)));
+    bottom: calc(100% + 8px);
+    z-index: 4;
+    padding: 14px 18px 16px;
+    border-radius: 14px;
+    border: 1px solid var(--border);
+    background: #0c121c;
+    box-shadow: 0 12px 32px rgba(0, 0, 0, 0.45);
+  }
+
+  #ui[data-layout='experiment'] .console .disclaimer {
+    margin: 0;
+    font-size: 12px;
+  }
+}
+
+@media (max-width: 600px) {
+  #ui[data-layout='experiment'] .title-card .title-ja {
+    font-size: 16px;
+  }
+}

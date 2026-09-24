@@ -122,6 +122,11 @@ export async function createApp({ stage, ui, onRetryModel = null }) {
   };
   document.title = `${meta.title} — medical-3d-lab`;
   ui.dataset.scene = meta.id;
+  // A declared arrangement, for scenes whose subject is not a progression — see
+  // `src/styles/experiment-layout.css`. Absent, the shell is laid out as it
+  // always was.
+  if (meta.layout) ui.dataset.layout = meta.layout;
+  else delete ui.dataset.layout;
   const defaultBackground = backgroundPresetById(meta.inspection?.background ?? DEFAULT_BACKGROUND_ID);
 
   /**
@@ -1245,13 +1250,19 @@ export async function createApp({ stage, ui, onRetryModel = null }) {
   // The model panels go on the left, where there is room for them: the rail
   // already carries the legend and the read-out, and stacking four panels
   // there pushes the console off a laptop screen.
+  const titleCard = createTitleCard(meta);
+  // A scene that folds its trust row into one line gets its scope panel inside
+  // that line too — one place for "sources and limits", not two.
+  const trustFold = titleCard.querySelector('.title-trust-fold');
+  const scopeInFold = Boolean(trustFold && scopePanel);
+  if (scopeInFold) trustFold.append(scopePanel.element);
   const topLeft = el('div', { class: 'top-left' }, [
-    createTitleCard(meta),
+    titleCard,
     pvPanel?.element,
     wavePanel?.element,
     ...chartPanels.map((panel) => panel.element),
     controlsInConsole ? null : modelControls?.element,
-    scopePanel?.element,
+    scopeInFold ? null : scopePanel?.element,
     // Last, under the model's own limits: "what this does not represent" is the
     // question the way on answers.
     relatedPanel?.element,

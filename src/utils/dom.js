@@ -110,6 +110,8 @@ export const ICONS = {
   reel: icon(
     '<path d="M4 4h16a1 1 0 0 1 1 1v14a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V5a1 1 0 0 1 1-1zm4.5 3.5v9l7-4.5z"/>'
   ),
+  // Three dots: the rest of the tools, behind one press.
+  more: icon('<path d="M5 10.25a1.75 1.75 0 1 1 0 3.5 1.75 1.75 0 0 1 0-3.5zm7 0a1.75 1.75 0 1 1 0 3.5 1.75 1.75 0 0 1 0-3.5zm7 0a1.75 1.75 0 1 1 0 3.5 1.75 1.75 0 0 1 0-3.5z"/>'),
   // Stacked bars: the numbers behind the picture.
   data: icon('<path d="M4 19h16v2H4zM6 10h3v7H6zM10.5 5h3v12h-3zM15 12h3v5h-3z"/>'),
   // A lightbulb: predict, then find out.

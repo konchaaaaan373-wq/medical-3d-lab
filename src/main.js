@@ -28,6 +28,9 @@ import './styles/product-shell-b6.css';
 import './styles/surface-polish.css';
 import './styles/browser-first-release-polish.css';
 import './styles/patient-consultation.css';
+// A declared scene arrangement (`meta.layout = 'experiment'`). After the surface
+// sheets so its desktop layout wins, before the touch floor so that still does.
+import './styles/experiment-layout.css';
 // Last, and deliberately: it is the one place that owns the 44 px touch floor
 // for phone widths, and it has to outrank every surface sheet that compacts —
 // the consultation view above included.
