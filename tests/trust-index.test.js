@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 
 import { createTrust } from '../src/app/Trust.js';
-import { PUBLIC_SCENES } from '../src/catalog/index.js';
+import { PUBLIC_SCENES, sceneRoute } from '../src/catalog/index.js';
 import { isSceneReleased } from '../src/catalog/release.js';
 import { isInPageAnchor, resolveRoute } from '../src/app/router.js';
 import { FakeElement, findByClass, installFakeDocument } from './helpers/fake-dom.js';
@@ -69,7 +69,7 @@ test('Trust: the filter narrows the records themselves — there is no second li
   });
 });
 
-test('Trust: the public ledger starts with only published models visible', () => {
+test('Trust: the public picker starts with only published models visible', () => {
   withFakeBrowser(() => {
     const element = mountTrust();
     const cards = findByClass(element, 'trust-card');
@@ -114,7 +114,7 @@ test('Trust: publication status is not exposed as a second UI axis', () => {
     const element = mountTrust();
     assert.deepEqual(findByClass(element, 'trust-filter-scope'), []);
     assert.deepEqual(findByClass(element, 'trust-maturity'), []);
-    assert.ok(findByClass(element, 'trust-review-badge').length > 0, 'medical review remains visible');
+    assert.deepEqual(findByClass(element, 'trust-review-badge'), [], 'review state belongs on the record, not the model picker');
   });
 });
 
@@ -140,20 +140,26 @@ test('Trust: a record the route named is never left hidden by a filter', () => {
   });
 });
 
-test('Trust: every model section is a closed <details> by default', () => {
+test('Trust: each published model opens in one press and has a separate evidence link', () => {
   withFakeBrowser(() => {
-    // No focus id, so nothing is promoted and every record is a disclosure.
     const element = mountTrust();
     const cards = findByClass(element, 'trust-card');
     assert.equal(cards.length, RELEASED_SCENES.length);
-    for (const card of cards) {
-      assert.equal(card.tagName, 'DETAILS');
-      assert.equal(card.getAttribute('open'), null, `${card.getAttribute('id')} should start collapsed`);
+    for (const [index, card] of cards.entries()) {
+      const scene = RELEASED_SCENES[index];
+      assert.equal(card.tagName, 'ARTICLE');
+      const model = findByClass(card, 'trust-model-link');
+      const evidence = findByClass(card, 'trust-evidence-link');
+      assert.equal(model.length, 1);
+      assert.equal(model[0].getAttribute('href'), sceneRoute(scene));
+      assert.equal(evidence.length, 1);
+      assert.equal(evidence[0].getAttribute('href'), `#/trust?model=${encodeURIComponent(scene.id)}`);
+      assert.deepEqual(findByClass(card, 'trust-review-badge'), []);
     }
   });
 });
 
-test('Trust: a route naming a model leaves every other record collapsed', () => {
+test('Trust: a route naming a model keeps the other models directly accessible', () => {
   withFakeBrowser(() => {
     const focused = PUBLIC_SCENES[PUBLIC_SCENES.length - 1];
     const element = mountTrust({ focusId: focused.id });
@@ -164,12 +170,8 @@ test('Trust: a route naming a model leaves every other record collapsed', () => 
         assert.equal(card.tagName, 'SECTION', 'the named record is not collapsible');
         continue;
       }
-      assert.equal(card.tagName, 'DETAILS');
-      assert.equal(
-        card.getAttribute('open'),
-        null,
-        `${card.getAttribute('id')}: every other record stays collapsed`
-      );
+      assert.equal(card.tagName, 'ARTICLE');
+      assert.equal(findByClass(card, 'trust-model-link').length, 1);
     }
   });
 });
@@ -246,7 +248,7 @@ test('Trust: a focused record shows review state without publication jargon', ()
   });
 });
 
-test('Trust with no model named is unchanged: the ledger, and nothing promoted', () => {
+test('Trust with no model named shows the picker and nothing promoted', () => {
   withFakeBrowser(() => {
     const element = mountTrust();
     assert.deepEqual(findByClass(element, 'trust-lead-record'), []);
@@ -279,7 +281,7 @@ test('Trust: a focus id also matches by slug, and an unknown focus id promotes n
   });
 });
 
-test('Trust: no scene id or slug is hard-coded — the TOC and cards come from PUBLIC_SCENES', () => {
+test('Trust: no scene id or slug is hard-coded — the picker comes from PUBLIC_SCENES', () => {
   const source = read('src/app/Trust.js');
   for (const scene of PUBLIC_SCENES) {
     assert.ok(!source.includes(`'${scene.id}'`), `Trust.js hard-codes scene id "${scene.id}"`);
