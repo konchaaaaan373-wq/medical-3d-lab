@@ -5122,10 +5122,15 @@ CSS に日本語の文節境界を教える手段は無く、`word-break: keep-a
 ### F-210 — 解剖シーンを開く時間の残り: 心臓は 6.7 MB を無圧縮で送っている — P2
 
 2026-09-24、「3D モデルを開くのに時間がかかる」への対応として、公開シーンの
-モデルファイルを route が決まった時点で preload するようにしました
-（`src/app/sceneAssetPreload.js`、L-109）。9 Mbps / RTT 60 ms / CPU ×4 で
+モデルファイルを route が決まった時点で `main.js` が取りに行き、読み込み中の veil に
+**実際のバイト数で進むバーと「3.3 / 6.9 MB」**、転送後は「表示を準備しています」を
+出すようにしました（`src/app/sceneAssetPreload.js`、L-109）。9 Mbps / RTT 60 ms / CPU ×4 で
 **脳 9.6 → 7.6 秒、心臓 10.7 → 8.9 秒**（`npm run measure:load`）。
 取得開始が 3.7 秒 → 0.7 秒になり、心臓の 2 本は並列になりました。
+
+**未確認（実機）**: 進捗表示は Chromium（headless、software GL）でしか見ていません。
+Safari / iOS で `fetch` の body を stream で読めること自体は標準ですが、
+**実機の production で一度見る**まで確認済みにしません。
 
 **残りはほぼ転送量です。** 同じ条件で、いまは GLB の転送が終わるのを待っています。
 

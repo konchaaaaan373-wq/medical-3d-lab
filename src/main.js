@@ -41,7 +41,7 @@ import { looksLikeAuthRedirect } from './access/authRedirect.js';
 import { betaUnlocked, routeOpen } from './app/releaseGate.js';
 import { redirectFor } from './app/routeRedirects.js';
 import { recordSceneVisit } from './app/sceneLibrary.js';
-import { preloadSceneAssets } from './app/sceneAssetPreload.js';
+import { describeAssetProgress, prefetchSceneAssets } from './app/sceneAssetPreload.js';
 import {
   installFinalPagehideCleanup,
   installUiShortcutGuard,
@@ -121,10 +121,11 @@ async function boot() {
 
   // The model files are the largest thing this page fetches, and the scene
   // would otherwise ask for them only once every chunk in front of it had
-  // arrived — 3.7 s in on a 4G link, with the network idle until then.
-  if (open && route.kind === 'scene' && typeof __SCENE_ASSET_PRELOADS__ !== 'undefined') {
-    preloadSceneAssets(document, __SCENE_ASSET_PRELOADS__[route.sceneId], import.meta.env.BASE_URL);
-  }
+  // arrived — 3.7 s in on a 4G link, with the network idle until then. Fetched
+  // here, they also give the veil below a real number to show.
+  const modelDownload = open && route.kind === 'scene' && typeof __SCENE_ASSET_PRELOADS__ !== 'undefined'
+    ? prefetchSceneAssets({ files: __SCENE_ASSET_PRELOADS__[route.sceneId], baseUrl: import.meta.env.BASE_URL, win: window })
+    : null;
 
   // Every surface leaves the same way, and every surface needs covering while
   // it does. Six handlers here used to answer "is this a navigation" in four
@@ -263,6 +264,45 @@ async function boot() {
   veil.replaceChildren(veilLabel, veilBar);
   veil.hidden = false;
   if (!veil.isConnected) document.body.append(veil);
+
+  // How much of the model has arrived. Without it the veil said the same
+  // sentence over a sweeping bar for nine seconds on a 4G link, and nothing
+  // told a reader whether it was moving. The numbers are `aria-hidden`: the
+  // veil is a live region, and a count read aloud every chunk is noise — the
+  // bar carries the same value as a progressbar for anyone who asks.
+  if (modelDownload) {
+    const veilDetail = document.createElement('span');
+    veilDetail.className = 'loading-detail';
+    veilDetail.setAttribute('aria-hidden', 'true');
+    veilBar.setAttribute('role', 'progressbar');
+    veilBar.setAttribute('aria-valuemin', '0');
+    veilBar.setAttribute('aria-valuemax', '100');
+    veil.append(veilDetail);
+    let frame = 0;
+    const paint = (progress) => {
+      frame = 0;
+      const fraction = progress.total ? progress.loaded / progress.total : 0;
+      // Downloading is a known quantity; preparing the model after it is not,
+      // so the bar goes back to saying "working" rather than sitting at 100 %.
+      veilBar.classList.toggle('is-determinate', !progress.done);
+      veilBar.style.setProperty('--progress', fraction.toFixed(3));
+      veilBar.setAttribute('aria-valuenow', String(Math.round(fraction * 100)));
+      veilDetail.textContent = describeAssetProgress(progress, sceneLanguage);
+    };
+    let latest = null;
+    modelDownload.subscribe((progress) => {
+      latest = progress;
+      // Chunks arrive far more often than frames; paint the newest per frame,
+      // and the final state at once so "preparing" never waits on a frame the
+      // decode that follows is about to hold up.
+      if (progress.done) {
+        if (frame) cancelAnimationFrame(frame);
+        paint(progress);
+      } else if (!frame) {
+        frame = requestAnimationFrame(() => paint(latest));
+      }
+    });
+  }
 
   const fallbackStartedAt = Date.now();
   const elapsedSinceNavigation = () =>

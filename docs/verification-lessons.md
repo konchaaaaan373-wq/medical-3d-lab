@@ -1736,20 +1736,27 @@ L-95 と L-96 は「別件を直したら、触っていない検査が赤くな
   `verify:anatomy` も `shots:anatomy` も緑です——**遅さを測る計器が 1 つも無く**、
   全部が無制限の localhost で走るので、同じ隙間が 2 秒弱の CPU 時間として
   「普通に開いた」に見えます。
+  そして待っている間、読者に見えていたのは**文 1 行と往復するバーだけ**で、
+  心臓では 9 秒、動いているのか止まっているのか分かりませんでした
+  （`prefers-reduced-motion` ではバーが 40% で止まったまま）。
 - **どう見つかったか**: 所有者の「ブラウザで 3D モデルを開くのに時間がかかる」。
   CDP で回線と CPU を絞って resource timing を読み、初めて数字になりました。
 - **いま何が捕まえるか**: 2 つ。
   `scripts/check-anatomy-interaction.mjs`（`verify:anatomy`）が、公開シーンの
-  モデルファイルが **preload から**取られたこと（resource timing の
-  `initiatorType === 'link'`）と、**各ファイルが 1 回しか要求されていない**ことを
-  見ます。`main.js` の呼び出しを外すと「was not preloaded」で赤、
-  `crossorigin` を外すと「requested 2 times」で赤（どちらも heart-anatomy で確認済み）。
-  後者が要点です——**合わない preload は no-op ではなく二重ダウンロード**で、
-  先読みしないより遅くなり、何も失敗しません。
-  `tests/scene-asset-preload.test.js` が表の導出（公開シーンだけ・`dist/` に入るファイルだけ）
-  と `crossorigin="anonymous"` を固定します。
+  モデルファイルについて 3 点を見ます。**要求が `GLTFLoader` の chunk より先に出たこと**
+  （resource timing の `startTime` の順序）、**各ファイルが 1 回しか要求されていないこと**、
+  **veil のバーが後戻りせず 1 まで進んだこと**（veil は部位ツリーが出る前に消えるので、
+  init script の MutationObserver がページの中で記録します）。
+  `main.js` の先読みを外すと「after the loader code」と「never showed」で赤、
+  ローダーへの受け渡しを外すと「requested 2 times」で赤（どちらも heart-anatomy で確認済み）。
+  後者が要点です——**先読みとローダーの要求が合わないのは no-op ではなく
+  二重ダウンロード**で、先読みしないより遅くなり、何も失敗しません
+  （最初の版の `<link rel="preload">` でも、`crossorigin` を外すと同じ形で赤になりました）。
+  `tests/scene-asset-preload.test.js` が表の導出（公開シーンだけ・`dist/` に入るファイルだけ・
+  manifest のサイズが実ファイルと一致）と、受け渡しが 1 回きりで `fetch` が元に戻ること、
+  進捗が後戻りせず全体で終わること、失敗がそのままシーンに届くことを固定します。
   **時間そのものは強制していません**——software GL の container の壁時計は予算に
-  できないので、`npm run measure:load` が測って印字するだけです。
+  できないので、`npm run measure:load`（`--shots` で 1 秒ごとの画面も）が測って印字するだけです。
 - **一般形**: **検証環境の速さは、それ自体が測定条件です。** localhost・無制限・
   速い CPU の上では、待ち行列の順序の誤りは全部「速い」に潰れます。
   読み込みに関わる変更は、絞った条件で**いつリクエストが出たか**を見る。

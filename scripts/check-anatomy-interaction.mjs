@@ -521,6 +521,19 @@ page.on('pageerror', (error) => problems.push(`uncaught error: ${error}`));
  * at all. Counting is the only way to see it.
  */
 const modelRequests = new Map();
+// Every value the veil's bar was given, recorded from inside the page because
+// the veil is gone by the time the part tree exists.
+await page.addInitScript(() => {
+  window.__veilProgress = [];
+  new MutationObserver(() => {
+    const bar = document.querySelector('#boot-veil .loading-bar[role="progressbar"]');
+    const value = bar?.style.getPropertyValue('--progress');
+    if (!value) return;
+    const progress = Number(value);
+    const last = window.__veilProgress.at(-1);
+    if (last?.progress !== progress) window.__veilProgress.push({ progress, detail: bar.nextElementSibling?.textContent ?? '' });
+  }).observe(document, { subtree: true, attributes: true, attributeFilter: ['style'] });
+});
 page.on('request', (request) => {
   const path = new URL(request.url()).pathname;
   if (!MODEL_FILE.test(path)) return;
@@ -565,26 +578,44 @@ try {
   observed.selectableCount = await page.locator('.anatomy-tree-leaf').count();
   if (!observed.selectableCount) problems.push('the part tree reports no selectable structures');
 
-  // The model files were asked for once each, and the ones the build preloads
-  // were asked for by the preload — see `src/app/sceneAssetPreload.js`. A scene
-  // the release does not open has no preload, and is only held to "once".
+  // The model files were asked for once each, and the ones the build prefetches
+  // were asked for before the loader code had even arrived — see
+  // `src/app/sceneAssetPreload.js`. A scene the release does not open has no
+  // prefetch, and is only held to "once".
   const releasedScene = RELEASED_SCENES.find((scene) => scene.slug === sceneSlug);
-  const preloaded = releasedScene ? sceneAssetUrls([releasedScene], modelProfileForScene, assetById)[releasedScene.id] ?? [] : [];
+  const prefetched = releasedScene
+    ? (sceneAssetUrls([releasedScene], modelProfileForScene, assetById)[releasedScene.id] ?? []).map((file) => file.url)
+    : [];
   for (const [path, count] of modelRequests) {
     if (count > 1) {
-      problems.push(`${path} was requested ${count} times: the preload and the scene's loader did not match, so the model downloaded twice`);
+      problems.push(`${path} was requested ${count} times: the prefetch did not hand the file to the scene's loader, so the model downloaded twice`);
     }
   }
-  const initiators = await page.evaluate(() =>
-    performance.getEntriesByType('resource').map((entry) => [new URL(entry.name).pathname, entry.initiatorType])
+  const timings = await page.evaluate(() =>
+    performance.getEntriesByType('resource').map((entry) => [new URL(entry.name).pathname, entry.startTime])
   );
-  for (const url of preloaded) {
-    const seen = initiators.filter(([path]) => path.endsWith(`/${url}`));
-    if (!seen.some(([, initiator]) => initiator === 'link')) {
+  const loaderCode = timings.find(([path]) => /\/GLTFLoader-[^/]*\.js$/.test(path));
+  for (const url of prefetched) {
+    const model = timings.find(([path]) => path.endsWith(`/${url}`));
+    if (!model) {
+      problems.push(`${url} was never requested, though the build prefetches it for this scene`);
+    } else if (loaderCode && model[1] >= loaderCode[1]) {
       problems.push(
-        `${url} was not preloaded (initiator: ${seen.map(([, i]) => i).join(', ') || 'never requested'}): ` +
+        `${url} was requested at ${Math.round(model[1])} ms, after the loader code (${Math.round(loaderCode[1])} ms): ` +
           'the scene waited for its own code before asking for its model — src/app/sceneAssetPreload.js'
       );
+    }
+  }
+  // What the reader saw while waiting: the veil's bar, as `main.js` set it.
+  const veilProgress = await page.evaluate(() => window.__veilProgress ?? []);
+  if (prefetched.length) {
+    const values = veilProgress.map((entry) => entry.progress);
+    if (!values.length) {
+      problems.push('the loading veil never showed how much of the model had arrived');
+    } else if (values.some((value, i) => i > 0 && value < values[i - 1])) {
+      problems.push(`the loading veil's progress went backwards: ${values.join(' → ')}`);
+    } else if (values.at(-1) !== 1) {
+      problems.push(`the loading veil's progress stopped at ${values.at(-1)}, not at the whole model`);
     }
   }
 

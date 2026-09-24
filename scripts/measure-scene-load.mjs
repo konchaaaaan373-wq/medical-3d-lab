@@ -3,7 +3,10 @@
  * How long a scene takes to open on a slow link, and where the time goes.
  *
  *   npm run build
- *   npm run measure:load -- --scene heart-anatomy [--mbps 9] [--rtt 60] [--cpu 4]
+ *   npm run measure:load -- --scene heart-anatomy [--mbps 9] [--rtt 60] [--cpu 4] [--shots dir]
+ *
+ * `--shots dir` also saves a screenshot every second until the part tree
+ * appears — what a reader is looking at while they wait.
  *
  * Every other browser check serves `dist/` from localhost with no throttling,
  * where a 4.5 MB atlas arrives in 20 ms and nothing is slow. That is how the
@@ -15,13 +18,13 @@
  *
  * It measures; it does not enforce. Wall-clock numbers from a software-GL
  * container are not a budget anyone can hold a PR to. The property that *can*
- * be enforced — the model files are preloaded and fetched once — is enforced by
+ * be enforced — the model files are requested early and only once — is enforced by
  * `verify:anatomy`.
  *
  * Run one browser check at a time (CLAUDE.md).
  */
-import { existsSync } from 'node:fs';
-import { resolve } from 'node:path';
+import { existsSync, mkdirSync } from 'node:fs';
+import { join, resolve } from 'node:path';
 
 import { chromiumExecutable } from './lib/browser.mjs';
 import { serveDist } from './lib/serve-dist.mjs';
@@ -37,6 +40,8 @@ const mbps = Number(value('--mbps', '9'));
 const rtt = Number(value('--rtt', '60'));
 const cpu = Number(value('--cpu', '4'));
 const distDir = resolve(value('--dist', 'dist'));
+const shotsDir = value('--shots', '');
+if (shotsDir) mkdirSync(shotsDir, { recursive: true });
 if (!existsSync(distDir)) {
   console.error(`No build at ${distDir}. Run \`npm run build\` first.`);
   process.exit(1);
@@ -68,6 +73,16 @@ try {
   await page.goto(`${base}#/${slug}`);
   // The same "ready" `verify:anatomy` uses: the part tree exists only once the
   // model has loaded and been read.
+  const readyNow = () => page.evaluate(() => document.querySelectorAll('.anatomy-tree-leaf').length > 0).catch(() => false);
+  if (shotsDir) {
+    // Screenshots are themselves slow under a CPU throttle, so the name is the
+    // time the shot was taken, not its index.
+    while (!(await readyNow()) && Date.now() - started < 300000) {
+      const at = Date.now() - started;
+      await page.screenshot({ path: join(shotsDir, `${slug}-${String(at).padStart(6, '0')}ms.png`) }).catch(() => {});
+      await page.waitForTimeout(Math.max(0, 1000 - (Date.now() - started - at)));
+    }
+  }
   await page.waitForFunction(() => document.querySelectorAll('.anatomy-tree-leaf').length > 0, {
     timeout: 300000,
   });
