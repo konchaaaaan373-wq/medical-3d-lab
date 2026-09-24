@@ -1,5 +1,6 @@
 import * as THREE from 'three';
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
+import { DRACOLoader } from 'three/examples/jsm/loaders/DRACOLoader.js';
 import { buildAnatomyTree } from '../../../../app/anatomyContract.js';
 import { createStudioLights } from '../../../shared/lighting.js';
 import { disposeObject } from '../../../../utils/dispose.js';
@@ -88,9 +89,18 @@ const BASE_URL = import.meta.env?.BASE_URL ?? './';
  * The sources stay pinned in `src/catalog/devAssets.js` — the record of what
  * was examined is not deleted by adopting a file derived from it, and the
  * repair rebuilds these exact bytes from them.
+ *
+ * Since 2026-09-24 the repaired files are also **Draco-compressed**
+ * (`scripts/compress-heart-assets.mjs`): 6.9 MB became 0.85 MB, with no vertex
+ * more than 12.2 µm from where the repair left it and node names, hierarchy
+ * and materials unchanged (`docs/asset-qa/measurements/draco-compression.json`).
+ * So both loads need the decoder. It is the one the brain atlas already ships
+ * with, served from the brain's directory: moving it would change the pinned
+ * brain scene for no reader-visible reason.
  */
 const HEART_URL = `${BASE_URL}assets/heart/VH_M_Heart.glb`;
 const VESSEL_URL = `${BASE_URL}assets/heart/VH_M_Blood_Vasculature.glb`;
+const DRACO_URL = `${BASE_URL}assets/brain/draco/`;
 
 /**
  * The subtree of the vasculature file this scene takes.
@@ -1364,16 +1374,39 @@ function outwardSurfacePoint(meshes, root) {
   return best ?? centre;
 }
 
+/**
+ * One decoder for both files.
+ *
+ * A decoder per load fetched the 336 kB decoder twice, the second time after
+ * the heart had decoded — on the critical path, measured at 0.4 s on a 4G link.
+ * It is not disposed: every scene is its own document here, so the page going
+ * away is what releases its workers.
+ */
+let sharedDraco = null;
+function dracoLoader() {
+  if (!sharedDraco) {
+    sharedDraco = new DRACOLoader();
+    sharedDraco.setDecoderPath(DRACO_URL);
+    sharedDraco.setDecoderConfig({ type: 'wasm' });
+  }
+  return sharedDraco;
+}
+
+/** Load one Draco-compressed GLB. */
+async function loadCompressed(url) {
+  const loader = new GLTFLoader();
+  loader.setDRACOLoader(dracoLoader());
+  return loader.loadAsync(url);
+}
+
 async function loadHeart() {
   if (!HEART_URL) throw new Error('no candidate heart asset is registered');
-  const loader = new GLTFLoader();
-  return loader.loadAsync(HEART_URL);
+  return loadCompressed(HEART_URL);
 }
 
 async function loadVessels() {
   if (!VESSEL_URL) throw new Error('no candidate vasculature asset is registered');
-  const loader = new GLTFLoader();
-  return loader.loadAsync(VESSEL_URL);
+  return loadCompressed(VESSEL_URL);
 }
 
 /** How many meshes are under an object, itself included. */

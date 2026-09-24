@@ -4,7 +4,7 @@ import { SCENES } from './src/catalog/index.js';
 import { CRAWLABLE_SCENES, RELEASED_SCENES } from './src/catalog/release.js';
 import { assetById } from './src/catalog/assetManifest.js';
 import { modelProfileForScene } from './src/catalog/modelProfiles.js';
-import { sceneAssetUrls } from './src/app/sceneAssetPreload.js';
+import { buildScenePreloads } from './scripts/scene-preloads.js';
 import { publicSceneLoadersPlugin } from './scripts/scene-loaders-plugin.js';
 import { siteMetadataPlugin } from './scripts/site-plugin.js';
 import clinicalReviews from './docs/clinical-reviews/registry.json' with { type: 'json' };
@@ -38,7 +38,9 @@ export default defineConfig(({ mode }) => {
   // withheld scene's asset is not shipped, and a preview build unlocking it
   // simply loads it the slow way. See src/app/sceneAssetPreload.js.
   const scenePreloads = {
-    __SCENE_ASSET_PRELOADS__: JSON.stringify(sceneAssetUrls(RELEASED_SCENES, modelProfileForScene, assetById)),
+    __SCENE_ASSET_PRELOADS__: JSON.stringify(
+      buildScenePreloads({ scenes: RELEASED_SCENES, profileFor: modelProfileForScene, assetFor: assetById, root: process.cwd() })
+    ),
   };
 
   return {

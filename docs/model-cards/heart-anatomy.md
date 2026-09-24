@@ -3,7 +3,7 @@
 | | |
 | --- | --- |
 | **Scene** | `heart-anatomy` |
-| **Geometry** | [`public/assets/heart/VH_M_Heart.glb`](../../public/assets/heart/VH_M_Heart.glb) and [`public/assets/heart/VH_M_Blood_Vasculature.glb`](../../public/assets/heart/VH_M_Blood_Vasculature.glb) — **derivatives** of the HuBMAP files, adopted 2026-09-15 |
+| **Geometry** | [`public/assets/heart/VH_M_Heart.glb`](../../public/assets/heart/VH_M_Heart.glb) and [`public/assets/heart/VH_M_Blood_Vasculature.glb`](../../public/assets/heart/VH_M_Blood_Vasculature.glb) — **derivatives** of the HuBMAP files, adopted 2026-09-15, Draco-compressed 2026-09-24 |
 | **Asset provenance and QA** | [`src/catalog/assetManifest.js`](../../src/catalog/assetManifest.js) |
 | **Asset notice** | [`public/assets/heart/ATTRIBUTION.md`](../../public/assets/heart/ATTRIBUTION.md) |
 | **Adoption decision** | [`docs/decisions/HEART-ASSET-ADOPTION.md`](../decisions/HEART-ASSET-ADOPTION.md) |
@@ -200,6 +200,23 @@ What was measured in this repository, and is therefore a fact about the files:
   1.7% of its vertices — and 33 in the vasculature file, in the superior vena
   cava and the left coronary artery. The publisher's data; not corrected here;
   recorded as a failed gate rather than an unrun one.
+* **The files that ship are Draco-compressed, so vertices are quantized.**
+  Since 2026-09-24 both files are the repaired derivatives compressed by
+  `scripts/compress-heart-assets.mjs` (6.9 MB → 0.85 MB). Positions are stored
+  at 14 bits per mesh: **no vertex is more than 5.1 µm (heart) or 12.2 µm
+  (vessels) from where the repair left it**, normals agree to 0.19° at p99, no
+  enclosed volume moves by a printed 0.1 mL (the left ventricle is 121.604 mL
+  before and after), no surface changes between closed and open, and node
+  names, hierarchy, extras and materials are unchanged. Rendered at all six
+  viewpoints in both colour modes, the frames differ by 60–160 pixels of
+  921,600, under the renderer's own frame-to-frame jitter
+  (`docs/asset-qa/measurements/draco-compression.json`,
+  `docs/asset-qa/heart-hubmap-vh-m-heart.md`). The 2026-09-15 adoption rested
+  on "no geometry was reshaped", and **that sentence is no longer true of what
+  ships**; it is replaced by these bounds. The sampled-vertex distances in the
+  bullet above were measured on the uncompressed files; in the shipped files
+  each can differ by up to the two files' combined quantization, about
+  0.02 mm — two in the last printed digit.
 * **One display transform, applied once to the pair.** The offset and uniform
   scale live on the single model root, so they cannot separate the two files.
   The scale is taken from the heart, because the vessel subtree is half a metre

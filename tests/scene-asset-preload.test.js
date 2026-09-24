@@ -7,9 +7,12 @@ import { assetById } from '../src/catalog/assetManifest.js';
 import { modelProfileForScene } from '../src/catalog/modelProfiles.js';
 import { SCENES } from '../src/catalog/index.js';
 import { RELEASED_SCENES } from '../src/catalog/release.js';
+import { buildScenePreloads, glbExtensionsUsed } from '../scripts/scene-preloads.js';
+import { fileURLToPath } from 'node:url';
 
 /** The table the build injects — derived exactly as `vite.config.js` derives it. */
-const table = sceneAssetUrls(RELEASED_SCENES, modelProfileForScene, assetById);
+const root = fileURLToPath(new URL('..', import.meta.url));
+const table = buildScenePreloads({ scenes: RELEASED_SCENES, profileFor: modelProfileForScene, assetFor: assetById, root });
 
 test('every released scene that loads a model file has it preloaded', () => {
   for (const scene of RELEASED_SCENES) {
@@ -18,7 +21,18 @@ test('every released scene that loads a model file has it preloaded', () => {
       assert.equal(table[scene.id], undefined, `${scene.id} loads no asset and must not preload one`);
       continue;
     }
-    assert.equal(table[scene.id]?.length, assets.length, `${scene.id}: one preload per asset its profile names`);
+    const urls = (table[scene.id] ?? []).map((file) => file.url);
+    for (const id of assets) {
+      const path = assetById(id).output.path;
+      assert.ok(urls.includes(path.replace(/^public\//, '')), `${scene.id}: ${id} is not prefetched`);
+      // A compressed model cannot be read until the decoder is in, so the
+      // decoder is fetched with it — once, whatever number of files need it.
+      if (glbExtensionsUsed(fileURLToPath(new URL(`../${path}`, import.meta.url))).includes('KHR_draco_mesh_compression')) {
+        for (const decoder of ['assets/brain/draco/draco_wasm_wrapper.js', 'assets/brain/draco/draco_decoder.wasm']) {
+          assert.equal(urls.filter((url) => url === decoder).length, 1, `${scene.id}: ${decoder} is fetched once with ${id}`);
+        }
+      }
+    }
   }
 });
 
@@ -36,7 +50,7 @@ test('every preloaded file ships with the build', () => {
 
 test('a scene the release withholds gets no preload, even when its profile names an asset', () => {
   const withheld = SCENES.filter((scene) => !RELEASED_SCENES.includes(scene));
-  const all = sceneAssetUrls(SCENES, modelProfileForScene, assetById);
+  const all = buildScenePreloads({ scenes: SCENES, profileFor: modelProfileForScene, assetFor: assetById, root });
   for (const scene of withheld) assert.equal(table[scene.id], undefined, scene.id);
   // The rule is the release, not an accident of which profiles have assets:
   // there is a withheld scene with an asset today, and it is left out.

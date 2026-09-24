@@ -86,7 +86,7 @@ import { DEV_ASSET_ROOT } from '../src/catalog/devAssets.js';
 import { assetById } from '../src/catalog/assetManifest.js';
 import { modelProfileForScene } from '../src/catalog/modelProfiles.js';
 import { RELEASED_SCENES } from '../src/catalog/release.js';
-import { sceneAssetUrls } from '../src/app/sceneAssetPreload.js';
+import { buildScenePreloads } from './scene-preloads.js';
 
 const argv = process.argv.slice(2);
 const flag = (name) => argv.includes(name);
@@ -536,7 +536,8 @@ await page.addInitScript(() => {
 });
 page.on('request', (request) => {
   const path = new URL(request.url()).pathname;
-  if (!MODEL_FILE.test(path)) return;
+  // Model formats, and the decoder the prefetch fetches with them.
+  if (!MODEL_FILE.test(path) && !/\/draco\/draco_[^/]+$/.test(path)) return;
   modelRequests.set(path, (modelRequests.get(path) ?? 0) + 1);
 });
 page.on('requestfailed', (request) => {
@@ -584,7 +585,7 @@ try {
   // prefetch, and is only held to "once".
   const releasedScene = RELEASED_SCENES.find((scene) => scene.slug === sceneSlug);
   const prefetched = releasedScene
-    ? (sceneAssetUrls([releasedScene], modelProfileForScene, assetById)[releasedScene.id] ?? []).map((file) => file.url)
+    ? (buildScenePreloads({ scenes: [releasedScene], profileFor: modelProfileForScene, assetFor: assetById, root: process.cwd() })[releasedScene.id] ?? []).map((file) => file.url)
     : [];
   for (const [path, count] of modelRequests) {
     if (count > 1) {

@@ -1,0 +1,385 @@
+{
+  "generatedBy": "scripts/compress-heart-assets.mjs",
+  "tools": "@gltf-transform/core@4.5.0 @gltf-transform/extensions@4.5.0 @gltf-transform/functions@4.5.0 draco3dgltf@1.5.7 gltf-validator@2.0.0-dev.3.10",
+  "settings": {
+    "method": "edgebreaker",
+    "encodeSpeed": 5,
+    "decodeSpeed": 5,
+    "quantizePosition": 14,
+    "quantizeNormal": 10,
+    "quantizeColor": 8,
+    "quantizeTexcoord": 12,
+    "quantizeGeneric": 12,
+    "quantizationVolume": "mesh"
+  },
+  "gate": {
+    "maxPositionErrorUm": 50,
+    "maxNormalP99Deg": 1
+  },
+  "files": [
+    {
+      "file": "heart/VH_M_Heart.glb",
+      "input": {
+        "sha256": "46d375e36d8181c161b70e1f0b8f0d778364f0a8414eebce4e4fda1cea73eb3d",
+        "bytes": 4071496
+      },
+      "output": {
+        "sha256": "994a86380bd30bc9744c08edd9812825ab22b340339665a422be6ba545fbbf8a",
+        "bytes": 424932
+      },
+      "meshNodes": 14,
+      "trianglesBefore": 163295,
+      "trianglesAfter": 163295,
+      "structureUnchanged": true,
+      "vertices": 82313,
+      "maxPositionErrorUm": 5.1,
+      "meanPositionErrorUm": 2.231,
+      "normalAngleP99Deg": 0.187,
+      "normalAngleMaxDeg": 0.232,
+      "maxVolumeChangeMl": 0.001,
+      "volumes": [
+        {
+          "name": "VH_M_mitral_valve",
+          "closed": true,
+          "beforeMl": 3.141,
+          "afterMl": 3.141
+        },
+        {
+          "name": "VH_M_tricuspid_valve",
+          "closed": true,
+          "beforeMl": 4.237,
+          "afterMl": 4.237
+        },
+        {
+          "name": "VH_M_aortic_valve",
+          "closed": false,
+          "beforeMl": -16.288,
+          "afterMl": -16.289
+        },
+        {
+          "name": "VH_M_pulmonary_valve",
+          "closed": true,
+          "beforeMl": 1.236,
+          "afterMl": 1.236
+        },
+        {
+          "name": "VH_M_papillary_muscle_of_heart_anterior",
+          "closed": false,
+          "beforeMl": -3.359,
+          "afterMl": -3.36
+        },
+        {
+          "name": "VH_M_papillary_muscle_of_heart_anterolateral",
+          "closed": true,
+          "beforeMl": 1.127,
+          "afterMl": 1.128
+        },
+        {
+          "name": "VH_M_papillary_muscle_of_heart_medial",
+          "closed": false,
+          "beforeMl": 3.192,
+          "afterMl": 3.192
+        },
+        {
+          "name": "VH_M_papillary_muscle_of_heart_posterior",
+          "closed": false,
+          "beforeMl": 3.645,
+          "afterMl": 3.645
+        },
+        {
+          "name": "VH_M_papillary_muscle_of_heart_posteromedial",
+          "closed": true,
+          "beforeMl": 1.194,
+          "afterMl": 1.194
+        },
+        {
+          "name": "VH_M_left_cardiac_atrium",
+          "closed": true,
+          "beforeMl": 31.346,
+          "afterMl": 31.346
+        },
+        {
+          "name": "VH_M_right_cardiac_atrium",
+          "closed": false,
+          "beforeMl": 27.714,
+          "afterMl": 27.714
+        },
+        {
+          "name": "VH_M_heart_right_ventricle",
+          "closed": true,
+          "beforeMl": 73.988,
+          "afterMl": 73.989
+        },
+        {
+          "name": "VH_M_interventricular_septum",
+          "closed": true,
+          "beforeMl": 28.092,
+          "afterMl": 28.092
+        },
+        {
+          "name": "VH_M_heart_left_ventricle",
+          "closed": true,
+          "beforeMl": 121.604,
+          "afterMl": 121.604
+        }
+      ],
+      "validator": {
+        "version": "2.0.0-dev.3.10",
+        "errors": 0,
+        "warnings": 0,
+        "infos": 15
+      }
+    },
+    {
+      "file": "heart/VH_M_Blood_Vasculature.glb",
+      "input": {
+        "sha256": "a95ff0825431953d8fff210cf29d9e65aeed5da55f623717ab613864a9435502",
+        "bytes": 2838396
+      },
+      "output": {
+        "sha256": "de4170610a12b3cd0595be79c2254735de63b0375252448c32fefa210aad11b9",
+        "bytes": 434364
+      },
+      "meshNodes": 37,
+      "trianglesBefore": 153476,
+      "trianglesAfter": 153476,
+      "structureUnchanged": true,
+      "vertices": 77561,
+      "maxPositionErrorUm": 12.21,
+      "meanPositionErrorUm": 2.197,
+      "normalAngleP99Deg": 0.185,
+      "normalAngleMaxDeg": 0.234,
+      "maxVolumeChangeMl": 0.008,
+      "volumes": [
+        {
+          "name": "VH_M_aortic_arch",
+          "closed": false,
+          "beforeMl": 60.82,
+          "afterMl": 60.822
+        },
+        {
+          "name": "VH_M_ascending_aorta",
+          "closed": false,
+          "beforeMl": -0.727,
+          "afterMl": -0.727
+        },
+        {
+          "name": "VH_M_brachiocephalic_artery_b",
+          "closed": false,
+          "beforeMl": 3.576,
+          "afterMl": 3.575
+        },
+        {
+          "name": "VH_M_brachiocephalic_artery_a",
+          "closed": false,
+          "beforeMl": 8.726,
+          "afterMl": 8.726
+        },
+        {
+          "name": "VH_M_left_common_carotid_artery_a",
+          "closed": false,
+          "beforeMl": 5.259,
+          "afterMl": 5.259
+        },
+        {
+          "name": "VH_M_left_common_carotid_artery_b",
+          "closed": false,
+          "beforeMl": 2.913,
+          "afterMl": 2.913
+        },
+        {
+          "name": "VH_M_left_subclavian_artery_a",
+          "closed": false,
+          "beforeMl": 10.166,
+          "afterMl": 10.166
+        },
+        {
+          "name": "VH_M_left_subclavian_artery_b",
+          "closed": false,
+          "beforeMl": 2.13,
+          "afterMl": 2.13
+        },
+        {
+          "name": "VH_M_descending_aorta_a",
+          "closed": false,
+          "beforeMl": 18.714,
+          "afterMl": 18.708
+        },
+        {
+          "name": "VH_M_descending_aorta_b",
+          "closed": false,
+          "beforeMl": 1.113,
+          "afterMl": 1.112
+        },
+        {
+          "name": "VH_M_left_anterior_descending_artery",
+          "closed": false,
+          "beforeMl": 0.178,
+          "afterMl": 0.178
+        },
+        {
+          "name": "VH_M_right_marginal_artery",
+          "closed": false,
+          "beforeMl": -0.061,
+          "afterMl": -0.061
+        },
+        {
+          "name": "VH_M_right_posterior_descending_artery",
+          "closed": false,
+          "beforeMl": -0.1,
+          "afterMl": -0.1
+        },
+        {
+          "name": "VH_M_diagonal_branch_of_anterior_descending_branch_of_left_coronary_artery",
+          "closed": false,
+          "beforeMl": -0.004,
+          "afterMl": -0.004
+        },
+        {
+          "name": "VH_M_left_coronary_artery",
+          "closed": false,
+          "beforeMl": 0.583,
+          "afterMl": 0.583
+        },
+        {
+          "name": "VH_M_right_coronary_artery",
+          "closed": false,
+          "beforeMl": 0.518,
+          "afterMl": 0.518
+        },
+        {
+          "name": "VH_M_diagonal_branch_of_left_anterior_descending_artery",
+          "closed": false,
+          "beforeMl": -0.513,
+          "afterMl": -0.513
+        },
+        {
+          "name": "VH_M_left_marginal_branch",
+          "closed": false,
+          "beforeMl": 0.1,
+          "afterMl": 0.1
+        },
+        {
+          "name": "VH_M_pulmonary_artery_L",
+          "closed": true,
+          "beforeMl": 1.657,
+          "afterMl": 1.657
+        },
+        {
+          "name": "VH_M_pulmonary_artery_R",
+          "closed": true,
+          "beforeMl": 0.873,
+          "afterMl": 0.873
+        },
+        {
+          "name": "VH_M_pulmonary_trunk",
+          "closed": true,
+          "beforeMl": 1.691,
+          "afterMl": 1.691
+        },
+        {
+          "name": "VH_M_great_cardiac_vein",
+          "closed": false,
+          "beforeMl": 0.396,
+          "afterMl": 0.396
+        },
+        {
+          "name": "VH_M_middle_cardiac_vein",
+          "closed": false,
+          "beforeMl": -0.824,
+          "afterMl": -0.824
+        },
+        {
+          "name": "VH_M_oblique_vein_of_left_atrium",
+          "closed": false,
+          "beforeMl": 0.216,
+          "afterMl": 0.216
+        },
+        {
+          "name": "VH_M_anterior_cardiac_vein",
+          "closed": false,
+          "beforeMl": -0.096,
+          "afterMl": -0.096
+        },
+        {
+          "name": "VH_M_coronary_sinus",
+          "closed": false,
+          "beforeMl": 3.76,
+          "afterMl": 3.759
+        },
+        {
+          "name": "VH_M_posterior_vein_of_left_ventricle",
+          "closed": false,
+          "beforeMl": -0.325,
+          "afterMl": -0.325
+        },
+        {
+          "name": "VH_M_small_cardiac_vein",
+          "closed": true,
+          "beforeMl": 0.109,
+          "afterMl": 0.109
+        },
+        {
+          "name": "VH_M_pulmonary_vein_R_inf",
+          "closed": true,
+          "beforeMl": 0.292,
+          "afterMl": 0.292
+        },
+        {
+          "name": "VH_M_pulmonary_vein_R_sup",
+          "closed": true,
+          "beforeMl": 0.238,
+          "afterMl": 0.238
+        },
+        {
+          "name": "VH_M_pulmonary_vein_L_inf",
+          "closed": true,
+          "beforeMl": 0.406,
+          "afterMl": 0.406
+        },
+        {
+          "name": "VH_M_pulmonary_vein_L_sup",
+          "closed": true,
+          "beforeMl": 0.259,
+          "afterMl": 0.259
+        },
+        {
+          "name": "VH_M_brachiocephalic_vein_L",
+          "closed": true,
+          "beforeMl": 2.024,
+          "afterMl": 2.024
+        },
+        {
+          "name": "VH_M_brachiocephalic_vein_R",
+          "closed": true,
+          "beforeMl": 1.351,
+          "afterMl": 1.351
+        },
+        {
+          "name": "VH_M_superior_vena_cava",
+          "closed": false,
+          "beforeMl": 5.266,
+          "afterMl": 5.266
+        },
+        {
+          "name": "VH_M_inferior_vena_cava_b",
+          "closed": false,
+          "beforeMl": 12.561,
+          "afterMl": 12.569
+        },
+        {
+          "name": "VH_M_inferior_vena_cava_a",
+          "closed": false,
+          "beforeMl": 6.963,
+          "afterMl": 6.962
+        }
+      ],
+      "validator": {
+        "version": "2.0.0-dev.3.10",
+        "errors": 0,
+        "warnings": 0,
+        "infos": 39
+      }
+    }
+  ]
+}

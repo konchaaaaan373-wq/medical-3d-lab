@@ -37,6 +37,8 @@
     "verify:next-beta": "node scripts/check-next-beta.mjs",
     "review:packets": "node scripts/build-review-packet.mjs amyloid-beta heart-failure copd-hyperinflation myocardial-ischemia",
     "assets:repair:verify": "node scripts/repair-candidate-gltf.mjs --verify",
+    "assets:compress": "node scripts/compress-heart-assets.mjs",
+    "assets:compress:verify": "node scripts/compress-heart-assets.mjs --verify",
     "type-floor": "node scripts/type-floor.mjs",
     "verify:departure": "node scripts/check-departure.mjs",
     "verify:gated": "node scripts/check-gated-surfaces.mjs",

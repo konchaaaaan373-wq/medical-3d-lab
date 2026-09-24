@@ -55,7 +55,9 @@ const PUBLIC_PREFIX = 'public/';
 
 /**
  * Scene id → the model files it loads, relative to the base URL, with their
- * size from the asset manifest.
+ * size from the asset manifest — and, when `decoderFor` says an asset needs
+ * one, the decoder files that must arrive before it can be read (once per
+ * scene however many assets need them).
  *
  * The size is the manifest's, not the response's `Content-Length`: a response
  * compressed on the wire declares its compressed length while its body yields
@@ -64,15 +66,22 @@ const PUBLIC_PREFIX = 'public/';
  * @param {object[]} scenes the scenes to cover — the released ones in a build
  * @param {(scene: object) => ({ assets?: string[] } | null)} profileFor
  * @param {(id: string) => ({ output?: { path?: string, bytes?: number } } | null)} assetFor
+ * @param {{ decoderFor?: (asset: object) => { url: string, bytes: number }[] }} [options]
  * @returns {Record<string, { url: string, bytes: number }[]>}
  */
-export function sceneAssetUrls(scenes, profileFor, assetFor) {
+export function sceneAssetUrls(scenes, profileFor, assetFor, { decoderFor = () => [] } = {}) {
   const table = {};
   for (const scene of scenes) {
-    const files = (profileFor(scene)?.assets ?? [])
-      .map((id) => assetFor(id)?.output)
-      .filter((output) => typeof output?.path === 'string' && output.path.startsWith(PUBLIC_PREFIX))
-      .map((output) => ({ url: output.path.slice(PUBLIC_PREFIX.length), bytes: Number(output.bytes) || 0 }));
+    const assets = (profileFor(scene)?.assets ?? [])
+      .map((id) => assetFor(id))
+      .filter((asset) => typeof asset?.output?.path === 'string' && asset.output.path.startsWith(PUBLIC_PREFIX));
+    const files = assets.map((asset) => ({
+      url: asset.output.path.slice(PUBLIC_PREFIX.length),
+      bytes: Number(asset.output.bytes) || 0,
+    }));
+    for (const decoder of assets.flatMap((asset) => decoderFor(asset))) {
+      if (!files.some((file) => file.url === decoder.url)) files.push(decoder);
+    }
     if (files.length) table[scene.id] = files;
   }
   return table;

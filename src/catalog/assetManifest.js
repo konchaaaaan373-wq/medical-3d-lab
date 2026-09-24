@@ -593,7 +593,7 @@ export const ASSET_MANIFEST = Object.freeze([
       url: 'https://creativecommons.org/licenses/by/4.0/',
       attribution:
         'Kristen Browne, HuBMAP Human Reference Atlas, 3D Reference Organ for Heart, Male v1.2 ' +
-        '(DOI 10.48539/HBM373.VSTV.568), CC BY 4.0. Modified: degenerate vertex normals repaired. ' +
+        '(DOI 10.48539/HBM373.VSTV.568), CC BY 4.0. Modified: degenerate vertex normals repaired; Draco-compressed (positions quantized). ' +
         'Derived from the Visible Human Male dataset, U.S. National Library of Medicine, NIH.',
       redistribution: LICENSE_DECISION.ALLOWED,
       commercialUse: LICENSE_DECISION.ALLOWED,
@@ -678,8 +678,8 @@ export const ASSET_MANIFEST = Object.freeze([
     ],
     output: {
       path: 'public/assets/heart/VH_M_Heart.glb',
-      sha256: '46d375e36d8181c161b70e1f0b8f0d778364f0a8414eebce4e4fda1cea73eb3d',
-      bytes: 4071496,
+      sha256: '994a86380bd30bc9744c08edd9812825ab22b340339665a422be6ba545fbbf8a',
+      bytes: 424932,
     },
     geometry: {
       coordinateSystem: 'glTF 2.0 (right-handed, +Y up, +Z forward); shares the whole-body frame with the vasculature file',
@@ -689,7 +689,10 @@ export const ASSET_MANIFEST = Object.freeze([
         'The scene applies one offset and one uniform scale to both files together at load, so no absolute size is claimed.',
     },
     pipeline: {
-      tools: ['Node (scripts/repair-candidate-gltf.mjs)'],
+      tools: [
+        'Node (scripts/repair-candidate-gltf.mjs)',
+        'Node (scripts/compress-heart-assets.mjs) with glTF-Transform 4.5.0 and draco3dgltf 1.5.7',
+      ],
       generator: 'babylon.js glTF exporter for Autodesk MAYA 2022.2 v20211115.1 (upstream)',
       steps: [
         'Upstream: modelled from Visible Human Male imaging and exported from Maya.',
@@ -697,6 +700,10 @@ export const ASSET_MANIFEST = Object.freeze([
           'replaced by the area-weighted mean of adjacent face normals, or at a fold by the largest adjacent face. ' +
           'Vertex positions, vertex count, node names, hierarchy, ontology ids and materials are unchanged, and the ' +
           'triangle count falls by exactly what was removed. Reproducible: npm run assets:repair:verify.',
+        'Then Draco-compressed (2026-09-24, scripts/compress-heart-assets.mjs, settings fixed in the script): positions ' +
+          'quantized to 14 bits and normals to 10, per mesh. No vertex moved more than 5.1 µm, normals agree to 0.19° at ' +
+          'p99, no enclosed volume moves by a printed 0.1 mL, and node names, hierarchy, extras and materials are ' +
+          'compared as data and unchanged. Reproducible: npm run assets:compress:verify, on the repair\'s output.',
       ],
     },
     semanticParts: {
@@ -716,7 +723,7 @@ export const ASSET_MANIFEST = Object.freeze([
       triangles: 163295,
       materials: 1,
       textures: 0,
-      bytes: 4071496,
+      bytes: 424932,
       targetDevices: 'Desktop and current phones; counted with the vasculature file against the specimen-media bundle budget.',
     },
     qa: {
@@ -724,23 +731,25 @@ export const ASSET_MANIFEST = Object.freeze([
         status: QA_STATUS.PASSED,
         tool: 'Khronos glTF Validator (npm gltf-validator)',
         toolVersion: '2.0.0-dev.3.10',
-        assetSha256: '46d375e36d8181c161b70e1f0b8f0d778364f0a8414eebce4e4fda1cea73eb3d',
-        checkedAt: '2026-09-15T10:42:00Z',
+        assetSha256: '994a86380bd30bc9744c08edd9812825ab22b340339665a422be6ba545fbbf8a',
+        checkedAt: '2026-09-24T09:30:00Z',
         errors: 0,
         warnings: 0,
-        infos: 0,
+        infos: 15,
         scope:
-          'The derived file, not the source. The source is INVALID with 408 ACCESSOR_VECTOR3_NON_UNIT errors and that ' +
-          'is recorded in docs/asset-qa/heart-hubmap-vh-m-heart.md; this gate is about what ships.',
-        reference: 'docs/asset-qa/measurements/normal-repair.json',
+          'The compressed file that ships, validated with its Draco payload decoded by the validator. The source is ' +
+          'INVALID with 408 ACCESSOR_VECTOR3_NON_UNIT errors, recorded in docs/asset-qa/heart-hubmap-vh-m-heart.md; the ' +
+          'repaired file before compression was clean too (docs/asset-qa/measurements/normal-repair.json).',
+        reference: 'docs/asset-qa/measurements/draco-compression.json',
       },
       semanticIntegrity: {
         status: QA_STATUS.PASSED,
-        assetSha256: '46d375e36d8181c161b70e1f0b8f0d778364f0a8414eebce4e4fda1cea73eb3d',
+        assetSha256: '994a86380bd30bc9744c08edd9812825ab22b340339665a422be6ba545fbbf8a',
         reference: 'tests/heart-anatomy.test.js',
         scope:
           'Fourteen meshes with fourteen distinct ontology ids, the part table the adapter reads, and the node names ' +
-          'and hierarchy held identical across the repair. A test of the file and the adapter, not of the anatomy.',
+          'and hierarchy held identical across the repair and across the compression (compared as data by ' +
+          'scripts/compress-heart-assets.mjs). A test of the file and the adapter, not of the anatomy.',
       },
       anatomyExpertReview: {
         status: QA_STATUS.PENDING,
@@ -751,16 +760,18 @@ export const ASSET_MANIFEST = Object.freeze([
       },
       visualReview: {
         status: QA_STATUS.PASSED,
-        assetSha256: '46d375e36d8181c161b70e1f0b8f0d778364f0a8414eebce4e4fda1cea73eb3d',
+        assetSha256: '994a86380bd30bc9744c08edd9812825ab22b340339665a422be6ba545fbbf8a',
         reference: 'docs/asset-qa/heart-hubmap-vh-m-heart.md',
         browser: 'Chromium (Playwright, headless, SwiftShader WebGL2)',
         viewport: '1280x800',
         scene: 'heart-anatomy',
-        commit: '9f3c7769b25677452f699c91f431f8f18f9739fc',
-        reviewedAt: '2026-09-15',
+        commit: '9a7df7d6286ecd706e80af59519325e961212e58',
+        reviewedAt: '2026-09-24',
         scope:
-          'All six fixed viewpoints in both colour modes, and the interior with the chamber surfaces hidden. The ' +
-          'derived file draws the same 46 selectable structures as the source and is not distinguishable on screen.',
+          'All six fixed viewpoints in both colour modes, rendered before and after the compression on the same build ' +
+          '(the working tree on top of the commit named): 60 to 160 of 921,600 pixels differ per frame, under the ' +
+          'renderer\'s own 920-pixel frame-to-frame jitter, and nothing is visible at 8x amplified difference. The ' +
+          '2026-09-15 review of the repaired file against the source, with the interior, stands for the repair.',
       },
       clinicianReview: {
         status: QA_STATUS.PENDING,
@@ -772,7 +783,7 @@ export const ASSET_MANIFEST = Object.freeze([
       replaces: null,
       rollback:
         'git revert of the commit that added this file. The source stays pinned in src/catalog/devAssets.js and ' +
-        'npm run assets:repair rebuilds these exact bytes from it, so the derivative is reproducible rather than precious.',
+        'npm run assets:repair then npm run assets:compress rebuild these exact bytes from it, so the derivative is reproducible rather than precious.',
     },
     release: {
       status: RELEASE_STATUS.RELEASED,
@@ -785,7 +796,8 @@ export const ASSET_MANIFEST = Object.freeze([
         'hubmapconsortium/ccf-releases: v1.2/models/VH_M_Heart.glb @ b036a91aaf7234f462b1249d4a5f4fb0e982f412 (HuBMAP HBM373.VSTV.568)',
       derivativeTerms:
         'CC BY 4.0: derivatives are permitted and must indicate that changes were made. No ShareAlike. The change is ' +
-        'stated in public/assets/heart/ATTRIBUTION.md and measured in docs/asset-qa/measurements/normal-repair.json.',
+        'stated in public/assets/heart/ATTRIBUTION.md and measured in docs/asset-qa/measurements/normal-repair.json ' +
+        'and docs/asset-qa/measurements/draco-compression.json.',
     },
   },
   {
@@ -827,7 +839,7 @@ export const ASSET_MANIFEST = Object.freeze([
       url: 'https://creativecommons.org/licenses/by/4.0/',
       attribution:
         'Kristen Browne and Heidi Schlehlein, HuBMAP Human Reference Atlas, 3D Reference Organ for Blood Vasculature, ' +
-        'Male v1.2 (DOI 10.48539/HBM686.LBDQ.998), CC BY 4.0. Modified: degenerate vertex normals repaired. ' +
+        'Male v1.2 (DOI 10.48539/HBM686.LBDQ.998), CC BY 4.0. Modified: degenerate vertex normals repaired; Draco-compressed (positions quantized). ' +
         'Derived from the Visible Human Male dataset, U.S. National Library of Medicine, NIH.',
       redistribution: LICENSE_DECISION.ALLOWED,
       commercialUse: LICENSE_DECISION.ALLOWED,
@@ -910,8 +922,8 @@ export const ASSET_MANIFEST = Object.freeze([
     ],
     output: {
       path: 'public/assets/heart/VH_M_Blood_Vasculature.glb',
-      sha256: 'a95ff0825431953d8fff210cf29d9e65aeed5da55f623717ab613864a9435502',
-      bytes: 2838396,
+      sha256: 'de4170610a12b3cd0595be79c2254735de63b0375252448c32fefa210aad11b9',
+      bytes: 434364,
     },
     geometry: {
       coordinateSystem: 'glTF 2.0 (right-handed, +Y up, +Z forward); measured to share the whole-body frame with the heart file',
@@ -922,7 +934,10 @@ export const ASSET_MANIFEST = Object.freeze([
         'which is what keeps the vessels where they meet the heart.',
     },
     pipeline: {
-      tools: ['Node (scripts/repair-candidate-gltf.mjs)'],
+      tools: [
+        'Node (scripts/repair-candidate-gltf.mjs)',
+        'Node (scripts/compress-heart-assets.mjs) with glTF-Transform 4.5.0 and draco3dgltf 1.5.7',
+      ],
       generator: 'babylon.js glTF exporter for Autodesk MAYA 2022.2 v20211115.1 (upstream)',
       steps: [
         'Upstream: modelled from Visible Human Male imaging and exported from Maya.',
@@ -932,6 +947,10 @@ export const ASSET_MANIFEST = Object.freeze([
           'every later count is about what ships. **Every mesh still drawn keeps its vertex positions byte for byte**, ' +
           'with its node name, its place in the hierarchy and its ontology id; the report checks that by hashing ' +
           'positions per mesh rather than asserting it. Reproducible: npm run assets:repair:verify.',
+        'Then Draco-compressed (2026-09-24, scripts/compress-heart-assets.mjs, settings fixed in the script): positions ' +
+          'quantized to 14 bits and normals to 10, per mesh. No vertex moved more than 12.2 µm, normals agree to 0.19° at ' +
+          'p99, no enclosed volume moves by a printed 0.1 mL, and node names, hierarchy, extras and materials are ' +
+          'compared as data and unchanged. Reproducible: npm run assets:compress:verify, on the repair\'s output.',
       ],
     },
     semanticParts: {
@@ -952,35 +971,39 @@ export const ASSET_MANIFEST = Object.freeze([
       triangles: 153476,
       materials: 3,
       textures: 0,
-      bytes: 2838396,
+      bytes: 434364,
       targetDevices:
         'Desktop and current phones. This entry used to read "7.4 MB to serve 37 drawn meshes is the cost of not ' +
         'modifying the file further" — and the ship-weight budget is what made that cost no longer worth paying: ' +
-        '5.24 MB gzipped of it was geometry no reader ever saw. Trimming was chosen over compressing because Draco ' +
-        'quantizes vertex positions and would have traded away the one claim this adoption rests on.',
+        '5.24 MB gzipped of it was geometry no reader ever saw. Trimming was chosen over compressing then because Draco ' +
+        'quantizes vertex positions, and "no geometry was reshaped" was the claim the adoption rested on. That ' +
+        'trade was only argued, never measured. Measured on 2026-09-24 it is at most 12.2 µm — a twelfth of a pixel ' +
+        'with the heart filling the view — against 2.8 MB a reader waits for on every visit, and the owner chose ' +
+        'the compression (docs/decisions/HEART-ASSET-ADOPTION.md, 2026-09-24).',
     },
     qa: {
       formatValidation: {
         status: QA_STATUS.PASSED,
         tool: 'Khronos glTF Validator (npm gltf-validator)',
         toolVersion: '2.0.0-dev.3.10',
-        assetSha256: 'a95ff0825431953d8fff210cf29d9e65aeed5da55f623717ab613864a9435502',
-        checkedAt: '2026-09-15T10:42:00Z',
+        assetSha256: 'de4170610a12b3cd0595be79c2254735de63b0375252448c32fefa210aad11b9',
+        checkedAt: '2026-09-24T09:30:00Z',
         errors: 0,
         warnings: 0,
-        infos: 0,
+        infos: 39,
         scope:
-          'The derived file, not the source. The source is INVALID with 33 ACCESSOR_VECTOR3_NON_UNIT errors, recorded ' +
-          'in docs/asset-qa/heart-hubmap-vh-m-blood-vasculature.md.',
-        reference: 'docs/asset-qa/measurements/normal-repair.json',
+          'The compressed file that ships, validated with its Draco payload decoded by the validator. The source is ' +
+          'INVALID with 33 ACCESSOR_VECTOR3_NON_UNIT errors, recorded in ' +
+          'docs/asset-qa/heart-hubmap-vh-m-blood-vasculature.md.',
+        reference: 'docs/asset-qa/measurements/draco-compression.json',
       },
       semanticIntegrity: {
         status: QA_STATUS.PASSED,
-        assetSha256: 'a95ff0825431953d8fff210cf29d9e65aeed5da55f623717ab613864a9435502',
+        assetSha256: 'de4170610a12b3cd0595be79c2254735de63b0375252448c32fefa210aad11b9',
         reference: 'tests/heart-anatomy.test.js',
         scope:
           'The 37 heart-vessel meshes the adapter names, their ontology ids, and the node names and hierarchy held ' +
-          'identical across the repair. A test of the file and the adapter, not of the anatomy.',
+          'identical across the repair and the compression. A test of the file and the adapter, not of the anatomy.',
       },
       anatomyExpertReview: {
         status: QA_STATUS.PENDING,
@@ -991,16 +1014,17 @@ export const ASSET_MANIFEST = Object.freeze([
       },
       visualReview: {
         status: QA_STATUS.PASSED,
-        assetSha256: 'a95ff0825431953d8fff210cf29d9e65aeed5da55f623717ab613864a9435502',
+        assetSha256: 'de4170610a12b3cd0595be79c2254735de63b0375252448c32fefa210aad11b9',
         reference: 'docs/asset-qa/heart-hubmap-vh-m-heart.md',
         browser: 'Chromium (Playwright, headless, SwiftShader WebGL2)',
         viewport: '1280x800',
         scene: 'heart-anatomy',
-        commit: '9f3c7769b25677452f699c91f431f8f18f9739fc',
-        reviewedAt: '2026-09-15',
+        commit: '9a7df7d6286ecd706e80af59519325e961212e58',
+        reviewedAt: '2026-09-24',
         scope:
-          'Rendered with the heart file at all six fixed viewpoints in both colour modes; the vessels sit where they ' +
-          'meet the heart and the derived file is not distinguishable from the source on screen.',
+          'Rendered with the heart file at all six fixed viewpoints in both colour modes, before and after the ' +
+          'compression; the vessels sit where they meet the heart and the compressed file is not distinguishable on ' +
+          'screen (per-frame counts in docs/asset-qa/heart-hubmap-vh-m-heart.md).',
       },
       clinicianReview: {
         status: QA_STATUS.PENDING,
@@ -1012,7 +1036,7 @@ export const ASSET_MANIFEST = Object.freeze([
       replaces: null,
       rollback:
         'git revert of the commit that added this file. The source stays pinned in src/catalog/devAssets.js and ' +
-        'npm run assets:repair rebuilds these exact bytes from it.',
+        'npm run assets:repair then npm run assets:compress rebuild these exact bytes from it.',
     },
     release: {
       status: RELEASE_STATUS.RELEASED,
@@ -1025,7 +1049,8 @@ export const ASSET_MANIFEST = Object.freeze([
         'hubmapconsortium/ccf-releases: v1.2/models/VH_M_Blood_Vasculature.glb @ b036a91aaf7234f462b1249d4a5f4fb0e982f412 (HuBMAP HBM686.LBDQ.998)',
       derivativeTerms:
         'CC BY 4.0: derivatives are permitted and must indicate that changes were made. No ShareAlike. The change is ' +
-        'stated in public/assets/heart/ATTRIBUTION.md and measured in docs/asset-qa/measurements/normal-repair.json.',
+        'stated in public/assets/heart/ATTRIBUTION.md and measured in docs/asset-qa/measurements/normal-repair.json ' +
+        'and docs/asset-qa/measurements/draco-compression.json.',
     },
   },
 ]);
