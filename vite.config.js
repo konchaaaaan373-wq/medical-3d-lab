@@ -2,6 +2,9 @@ import { defineConfig, loadEnv } from 'vite';
 
 import { SCENES } from './src/catalog/index.js';
 import { CRAWLABLE_SCENES, RELEASED_SCENES } from './src/catalog/release.js';
+import { assetById } from './src/catalog/assetManifest.js';
+import { modelProfileForScene } from './src/catalog/modelProfiles.js';
+import { sceneAssetUrls } from './src/app/sceneAssetPreload.js';
 import { publicSceneLoadersPlugin } from './scripts/scene-loaders-plugin.js';
 import { siteMetadataPlugin } from './scripts/site-plugin.js';
 import clinicalReviews from './docs/clinical-reviews/registry.json' with { type: 'json' };
@@ -30,9 +33,17 @@ export default defineConfig(({ mode }) => {
     __BUILD_REVIEW__: JSON.stringify(process.env.REVIEW_ID || ''),
   };
 
+  // Which model files `main.js` starts fetching for each scene, before the
+  // scene's own code has arrived. Released scenes only, in every build: a
+  // withheld scene's asset is not shipped, and a preview build unlocking it
+  // simply loads it the slow way. See src/app/sceneAssetPreload.js.
+  const scenePreloads = {
+    __SCENE_ASSET_PRELOADS__: JSON.stringify(sceneAssetUrls(RELEASED_SCENES, modelProfileForScene, assetById)),
+  };
+
   return {
     base: './',
-    define: buildIdentity,
+    define: { ...buildIdentity, ...scenePreloads },
     server: { host: true, port: 5173 },
     build: {
       target: 'es2020',

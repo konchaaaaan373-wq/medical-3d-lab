@@ -5119,6 +5119,32 @@ CSS に日本語の文節境界を教える手段は無く、`word-break: keep-a
 
 *この PR の作者が監査して、情報は失われておらず、直し方が語彙の変更になるので残したもの。*
 
+### F-210 — 解剖シーンを開く時間の残り: 心臓は 6.7 MB を無圧縮で送っている — P2
+
+2026-09-24、「3D モデルを開くのに時間がかかる」への対応として、公開シーンの
+モデルファイルを route が決まった時点で preload するようにしました
+（`src/app/sceneAssetPreload.js`、L-109）。9 Mbps / RTT 60 ms / CPU ×4 で
+**脳 9.6 → 7.6 秒、心臓 10.7 → 8.9 秒**（`npm run measure:load`）。
+取得開始が 3.7 秒 → 0.7 秒になり、心臓の 2 本は並列になりました。
+
+**残りはほぼ転送量です。** 同じ条件で、いまは GLB の転送が終わるのを待っています。
+
+1. **心臓の 2 本は Draco も meshopt も掛かっていない**（`VH_M_Heart.glb` 4.0 MB、
+   `VH_M_Blood_Vasculature.glb` 2.8 MB、gzip でも 2.4 + 2.3 MB）。脳は Draco 済みで
+   4.5 MB。圧縮すれば心臓は数分の一になる見込みですが、**asset の hash が変わる**ので、
+   `assetManifest.js` の output・変換工程・QA と、hash に結びついた**公開判断記録の
+   取り直し**が要ります。やらずに済ませると `heart-anatomy` が閉じます。
+   速さのために公開シーンを閉じる価値は無いので、このマージでは触っていません
+2. **未確認: production が `.glb` を圧縮して送っているか、何を `Cache-Control` に
+   返しているか。** この container からは production に届きません（proxy が 403）。
+   `public/_headers` は `/assets/brain/*` にも `/assets/heart/*` にも
+   `Cache-Control` を書いておらず、ファイル名に hash が無いので `immutable` にも
+   できません。`verify:live`（`.github/workflows/verify-live.yml`）に
+   `curl -I` 相当の 1 行を足すのが、次に人手なしで確かめる方法です
+3. **Draco デコーダ**（wasm 279 kB + wrapper 58 kB）は preload していません。
+   GLB と帯域を取り合うだけで、GLB より先に届くので、クリティカルパスには
+   乗っていません（上の計測で 4.3 → 4.9 秒、GLB は 6.5 秒）
+
 ### F-209 — モデル strip が、解剖と機序を同じ一列に、不揃いな長さで並べる
 
 このマージ（#150 で `cardiac-output` が公開に入った）で公開モデルが 4 → 5 になり、

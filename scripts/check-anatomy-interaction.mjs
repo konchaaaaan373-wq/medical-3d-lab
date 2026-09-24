@@ -83,6 +83,10 @@ import { differingPixels, settledPixels } from './lib/frames.mjs';
 import { serveDist } from './lib/serve-dist.mjs';
 import { join, resolve } from 'node:path';
 import { DEV_ASSET_ROOT } from '../src/catalog/devAssets.js';
+import { assetById } from '../src/catalog/assetManifest.js';
+import { modelProfileForScene } from '../src/catalog/modelProfiles.js';
+import { RELEASED_SCENES } from '../src/catalog/release.js';
+import { sceneAssetUrls } from '../src/app/sceneAssetPreload.js';
 
 const argv = process.argv.slice(2);
 const flag = (name) => argv.includes(name);
@@ -503,7 +507,25 @@ const unexpected = (url) => !EXPECTED_FAILURES.some((pattern) => pattern.test(ur
  */
 const CANCELLED = 'net::ERR_ABORTED';
 
+/** A model file, as `scripts/asset-delivery.js` counts formats. */
+const MODEL_FILE = /\.(glb|gltf|bin|drc)$/i;
+
 page.on('pageerror', (error) => problems.push(`uncaught error: ${error}`));
+
+/**
+ * Every request for a model file, by path. `main.js` preloads a released
+ * scene's files before the scene code arrives, and the scene's loader is meant
+ * to be answered from that preload. When the two disagree — a `crossorigin`
+ * that does not match the loader's request, a URL spelt differently — nothing
+ * fails: the file is simply downloaded twice, which is slower than no preload
+ * at all. Counting is the only way to see it.
+ */
+const modelRequests = new Map();
+page.on('request', (request) => {
+  const path = new URL(request.url()).pathname;
+  if (!MODEL_FILE.test(path)) return;
+  modelRequests.set(path, (modelRequests.get(path) ?? 0) + 1);
+});
 page.on('requestfailed', (request) => {
   const reason = request.failure()?.errorText ?? 'unknown';
   if (reason === CANCELLED) return;
@@ -542,6 +564,29 @@ try {
   });
   observed.selectableCount = await page.locator('.anatomy-tree-leaf').count();
   if (!observed.selectableCount) problems.push('the part tree reports no selectable structures');
+
+  // The model files were asked for once each, and the ones the build preloads
+  // were asked for by the preload — see `src/app/sceneAssetPreload.js`. A scene
+  // the release does not open has no preload, and is only held to "once".
+  const releasedScene = RELEASED_SCENES.find((scene) => scene.slug === sceneSlug);
+  const preloaded = releasedScene ? sceneAssetUrls([releasedScene], modelProfileForScene, assetById)[releasedScene.id] ?? [] : [];
+  for (const [path, count] of modelRequests) {
+    if (count > 1) {
+      problems.push(`${path} was requested ${count} times: the preload and the scene's loader did not match, so the model downloaded twice`);
+    }
+  }
+  const initiators = await page.evaluate(() =>
+    performance.getEntriesByType('resource').map((entry) => [new URL(entry.name).pathname, entry.initiatorType])
+  );
+  for (const url of preloaded) {
+    const seen = initiators.filter(([path]) => path.endsWith(`/${url}`));
+    if (!seen.some(([, initiator]) => initiator === 'link')) {
+      problems.push(
+        `${url} was not preloaded (initiator: ${seen.map(([, i]) => i).join(', ') || 'never requested'}): ` +
+          'the scene waited for its own code before asking for its model — src/app/sceneAssetPreload.js'
+      );
+    }
+  }
 
   // The consent question is a one-time overlay and it sits over the canvas —
   // over the lower middle of it, which is where the clicks below go.

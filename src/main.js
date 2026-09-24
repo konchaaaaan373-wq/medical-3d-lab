@@ -41,6 +41,7 @@ import { looksLikeAuthRedirect } from './access/authRedirect.js';
 import { betaUnlocked, routeOpen } from './app/releaseGate.js';
 import { redirectFor } from './app/routeRedirects.js';
 import { recordSceneVisit } from './app/sceneLibrary.js';
+import { preloadSceneAssets } from './app/sceneAssetPreload.js';
 import {
   installFinalPagehideCleanup,
   installUiShortcutGuard,
@@ -117,6 +118,13 @@ async function boot() {
   const open = routeOpen(route);
 
   if (open && route.kind === 'scene') recordSceneVisit(route.sceneId);
+
+  // The model files are the largest thing this page fetches, and the scene
+  // would otherwise ask for them only once every chunk in front of it had
+  // arrived — 3.7 s in on a 4G link, with the network idle until then.
+  if (open && route.kind === 'scene' && typeof __SCENE_ASSET_PRELOADS__ !== 'undefined') {
+    preloadSceneAssets(document, __SCENE_ASSET_PRELOADS__[route.sceneId], import.meta.env.BASE_URL);
+  }
 
   // Every surface leaves the same way, and every surface needs covering while
   // it does. Six handlers here used to answer "is this a navigation" in four
