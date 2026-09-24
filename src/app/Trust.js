@@ -92,26 +92,8 @@ function sourceLinks(record) {
   );
 }
 
-/** The id a model's card and TOC entry share. Derived, never written down twice. */
+/** The id shared by a model record and its deep link. */
 const cardIdFor = (scene) => `trust-${scene.slug}`;
-
-/**
- * The two badges, said once in words a reader did not have to learn.
- *
- * `公開状態: アルファ` and `レビュー待ち` are this repository's vocabulary, and
- * they are load-bearing — the maturity axis and the clinical-review axis are
- * deliberately separate and a badge that merged them would be a claim neither
- * of them makes (`docs/architecture/intended-use-and-model-provenance.md`). So
- * the badges stay exactly as they are and this is added beside them.
- *
- * Measured on the record a reader reaches from inside a model: the first
- * screenful read `Status: Alpha / 公開状態: アルファ / Pending / レビュー待ち`,
- * four internal terms and no sentence, in answer to "what is this model based
- * on". Both facts matter to a student and neither of them is self-explanatory.
- *
- * @param {object} scene
- * @param {{status: string}} review
- */
 
 /**
  * One model, `scene` paired with its already-computed review presentation and
@@ -144,12 +126,10 @@ const trustEntry = (scene) => ({
  *
  * ## What is here instead
  *
- * One structure, narrowed in place. A text field matches a model's name in
- * either language, and a two-way split separates the models that can be opened
- * today from the ones still being built — which is the one distinction a
- * visitor can act on, and the one the page never made. Review state stays on
- * each record, where it belongs, instead of being the axis the whole page is
- * organised by.
+ * One public structure, narrowed in place. The ledger contains only models
+ * that are actually released; a text field matches a model's name in either
+ * language. Publication maturity stays an internal release concern rather than
+ * another vocabulary the reader has to decode.
  *
  * It is a filter rather than a second navigation on purpose. Adding search
  * *beside* a jump list would have made three structures for one set. And it is
@@ -191,8 +171,8 @@ function trustFilter(entries, cardsById) {
     'button',
     { class: 'trust-empty-clear', type: 'button', on: { click: () => reset() } },
     [
-      el('span', { class: 'lang-en', text: 'Show every model' }),
-      el('span', { class: 'lang-ja', text: 'すべてのモデルを表示' }),
+      el('span', { class: 'lang-en', text: 'Show every published model' }),
+      el('span', { class: 'lang-ja', text: '公開中のモデルをすべて表示' }),
     ]
   );
   const empty = el('div', { class: 'trust-empty', hidden: '' }, [
@@ -254,7 +234,7 @@ function trustFilter(entries, cardsById) {
       field,
       count,
     ]),
-    /** Undo any narrowing, so a deep link to one record is never filtered out. */
+    /** Undo text narrowing. */
     reset,
   };
 }
@@ -262,10 +242,9 @@ function trustFilter(entries, cardsById) {
 /**
  * One model's record, collapsed by default behind a native `<details>`.
  *
- * The `<summary>` carries exactly what the table of contents already showed —
- * the model's name and its review badge — so opening one is not a surprise.
- * Everything else (the maturity badge, the "Open model" link, the note, the
- * scope, the limitations, the sources) lives in the body, which is why it is
+ * The `<summary>` carries the model's name and medical-review badge, so
+ * opening one is not a surprise. Everything else (the "Open model" link, the
+ * note, the scope, the limitations, the sources) lives in the body, which is why it is
  * absent from the accessibility tree while the card is closed: see L-31 in
  * `docs/verification-lessons.md` before adding a *second* interactive control
  * to the summary, because a closed `<details>` hides its body from a reader
