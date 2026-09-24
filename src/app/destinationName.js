@@ -1,4 +1,4 @@
-import { organById, sceneBySlug } from '../catalog/index.js';
+import { organById, sceneById, sceneBySlug } from '../catalog/index.js';
 import { resolveRoute, slugOf } from './router.js';
 
 /**
@@ -39,7 +39,7 @@ const SURFACE_NAMES = {
   landing: { en: 'the home page', ja: 'ホーム' },
   explorer: { en: 'the model index', ja: 'モデル一覧' },
   lab: { en: 'the experimental models', ja: '実験モデル' },
-  trust: { en: 'the publication and review record', ja: '公開状態と医学レビュー' },
+  trust: { en: 'the published 3D models', ja: '公開中の3Dモデル' },
 };
 
 /**
@@ -62,6 +62,11 @@ export function destinationSubject(hash, language = 'ja') {
     const organ = organById(scene.organ);
     const name = organ ? (ja ? organ.labelJa : organ.label) : (ja ? scene.titleJa : scene.titleEn);
     return ja ? `${name}の3Dモデル` : `the ${String(name).toLowerCase()} model`;
+  }
+
+  if (route.kind === 'trust' && route.focusId) {
+    const scene = sceneById(route.focusId) ?? sceneBySlug(route.focusId);
+    if (scene) return ja ? `${scene.titleJa}の根拠` : `the evidence for ${scene.titleEn}`;
   }
 
   // Legal documents deliberately have no name here. Their titles live in
