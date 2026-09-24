@@ -1,6 +1,6 @@
 import { clinicalReviewPresentation } from '../catalog/clinicalReview.js';
 import { inLanguage } from '../utils/language.js';
-import { PUBLIC_SCENES, sceneRoute, statusById } from '../catalog/index.js';
+import { PUBLIC_SCENES, sceneRoute } from '../catalog/index.js';
 import { isSceneReleased } from '../catalog/release.js';
 import { betaUnlocked } from './releaseGate.js';
 import { createLanguageToggle } from '../components/LanguageToggle.js';
@@ -112,28 +112,6 @@ const cardIdFor = (scene) => `trust-${scene.slug}`;
  * @param {object} scene
  * @param {{status: string}} review
  */
-function plainStanding(scene, review) {
-  const open = betaUnlocked() || isSceneReleased(scene);
-  const reviewed = review.status === 'reviewed';
-  const en = open
-    ? `This model is published and can be opened. ${reviewed
-        ? 'A clinical reviewer has checked the version below.'
-        : 'It has not yet completed clinical review — read the limitations below before relying on it.'}`
-    : `This model is still being built and cannot be opened yet. ${reviewed
-        ? 'A clinical reviewer has checked the version below.'
-        : 'It has not completed clinical review.'}`;
-  const ja = open
-    ? `このモデルは公開中で、実際に開くことができます。${reviewed
-        ? '下に記録したバージョンについて、臨床レビューが完了しています。'
-        : '臨床レビューはまだ完了していません。利用する前に、下の「未解決の限界」を読んでください。'}`
-    : `このモデルは開発中で、まだ開くことはできません。${reviewed
-        ? '下に記録したバージョンについて、臨床レビューが完了しています。'
-        : '臨床レビューは完了していません。'}`;
-  return el('p', { class: 'trust-standing' }, [
-    el('span', { class: 'lang-en', text: en }),
-    el('span', { class: 'lang-ja', text: ja }),
-  ]);
-}
 
 /**
  * One model, `scene` paired with its already-computed review presentation and
@@ -191,13 +169,6 @@ function trustFilter(entries, cardsById) {
     placeholder: inLanguage('Model name', 'モデル名'),
   });
 
-  const SCOPES = [
-    { id: 'all', en: 'All', ja: 'すべて' },
-    { id: 'open', en: 'Published', ja: '公開中' },
-    { id: 'building', en: 'In development', ja: '開発中' },
-  ];
-  let scope = 'all';
-
   const count = el('p', {
     class: 'trust-filter-count',
     role: 'status',
@@ -232,54 +203,24 @@ function trustFilter(entries, cardsById) {
     clearButton,
   ]);
 
-  const buttons = SCOPES.map((item) =>
-    el(
-      'button',
-      {
-        class: 'trust-filter-scope',
-        type: 'button',
-        'aria-pressed': String(item.id === scope),
-        on: {
-          click: () => {
-            scope = item.id;
-            for (const [id, button] of pressed) button.setAttribute('aria-pressed', String(id === scope));
-            apply();
-          },
-        },
-      },
-      [
-        el('span', { class: 'lang-en', text: item.en }),
-        el('span', { class: 'lang-ja', text: item.ja }),
-      ]
-    )
-  );
-  const pressed = new Map(SCOPES.map((item, index) => [item.id, buttons[index]]));
-
   function apply() {
     const needle = field.value.trim().toLowerCase();
     let shown = 0;
     for (const entry of entries) {
       const card = cardsById.get(entry.id);
       if (!card) continue;
-      // `isSceneReleased`, not "can this reader open it". The split describes
-      // the *model's* publication state, which is what this page is about; a
-      // preview unlock changes what a developer may open and must not change
-      // what the ledger says is published, or the control reads 70/0 for
-      // exactly the people who need it to be honest.
-      const published = isSceneReleased(entry.scene);
-      const inScope = scope === 'all' || (scope === 'open') === published;
       const matches =
         !needle ||
         entry.scene.titleEn.toLowerCase().includes(needle) ||
         entry.scene.titleJa.toLowerCase().includes(needle) ||
         entry.scene.slug.includes(needle);
-      const visible = inScope && matches;
+      const visible = matches;
       card.hidden = !visible;
       if (visible) shown += 1;
     }
     count.replaceChildren(
-      el('span', { class: 'lang-en', text: `${shown} of ${entries.length} models` }),
-      el('span', { class: 'lang-ja', text: `${entries.length}件中 ${shown}件` })
+      el('span', { class: 'lang-en', text: `${shown} published models` }),
+      el('span', { class: 'lang-ja', text: `公開中のモデル ${shown}件` })
     );
     empty.hidden = shown > 0;
   }
@@ -296,8 +237,6 @@ function trustFilter(entries, cardsById) {
    */
   function reset({ focus = true } = {}) {
     field.value = '';
-    scope = 'all';
-    for (const [id, button] of pressed) button.setAttribute('aria-pressed', String(id === 'all'));
     apply();
     if (focus) field.focus?.();
   }
@@ -313,15 +252,6 @@ function trustFilter(entries, cardsById) {
         el('span', { class: 'lang-ja', text: 'モデルを探す' }),
       ]),
       field,
-      el(
-        'div',
-        {
-          class: 'trust-filter-scopes',
-          role: 'group',
-          'aria-label': inLanguage('Availability', '公開状態'),
-        },
-        buttons
-      ),
       count,
     ]),
     /** Undo any narrowing, so a deep link to one record is never filtered out. */
@@ -345,7 +275,6 @@ function trustFilter(entries, cardsById) {
  * @param {{open: boolean}} options
  */
 function trustCard({ scene, id, review }, { open, lead = false }) {
-  const maturity = statusById(scene.status);
   const note = REVIEW_NOTES[review.status] ?? REVIEW_NOTES.unrecorded;
   const record = review.record;
   const reviewMeta = record?.reviewedAt
@@ -353,10 +282,6 @@ function trustCard({ scene, id, review }, { open, lead = false }) {
     : null;
 
   const badges = el('span', { class: 'trust-card-badges' }, [
-    el('span', { class: `trust-maturity is-${scene.status}` }, [
-      el('span', { class: 'lang-en', text: `Status: ${maturity?.label ?? scene.status}` }),
-      el('span', { class: 'lang-ja', text: `公開状態: ${maturity?.labelJa ?? scene.status}` }),
-    ]),
     reviewBadge(review),
   ]);
 
@@ -445,6 +370,7 @@ export function createTrust({ ui, accountButton = null, focusId = null }) {
   });
 
   const entries = PUBLIC_SCENES.map(trustEntry);
+  const publishedEntries = entries.filter((entry) => isSceneReleased(entry.scene));
   /**
    * The model the reader came here about, if the route named one.
    *
@@ -474,7 +400,9 @@ export function createTrust({ ui, accountButton = null, focusId = null }) {
   const focused = focusId
     ? entries.find((entry) => entry.scene.id === focusId || entry.scene.slug === focusId) ?? null
     : null;
-  const others = focused ? entries.filter((entry) => entry !== focused) : entries;
+  const others = focused
+    ? publishedEntries.filter((entry) => entry !== focused)
+    : publishedEntries;
   const cards = others.map((entry) => trustCard(entry, { open: false }));
   const cardsById = new Map(others.map((entry, index) => [entry.id, cards[index]]));
   const filter = trustFilter(others, cardsById);
@@ -514,7 +442,6 @@ export function createTrust({ ui, accountButton = null, focusId = null }) {
               text: 'このモデルが何にもとづいているか、どこまで確かめられているか、まだ確かめられていないことは何かを掲載しています。',
             }),
           ]),
-          plainStanding(focused.scene, focused.review),
           // The way back to the thing the question was about. Back does this
           // too, and a reader who followed a link from a model and then read
           // three screenfuls of record should not have to remember that.
@@ -527,25 +454,24 @@ export function createTrust({ ui, accountButton = null, focusId = null }) {
         ].filter(Boolean))
       : el('section', { class: 'trust-hero', id: 'content', tabindex: '-1', 'data-skip-target': '' }, [
           el('p', { class: 'trust-kicker' }, [
-            el('span', { class: 'lang-en', text: 'Publication & review' }),
-            el('span', { class: 'lang-ja', text: '公開とレビュー' }),
+            el('span', { class: 'lang-en', text: 'Medical evidence' }),
+            el('span', { class: 'lang-ja', text: '医学的根拠' }),
           ]),
           el('h1', {}, [
-            el('span', { class: 'lang-en', text: 'Model status and medical review' }),
-            el('span', { class: 'lang-ja', text: 'モデルの公開状態と医学レビュー' }),
+            el('span', { class: 'lang-en', text: 'Medical review and evidence' }),
+            el('span', { class: 'lang-ja', text: '医学レビューと根拠' }),
           ]),
           el('p', { class: 'trust-lead' }, [
             el('span', {
               class: 'lang-en',
-              text: 'For each model, we publish its implementation status, medical review, reviewed scope, unresolved limitations and source files.',
+              text: 'For each published model, you can review its medical review record, checked scope, unresolved limitations and source files.',
             }),
             el('span', {
               class: 'lang-ja',
-              text: '各モデルの実装・公開状態、医学レビュー、確認範囲、未解決の限界、参照ファイルを掲載しています。',
+              text: '公開中の各モデルについて、医学レビュー、確認範囲、未解決の限界、参照ファイルを確認できます。',
             }),
           ]),
           el('div', { class: 'trust-principles' }, [
-            bilingual('Status: current implementation and availability', '公開状態：現在の実装と利用可否'),
             bilingual('Medical review: reviewed version and date', '医学レビュー：確認したバージョンと日付'),
             bilingual('Evidence: sources, tests and limitations', '根拠：出典、テスト、限界'),
           ]),
@@ -592,7 +518,7 @@ export function createTrust({ ui, accountButton = null, focusId = null }) {
   // its record in another had two tabs called "model information".
   document.title = focused
     ? `Medical 3D Lab — ${focused.scene.titleJa}`
-    : 'Medical 3D Lab — model information';
+    : 'Medical 3D Lab — medical review and evidence';
 
   // Land on the record the route named, the way `#/brain-anatomy?structure=…`
   // opens on a structure instead of making the reader find it again. This
