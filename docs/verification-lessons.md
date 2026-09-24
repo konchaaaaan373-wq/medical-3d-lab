@@ -58,6 +58,23 @@ L-95 と L-96 は「別件を直したら、触っていない検査が赤くな
 どれも、
 書いた時点では正しく見え、レビューを通り、緑でした。
 
+### L-113 class で選んだ「ボタン」に、同じ class を持つ押せない表示が混ざり、自分の検査が 30 秒待って落ちた
+
+- **症状**: `verify:disease` の experiment layout 節は、介入の行の「最後のボタン」を
+  `.model-choice-button` で選んで押していました。介入の行に「手動調整」の**状態表示**
+  （同じ class を持つ `span`、ふだんは `hidden`）を足した日、「最後のボタン」は
+  その span になり、`click()` が見えない要素を 30 秒待って TimeoutError で落ちました。
+  同じ節の「最初の viewport に入っているか」も、幅 0 の hidden span を
+  「viewport の外」と報告しました。**製品は正常**です。
+- **どう見つかったか**: 実行ログの `locator resolved to <span hidden="" role="status" …>`。
+- **いま何が捕まえるか**: `scripts/check-disease-interaction.mjs` の同節の 2 つの selector は
+  `button.model-choice-button` に絞りました。
+  `button.` を外すと、同じ TimeoutError と「not inside the first viewport」の偽の赤が
+  戻ります（どちらも実際に出たもの）。
+- **一般形**: **見た目の class は「押せるもの」の名前ではない。** 押すものを選ぶ検査は、
+  要素の種類（`button`）か role で選ぶ。同じ見た目を別の役割に流用したとき、
+  class で数える検査は黙って対象を取り違えます。
+
 ### L-112 読み出しパネルが行の**名前**を最初の 1 回しか書かず、「何をしたか」の行が「変えたもの」のまま残った
 
 - **症状**: `cardiac-output` の読み出しの先頭行を、選んだ介入の名前

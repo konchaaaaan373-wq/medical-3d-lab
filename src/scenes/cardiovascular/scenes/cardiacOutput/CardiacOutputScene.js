@@ -389,8 +389,16 @@ export class CardiacOutputScene {
         labelJa: '介入',
         caption: '2 · One intervention',
         captionJa: '② 介入（1 つ）',
-        value: this.session.interventionId,
-        options: INTERVENTION_OPTIONS,
+        // A hand-set condition is not "no intervention", and the row must not
+        // say it is: moving a slider clears the intervention in the session,
+        // which left 「なし」 lit while the figures beside it had moved. So the
+        // row reports what is on screen — a status, not a choice, and not a
+        // model state: the session has no "manual" intervention, and
+        // `setModelControl` ignores this value when a restore replays it.
+        value: this.session.moved && this.session.interventionId === INTERVENTION_IDS.NONE
+          ? MANUAL_CONDITION
+          : this.session.interventionId,
+        options: [...INTERVENTION_OPTIONS, MANUAL_OPTION],
       },
       ...CONTROLS.map((control) => {
         const domain = CONTROL_DOMAIN[control.id];
@@ -420,7 +428,14 @@ export class CardiacOutputScene {
     if (id === 'preset') {
       this.session.selectPreset(String(value));
     } else if (id === 'intervention') {
-      this.session.selectIntervention(String(value));
+      // "Manual" is a report, not something to select — see getModelControls.
+      if (value === MANUAL_CONDITION) return;
+      // 「なし」 means this condition's starting point. From a hand-set
+      // condition the session already holds no intervention, so asking it to
+      // clear one did nothing — the button a reader presses to undo their
+      // sliders has to actually undo them.
+      if (value === INTERVENTION_IDS.NONE && this.session.moved) this.session.reset();
+      else this.session.selectIntervention(String(value));
     } else {
       this.session.setControl(id, Number(value));
     }
@@ -867,6 +882,17 @@ export class CardiacOutputScene {
     disposeObject(this.root);
   }
 }
+
+/** The intervention row's value while the condition has been set by hand. */
+const MANUAL_CONDITION = 'manual';
+
+/** Shown only while it is true; never pressable. */
+const MANUAL_OPTION = Object.freeze({
+  value: MANUAL_CONDITION,
+  label: 'Adjusted by hand',
+  labelJa: '手動調整',
+  status: true,
+});
 
 /** Rounding a control's value for display, at the precision the model has. */
 function formatControl(id, value) {

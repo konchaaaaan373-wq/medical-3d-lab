@@ -294,6 +294,22 @@ export async function createApp({ stage, ui, onRetryModel = null }) {
      * crossing test was written for.
      */
     const reachesIntoBand = (rect) => rect.left < width * (1 - right) && rect.right > 0;
+    /**
+     * The panel the console opens beside the model — the experiment layout's
+     * four inputs. It stands in the left-hand column, and without being
+     * counted here the heart was framed as if the column were empty: on a
+     * 1024 px window the panel covered its left half. Counted only while it is
+     * actually floating there; opened inline, it is part of the console band.
+     */
+    const besidePanel = ui.querySelector('.console .model-controls-advanced[open] > .model-controls-advanced-body');
+    const left =
+      besidePanel && getComputedStyle(besidePanel).position === 'absolute'
+        ? band(
+            '.console .model-controls-advanced[open] > .model-controls-advanced-body',
+            (rect) => spansHeight(rect) && rect.left < width / 2,
+            (rect) => rect.right / width
+          )
+        : 0;
     return {
       top: Math.max(
         band('.global-scene-nav', spansWidth, (rect) => rect.bottom / height),
@@ -301,7 +317,7 @@ export async function createApp({ stage, ui, onRetryModel = null }) {
       ),
       bottom: band('.console', reachesIntoBand, (rect) => (height - rect.top) / height),
       right,
-      left: 0,
+      left,
     };
   };
 
@@ -1278,6 +1294,11 @@ export async function createApp({ stage, ui, onRetryModel = null }) {
   // The phone sheet stops where the title and selection cards end, rather than
   // at a reserved constant that is only right on the scene it was measured on.
   publishHeight(topBar, ui, '--chrome-bottom', (box) => box.bottom);
+  // Where the console starts and the title ends, for a panel the console opens
+  // between them (the experiment layout's four inputs). The console's height is
+  // not its position: a build marker below it moves it up by 48 px.
+  publishHeight(consoleElement, ui, '--console-top', (box) => box.top);
+  publishHeight(titleCard, ui, '--title-bottom', (box) => box.bottom);
 
   ui.append(
     // The global navigation is `position: fixed` and anchored to the viewport,
@@ -1969,6 +1990,72 @@ export async function createApp({ stage, ui, onRetryModel = null }) {
     viewer.controls.addEventListener('start', stopWatching, { once: true });
     window.addEventListener('pagehide', stopWatching, { once: true });
   }
+
+  /**
+   * A disclosure in the console changed the band.
+   *
+   * The watcher above stops once the reader takes the camera, and that is
+   * right for everything it exists for. It is wrong for one case: the reader
+   * opens something from the console that takes part of the frame — the
+   * experiment layout's four inputs, which stand in the column left of the
+   * model and are counted as a band in `safeAreaInsets`. Without a refit the
+   * camera kept framing for the old band and, on a window where that column
+   * is narrow, the panel covered the heart the reader was about to change.
+   *
+   * So a disclosure the reader opens or closes refits — tweened, not snapped —
+   * and only when the band actually changed: one that takes no part of the
+   * frame changes nothing and moves nothing. A camera the reader owns
+   * keeps its direction and is only brought to the distance and centre that
+   * fit the new band, the same fit "go to it" uses.
+   */
+  let bandsBeforeToggle = null;
+  let consoleHeightBeforeToggle = 0;
+  consoleElement.addEventListener('click', () => {
+    bandsBeforeToggle = JSON.stringify(safeAreaInsets());
+    consoleHeightBeforeToggle = consoleElement.getBoundingClientRect().height;
+  }, true);
+  consoleElement.addEventListener('toggle', (event) => {
+    // And the console itself does not grow to hold what opened: it keeps the
+    // height it had and scrolls to it. On a phone the band above the console
+    // is already a fifth of the screen, and growing the console took it under
+    // the fit's floor — `fitPoseToSafeArea` then returns the unfitted pose,
+    // which is *closer*, and the heart jumped under the read-out.
+    const disclosure = event.target;
+    if (disclosure?.open && consoleHeightBeforeToggle > 0) {
+      consoleElement.style.height = `${Math.round(consoleHeightBeforeToggle)}px`;
+      requestAnimationFrame(() => disclosure.scrollIntoView?.({ block: 'nearest' }));
+    } else if (!consoleElement.querySelector('details[open]')) {
+      consoleElement.style.height = '';
+    }
+    requestAnimationFrame(() => {
+      const insets = safeAreaInsets();
+      if (!insets || JSON.stringify(insets) === bandsBeforeToggle) return;
+      bandsBeforeToggle = JSON.stringify(insets);
+      if (!readerOwnsCamera) {
+        setShot(shotSource);
+        view.active = true;
+        return;
+      }
+      const bounds = scene.getSubjectBounds?.();
+      if (!bounds) return;
+      const fitted = fitPoseToSafeArea(
+        { position: viewer.camera.position.clone(), target: viewer.controls.target.clone() },
+        {
+          bounds,
+          aspect: viewer.camera.aspect,
+          fovDegrees: viewer.camera.fov,
+          insets,
+          ...(bounds.coverage > 0 ? { coverage: bounds.coverage } : {}),
+        }
+      );
+      userZoom = 1;
+      shot.target.copy(fitted.target);
+      shot.position.copy(fitted.position);
+      view.active = true;
+      viewer.controls.autoRotate = false;
+      syncZoomLimits();
+    });
+  }, true);
 
   // The canvases have no size until they are in the document.
   pvPanel?.resize();

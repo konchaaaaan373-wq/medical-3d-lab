@@ -205,3 +205,32 @@ test('toolbar: the tools a scene names go behind "More"; the experiment stays in
     assert.equal(findByClass(plain, 'console-more').length, 0);
   });
 });
+
+test('console: "adjusted by hand" appears only while true, and is not a button', async () => {
+  await withDocument(async () => {
+    const session = new ExperimentSession();
+    const { CardiacOutputScene, controls } = await sceneWithSession(session);
+    const console_ = createModelControls({
+      controls: controls(),
+      onChange: () => {},
+      onReset: () => {},
+      copy: CardiacOutputScene.meta.modelControls,
+    });
+    const [status] = findByClass(console_.element, 'model-choice-status');
+    assert.ok(status, 'the row carries the status');
+    assert.notEqual(status.tagName.toLowerCase(), 'button', 'nothing to press');
+    assert.equal(status.hidden, true, 'hidden while nothing is set by hand');
+    const none = findByClass(console_.element, 'model-choice-button').find((node) => node.dataset.value === 'none');
+    assert.equal(none.getAttribute('aria-pressed'), 'true');
+
+    session.setControl('fillingVolumeMl', 800);
+    console_.sync(controls());
+    assert.equal(status.hidden, false, 'shown once a slider has moved the condition');
+    assert.equal(none.getAttribute('aria-pressed'), 'false', 'and 「なし」 no longer claims to be selected');
+
+    session.reset();
+    console_.sync(controls());
+    assert.equal(status.hidden, true, 'and gone again after a reset');
+    assert.equal(none.getAttribute('aria-pressed'), 'true');
+  });
+});

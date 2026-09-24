@@ -178,8 +178,11 @@ export const MODEL_CONTROLS = {
   // paragraphs.
   hideChoiceEffects: true,
   advanced: {
-    label: 'Move the four inputs yourself',
-    labelJa: '詳細パラメータ（4 つを自分で動かす）',
+    // Short: it shares a line with the toolbar, and at 1024 px the longer
+    // 「（4 つを自分で動かす）」 pushed the toolbar's labels onto one character
+    // per line. The note inside says what the four are.
+    label: 'Adjust the inputs',
+    labelJa: '詳細パラメータ',
     note:
       'Each slider moves only the quantity named on it; moving one clears the intervention. Every figure is re-solved from the result — nothing is scaled afterwards.',
     noteJa:

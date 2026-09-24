@@ -494,7 +494,12 @@
    * flattened into one grid so the four inputs' toggle and the tools share a
    * line instead of stacking.
    */
-  #ui[data-layout='experiment'] .console {
+  /* `#ui#ui`: `browser-first-release-polish.css` sets every learning-view
+     console to `min(920px, 100%)` under a selector of specificity (1,8,0), and
+     at 1024 px that ran the console under the read-out column and hid
+     「すべての数値」. Doubling the id is the smallest selector that outranks it
+     without editing a sheet every other scene depends on. */
+  #ui#ui[data-layout='experiment'] .console {
     position: relative;
     align-self: flex-start;
     width: var(--experiment-console);
@@ -536,21 +541,55 @@
     display: none;
   }
 
-  /* Opened, the four inputs stand in the empty column left of the model —
-     never in the console, because a console that grew would re-frame the
-     camera, and never over the model, because the first version of this sat
-     on the ventricle's apex, which is the part a reader is watching change. */
+  /*
+   * Opened, the four inputs stand in the column left of the model, and the
+   * shell reserves that column when it frames the heart (App.js,
+   * `safeAreaInsets`, "the panel the console opens beside the model"), so the
+   * heart is fitted into what is left rather than drawn under the panel.
+   *
+   * Two earlier arrangements hid the heart. Floated over the lower edge of the
+   * model, the panel covered the apex — the part a reader is watching change.
+   * Opened inline under the choices, it grew the console, and on a 720–768 px
+   * window the console's band is capped at half the frame, so the refit could
+   * not follow it and the console covered the lower edge of the heart
+   * (measured: 35 px at 1024×768). Beside the model the console never changes
+   * height.
+   */
   #ui[data-layout='experiment'] .model-controls-advanced[open] > .model-controls-advanced-body {
     position: absolute;
     left: calc(-1 * var(--experiment-console-offset));
     width: min(330px, calc(var(--experiment-console-offset) + var(--experiment-console)));
     bottom: calc(100% + 8px);
+    /* Never taller than the space between the title and the console. */
+    /* Never taller than the space between the title card and the console,
+       so it covers neither — both edges measured by the shell. */
+    max-height: calc(var(--console-top, 600px) - var(--title-bottom, 180px) - 16px);
+    display: flex;
+    flex-direction: column;
+    overflow-y: auto;
     z-index: 4;
-    padding: 14px 18px 16px;
+    padding: 12px 16px 14px;
     border-radius: 14px;
     border: 1px solid var(--border);
     background: #0c121c;
     box-shadow: 0 12px 32px rgba(0, 0, 0, 0.45);
+  }
+
+  #ui[data-layout='experiment'] .model-controls-advanced[open] .model-controls-advanced-body .model-control-list {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+
+  #ui[data-layout='experiment'] .model-controls-advanced-body .model-control-label {
+    font-size: 12px;
+  }
+
+  /* The sliders first, the note after them: when a short window makes the
+     panel scroll, what scrolls away is the explanation, not a slider. */
+  #ui[data-layout='experiment'] .model-controls-advanced-body .model-controls-advanced-note {
+    order: 1;
+    margin: 10px 0 0;
   }
 
   #ui[data-layout='experiment'] .console .disclaimer {
@@ -563,4 +602,50 @@
   #ui[data-layout='experiment'] .title-card .title-ja {
     font-size: 16px;
   }
+}
+
+/*
+ * The left stack stops above the console. The top bar runs behind the console
+ * so the read-out column can use the full height; the stack on the left must
+ * not, or a lesson — which grows the console — slid it over the waveform
+ * plot. Scrolls, with the shell's own cue, when it does not fit.
+ */
+@media (min-width: 900px) and (min-height: 600px) {
+  #ui[data-layout='experiment'] .top-left {
+    max-height: calc(100% - var(--console-height, 0px) - 24px);
+  }
+}
+
+/* "Adjusted by hand": a report of where the sliders put the condition, not a
+   choice — dashed, not filled, and not a button. */
+.model-choice-status[hidden] {
+  display: none !important;
+}
+
+#ui[data-layout='experiment'] .model-control[data-control='intervention'] .model-choice-status.is-selected:not([data-value='none']),
+#ui[data-layout='experiment'] .model-choice-status {
+  cursor: default;
+  color: var(--accent);
+  background: transparent;
+  border: 1px dashed var(--accent);
+}
+
+/*
+ * During a lesson the lesson is the control surface: it drives the condition
+ * and the intervention itself and hands them back on the way out, so the two
+ * choice rows under it are rows the reader cannot usefully press. Stacked
+ * under the lesson they made the console 370 px tall on a 720 px window, and
+ * the console's band is capped at half the frame, so it covered the lower
+ * edge of the heart. The four inputs' toggle stays — one lesson step invites
+ * the reader to drag the resistance themselves.
+ */
+#ui.is-learning[data-layout='experiment'] .console .model-controls-head,
+#ui.is-learning[data-layout='experiment'] .console .model-controls > .model-control-list {
+  display: none;
+}
+
+/* Toolbar labels never break inside a word: at 1024 px 「学ぶ」 and 「その他」
+   stood one character per line. */
+#ui[data-layout='experiment'] .console .button-row .btn {
+  white-space: nowrap;
 }

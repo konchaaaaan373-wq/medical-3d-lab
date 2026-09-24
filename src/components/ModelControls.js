@@ -16,7 +16,7 @@ import { el } from '../utils/dom.js';
  * input is touched, never how the model is solved.
  *
  * @param {{
- *   controls: {id:string,label:string,labelJa:string,min?:number,max?:number,step?:number,value:number|string,format?:(v:number)=>string,kind?:'range'|'action'|'choice',advanced?:boolean,caption?:string,captionJa?:string,actionLabel?:string,actionLabelJa?:string,effect?:string,effectJa?:string,options?:{value:string,label:string,labelJa:string,short?:string,shortJa?:string,tag?:string,tagJa?:string,effect?:string,effectJa?:string}[]}[],
+ *   controls: {id:string,label:string,labelJa:string,min?:number,max?:number,step?:number,value:number|string,format?:(v:number)=>string,kind?:'range'|'action'|'choice',advanced?:boolean,caption?:string,captionJa?:string,actionLabel?:string,actionLabelJa?:string,effect?:string,effectJa?:string,options?:{value:string,label:string,labelJa:string,status?:boolean,short?:string,shortJa?:string,tag?:string,tagJa?:string,effect?:string,effectJa?:string}[]}[],
  *   onChange: (id: string, value: number|string) => void,
  *   onReset: () => void,
  *   copy?: {title?:string,titleJa?:string,subtitle?:string,subtitleJa?:string,primary?:boolean,reset?:boolean,resetLabel?:string,resetLabelJa?:string,hideChoiceEffects?:boolean,advanced?:{label?:string,labelJa?:string,note?:string,noteJa?:string}},
@@ -53,7 +53,8 @@ export function createModelControls({ controls, onChange, onReset, copy = {} }) 
         for (const [optionValue, button] of buttons) {
           const selected = optionValue === current;
           button.classList.toggle('is-selected', selected);
-          button.setAttribute('aria-pressed', String(selected));
+          if (button.classList.contains('model-choice-status')) button.hidden = !selected;
+          else button.setAttribute('aria-pressed', String(selected));
         }
       };
       const group = el(
@@ -64,6 +65,23 @@ export function createModelControls({ controls, onChange, onReset, copy = {} }) 
           'aria-label': `${control.label} / ${control.labelJa}`,
         },
         (control.options ?? []).map((option) => {
+          // A status option reports a state the reader reached another way
+          // (the intervention row's "adjusted by hand"). It is not a button,
+          // because pressing it could mean nothing, and it is only on screen
+          // while it is true.
+          if (option.status) {
+            const chip = el('span', {
+              class: 'model-choice-button model-choice-status',
+              dataset: { value: String(option.value) },
+              role: 'status',
+            }, [
+              el('span', { class: 'model-choice-label lang-en', text: option.short ?? option.label }),
+              el('span', { class: 'model-choice-label lang-ja', text: option.shortJa ?? option.labelJa }),
+            ]);
+            chip.hidden = true;
+            buttons.set(String(option.value), chip);
+            return chip;
+          }
           const button = el('button', {
             class: 'model-choice-button',
             type: 'button',

@@ -229,7 +229,7 @@ for (const slug of SLUGS) {
     const viewport = page.viewportSize();
     const outside = await page.evaluate(({ width, height }) => {
       const nodes = [
-        ...document.querySelectorAll('.model-choice-button'),
+        ...document.querySelectorAll('button.model-choice-button'),
         ...document.querySelectorAll(".metrics .metric.is-key"),
       ];
       return nodes
@@ -241,14 +241,16 @@ for (const slug of SLUGS) {
 
     const camera = () =>
       page.evaluate(() => window.__app?.viewer?.camera.position.toArray().map((v) => v.toFixed(2)).join(',') ?? null);
-    const choices = page.locator('.model-control[data-control="intervention"] .model-choice-button');
+    // `button`: the row also carries the "adjusted by hand" status, which shares
+    // the class and is not pressable.
+    const choices = page.locator('.model-control[data-control="intervention"] button.model-choice-button');
     if ((await choices.count()) > 1) {
       // An intervention may bring its own condition with it (dobutamine's
       // evidence belongs to the reduced-contractility preset, and choosing it
       // switches there), so the condition is put back as well as the
       // intervention — otherwise the reset check below compares against a
       // baseline this block quietly changed.
-      const presets = page.locator('.model-control[data-control="preset"] .model-choice-button');
+      const presets = page.locator('.model-control[data-control="preset"] button.model-choice-button');
       const selectedPreset = await presets.evaluateAll((nodes) => nodes.findIndex((node) => node.classList.contains('is-selected')));
       const before = await camera();
       await choices.last().click();

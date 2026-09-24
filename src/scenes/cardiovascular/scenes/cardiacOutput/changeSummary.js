@@ -101,8 +101,8 @@ export function describeChange({ baseline, shown, interventionId }) {
     // The intervention's full name, not its short one: the long name is where
     // its caveat lives ("model input", "rate held"), and this is the moment
     // the reader is reading it.
-    label: option ? option.label : 'Changed by hand',
-    labelJa: option ? option.labelJa : '手動で変更',
+    label: option ? option.label : 'Adjusted by hand',
+    labelJa: option ? option.labelJa : '手動調整',
     value: `${effects(false)}${heldClause(false)}`,
     valueJa: `${effects(true)}${heldClause(true)}`,
   };

@@ -738,7 +738,7 @@ test('the first row says what was done, in the reader\'s words: which inputs, wh
   // One slider: named, with its direction, both values and the number held.
   session.setControl('systemicResistanceMmHgSPerMl', 1.6);
   const one = rowsFor(false).find((row) => row.id === 'changed');
-  assert.equal(one.labelJa, '手動で変更');
+  assert.equal(one.labelJa, '手動調整');
   assert.equal(one.valueJa, '血管抵抗 ↑ 1.1 → 1.6（他 3 つは固定）', 'one moved control is spelled out, with the rest counted');
   assert.equal(one.unit, '', 'the unit slot renders one language only, so nothing bilingual goes in it');
 
@@ -853,4 +853,38 @@ test('every one of those states survives being captured and restored', async () 
       assert.equal(scene.reference.metrics, scene.session.baseline.metrics, `${where}: stale after restore`);
     }
   }
+});
+
+test('a hand-set condition is reported as one, and 「なし」 undoes it', async () => {
+  // The row used to keep 「なし」 lit while the reader dragged the resistance:
+  // the session clears the intervention when a slider moves, so "none" was
+  // true of the session and false of the screen. The row now reports "adjusted
+  // by hand" — a status, never a model state and never a pressable choice.
+  const scene = await buildScene();
+  const intervention = () => scene.getModelControls().find((c) => c.id === 'intervention');
+  assert.equal(intervention().value, 'none', 'nothing moved: none');
+
+  scene.setModelControl('systemicResistanceMmHgSPerMl', 1.6);
+  assert.equal(intervention().value, 'manual', 'a slider moved: not "none"');
+  const status = intervention().options.find((o) => o.value === 'manual');
+  assert.equal(status.status, true, 'offered as a status, which the console renders as no button');
+  assert.equal(scene.session.interventionId, 'none', 'and the session has no such intervention');
+
+  // After an intervention, touching a slider is also a hand-set condition —
+  // the session computes it from the starting point, without the drug.
+  scene.setModelControl('intervention', 'dobutamine');
+  assert.equal(intervention().value, 'dobutamine', 'the preset intervention on its own');
+  scene.setModelControl('heartRatePerMin', 90);
+  assert.equal(intervention().value, 'manual', 'then changed by hand: says so');
+
+  // A replayed "manual" is ignored rather than handed to the session.
+  const before = { ...scene.session.input };
+  scene.setModelControl('intervention', 'manual');
+  assert.deepEqual({ ...scene.session.input }, before);
+
+  // 「なし」 goes to this condition's starting point from a hand-set one too.
+  scene.setModelControl('intervention', 'none');
+  assert.deepEqual({ ...scene.session.input }, { ...scene.session.baseline.input });
+  assert.equal(intervention().value, 'none');
+  assert.equal(scene.getMetrics().find((row) => row.id === 'changed').labelJa, '変えたもの');
 });
