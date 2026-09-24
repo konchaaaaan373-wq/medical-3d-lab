@@ -54,6 +54,16 @@ test('the WebGL fallback offers its own way back, and only one', () => {
   });
 });
 
+test('the published model fallback offers its evidence without internal release status', () => {
+  withFakeDom(() => {
+    const ui = new FakeElement('div');
+    createSceneFailureFallback({ ui, sceneId: 'brain-anatomy' });
+    assert.deepEqual(findByClass(ui, 'scene-fallback-status'), []);
+    const links = findByClass(ui, 'scene-fallback-link');
+    assert.ok(links.some((link) => link.getAttribute('href') === '#/trust?model=brain-anatomy'));
+  });
+});
+
 test('the renderer-failure page carries no anatomy panel, so the two retries cannot both be on screen', () => {
   // The failure fallback replaces the scene entirely: there is no canvas and no
   // panel, so the model-load retry has nothing to render into. That is what
