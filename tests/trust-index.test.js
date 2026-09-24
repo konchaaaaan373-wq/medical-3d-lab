@@ -248,6 +248,19 @@ test('Trust: a focused record shows review state without publication jargon', ()
   });
 });
 
+test('Trust: the published heart record reflects the adopted two-file model', () => {
+  withFakeBrowser(() => {
+    const element = mountTrust({ focusId: 'heart-anatomy' });
+    const lead = findByClass(element, 'trust-lead-record')[0];
+    const lines = findByClass(lead, 'trust-list')
+      .flatMap((list) => list.children.map((item) => item.textContent))
+      .join(' ');
+    assert.match(lines, /46 selectable structures/);
+    assert.match(lines, /No anatomist and no clinician/);
+    assert.doesNotMatch(lines, /candidate asset|asset release gate|great vessels.*absent|licences.*not discharged/i);
+  });
+});
+
 test('Trust with no model named shows the picker and nothing promoted', () => {
   withFakeBrowser(() => {
     const element = mountTrust();

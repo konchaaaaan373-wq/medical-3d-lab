@@ -5,9 +5,11 @@ import * as THREE from 'three';
 
 import { HeartAnatomyScene } from '../src/scenes/cardiovascular/scenes/heartAnatomy/HeartAnatomyScene.js';
 import {
+  HEART_ANATOMY_META,
   HEART_AXES,
   HEART_DEFAULT_HIDDEN,
   HEART_MISSING,
+  HEART_MODEL_SCOPE,
   HEART_PARTS,
   HEART_RECIPES,
   HEART_STRUCTURES,
@@ -17,6 +19,19 @@ import {
   heartPartById,
   heartStructureInfo,
 } from '../src/data/heartAnatomy.js';
+
+test('heart: the published viewer describes its adopted assets without development labels', () => {
+  const copy = [
+    HEART_ANATOMY_META.disclaimer,
+    HEART_ANATOMY_META.disclaimerJa,
+    HEART_ANATOMY_META.disclaimerShort,
+    HEART_ANATOMY_META.disclaimerShortJa,
+    ...HEART_MODEL_SCOPE.sources.flatMap((source) => [source.text, source.textJa]),
+  ].join(' ');
+  assert.match(copy, /served, repaired derivatives/);
+  assert.match(copy, /No anatomist or clinician/);
+  assert.doesNotMatch(copy, /under development|開発中|Candidate assets: recorded, not adopted|候補 asset|licences are recorded rather than discharged/i);
+});
 import { ANATOMY_CONTRACT_METHODS, treeLeaves } from '../src/app/anatomyContract.js';
 import { fitPoseToSafeArea, orbitLimitsForSubject } from '../src/app/framing.js';
 import { devAssetById } from '../src/catalog/devAssets.js';

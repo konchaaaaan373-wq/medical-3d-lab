@@ -8,11 +8,11 @@ clinician has judged this geometry or these labels**, and every surface says so
 
 | | |
 | --- | --- |
-| **Decided at** | 2026-09-21 (re-taken: the scene now opens in Natural) |
-| **Decided by** | Claude Code (AI engineering agent), re-pinning after a presentation-only change; the 2026-09-15 acceptance of what this scene names still stands |
+| **Decided at** | 2026-09-24 (re-pinned after correction of stale public wording) |
+| **Decided by** | Codex (AI engineering agent), re-pinning after a copy-only correction; the 2026-09-15 acceptance of what this scene names still stands |
 | **Role** | `engineering` — software behaviour, not anatomical or clinical judgement |
 | **Asset revisions** | `hubmap-vh-m-heart` @ `sha256:46d375e36d8181c161b70e1f0b8f0d778364f0a8414eebce4e4fda1cea73eb3d`<br>`hubmap-vh-m-blood-vasculature` @ `sha256:a95ff0825431953d8fff210cf29d9e65aeed5da55f623717ab613864a9435502` |
-| **Scene revision** | model card revision **26**, source digest `20ae31ab7bafd24f` |
+| **Scene revision** | model card revision **27**, source digest `ac398389ceb7c660` |
 | **Scene sources under that digest** | [`src/data/heartAnatomy.js`](../../src/data/heartAnatomy.js), [`src/scenes/cardiovascular/scenes/heartAnatomy/HeartAnatomyScene.js`](../../src/scenes/cardiovascular/scenes/heartAnatomy/HeartAnatomyScene.js) |
 | **Adoption decision** | [`../decisions/HEART-ASSET-ADOPTION.md`](../decisions/HEART-ASSET-ADOPTION.md) |
 
@@ -21,6 +21,21 @@ The decision is pinned to **both** revisions in
 and its hash moves; change what a part means or what a click selects and
 `npm run revisions:check` fails until the card is revised, which moves the card
 revision. Either closes the beta until this record is taken again.
+
+## Re-pinned on 2026-09-24 — published wording corrected
+
+The metadata adapter still names the same 46 structures from the same two
+adopted files and the selection code is unchanged. Its public source notes
+previously described the superseded candidate files as if they were the served
+assets, and its disclaimer still said "under development". Those sentences now
+describe the repaired derivatives and retain the explicit warning against
+clinical use. The clinical-review registry's scope and limitations were also
+updated to describe the published two-file scene instead of the earlier
+14-part candidate. No anatomical or clinical review was performed. The scope
+of the engineering checks below was not extended by this wording correction;
+the prior results remain the recorded basis for the published geometry and
+interactions. `npm run revisions:check` and the publication gate check the new
+revision and its unchanged asset hashes.
 
 ## What is published, and what it is a derivative of
 

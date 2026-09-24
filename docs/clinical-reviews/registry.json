@@ -35,7 +35,7 @@
     "reviewedAt": null,
     "reviewedCommit": null,
     "scope": [
-      "candidate-asset gross anatomy: fourteen named parts of one reference heart, prepared for future clinical sign-off"
+      "published gross anatomy: 46 selectable structures from the heart and blood-vasculature files of one reference release, prepared for future clinical sign-off"
     ],
     "sources": [
       "docs/model-cards/heart-anatomy.md",
@@ -45,10 +45,11 @@
     ],
     "unresolvedLimitations": [
       "No anatomist and no clinician has reviewed this geometry, its labels or the Japanese terminology.",
-      "The great vessels — aorta, pulmonary trunk, superior and inferior vena cava, pulmonary veins — are absent from the source file, so this is not a complete gross anatomy of the heart.",
-      "The chamber meshes enclose the chambers' spaces; the file contains no myocardial free wall, so no wall thickness, no endocardial surface and no interior view is offered or implied.",
-      "The enclosed volumes recorded in the adapter are properties of one fixed cadaveric specimen and are not chamber volumes, end-diastolic volumes or any other clinical measurement.",
-      "The source file is a candidate under examination: its licences (HuBMAP CC BY 4.0; NLM Visible Human terms) are recorded and not discharged, and it has passed no asset release gate.",
+      "The heart and blood-vasculature files come from one fixed cadaveric reference specimen; their shapes and distances are not measurements for a patient or a range of normal variation.",
+      "The source has no separately identified myocardial free wall. What a chamber or vessel surface represents — the space or the surrounding wall — has not been established, and there is no cut or interior view.",
+      "The two files share a coordinate frame, but their alignment does not establish that vessels and chambers join continuously or form a watertight surface.",
+      "One structure's name conflicts with its ontology id in the source and is marked as needing verification. Only four of the 46 selectable structures were individually clicked in the recorded engineering check.",
+      "The served files are repaired derivatives of the HuBMAP source files; the recorded engineering publication decision is not an anatomical or clinical sign-off. The source terms were assessed through secondary sources, as described in the publication decision.",
       "The scene must not be used for diagnosis, treatment selection, dose selection, prognosis or procedure planning."
     ]
   },
