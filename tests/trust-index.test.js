@@ -36,6 +36,8 @@ const mountTrust = (options = {}) => {
   return element;
 };
 
+const RELEASED_SCENES = PUBLIC_SCENES.filter(isSceneReleased);
+
 /**
  * What replaced the table of contents.
  *
@@ -54,7 +56,7 @@ test('Trust: the filter narrows the records themselves — there is no second li
   withFakeBrowser(() => {
     const element = mountTrust();
     const cards = findByClass(element, 'trust-card');
-    assert.equal(cards.length, PUBLIC_SCENES.length, 'one record per model');
+    assert.equal(cards.length, RELEASED_SCENES.length, 'one record per published model');
 
     // The duplication itself, asserted gone. A second structure listing the
     // same models is what this change removed, and re-adding one beside the
@@ -67,16 +69,20 @@ test('Trust: the filter narrows the records themselves — there is no second li
   });
 });
 
-test('Trust: the filter starts showing everything, and says how many that is', () => {
+test('Trust: the public ledger starts with only published models visible', () => {
   withFakeBrowser(() => {
     const element = mountTrust();
-    for (const card of findByClass(element, 'trust-card')) {
+    const cards = findByClass(element, 'trust-card');
+    assert.equal(cards.length, RELEASED_SCENES.length);
+    for (const card of cards) {
       assert.equal(card.hidden, false, `${card.getAttribute('id')} must start visible`);
     }
+    assert.deepEqual(
+      new Set(cards.map((card) => card.getAttribute('id'))),
+      new Set(RELEASED_SCENES.map((scene) => `trust-${scene.slug}`))
+    );
     const count = findByClass(element, 'trust-filter-count')[0];
     assert.ok(count, 'the count is how a reader knows the filter did anything');
-    // A live region: narrowing a list without saying so leaves a screen-reader
-    // user with no signal that anything happened.
     assert.equal(count.getAttribute('role'), 'status');
     assert.equal(count.getAttribute('aria-live'), 'polite');
   });
@@ -87,7 +93,7 @@ test('Trust: typing a model name hides every record but the matches', () => {
     const element = mountTrust();
     const field = findByClass(element, 'trust-filter-field')[0];
     const cards = findByClass(element, 'trust-card');
-    const target = PUBLIC_SCENES[0];
+    const target = RELEASED_SCENES[0];
 
     field.value = target.titleJa;
     field.dispatchEvent({ type: 'input' });
@@ -99,35 +105,16 @@ test('Trust: typing a model name hides every record but the matches', () => {
     // a page that has lost most of itself.
     field.value = '';
     field.dispatchEvent({ type: 'input' });
-    assert.equal(cards.filter((card) => !card.hidden).length, PUBLIC_SCENES.length);
+    assert.equal(cards.filter((card) => !card.hidden).length, RELEASED_SCENES.length);
   });
 });
 
-test('Trust: the availability split is the one distinction a visitor can act on', () => {
+test('Trust: publication status is not exposed as a second UI axis', () => {
   withFakeBrowser(() => {
     const element = mountTrust();
-    const cards = findByClass(element, 'trust-card');
-    const scopes = findByClass(element, 'trust-filter-scope');
-    assert.equal(scopes.length, 3, 'all / published / in development');
-
-    const published = new Set(PUBLIC_SCENES.filter(isSceneReleased).map((scene) => `trust-${scene.slug}`));
-    assert.ok(published.size > 0, 'the beta publishes something');
-    assert.ok(published.size < PUBLIC_SCENES.length, 'and holds something back');
-
-    scopes[1].dispatchEvent({ type: 'click' });
-    const open = cards.filter((card) => !card.hidden).map((card) => card.getAttribute('id'));
-    assert.deepEqual(new Set(open), published, 'published shows exactly what the release opened');
-    assert.equal(scopes[1].getAttribute('aria-pressed'), 'true');
-    assert.equal(scopes[0].getAttribute('aria-pressed'), 'false');
-
-    scopes[2].dispatchEvent({ type: 'click' });
-    const building = cards.filter((card) => !card.hidden).map((card) => card.getAttribute('id'));
-    assert.equal(building.length, PUBLIC_SCENES.length - published.size);
-    assert.equal(
-      building.some((id) => published.has(id)),
-      false,
-      'the two halves must not overlap'
-    );
+    assert.deepEqual(findByClass(element, 'trust-filter-scope'), []);
+    assert.deepEqual(findByClass(element, 'trust-maturity'), []);
+    assert.ok(findByClass(element, 'trust-review-badge').length > 0, 'medical review remains visible');
   });
 });
 
@@ -158,7 +145,7 @@ test('Trust: every model section is a closed <details> by default', () => {
     // No focus id, so nothing is promoted and every record is a disclosure.
     const element = mountTrust();
     const cards = findByClass(element, 'trust-card');
-    assert.equal(cards.length, PUBLIC_SCENES.length);
+    assert.equal(cards.length, RELEASED_SCENES.length);
     for (const card of cards) {
       assert.equal(card.tagName, 'DETAILS');
       assert.equal(card.getAttribute('open'), null, `${card.getAttribute('id')} should start collapsed`);
@@ -250,18 +237,12 @@ test("Trust: a route naming a model puts that model's record first, as the skip 
   });
 });
 
-test('Trust: the record a reader was sent to says in words what its badges mean', () => {
-  // `Status: Alpha` and `Pending` are this repository's vocabulary and they
-  // stay — the maturity axis and the clinical-review axis are deliberately
-  // separate. Measured, though, the first screenful of the answer to "what is
-  // this model based on" was those four words and a search box.
+test('Trust: a focused record shows review state without publication jargon', () => {
   withFakeBrowser(() => {
-    const element = mountTrust({ focusId: PUBLIC_SCENES[0].id });
-    const standing = findByClass(element, 'trust-standing')[0];
-    assert.ok(standing, 'the record leads with a sentence, not only with badges');
-    const ja = findByClass(standing, 'lang-ja')[0]?.textContent ?? '';
-    assert.ok(ja.includes('公開中') || ja.includes('開発中'), `says whether it can be opened: ${ja}`);
-    assert.ok(ja.includes('レビュー'), `and what the review state means: ${ja}`);
+    const element = mountTrust({ focusId: RELEASED_SCENES[0].id });
+    assert.deepEqual(findByClass(element, 'trust-standing'), []);
+    assert.deepEqual(findByClass(element, 'trust-maturity'), []);
+    assert.ok(findByClass(element, 'trust-review-badge')[0], 'medical review remains visible');
   });
 });
 
@@ -273,7 +254,7 @@ test('Trust with no model named is unchanged: the ledger, and nothing promoted',
     assert.deepEqual(findByClass(element, 'trust-standing'), []);
     const hero = findByClass(element, 'trust-hero')[0];
     assert.equal(hero.classList.contains('is-model'), false);
-    assert.equal(findByClass(findByClass(element, 'trust-grid')[0], 'trust-card').length, PUBLIC_SCENES.length);
+    assert.equal(findByClass(findByClass(element, 'trust-grid')[0], 'trust-card').length, RELEASED_SCENES.length);
   });
 });
 
@@ -452,28 +433,9 @@ test('Trust says so when nothing matches, and offers the way back', () => {
     assert.equal(field.value, '', 'which clears what was typed');
     assert.equal(
       findByClass(element, 'trust-card').filter((card) => !card.hidden).length,
-      PUBLIC_SCENES.length,
-      'and brings every record back'
+      RELEASED_SCENES.length,
+      'and brings every published record back'
     );
     assert.equal(empty.hidden, true);
-  });
-});
-
-test('the empty state is reachable by the scope buttons too, not only by typing', () => {
-  withFakeBrowser(() => {
-    const element = mountTrust();
-    const empty = findByClass(element, 'trust-empty')[0];
-    const field = findByClass(element, 'trust-filter-field')[0];
-    const scopes = findByClass(element, 'trust-filter-scope');
-
-    // A name that exists, narrowed to the half it is not in.
-    const published = PUBLIC_SCENES.filter(isSceneReleased)[0];
-    field.value = published.titleJa;
-    field.dispatchEvent({ type: 'input' });
-    assert.equal(empty.hidden, true, 'the name matches, so there is something to see');
-    scopes[2].dispatchEvent({ type: 'click' });
-    assert.equal(empty.hidden, false, 'a published model filtered to "in development" shows nothing');
-    scopes[1].dispatchEvent({ type: 'click' });
-    assert.equal(empty.hidden, true, 'and the other half shows it again');
   });
 });
