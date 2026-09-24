@@ -78,8 +78,8 @@ export function structureOf(hash = '') {
  * level up: a scene's "sources & limits" link can hand the reader to Trust
  * already pointed at *its own* record instead of the flat top of a page with
  * 69 headings on it. It is a query, not a path segment, for the same reason —
- * Trust is one page, and which record starts open is state inside it, not a
- * different page. `sameRoute` deliberately does not compare it either.
+ * Trust shares a route prefix, but a focused record has a different heading
+ * and content from the model picker. Navigation must remount when it changes.
  *
  * The value is returned as written; matching it against a real scene id or
  * slug is `Trust.js`'s job, not the router's.
@@ -192,14 +192,15 @@ export const namesScene = (hash = '') => Boolean(sceneBySlug(slugOf(hash)));
 /**
  * True when two hashes address the same thing — used to decide whether to reload.
  *
- * The structure a scene route carries is deliberately not part of the answer: it
- * is state inside a place, not a different place, and reloading the page to
- * change it would throw away the model the reader is already looking at.
+ * The structure a scene route carries is deliberately not part of the answer:
+ * it changes state within the viewer. A Trust model query *is* part of the
+ * answer: it changes the document from a picker to a specific record.
  */
 export function sameRoute(a, b) {
   const left = resolveRoute(a);
   const right = resolveRoute(b);
   // Two legal documents are two routes, not one: `#/terms` and `#/privacy`
   // share a `kind` and must still reload the page.
-  return left.kind === right.kind && left.sceneId === right.sceneId && left.docId === right.docId;
+  return left.kind === right.kind && left.sceneId === right.sceneId &&
+    left.docId === right.docId && left.focusId === right.focusId;
 }

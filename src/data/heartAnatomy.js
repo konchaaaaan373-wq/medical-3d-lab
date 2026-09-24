@@ -587,18 +587,18 @@ export const HEART_MODEL_SCOPE = Object.freeze({
   ],
   sources: [
     {
-      text: 'HuBMAP Human Reference Atlas CCF release v1.2 — VH_M_Heart.glb and VH_M_Blood_Vasculature.glb, pinned by commit, byte count and hash. Candidate assets: recorded, not adopted.',
-      textJa: 'HuBMAP Human Reference Atlas CCF v1.2 の VH_M_Heart.glb と VH_M_Blood_Vasculature.glb。commit・バイト数・hash で固定。候補 asset であって採用済みではありません。',
+      text: 'HuBMAP Human Reference Atlas CCF release v1.2 — VH_M_Heart.glb and VH_M_Blood_Vasculature.glb. The served, repaired derivatives are pinned by hash; attribution and the changes are recorded with the assets.',
+      textJa: 'HuBMAP Human Reference Atlas CCF v1.2 の VH_M_Heart.glb と VH_M_Blood_Vasculature.glb を出典とする修正版です。公開ファイルのハッシュ、出典表示、修正内容を記録しています。',
       kind: 'dataset',
     },
     {
-      text: 'Both files fail glTF validation by a recorded amount (408 errors and 33), which is kept as a failed gate rather than an unrun one.',
-      textJa: '両ファイルとも glTF 検証に不合格で、その件数（408 と 33）を記録しています。未実施ではなく不合格として保持しています。',
+      text: 'The original files had degenerate normals (408 and 33 validation errors). The served derivatives repair these and the resulting files pass glTF validation.',
+      textJa: '元ファイルには退化した法線がありました（検証エラー 408 件と 33 件）。公開している修正版ではこれを直し、glTF 検証に合格しています。',
       kind: 'qa',
     },
     {
-      text: 'No anatomist and no clinician has reviewed this geometry or these labels, and the licences are recorded rather than discharged.',
-      textJa: '解剖学者・臨床家によるレビューは受けていません。ライセンスは記録のみで、義務の履行は済んでいません。',
+      text: 'No anatomist or clinician has reviewed this geometry or these labels. The publication decision is an engineering check, not a medical sign-off.',
+      textJa: '形状と名称は解剖学者・臨床家によるレビューを受けていません。公開判断は工学的な確認であり、医学的な承認ではありません。',
       kind: 'limitation',
     },
   ],
@@ -700,10 +700,10 @@ export const HEART_ANATOMY_META = Object.freeze({
   summary: 'A still, normal heart: chambers, septum, valves and papillary muscles, with the great vessels, the coronary arteries and the cardiac veins from the same release, each selectable by name.',
   summaryJa: '静止した正常心です。心腔・心室中隔・弁・乳頭筋に、同じリリースの大血管・冠動脈・心臓静脈を加え、名前で個別に選択できます。',
   annotations: Object.freeze([]),
-  disclaimer: 'EDUCATIONAL GROSS-ANATOMY MODEL — under development, incomplete, and not for clinical use.',
-  disclaimerJa: '教育用肉眼解剖モデル：開発中で未完成です。臨床使用不可。',
-  disclaimerShort: 'Educational gross anatomy — in development',
-  disclaimerShortJa: '教育用肉眼解剖 — 開発中',
+  disclaimer: 'EDUCATIONAL GROSS-ANATOMY MODEL — not for clinical use.',
+  disclaimerJa: '教育用肉眼解剖モデルです。臨床使用不可。',
+  disclaimerShort: 'Educational gross anatomy — not for clinical use',
+  disclaimerShortJa: '教育用肉眼解剖 — 臨床使用不可',
 });
 
 /**

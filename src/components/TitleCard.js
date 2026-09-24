@@ -2,6 +2,7 @@ import { el } from '../utils/dom.js';
 import { inLanguage } from '../utils/language.js';
 import { statusById } from '../catalog/taxonomy.js';
 import { clinicalReviewPresentation } from '../catalog/clinicalReview.js';
+import { isSceneReleased } from '../catalog/release.js';
 import { relatedScenesFor, sceneById, sceneRoute } from '../catalog/index.js';
 import { sceneOpen } from '../app/releaseGate.js';
 import '../styles/clinical-review.css';
@@ -49,21 +50,19 @@ function pairedSceneLinks(meta) {
 
 /** Top-left identity block. Sized to survive a 1080x1350 crop for social posts. */
 export function createTitleCard(meta) {
-  // Catalogue maturity and clinical review are deliberately separate. A mature
-  // production implementation can still pre-date the current commit-level
-  // clinical-attestation standard, and a direct scene URL must not hide that.
+  // Catalogue maturity is for work still in development. Once a model is
+  // published, its internal release label no longer belongs in the viewer.
+  // The independent clinical-review record stays visible below.
   const status = statusById(meta.status ?? 'production');
   const maturityBadge =
-    status?.badge &&
+    !isSceneReleased(sceneById(meta.id)) && status?.badge &&
     el('span', { class: `status-badge is-${status.id}`, title: status.note }, [
       el('span', { class: 'lang-en', text: status.label }),
       el('span', { class: 'lang-ja', text: status.labelJa }),
     ]);
 
-  // Prototype is already an explicit experimental warning and does not belong
-  // to the public Clinical Review shelf. Every non-prototype scene shows the
-  // registry state even when its maturity badge (Production) is intentionally
-  // hidden, so Heart Failure/Amyloid cannot look silently version-reviewed.
+  // Prototype work is separate from the public clinical review record. Every
+  // non-prototype scene keeps its review state visible on its own model page.
   const review = meta.status === 'prototype' ? null : clinicalReviewPresentation(meta.id);
   const reviewBadge =
     review &&
@@ -71,11 +70,11 @@ export function createTitleCard(meta) {
       'span',
       {
         class: `clinical-review-badge is-${review.status}`,
-        // A tooltip holds one language, and this one explains a distinction a
-        // reader is entitled to be confused by — so it says it in theirs.
+        // Explain this badge in the reader's language without exposing the
+        // internal publication maturity vocabulary.
         title: inLanguage(
-          'Clinical-review attestation is tracked separately from model maturity.',
-          '臨床レビューの記録は、モデルの成熟度とは別に管理しています。'
+          'Shows whether clinical review is recorded for this model version.',
+          '現在のモデル版について、医学レビューの完了記録があるかを示します。'
         ),
       },
       [

@@ -63,8 +63,8 @@ test('reading routes use direct headings and legal prose remains body-sized', ()
 
   assert.match(landing, /Public beta/);
   assert.match(landing, /3D anatomy model/);
-  assert.match(trust, /Model status and medical review/);
-  assert.match(trust, /モデルの公開状態と医学レビュー/);
+  assert.match(trust, /Explore 3D models/);
+  assert.match(trust, /公開中の3Dモデル/);
   assert.doesNotMatch(trust, /Maturity and medical review are different claims/);
   // The legal pages reach the publication record through the shared header
   // rather than through a nav of their own. The label changed with it: "Model

@@ -242,6 +242,9 @@ test('the veil names where it is going, in the reader’s language', () => {
   // and `触れて学ぶ心臓の解剖` is a title, not an answer to "did I press the
   // right thing".
   assert.equal(destinationSubject('#/heart-anatomy', 'ja'), '心臓の3Dモデル');
+  assert.equal(destinationSubject('#/trust', 'ja'), '公開中の3Dモデル');
+  assert.equal(destinationSubject('#/trust?model=heart-anatomy', 'ja'), '触れて学ぶ心臓の解剖の根拠');
+  assert.equal(openingMessage('#/trust?model=heart-anatomy', 'en'), 'Opening the evidence for Interactive heart anatomy');
 
   // A hash nobody recognises gets no name rather than the default scene's.
   // `resolveRoute` sends it to the brain, and a veil that said "opening the

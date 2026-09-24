@@ -1,6 +1,6 @@
 import { clinicalReviewPresentation } from '../catalog/clinicalReview.js';
 import { inLanguage } from '../utils/language.js';
-import { PUBLIC_SCENES, sceneRoute, statusById } from '../catalog/index.js';
+import { PUBLIC_SCENES, sceneRoute } from '../catalog/index.js';
 import { isSceneReleased } from '../catalog/release.js';
 import { betaUnlocked } from './releaseGate.js';
 import { createLanguageToggle } from '../components/LanguageToggle.js';
@@ -92,56 +92,13 @@ function sourceLinks(record) {
   );
 }
 
-/** The id a model's card and TOC entry share. Derived, never written down twice. */
+/** The id shared by a model record and its deep link. */
 const cardIdFor = (scene) => `trust-${scene.slug}`;
 
 /**
- * The two badges, said once in words a reader did not have to learn.
+ * One model paired with its review presentation and stable record id.
  *
- * `公開状態: アルファ` and `レビュー待ち` are this repository's vocabulary, and
- * they are load-bearing — the maturity axis and the clinical-review axis are
- * deliberately separate and a badge that merged them would be a claim neither
- * of them makes (`docs/architecture/intended-use-and-model-provenance.md`). So
- * the badges stay exactly as they are and this is added beside them.
- *
- * Measured on the record a reader reaches from inside a model: the first
- * screenful read `Status: Alpha / 公開状態: アルファ / Pending / レビュー待ち`,
- * four internal terms and no sentence, in answer to "what is this model based
- * on". Both facts matter to a student and neither of them is self-explanatory.
- *
- * @param {object} scene
- * @param {{status: string}} review
- */
-function plainStanding(scene, review) {
-  const open = betaUnlocked() || isSceneReleased(scene);
-  const reviewed = review.status === 'reviewed';
-  const en = open
-    ? `This model is published and can be opened. ${reviewed
-        ? 'A clinical reviewer has checked the version below.'
-        : 'It has not yet completed clinical review — read the limitations below before relying on it.'}`
-    : `This model is still being built and cannot be opened yet. ${reviewed
-        ? 'A clinical reviewer has checked the version below.'
-        : 'It has not completed clinical review.'}`;
-  const ja = open
-    ? `このモデルは公開中で、実際に開くことができます。${reviewed
-        ? '下に記録したバージョンについて、臨床レビューが完了しています。'
-        : '臨床レビューはまだ完了していません。利用する前に、下の「未解決の限界」を読んでください。'}`
-    : `このモデルは開発中で、まだ開くことはできません。${reviewed
-        ? '下に記録したバージョンについて、臨床レビューが完了しています。'
-        : '臨床レビューは完了していません。'}`;
-  return el('p', { class: 'trust-standing' }, [
-    el('span', { class: 'lang-en', text: en }),
-    el('span', { class: 'lang-ja', text: ja }),
-  ]);
-}
-
-/**
- * One model, `scene` paired with its already-computed review presentation and
- * the id its card and TOC entry share.
- *
- * Built once and handed to both the filter and `trustCard` so the two agree by
- * construction — there is no second place that could list a different set of
- * models, or spell an id differently than the card that has to match it.
+ * Built once for the picker and focused record so both use the same catalogue.
  *
  * @param {typeof PUBLIC_SCENES[number]} scene
  */
@@ -152,7 +109,7 @@ const trustEntry = (scene) => ({
 });
 
 /**
- * The control that narrows the records, replacing the list that duplicated them.
+ * The control that narrows the published model picker.
  *
  * ## What was here
  *
@@ -166,12 +123,9 @@ const trustEntry = (scene) => ({
  *
  * ## What is here instead
  *
- * One structure, narrowed in place. A text field matches a model's name in
- * either language, and a two-way split separates the models that can be opened
- * today from the ones still being built — which is the one distinction a
- * visitor can act on, and the one the page never made. Review state stays on
- * each record, where it belongs, instead of being the axis the whole page is
- * organised by.
+ * One public structure, narrowed in place. It contains only released models;
+ * a text field matches a model's name in either language. Each model opens
+ * directly; the separate evidence link leads to its full record.
  *
  * It is a filter rather than a second navigation on purpose. Adding search
  * *beside* a jump list would have made three structures for one set. And it is
@@ -190,13 +144,6 @@ function trustFilter(entries, cardsById) {
     autocomplete: 'off',
     placeholder: inLanguage('Model name', 'モデル名'),
   });
-
-  const SCOPES = [
-    { id: 'all', en: 'All', ja: 'すべて' },
-    { id: 'open', en: 'Published', ja: '公開中' },
-    { id: 'building', en: 'In development', ja: '開発中' },
-  ];
-  let scope = 'all';
 
   const count = el('p', {
     class: 'trust-filter-count',
@@ -220,8 +167,8 @@ function trustFilter(entries, cardsById) {
     'button',
     { class: 'trust-empty-clear', type: 'button', on: { click: () => reset() } },
     [
-      el('span', { class: 'lang-en', text: 'Show every model' }),
-      el('span', { class: 'lang-ja', text: 'すべてのモデルを表示' }),
+      el('span', { class: 'lang-en', text: 'Show every published model' }),
+      el('span', { class: 'lang-ja', text: '公開中のモデルをすべて表示' }),
     ]
   );
   const empty = el('div', { class: 'trust-empty', hidden: '' }, [
@@ -232,54 +179,24 @@ function trustFilter(entries, cardsById) {
     clearButton,
   ]);
 
-  const buttons = SCOPES.map((item) =>
-    el(
-      'button',
-      {
-        class: 'trust-filter-scope',
-        type: 'button',
-        'aria-pressed': String(item.id === scope),
-        on: {
-          click: () => {
-            scope = item.id;
-            for (const [id, button] of pressed) button.setAttribute('aria-pressed', String(id === scope));
-            apply();
-          },
-        },
-      },
-      [
-        el('span', { class: 'lang-en', text: item.en }),
-        el('span', { class: 'lang-ja', text: item.ja }),
-      ]
-    )
-  );
-  const pressed = new Map(SCOPES.map((item, index) => [item.id, buttons[index]]));
-
   function apply() {
     const needle = field.value.trim().toLowerCase();
     let shown = 0;
     for (const entry of entries) {
       const card = cardsById.get(entry.id);
       if (!card) continue;
-      // `isSceneReleased`, not "can this reader open it". The split describes
-      // the *model's* publication state, which is what this page is about; a
-      // preview unlock changes what a developer may open and must not change
-      // what the ledger says is published, or the control reads 70/0 for
-      // exactly the people who need it to be honest.
-      const published = isSceneReleased(entry.scene);
-      const inScope = scope === 'all' || (scope === 'open') === published;
       const matches =
         !needle ||
         entry.scene.titleEn.toLowerCase().includes(needle) ||
         entry.scene.titleJa.toLowerCase().includes(needle) ||
         entry.scene.slug.includes(needle);
-      const visible = inScope && matches;
+      const visible = matches;
       card.hidden = !visible;
       if (visible) shown += 1;
     }
     count.replaceChildren(
-      el('span', { class: 'lang-en', text: `${shown} of ${entries.length} models` }),
-      el('span', { class: 'lang-ja', text: `${entries.length}件中 ${shown}件` })
+      el('span', { class: 'lang-en', text: `${shown} published models` }),
+      el('span', { class: 'lang-ja', text: `公開中のモデル ${shown}件` })
     );
     empty.hidden = shown > 0;
   }
@@ -296,8 +213,6 @@ function trustFilter(entries, cardsById) {
    */
   function reset({ focus = true } = {}) {
     field.value = '';
-    scope = 'all';
-    for (const [id, button] of pressed) button.setAttribute('aria-pressed', String(id === 'all'));
     apply();
     if (focus) field.focus?.();
   }
@@ -313,39 +228,38 @@ function trustFilter(entries, cardsById) {
         el('span', { class: 'lang-ja', text: 'モデルを探す' }),
       ]),
       field,
-      el(
-        'div',
-        {
-          class: 'trust-filter-scopes',
-          role: 'group',
-          'aria-label': inLanguage('Availability', '公開状態'),
-        },
-        buttons
-      ),
       count,
     ]),
-    /** Undo any narrowing, so a deep link to one record is never filtered out. */
+    /** Undo text narrowing. */
     reset,
   };
 }
 
 /**
- * One model's record, collapsed by default behind a native `<details>`.
- *
- * The `<summary>` carries exactly what the table of contents already showed —
- * the model's name and its review badge — so opening one is not a surprise.
- * Everything else (the maturity badge, the "Open model" link, the note, the
- * scope, the limitations, the sources) lives in the body, which is why it is
- * absent from the accessibility tree while the card is closed: see L-31 in
- * `docs/verification-lessons.md` before adding a *second* interactive control
- * to the summary, because a closed `<details>` hides its body from a reader
- * but not from `getComputedStyle`.
+ * The list is a model picker: the model opens in one press, while a separate
+ * link leads to its review record. A model-specific route displays that record
+ * in full above the picker for the other published models.
  *
  * @param {ReturnType<typeof trustEntry>} entry
- * @param {{open: boolean}} options
+ * @param {{lead?: boolean}} options
  */
-function trustCard({ scene, id, review }, { open, lead = false }) {
-  const maturity = statusById(scene.status);
+function trustCard({ scene, id, review }, { lead = false }) {
+  if (!lead) {
+    return el('article', { class: 'trust-card trust-model', id }, [
+      el('h2', { class: 'trust-card-title' }, [
+        el('a', { class: 'trust-model-link', href: sceneRoute(scene) }, [
+          el('span', { class: 'lang-en', text: scene.titleEn }),
+          el('span', { class: 'lang-ja', text: scene.titleJa }),
+          el('span', { class: 'trust-model-arrow', 'aria-hidden': 'true', text: '→' }),
+        ]),
+      ]),
+      el('a', { class: 'trust-evidence-link', href: `#/trust?model=${encodeURIComponent(scene.id)}` }, [
+        el('span', { class: 'lang-en', text: 'Review and evidence' }),
+        el('span', { class: 'lang-ja', text: '医学レビュー・根拠' }),
+      ]),
+    ]);
+  }
+
   const note = REVIEW_NOTES[review.status] ?? REVIEW_NOTES.unrecorded;
   const record = review.record;
   const reviewMeta = record?.reviewedAt
@@ -353,61 +267,12 @@ function trustCard({ scene, id, review }, { open, lead = false }) {
     : null;
 
   const badges = el('span', { class: 'trust-card-badges' }, [
-    el('span', { class: `trust-maturity is-${scene.status}` }, [
-      el('span', { class: 'lang-en', text: `Status: ${maturity?.label ?? scene.status}` }),
-      el('span', { class: 'lang-ja', text: `公開状態: ${maturity?.labelJa ?? scene.status}` }),
-    ]),
     reviewBadge(review),
   ]);
 
-  /**
-   * The record of the model the page is *about* is not a disclosure.
-   *
-   * As one it repeated the page's own `<h1>` two lines under it, offered a
-   * collapse control for the one thing nobody came here to collapse, and
-   * carried a second "モデルを開く →" beside the hero's "← 3Dモデルに戻る" —
-   * two links to one place on one screen. Measured on a 390 px phone: the
-   * model's name appeared twice in the first 600 px.
-   *
-   * So in lead position the summary goes and the badges move into the body,
-   * which is where they were being read from anyway.
-   */
-  const head = lead
-    ? [el('div', { class: 'trust-card-lead-badges' }, [badges])]
-    : [
-        el('summary', { class: 'trust-card-summary' }, [
-          el('h2', { class: 'trust-card-title' }, [
-            el('span', { class: 'lang-en', text: scene.titleEn }),
-            el('span', { class: 'lang-ja', text: scene.titleJa }),
-          ]),
-          badges,
-        ]),
-      ];
-
-  return el(lead ? 'section' : 'details', {
-    class: `trust-card${lead ? ' is-lead' : ''}`,
-    id,
-    ...(open && !lead ? { open: '' } : {}),
-  }, [
-    ...head,
+  return el('section', { class: 'trust-card is-lead', id }, [
+    el('div', { class: 'trust-card-lead-badges' }, [badges]),
     el('div', { class: 'trust-card-body' }, [
-      // Trust stays open while most of what it describes is not: saying which
-      // models are reviewed is more honest with the closed ones listed than
-      // with the page hidden. What it must not do is offer to open one.
-      //
-      // Not in lead position: the hero above it already carries
-      // "← 3Dモデルに戻る" to the same route.
-      lead
-        ? null
-        : betaUnlocked() || isSceneReleased(scene)
-        ? el('a', { class: 'trust-open-model', href: sceneRoute(scene) }, [
-            el('span', { class: 'lang-en', text: 'Open model →' }),
-            el('span', { class: 'lang-ja', text: 'モデルを開く →' }),
-          ])
-        : el('span', { class: 'trust-open-model is-locked' }, [
-            el('span', { class: 'lang-en', text: 'To be updated' }),
-            el('span', { class: 'lang-ja', text: '準備中' }),
-          ]),
       el('p', { class: 'trust-review-note' }, [
         el('span', { class: 'lang-en', text: note.en }),
         el('span', { class: 'lang-ja', text: note.ja }),
@@ -436,8 +301,7 @@ function trustCard({ scene, id, review }, { open, lead = false }) {
  * @param {HTMLElement|null} [options.accountButton]
  * @param {string|null} [options.focusId] a scene id or slug the route named
  *   (`#/trust?model=<id>`, e.g. from a scene's "sources & limits" link) —
- *   that model's section opens instead of starting collapsed, and the page
- *   lands scrolled to it.
+ *   that model's review record appears before the other models.
  */
 export function createTrust({ ui, accountButton = null, focusId = null }) {
   const languageToggle = createLanguageToggle((mode) => {
@@ -445,6 +309,7 @@ export function createTrust({ ui, accountButton = null, focusId = null }) {
   });
 
   const entries = PUBLIC_SCENES.map(trustEntry);
+  const publishedEntries = entries.filter((entry) => isSceneReleased(entry.scene));
   /**
    * The model the reader came here about, if the route named one.
    *
@@ -474,12 +339,14 @@ export function createTrust({ ui, accountButton = null, focusId = null }) {
   const focused = focusId
     ? entries.find((entry) => entry.scene.id === focusId || entry.scene.slug === focusId) ?? null
     : null;
-  const others = focused ? entries.filter((entry) => entry !== focused) : entries;
-  const cards = others.map((entry) => trustCard(entry, { open: false }));
+  const others = focused
+    ? publishedEntries.filter((entry) => entry !== focused)
+    : publishedEntries;
+  const cards = others.map((entry) => trustCard(entry, {}));
   const cardsById = new Map(others.map((entry, index) => [entry.id, cards[index]]));
   const filter = trustFilter(others, cardsById);
 
-  const leadCard = focused ? trustCard(focused, { open: true, lead: true }) : null;
+  const leadCard = focused ? trustCard(focused, { lead: true }) : null;
   const canOpenFocused =
     focused && (betaUnlocked() || isSceneReleased(focused.scene));
 
@@ -514,7 +381,6 @@ export function createTrust({ ui, accountButton = null, focusId = null }) {
               text: 'このモデルが何にもとづいているか、どこまで確かめられているか、まだ確かめられていないことは何かを掲載しています。',
             }),
           ]),
-          plainStanding(focused.scene, focused.review),
           // The way back to the thing the question was about. Back does this
           // too, and a reader who followed a link from a model and then read
           // three screenfuls of record should not have to remember that.
@@ -527,35 +393,30 @@ export function createTrust({ ui, accountButton = null, focusId = null }) {
         ].filter(Boolean))
       : el('section', { class: 'trust-hero', id: 'content', tabindex: '-1', 'data-skip-target': '' }, [
           el('p', { class: 'trust-kicker' }, [
-            el('span', { class: 'lang-en', text: 'Publication & review' }),
-            el('span', { class: 'lang-ja', text: '公開とレビュー' }),
+          el('span', { class: 'lang-en', text: 'Medical 3D Lab' }),
+          el('span', { class: 'lang-ja', text: 'Medical 3D Lab' }),
           ]),
           el('h1', {}, [
-            el('span', { class: 'lang-en', text: 'Model status and medical review' }),
-            el('span', { class: 'lang-ja', text: 'モデルの公開状態と医学レビュー' }),
+            el('span', { class: 'lang-en', text: 'Explore 3D models' }),
+            el('span', { class: 'lang-ja', text: '公開中の3Dモデル' }),
           ]),
           el('p', { class: 'trust-lead' }, [
             el('span', {
               class: 'lang-en',
-              text: 'For each model, we publish its implementation status, medical review, reviewed scope, unresolved limitations and source files.',
+              text: 'Open a model to explore it. Review its medical evidence when you need it.',
             }),
             el('span', {
               class: 'lang-ja',
-              text: '各モデルの実装・公開状態、医学レビュー、確認範囲、未解決の限界、参照ファイルを掲載しています。',
+              text: '見たいモデルを選んで開けます。医学レビューと根拠は、各モデルから確認できます。',
             }),
-          ]),
-          el('div', { class: 'trust-principles' }, [
-            bilingual('Status: current implementation and availability', '公開状態：現在の実装と利用可否'),
-            bilingual('Medical review: reviewed version and date', '医学レビュー：確認したバージョンと日付'),
-            bilingual('Evidence: sources, tests and limitations', '根拠：出典、テスト、限界'),
           ]),
         ]),
     leadCard ? el('section', { class: 'trust-lead-record' }, [leadCard]) : null,
     // The ledger, named as what it now is: everything except the record above.
     focused
       ? el('h2', { class: 'trust-others-heading' }, [
-          el('span', { class: 'lang-en', text: 'Records for every other model' }),
-          el('span', { class: 'lang-ja', text: 'ほかのモデルの記録' }),
+          el('span', { class: 'lang-en', text: 'Explore other models' }),
+          el('span', { class: 'lang-ja', text: 'ほかのモデルを見る' }),
         ])
       : null,
     filter.element,
@@ -592,7 +453,7 @@ export function createTrust({ ui, accountButton = null, focusId = null }) {
   // its record in another had two tabs called "model information".
   document.title = focused
     ? `Medical 3D Lab — ${focused.scene.titleJa}`
-    : 'Medical 3D Lab — model information';
+    : 'Medical 3D Lab — 3D models';
 
   // Land on the record the route named, the way `#/brain-anatomy?structure=…`
   // opens on a structure instead of making the reader find it again. This

@@ -420,6 +420,14 @@ watertight. It is not a patient's heart and not a surgical reference.
 
 ## 8. Review status
 
+**2026-09-24 public wording correction (revision 27):** The model's on-screen
+source notes and disclaimer now describe the repaired files that are actually
+served, and no longer describe this published scene as a candidate or as under
+development. The clinical-review registry now describes the same 46-structure,
+two-file model. No geometry, labels, selection behaviour, or clinical review
+status changed. This is a correction of stale public copy, not a medical
+sign-off.
+
 **Catalog status:** `alpha`
 
 **Publication:** open, as of 2026-09-15. The two candidate files went through

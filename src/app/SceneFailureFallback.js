@@ -5,6 +5,7 @@ import {
   sceneById,
   statusById,
 } from '../catalog/index.js';
+import { isSceneReleased } from '../catalog/release.js';
 import { betaUnlocked } from './releaseGate.js';
 import { sceneFailureGuidance } from './sceneFailureGuidance.js';
 import { createManualRetry } from './sceneShellBridge.js';
@@ -19,6 +20,7 @@ export function createSceneFailureFallback({
 }) {
   const scene = sceneById(sceneId);
   const status = statusById(scene?.status);
+  const published = isSceneReleased(scene);
   const guidance = sceneFailureGuidance(reason);
 
   const link = (href, en, ja, primary = false) =>
@@ -78,7 +80,7 @@ export function createSceneFailureFallback({
         el('span', { class: 'lang-ja', text: guidance.kickerJa }),
       ]),
       title,
-      status
+      status && !published
         ? el('div', { class: `scene-fallback-status is-${scene.status}` }, [
             el('span', { class: 'lang-en', text: `Maturity: ${status.label}` }),
             el('span', { class: 'lang-ja', text: `完成度: ${status.labelJa}` }),
@@ -91,6 +93,7 @@ export function createSceneFailureFallback({
       el('div', { class: 'scene-fallback-actions' }, [
         retry,
         link(EXPLORER_ROUTE, 'Browse public models', '公開モデルを見る', true),
+        published ? link(`#/trust?model=${encodeURIComponent(scene.id)}`, 'Review this model’s evidence', 'このモデルの根拠を見る') : null,
         link(LANDING_ROUTE, 'Home', 'ホーム'),
         betaUnlocked() ? link(LAB_ROUTE, 'Experimental Lab', '実験室') : null,
       ].filter(Boolean)),
