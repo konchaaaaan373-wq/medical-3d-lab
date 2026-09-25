@@ -59,6 +59,8 @@ export const PRESET_OPTIONS = [
     value: PRESET_IDS.REFERENCE,
     label: 'Reference heart',
     labelJa: '基準心',
+    short: 'Reference',
+    shortJa: '基準',
     effect: 'a representative teaching condition',
     effectJa: '教育用の代表条件',
   },
@@ -66,6 +68,8 @@ export const PRESET_OPTIONS = [
     value: PRESET_IDS.REDUCED_CONTRACTILITY,
     label: 'Reduced contractility',
     labelJa: '収縮力低下',
+    short: 'Reduced contractility',
+    shortJa: '収縮力低下',
     effect: 'end-systolic elastance lowered · nothing else changed',
     effectJa: '左室 Ees のみ低下・他は同一',
   },
@@ -105,7 +109,7 @@ export const CONTROLS = [
     // A name short enough for a read-out row. The full label belongs on the
     // control, where there is a line to spend on it.
     short: 'Filling',
-    shortJa: '充満',
+    shortJa: '充満量',
     label: 'Circulating filling, in the model · mL',
     labelJa: '循環充満量（モデル内）・ mL',
     unit: '',
@@ -118,7 +122,7 @@ export const CONTROLS = [
     // A name short enough for a read-out row. The full label belongs on the
     // control, where there is a line to spend on it.
     short: 'Resistance',
-    shortJa: '抵抗',
+    shortJa: '血管抵抗',
     label: 'Systemic resistance · the model’s lumped resistance · mmHg·s/mL',
     labelJa: '体血管抵抗（モデルの集中抵抗）・ mmHg·s/mL',
     unit: '',
@@ -149,21 +153,59 @@ export const CONTROLS = [
   },
 ];
 
+/**
+ * The console's copy.
+ *
+ * No subtitle any more. The sentence that used to sit here — every figure is
+ * re-solved, nothing is scaled — is true and belongs to the reader who opens
+ * the four inputs, so it moved into the note that opens with them. On the face
+ * of the console it was the fourth line of small print before the first
+ * button, and the two step captions say what to do in fewer words.
+ */
 export const MODEL_CONTROLS = {
   primary: true,
   placement: 'console',
-  title: 'Change one thing, and read what the circulation does',
-  titleJa: '1 つ変えて、循環の答えを読む',
-  subtitle:
-    'Each control moves the quantity named under it. Every figure on screen is re-solved from the result; nothing is scaled afterwards.',
-  subtitleJa:
-    '各操作は、その下に書いてある量を動かします。画面の数値はすべて結果から解き直したもので、あとから倍率をかけてはいません。',
+  title: 'Choose a condition, then one intervention',
+  titleJa: '状態を選び、介入を 1 つ加える',
   reset: true,
+  // Back to where the *chosen condition* started — not to the page's opening
+  // state. "Start over" read as the second, and it does not do that.
+  resetLabel: 'Undo changes',
+  resetLabelJa: '元に戻す',
+  // The option cards carry only their names. What each does is said where it
+  // is read against the figures — the first row of the read-out — and in the
+  // button's title, so the console is a row of choices rather than a grid of
+  // paragraphs.
+  hideChoiceEffects: true,
+  advanced: {
+    // Short: it shares a line with the toolbar, and at 1024 px the longer
+    // 「（4 つを自分で動かす）」 pushed the toolbar's labels onto one character
+    // per line. The note inside says what the four are.
+    label: 'Adjust the inputs',
+    labelJa: '詳細パラメータ',
+    note:
+      'Each slider moves only the quantity named on it; moving one clears the intervention. Every figure is re-solved from the result — nothing is scaled afterwards.',
+    noteJa:
+      '各スライダーは書いてある量だけを動かします（動かすと介入は解除）。数値はすべて結果から解き直したもので、あとから倍率をかけてはいません。',
+  },
+};
+
+/**
+ * Which console buttons are the experiment and which are the rest.
+ *
+ * Kept in view: the comparison with where this state started, the loop and
+ * waveform, and the lessons — the three things that are about the question.
+ * Behind "More": the camera, the display options, the reel and the image
+ * export, which serve other purposes and were competing with the choices at
+ * the same weight.
+ */
+export const CONSOLE_LAYOUT = {
+  overflow: ['zoom', 'inspection', 'reel', 'capture'],
 };
 
 export const COMPARISON_LABEL = {
-  label: 'Before',
-  labelJa: '操作前',
+  label: 'Side by side',
+  labelJa: '操作前と並べる',
   description: 'Side by side with this preset’s starting condition — the same scale, the same phase.',
   descriptionJa: 'このプリセットの操作前の条件と並べます。縮尺も位相も同じです。',
 };
@@ -390,6 +432,29 @@ export const ANNOTATIONS = [
     anchor: 'node',
     compact: false,
     lead: [110, 60],
+  },
+];
+
+/**
+ * Shown only side by side, where the two hearts are moved apart and the
+ * ordinary annotations would point at the space between them. Without these the
+ * comparison was two unnamed hearts, and which one was "before" had to be
+ * inferred from the read-out.
+ */
+export const COMPARISON_ANNOTATIONS = [
+  {
+    id: 'before-heart',
+    text: 'Before — this condition as it started',
+    sub: '操作前（この状態の開始時）',
+    anchor: 'comparisonBefore',
+    comparisonOnly: true,
+  },
+  {
+    id: 'current-heart',
+    text: 'Now',
+    sub: 'いまの条件',
+    anchor: 'comparisonNow',
+    comparisonOnly: true,
   },
 ];
 

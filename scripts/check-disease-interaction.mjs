@@ -58,6 +58,7 @@ import { mkdirSync, readFileSync, statSync, writeFileSync } from 'node:fs';
 import { join, resolve } from 'node:path';
 import * as playwright from 'playwright';
 import { chromiumExecutable } from './lib/browser.mjs';
+import { pressConsoleControl } from './lib/console-controls.mjs';
 import { serveDist } from './lib/serve-dist.mjs';
 import { videoExportOffered } from '../src/app/videoExport.js';
 import { VIDEO_MIME_CANDIDATES } from '../src/app/videoRecorder.js';
@@ -213,6 +214,56 @@ for (const slug of SLUGS) {
   const baseline = await state();
   const hasSlider = (await page.locator('input.slider:not(.slider-sm)').count()) > 0;
   await page.screenshot({ path: join(outDir, `${slug}-baseline.png`) });
+
+  // --- the experiment layout: one viewport, and a camera that holds still ---
+  //
+  // A scene laid out as an experiment (`meta.layout = 'experiment'`) is read
+  // as before-and-after: press an intervention, look at the heart, look at the
+  // figures. Two things only a browser can see break that. The camera is
+  // refitted whenever the console or the rail changes size, so a choice that
+  // changed either would move the heart between the two looks; and a choice
+  // row or a headline figure below the fold is a step the reader cannot take.
+  // Measured at the desktop size this check runs at, before anything else has
+  // touched the page.
+  if (await page.locator("#ui[data-layout='experiment']").count()) {
+    const viewport = page.viewportSize();
+    const outside = await page.evaluate(({ width, height }) => {
+      const nodes = [
+        ...document.querySelectorAll('button.model-choice-button'),
+        ...document.querySelectorAll(".metrics .metric.is-key"),
+      ];
+      return nodes
+        .map((node) => ({ node, rect: node.getBoundingClientRect() }))
+        .filter(({ rect }) => !(rect.width > 0 && rect.top >= 0 && rect.bottom <= height && rect.left >= 0 && rect.right <= width))
+        .map(({ node }) => node.textContent.trim().replace(/\s+/g, ' ').slice(0, 40));
+    }, viewport);
+    for (const label of outside) problems.push(`experiment layout: “${label}” is not inside the first viewport`);
+
+    const camera = () =>
+      page.evaluate(() => window.__app?.viewer?.camera.position.toArray().map((v) => v.toFixed(2)).join(',') ?? null);
+    // `button`: the row also carries the "adjusted by hand" status, which shares
+    // the class and is not pressable.
+    const choices = page.locator('.model-control[data-control="intervention"] button.model-choice-button');
+    if ((await choices.count()) > 1) {
+      // An intervention may bring its own condition with it (dobutamine's
+      // evidence belongs to the reduced-contractility preset, and choosing it
+      // switches there), so the condition is put back as well as the
+      // intervention — otherwise the reset check below compares against a
+      // baseline this block quietly changed.
+      const presets = page.locator('.model-control[data-control="preset"] button.model-choice-button');
+      const selectedPreset = await presets.evaluateAll((nodes) => nodes.findIndex((node) => node.classList.contains('is-selected')));
+      const before = await camera();
+      await choices.last().click();
+      await page.waitForTimeout(1500);
+      const after = await camera();
+      if (before && after !== before) {
+        problems.push(`experiment layout: pressing an intervention moved the camera (${before} -> ${after})`);
+      }
+      if (selectedPreset >= 0) await presets.nth(selectedPreset).click();
+      await choices.first().click();
+      await page.waitForTimeout(900);
+    }
+  }
 
   // --- the read-out on a phone ------------------------------------------
   //
@@ -643,7 +694,7 @@ for (const slug of SLUGS) {
   if (animated && !canEncode) console.log(`  ${slug}: this browser cannot encode a canvas — the download is not offered`);
   const reelButton = page.locator('button[data-control="reel"]');
   if (animated && (await reelButton.count())) {
-    await reelButton.first().click();
+    await pressConsoleControl(page, 'button[data-control="reel"]');
     await page.waitForTimeout(1200);
 
     // The sequence's own controls, measured on a phone.

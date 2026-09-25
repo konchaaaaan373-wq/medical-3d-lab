@@ -16,10 +16,10 @@ import { el } from '../utils/dom.js';
  * input is touched, never how the model is solved.
  *
  * @param {{
- *   controls: {id:string,label:string,labelJa:string,min?:number,max?:number,step?:number,value:number|string,format?:(v:number)=>string,kind?:'range'|'action'|'choice',actionLabel?:string,actionLabelJa?:string,effect?:string,effectJa?:string,options?:{value:string,label:string,labelJa:string,effect?:string,effectJa?:string}[]}[],
+ *   controls: {id:string,label:string,labelJa:string,min?:number,max?:number,step?:number,value:number|string,format?:(v:number)=>string,kind?:'range'|'action'|'choice',advanced?:boolean,caption?:string,captionJa?:string,actionLabel?:string,actionLabelJa?:string,effect?:string,effectJa?:string,options?:{value:string,label:string,labelJa:string,status?:boolean,short?:string,shortJa?:string,tag?:string,tagJa?:string,effect?:string,effectJa?:string}[]}[],
  *   onChange: (id: string, value: number|string) => void,
  *   onReset: () => void,
- *   copy?: {title?:string,titleJa?:string,subtitle?:string,subtitleJa?:string,primary?:boolean,reset?:boolean},
+ *   copy?: {title?:string,titleJa?:string,subtitle?:string,subtitleJa?:string,primary?:boolean,reset?:boolean,resetLabel?:string,resetLabelJa?:string,hideChoiceEffects?:boolean,advanced?:{label?:string,labelJa?:string,note?:string,noteJa?:string}},
  * }} options
  */
 /**
@@ -53,7 +53,8 @@ export function createModelControls({ controls, onChange, onReset, copy = {} }) 
         for (const [optionValue, button] of buttons) {
           const selected = optionValue === current;
           button.classList.toggle('is-selected', selected);
-          button.setAttribute('aria-pressed', String(selected));
+          if (button.classList.contains('model-choice-status')) button.hidden = !selected;
+          else button.setAttribute('aria-pressed', String(selected));
         }
       };
       const group = el(
@@ -64,11 +65,35 @@ export function createModelControls({ controls, onChange, onReset, copy = {} }) 
           'aria-label': `${control.label} / ${control.labelJa}`,
         },
         (control.options ?? []).map((option) => {
+          // A status option reports a state the reader reached another way
+          // (the intervention row's "adjusted by hand"). It is not a button,
+          // because pressing it could mean nothing, and it is only on screen
+          // while it is true.
+          if (option.status) {
+            const chip = el('span', {
+              class: 'model-choice-button model-choice-status',
+              dataset: { value: String(option.value) },
+              role: 'status',
+            }, [
+              el('span', { class: 'model-choice-label lang-en', text: option.short ?? option.label }),
+              el('span', { class: 'model-choice-label lang-ja', text: option.shortJa ?? option.labelJa }),
+            ]);
+            chip.hidden = true;
+            buttons.set(String(option.value), chip);
+            return chip;
+          }
           const button = el('button', {
             class: 'model-choice-button',
             type: 'button',
+            dataset: { value: String(option.value) },
             'aria-label': `${option.label} / ${option.labelJa}`,
             'aria-pressed': 'false',
+            // The short name is what a compact row has room for; the full name
+            // and what the option does stay one hover away and in the
+            // accessible name, so shortening the label drops no caveat.
+            title: option.short || option.shortJa
+              ? `${option.labelJa}${option.effectJa ? ` — ${option.effectJa}` : ''}`
+              : undefined,
             on: {
               click: () => {
                 if (String(option.value) === current) return;
@@ -77,9 +102,17 @@ export function createModelControls({ controls, onChange, onReset, copy = {} }) 
               },
             },
           }, [
-            el('span', { class: 'model-choice-label lang-en', text: option.label }),
-            el('span', { class: 'model-choice-label lang-ja', text: option.labelJa }),
-            option.effect || option.effectJa
+            el('span', { class: 'model-choice-label lang-en', text: option.short ?? option.label }),
+            el('span', { class: 'model-choice-label lang-ja', text: option.shortJa ?? option.labelJa }),
+            // A short qualifier that has to be seen before pressing — where the
+            // option applies — as opposed to what it does, which is `effect`.
+            option.tag || option.tagJa
+              ? el('span', { class: 'model-choice-tag' }, [
+                  el('span', { class: 'lang-en', text: option.tag ?? '' }),
+                  el('span', { class: 'lang-ja', text: option.tagJa ?? '' }),
+                ])
+              : null,
+            (option.effect || option.effectJa) && !copy.hideChoiceEffects
               ? el('span', { class: 'model-choice-effect' }, [
                   el('span', { class: 'lang-en', text: option.effect ?? '' }),
                   el('span', { class: 'lang-ja', text: option.effectJa ?? '' }),
@@ -92,7 +125,20 @@ export function createModelControls({ controls, onChange, onReset, copy = {} }) 
       );
       setValue(current);
       rows.set(control.id, { setValue });
-      return el('div', { class: 'model-control is-choice' }, [group]);
+      // A step caption says which kind of choice this row is. Two rows of
+      // identical-looking cards — the condition and what is done to it — read
+      // as one list of five, and with one selected in each the reader could not
+      // tell which of the two lit cards was "where I am" and which "what I did".
+      const caption = control.caption || control.captionJa
+        ? el('span', { class: 'model-choice-caption' }, [
+            el('span', { class: 'lang-en', text: control.caption ?? '' }),
+            el('span', { class: 'lang-ja', text: control.captionJa ?? '' }),
+          ])
+        : null;
+      return el('div', { class: `model-control is-choice${caption ? ' has-caption' : ''}`, dataset: { control: control.id } }, [
+        caption,
+        group,
+      ]);
     }
 
     if (control.kind === 'action') {
@@ -173,6 +219,30 @@ export function createModelControls({ controls, onChange, onReset, copy = {} }) 
     ]);
   });
 
+  // Controls a scene marks `advanced` are the same controls behind one more
+  // press. They move the model through the same `onChange` as everything else;
+  // what changes is only that the first thing a reader sees is the few choices
+  // the scene is about, not every input the model has.
+  const primaryInputs = inputs.filter((_, index) => !controls[index].advanced);
+  const advancedInputs = inputs.filter((_, index) => controls[index].advanced);
+  const advanced = advancedInputs.length
+    ? el('details', { class: 'model-controls-advanced' }, [
+        el('summary', { class: 'model-controls-advanced-toggle' }, [
+          el('span', { class: 'lang-en', text: copy.advanced?.label ?? 'Adjust the inputs yourself' }),
+          el('span', { class: 'lang-ja', text: copy.advanced?.labelJa ?? '詳細パラメータ' }),
+        ]),
+        el('div', { class: 'model-controls-advanced-body' }, [
+          copy.advanced?.note || copy.advanced?.noteJa
+            ? el('p', { class: 'model-controls-advanced-note' }, [
+                el('span', { class: 'lang-en', text: copy.advanced?.note ?? '' }),
+                el('span', { class: 'lang-ja', text: copy.advanced?.noteJa ?? '' }),
+              ])
+            : null,
+          el('div', { class: 'model-control-list' }, advancedInputs),
+        ]),
+      ])
+    : null;
+
   const reset = copy.reset === false
     ? null
     : el('button', {
@@ -181,8 +251,8 @@ export function createModelControls({ controls, onChange, onReset, copy = {} }) 
         title: 'Return the model controls to their opening state',
         on: { click: () => onReset() },
       }, [
-        el('span', { class: 'lang-en', text: 'Reset' }),
-        el('span', { class: 'lang-ja', text: '戻す' }),
+        el('span', { class: 'lang-en', text: copy.resetLabel ?? 'Reset' }),
+        el('span', { class: 'lang-ja', text: copy.resetLabelJa ?? '戻す' }),
       ]);
 
   const title = copy.title ?? 'Loading conditions';
@@ -203,7 +273,8 @@ export function createModelControls({ controls, onChange, onReset, copy = {} }) 
           el('span', { class: 'lang-ja', text: copy.subtitleJa ?? '' }),
         ])
       : null,
-    el('div', { class: 'model-control-list' }, inputs),
+    el('div', { class: 'model-control-list' }, primaryInputs),
+    advanced,
   ]);
 
   return {

@@ -16,6 +16,7 @@ import {
   resistanceAt,
 } from './reelStoryboard.js';
 import { ExperimentSession } from './experimentSession.js';
+import { describeChange, signedDelta } from './changeSummary.js';
 import { CONTROL_DOMAIN, CONTROL_IDS, PRESET_IDS, REFERENCE_GEOMETRY } from '../../../../models/cardiacOutput.js';
 import {
   advanceCardiacPhase,
@@ -28,7 +29,9 @@ import { INTERVENTION_IDS } from '../../../../models/cardiacInterventions.js';
 import { INTERVENTION_OPTIONS } from '../../../../data/cardiacOutputInterventions.js';
 import {
   ANNOTATIONS,
+  COMPARISON_ANNOTATIONS,
   COMPARISON_LABEL,
+  CONSOLE_LAYOUT,
   CONTROLS,
   LEARNING_LABEL,
   LEARNING_MODULES,
@@ -100,6 +103,12 @@ export class CardiacOutputScene {
     subtitle: 'Filling, resistance, contractility, rate — one circulation solving for all of them',
     subtitleJa: '充満・血管抵抗・収縮力・心拍数 ｜ 1 つの循環がすべてを解く',
     progression: { enabled: false },
+    // The shell's arrangement for a one-factor experiment: the subject in the
+    // middle, what was done and what came of it beside it, the choices under
+    // it. Declared, not detected — see `src/styles/experiment-layout.css`.
+    layout: 'experiment',
+    console: CONSOLE_LAYOUT,
+    titleCard: { foldTrust: true },
     stages: STAGES,
     legend: LEGEND,
     palette: PALETTE,
@@ -115,6 +124,15 @@ export class CardiacOutputScene {
     disclaimerShort: DISCLAIMER_SHORT,
     disclaimerShortJa: DISCLAIMER_SHORT_JA,
   };
+
+  /**
+   * The camera holds still. This scene is read as *before and after*: press
+   * dobutamine, look at the ventricle, press "none", look again. With the
+   * shell's slow turn on, the second look was from a different side than the
+   * first, and a change in the ventricle could not be told from a change in the
+   * angle. The reader can still orbit and zoom; nothing turns on its own.
+   */
+  static allowAutoRotate = false;
 
   static cameraPose = {
     position: new THREE.Vector3(-0.4, -1.6, 0.2).addScaledVector(VIEW_DIRECTION, 30),
@@ -349,8 +367,13 @@ export class CardiacOutputScene {
       {
         id: 'preset',
         kind: 'choice',
-        label: 'Starting condition',
-        labelJa: '開始条件',
+        // The circulation being experimented on, and — below it — what is done
+        // to it. Two different kinds of choice, so they are two rows with two
+        // captions rather than five cards in one grid.
+        label: 'Condition',
+        labelJa: '状態',
+        caption: '1 · Condition',
+        captionJa: '① 状態',
         value: this.session.presetId,
         options: PRESET_OPTIONS,
       },
@@ -364,8 +387,18 @@ export class CardiacOutputScene {
         kind: 'choice',
         label: 'Intervention',
         labelJa: '介入',
-        value: this.session.interventionId,
-        options: INTERVENTION_OPTIONS,
+        caption: '2 · One intervention',
+        captionJa: '② 介入（1 つ）',
+        // A hand-set condition is not "no intervention", and the row must not
+        // say it is: moving a slider clears the intervention in the session,
+        // which left 「なし」 lit while the figures beside it had moved. So the
+        // row reports what is on screen — a status, not a choice, and not a
+        // model state: the session has no "manual" intervention, and
+        // `setModelControl` ignores this value when a restore replays it.
+        value: this.session.moved && this.session.interventionId === INTERVENTION_IDS.NONE
+          ? MANUAL_CONDITION
+          : this.session.interventionId,
+        options: [...INTERVENTION_OPTIONS, MANUAL_OPTION],
       },
       ...CONTROLS.map((control) => {
         const domain = CONTROL_DOMAIN[control.id];
@@ -377,6 +410,10 @@ export class CardiacOutputScene {
           max: domain.max,
           step: domain.step,
           value: input[control.id],
+          // Secondary: the four inputs are how the model is parameterised, and
+          // the scene is about choosing a condition and one thing to do to it.
+          // They are still here, one press away, moving the same model.
+          advanced: true,
           format: (value) => `${formatControl(control.id, value)}${control.unit}`,
         };
       }),
@@ -391,7 +428,14 @@ export class CardiacOutputScene {
     if (id === 'preset') {
       this.session.selectPreset(String(value));
     } else if (id === 'intervention') {
-      this.session.selectIntervention(String(value));
+      // "Manual" is a report, not something to select — see getModelControls.
+      if (value === MANUAL_CONDITION) return;
+      // 「なし」 means this condition's starting point. From a hand-set
+      // condition the session already holds no intervention, so asking it to
+      // clear one did nothing — the button a reader presses to undo their
+      // sliders has to actually undo them.
+      if (value === INTERVENTION_IDS.NONE && this.session.moved) this.session.reset();
+      else this.session.selectIntervention(String(value));
     } else {
       this.session.setControl(id, Number(value));
     }
@@ -513,9 +557,18 @@ export class CardiacOutputScene {
    */
   getMetrics() {
     const m = this.state;
-    const ref = this.comparing ? this.session.baseline.metrics : null;
+    // "Before" is shown whenever there is a before to show: while the second
+    // heart is drawn, and whenever the condition on screen is not the one this
+    // state started at. It used to be the first case only, so a reader who
+    // pressed dobutamine saw 4.5 and had to remember that it had been 3.7.
+    // With nothing changed and nothing compared there is no column, because a
+    // row reading "3.7 → 3.7 ±0" is noise, not a comparison.
+    const changed = CONTROL_IDS.some((id) => this.session.view.input[id] !== this.session.baseline.input[id]);
+    const ref = this.comparing || changed ? this.session.baseline.metrics : null;
     const mmHg = (value) => Math.round(value);
     const rows = [];
+    /** The signed change on a headline row, at the precision it is shown with. */
+    const delta = (now, before, digits = 0) => (ref ? signedDelta(now, before, digits) : {});
 
     // A condition that could not be solved is not answered with the previous
     // one's numbers pretending to be current. Every reachable slider position
@@ -534,63 +587,39 @@ export class CardiacOutputScene {
       });
     }
 
-    // Say **what is being compared** before saying what came of it. An
-    // external review asked for this: "I only changed one thing" is the claim
-    // the whole scene rests on, and nothing on screen said which one.
+    // Say **what was done** before saying what came of it. An external review
+    // asked for this (D-12): "I only changed one thing" is the claim the whole
+    // scene rests on, and nothing on screen said which one.
     //
-    // Emitted on every update, not only while comparing, for two reasons. It
-    // is the answer to "what have I done" whether or not the second heart is
-    // drawn — and `MetricsPanel` appends a row the first time it sees its id,
-    // so a row that appears later lands at the bottom of the panel, below the
-    // fold, which is where the first version of this went.
-    {
-      // `view.input`, not `session.input`: the row describes the condition the
-      // numbers beside it came from. When a condition is refused the two
-      // differ — the controls hold what was asked for, the screen holds what
-      // was solved — and a row that described the request would name a change
-      // the figures do not contain.
-      const shown = this.session.view.input;
-      const baseline = this.session.baseline.input;
-      const moved = CONTROL_IDS.filter((id) => shown[id] !== baseline[id]);
-      const held = CONTROL_IDS.length - moved.length;
-      const format = (value) => (Number.isInteger(value) ? value : Number(value.toFixed(2)));
-      const name = (id, ja) => {
-        const control = CONTROLS.find((entry) => entry.id === id);
-        return (ja ? control?.shortJa : control?.short) ?? id;
-      };
-      // Short on purpose. The first version spelled out every moved control
-      // with both its values, and a four-control condition rendered as two
-      // lines of large type that widened the read-out across the model. One
-      // moved control is the case worth spelling out — it is the one-factor
-      // comparison this scene is for — and beyond that the count and the
-      // names are what a reader needs.
-      // The held count rides in the value rather than in `unit`, which
-      // `MetricsPanel` renders in one language only — a bilingual string in a
-      // single-language slot shows both to everybody.
-      const describe = (ja) => {
-        if (moved.length === 0) return ja ? 'なし' : 'none';
-        const rest = held === 0 ? '' : ja ? `（他 ${held} 固定）` : ` (${held} held)`;
-        if (moved.length === 1) {
-          const id = moved[0];
-          return `${name(id, ja)} ${format(baseline[id])} → ${format(shown[id])}${rest}`;
-        }
-        const list = moved.map((id) => name(id, ja)).join(ja ? '・' : ', ');
-        return ja ? `${moved.length} つ: ${list}${rest}` : `${moved.length}: ${list}${rest}`;
-      };
-      rows.push({
-        id: 'changed',
-        label: 'Changed',
-        labelJa: '変えたもの',
-        value: describe(false),
-        valueJa: describe(true),
-        unit: '',
-        emphasis: true,
-        // One of the four a phone shows without being asked. Which four is a
-        // teaching decision: what you changed, what came out, the pressure it
-        // came out against, and the pressure it cost. The rest is a press away.
-        compact: true,
-      });
-    }
+    // It used to say it in the model's vocabulary — 「2 つ: 抵抗・収縮力（他 2
+    // 固定）」 — which counted inputs instead of saying what happened to them.
+    // `describeChange` names each moved input with its direction and the held
+    // ones while they are few, so dobutamine reads as "contractility ↑ ·
+    // resistance ↓ (rate, filling held)". See `changeSummary.js`.
+    //
+    // `view.input`, not `session.input`: the row describes the condition the
+    // numbers beside it came from. When a condition is refused the two differ,
+    // and a row that described the request would name a change the figures do
+    // not contain.
+    //
+    // Emitted on every update, first, and whether or not the second heart is
+    // drawn: `MetricsPanel` shows rows in the order they are handed over, and
+    // this is the line the figures under it are read against.
+    const change = describeChange({
+      baseline: this.session.baseline.input,
+      shown: this.session.view.input,
+      interventionId: this.session.interventionId,
+    });
+    rows.push({
+      id: 'changed',
+      label: change.label,
+      labelJa: change.labelJa,
+      value: change.value,
+      valueJa: change.valueJa,
+      unit: '',
+      emphasis: true,
+      compact: true,
+    });
 
     rows.push(
       {
@@ -600,6 +629,7 @@ export class CardiacOutputScene {
         value: m.cardiacOutputLMin.toFixed(1),
         reference: ref ? ref.cardiacOutputLMin.toFixed(1) : undefined,
         unit: 'L/min',
+        ...delta(m.cardiacOutputLMin.toFixed(1), ref?.cardiacOutputLMin.toFixed(1), 1),
         emphasis: true,
         compact: true,
       },
@@ -610,6 +640,7 @@ export class CardiacOutputScene {
         value: Math.round(m.strokeVolumeMl),
         reference: ref ? Math.round(ref.strokeVolumeMl) : undefined,
         unit: 'mL',
+        ...delta(Math.round(m.strokeVolumeMl), Math.round(ref?.strokeVolumeMl), 0),
         emphasis: true,
       },
       {
@@ -619,6 +650,7 @@ export class CardiacOutputScene {
         value: mmHg(m.meanArterialPressureMmHg),
         reference: ref ? mmHg(ref.meanArterialPressureMmHg) : undefined,
         unit: 'mmHg',
+        ...delta(mmHg(m.meanArterialPressureMmHg), mmHg(ref?.meanArterialPressureMmHg), 0),
         emphasis: true,
         compact: true,
       },
@@ -632,6 +664,7 @@ export class CardiacOutputScene {
         value: mmHg(m.endDiastolicPressureMmHg),
         reference: ref ? mmHg(ref.endDiastolicPressureMmHg) : undefined,
         unit: 'mmHg',
+        ...delta(mmHg(m.endDiastolicPressureMmHg), mmHg(ref?.endDiastolicPressureMmHg), 0),
         emphasis: true,
         compact: true,
       },
@@ -650,6 +683,7 @@ export class CardiacOutputScene {
         value: mmHg(m.meanPulmonaryVenousPressureMmHg),
         reference: ref ? mmHg(ref.meanPulmonaryVenousPressureMmHg) : undefined,
         unit: 'mmHg',
+        ...delta(mmHg(m.meanPulmonaryVenousPressureMmHg), mmHg(ref?.meanPulmonaryVenousPressureMmHg), 0),
         emphasis: true,
       },
       {
@@ -807,9 +841,13 @@ export class CardiacOutputScene {
     return {
       centre: min.clone().add(max).multiplyScalar(0.5),
       corners,
-      // A little short of filling the band: the loop has tubes leaving the
-      // ventricle in three directions and flush edges cut all of them.
-      coverage: 0.9,
+      // The box is the assembly's extreme extents seen at an angle, so its
+      // silhouette fills well under the box: at 0.9 the loop measured about
+      // 62% of the band's height and the heart was the smallest thing on the
+      // screen after the panels. At 1.1 the tubes still clear the band's edges
+      // with room to spare (measured at 1440×900 and 390×844), and the heart is
+      // what the eye lands on.
+      coverage: 1.1,
     };
   }
 
@@ -826,8 +864,11 @@ export class CardiacOutputScene {
       resistance: this.circuit?.anchors.resistance.clone() ?? new THREE.Vector3(-8.6, -0.4, -3.4),
       return: this.circuit?.anchors.return.clone() ?? new THREE.Vector3(-1, -5.3, -3),
       node: this.circuit?.anchors.node.clone() ?? new THREE.Vector3(6.4, -0.2, -2.95),
+      // Above each heart's base, where the two sit while comparing.
+      comparisonBefore: new THREE.Vector3(-COMPARISON_OFFSET, ANATOMY.baseY + 1.6, 0),
+      comparisonNow: new THREE.Vector3(COMPARISON_OFFSET, ANATOMY.baseY + 1.6, 0),
     };
-    return ANNOTATIONS.map((annotation) => ({
+    return [...ANNOTATIONS, ...COMPARISON_ANNOTATIONS].map((annotation) => ({
       ...annotation,
       position: anchors[annotation.anchor].clone(),
     }));
@@ -841,6 +882,17 @@ export class CardiacOutputScene {
     disposeObject(this.root);
   }
 }
+
+/** The intervention row's value while the condition has been set by hand. */
+const MANUAL_CONDITION = 'manual';
+
+/** Shown only while it is true; never pressable. */
+const MANUAL_OPTION = Object.freeze({
+  value: MANUAL_CONDITION,
+  label: 'Adjusted by hand',
+  labelJa: '手動調整',
+  status: true,
+});
 
 /** Rounding a control's value for display, at the precision the model has. */
 function formatControl(id, value) {

@@ -41,6 +41,7 @@ import { resolve } from 'node:path';
 import { chromium } from 'playwright';
 import { serveDist } from './lib/serve-dist.mjs';
 import { chromiumExecutable } from './lib/browser.mjs';
+import { pressConsoleControl } from './lib/console-controls.mjs';
 
 const argv = process.argv.slice(2);
 const flag = (name) => argv.includes(name);
@@ -225,7 +226,7 @@ await settle(500);
 // the question, and `verify:ui` still owns the measurements.
 const reelButton = page.locator('button[data-control="reel"]');
 if (await reelButton.count()) {
-  await reelButton.first().click();
+  await pressConsoleControl(page, 'button[data-control="reel"]');
   await settle(1200);
   // The sequence's own controls first: they gained a download, and a row of
   // chips that wraps or runs off the side of a phone is only visible here.

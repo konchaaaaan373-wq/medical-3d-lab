@@ -14,6 +14,8 @@ export const INTERVENTION_OPTIONS = [
     value: INTERVENTION_IDS.NONE,
     label: 'No intervention',
     labelJa: '介入なし',
+    short: 'None',
+    shortJa: 'なし',
     effect: 'back to this preset’s starting condition',
     effectJa: 'このプリセットの操作前の条件へ戻す',
   },
@@ -21,6 +23,10 @@ export const INTERVENTION_OPTIONS = [
     value: INTERVENTION_IDS.VOLUME_LOADING,
     label: 'More circulating filling (model input)',
     labelJa: '循環充満量を増やす（モデル入力）',
+    // The short name drops "(model input)"; the read-out's first row carries
+    // the full name the moment this is chosen, and so does the button's title.
+    short: 'More filling',
+    shortJa: '充満量を増やす',
     effect: 'a step in the model’s filling quantity — not a fluid volume',
     effectJa: 'モデル内の充満量を 1 段階上げます。輸液量ではありません',
   },
@@ -31,6 +37,18 @@ export const INTERVENTION_OPTIONS = [
     value: INTERVENTION_IDS.DOBUTAMINE,
     label: 'Dobutamine, a schematic example (rate held)',
     labelJa: 'ドブタミン作用の模式例（心拍数は固定）',
+    // "Schematic" stays even in the short name. "Rate held" moves to the
+    // read-out, which says it the moment this is pressed — beside the figures
+    // it qualifies.
+    short: 'Dobutamine (schematic)',
+    shortJa: 'ドブタミン（模式）',
+    // Said on the button because pressing it on the reference heart switches
+    // the condition row too (its evidence belongs to that preset — see
+    // `requiresPreset` in the model). In the experiment layout the condition
+    // row is the first thing read, and a chip that moved without being told to
+    // reads as a bug.
+    tag: 'on reduced contractility',
+    tagJa: '収縮力低下に適用',
     effect: 'elastance up and resistance down together · rate held',
     effectJa: 'エラスタンス ↑ と血管抵抗 ↓ を同時に・心拍数は固定',
   },

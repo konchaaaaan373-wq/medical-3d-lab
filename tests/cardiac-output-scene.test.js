@@ -182,6 +182,11 @@ test('the class carries every static the shell reads off it', async () => {
   ]) {
     assert.ok(meta[key], `meta.${key} is present`);
   }
+  // Read as before-and-after: a camera that turns on its own shows the second
+  // look from a different side than the first, and a change in the ventricle
+  // cannot be told from a change in the angle.
+  assert.equal(CardiacOutputScene.allowAutoRotate, false, 'the camera holds still between conditions');
+  assert.equal(meta.layout, 'experiment', 'the shell lays it out as an experiment, not a dashboard');
   const entry = SCENE_MANIFEST.find((scene) => scene.id === 'cardiac-output');
   assert.ok(entry, 'and the scene is registered');
   assert.equal(entry.status, 'alpha');
@@ -405,7 +410,26 @@ test('comparison is against this preset’s own before-condition, from the same 
   assert.equal(scene.getPressureVolume().reference, scene.session.baseline.curves);
 
   scene.setComparison(false);
-  assert.equal(scene.getMetrics()[0].reference, undefined, 'and the column goes away again');
+  // Without the second heart the moved condition still carries its "before"
+  // and its signed change, from the same baseline — the reader should not have
+  // to remember what the number was.
+  const off = Object.fromEntries(scene.getMetrics().map((row) => [row.id, row]));
+  assert.equal(off.co.reference, rows.co.reference, 'the before value stays while the condition is moved');
+  assert.equal(
+    off.co.delta,
+    (() => {
+      const d = Math.round((Number(off.co.value) - Number(off.co.reference)) * 10) / 10;
+      return d > 0 ? `+${d.toFixed(1)}` : d < 0 ? `\u2212${Math.abs(d).toFixed(1)}` : '±0';
+    })(),
+    'and the change is the difference of the two figures on the row, at their precision'
+  );
+  assert.equal(off.co.deltaSign, 'down');
+  assert.equal(off.map.deltaSign, 'up');
+
+  scene.resetModelControls();
+  const back = Object.fromEntries(scene.getMetrics().map((row) => [row.id, row]));
+  assert.equal(back.co.reference, undefined, 'and with nothing changed the column goes away again');
+  assert.equal(back.co.delta, undefined);
 });
 
 test('the heart being compared against follows the baseline, not the button', async () => {
@@ -659,20 +683,41 @@ test('whatever the reader has done, every panel is reading one solved beat', asy
         `${where}: the "before" column and the "before" heart disagree`
       );
     } else {
-      assert.equal(rows.edv.reference, undefined, `${where}: a comparison column with nothing to compare`);
+      // Without the second heart, the read-out still says where the numbers
+      // started — whenever they have moved from it — because that is the
+      // comparison a reader makes after pressing anything. It is the same
+      // baseline the comparison uses, so the two cannot disagree; and with
+      // nothing moved there is no column, because "3.7 → 3.7" is not one.
+      const moved = CONTROL_IDS.some((id) => scene.session.view.input[id] !== scene.session.baseline.input[id]);
+      if (moved) {
+        assert.equal(
+          Number(rows.edv.reference),
+          Math.round(scene.session.baseline.metrics.edvMl),
+          `${where}: the "before" column is not this condition's starting point`
+        );
+        assert.match(rows.co.delta, /^(\+|\u2212|±)\d/, `${where}: a moved condition without its change`);
+      } else {
+        assert.equal(rows.edv.reference, undefined, `${where}: a comparison column with nothing to compare`);
+        assert.equal(rows.co.delta, undefined, `${where}: a change with nothing changed`);
+      }
       assert.equal(pv.reference, null, `${where}: a reference loop with nothing to compare`);
     }
   }
   assert.equal(checked, 36, 'the whole product was walked');
 });
 
-test('the comparison says which inputs moved, how far, and how many are held', async () => {
+test('the first row says what was done, in the reader\'s words: which inputs, which way, what was held', async () => {
   const { CardiacOutputScene } = await import(
     '../src/scenes/cardiovascular/scenes/cardiacOutput/CardiacOutputScene.js'
   );
   // D-12 of the external review. Two hearts side by side show that something
   // differs; they do not show *which* of the four it was, and "I changed one
   // thing" is the claim the whole scene rests on.
+  //
+  // The row used to say it in the model's vocabulary — 「2 つ: 抵抗・収縮力（他 2
+  // 固定）」 — which counted inputs instead of saying what happened to them. It
+  // now names each moved input with its direction, and the held ones while
+  // there are few enough to name. What it guarantees is unchanged.
   const session = new ExperimentSession();
   const scene = { session, comparing: false, state: session.view.metrics };
 
@@ -682,35 +727,45 @@ test('the comparison says which inputs moved, how far, and how many are held', a
     return CardiacOutputScene.prototype.getMetrics.call(scene);
   };
 
-  // Emitted whether or not the second heart is drawn: it is the answer to
-  // "what have I done", and a row that only appears while comparing would be
-  // appended below every other row by the panel and land under the fold.
+  // Emitted whether or not the second heart is drawn, and first: the figures
+  // under it are read against it.
   const off = rowsFor(false).find((row) => row.id === 'changed');
   assert.ok(off, 'the row is there without the comparison');
-  assert.match(off.valueJa, /^なし$/);
+  assert.match(off.valueJa, /^なし/);
   assert.equal(rowsFor(false)[0].id, 'changed', 'and it leads the panel');
+  assert.match(rowsFor(true).find((row) => row.id === 'changed').valueJa, /^なし/);
 
-  const untouched = rowsFor(true).find((row) => row.id === 'changed');
-  assert.ok(untouched, 'the comparison names what is being compared');
-  assert.match(untouched.valueJa, /^なし$/);
-
-  // One slider: named, with both values and the number held.
+  // One slider: named, with its direction, both values and the number held.
   session.setControl('systemicResistanceMmHgSPerMl', 1.6);
-  const one = rowsFor(true).find((row) => row.id === 'changed');
-  assert.equal(one.valueJa, '抵抗 1.1 → 1.6（他 3 固定）', 'one moved control is spelled out, with the rest counted');
+  const one = rowsFor(false).find((row) => row.id === 'changed');
+  assert.equal(one.labelJa, '手動調整');
+  assert.equal(one.valueJa, '血管抵抗 ↑ 1.1 → 1.6（他 3 つは固定）', 'one moved control is spelled out, with the rest counted');
   assert.equal(one.unit, '', 'the unit slot renders one language only, so nothing bilingual goes in it');
 
-  // Two sliders: it says two rather than letting a multi-input condition read
-  // as a one-factor comparison.
+  // Two sliders: both named with their directions, so a multi-input condition
+  // never reads as a one-factor comparison.
   session.setControl('heartRatePerMin', 90);
-  const two = rowsFor(true).find((row) => row.id === 'changed');
-  assert.equal(two.valueJa, '2 つ: 抵抗・心拍数（他 2 固定）', 'two or more are named, not spelled out');
+  const two = rowsFor(false).find((row) => row.id === 'changed');
+  assert.equal(two.valueJa, '血管抵抗 ↑・心拍数 ↑（収縮力・充満量は固定）', 'two moved, two held, all four named');
+  assert.equal(two.value, 'Resistance ↑ · Rate ↑ (Contractility, Filling held)');
 
-  // The drug is a multi-input change by construction, and is reported as one.
+  // The drug is a multi-input change by construction, and is reported as one:
+  // its full name (the long name is where its caveat lives), both moved inputs
+  // with their directions, the primary action first — and the rate named as
+  // held, because that is the assumption most easily taken for a fact about
+  // the drug.
   session.selectPreset(PRESET_IDS.REDUCED_CONTRACTILITY);
   session.selectIntervention('dobutamine');
-  const drug = rowsFor(true).find((row) => row.id === 'changed');
-  assert.match(drug.valueJa, /他 2 固定/, 'dobutamine moves elastance and resistance, so two are held');
+  const drug = rowsFor(false).find((row) => row.id === 'changed');
+  assert.equal(drug.labelJa, 'ドブタミン作用の模式例（心拍数は固定）');
+  assert.equal(drug.valueJa, '収縮力 ↑・血管抵抗 ↓（充満量・心拍数は固定）');
+  assert.doesNotMatch(drug.valueJa, /\d/, 'an intervention is described, not quoted in model units');
+
+  // And the filling step names its caveat through its label, not a volume.
+  session.selectIntervention('volume-loading');
+  const volume = rowsFor(false).find((row) => row.id === 'changed');
+  assert.match(volume.labelJa, /モデル入力/);
+  assert.equal(volume.valueJa, '充満量 ↑（他 3 つは固定）');
 });
 
 test('a refused condition never leaves the previous answer standing as the current one', async () => {
@@ -744,7 +799,7 @@ test('a refused condition never leaves the previous answer standing as the curre
   // one that was asked for and refused.
   scene.comparing = true;
   const changed = CardiacOutputScene.prototype.getMetrics.call(scene).find((row) => row.id === 'changed');
-  assert.doesNotMatch(changed.valueJa, /400/, 'a refused request is not reported as a change that happened');
+  assert.doesNotMatch(changed.valueJa, /400|心拍数 ↑/, 'a refused request is not reported as a change that happened');
 
   // Solving again clears it rather than leaving the notice stuck.
   session.setInput({ ...session.baseline.input });
@@ -798,4 +853,38 @@ test('every one of those states survives being captured and restored', async () 
       assert.equal(scene.reference.metrics, scene.session.baseline.metrics, `${where}: stale after restore`);
     }
   }
+});
+
+test('a hand-set condition is reported as one, and 「なし」 undoes it', async () => {
+  // The row used to keep 「なし」 lit while the reader dragged the resistance:
+  // the session clears the intervention when a slider moves, so "none" was
+  // true of the session and false of the screen. The row now reports "adjusted
+  // by hand" — a status, never a model state and never a pressable choice.
+  const scene = await buildScene();
+  const intervention = () => scene.getModelControls().find((c) => c.id === 'intervention');
+  assert.equal(intervention().value, 'none', 'nothing moved: none');
+
+  scene.setModelControl('systemicResistanceMmHgSPerMl', 1.6);
+  assert.equal(intervention().value, 'manual', 'a slider moved: not "none"');
+  const status = intervention().options.find((o) => o.value === 'manual');
+  assert.equal(status.status, true, 'offered as a status, which the console renders as no button');
+  assert.equal(scene.session.interventionId, 'none', 'and the session has no such intervention');
+
+  // After an intervention, touching a slider is also a hand-set condition —
+  // the session computes it from the starting point, without the drug.
+  scene.setModelControl('intervention', 'dobutamine');
+  assert.equal(intervention().value, 'dobutamine', 'the preset intervention on its own');
+  scene.setModelControl('heartRatePerMin', 90);
+  assert.equal(intervention().value, 'manual', 'then changed by hand: says so');
+
+  // A replayed "manual" is ignored rather than handed to the session.
+  const before = { ...scene.session.input };
+  scene.setModelControl('intervention', 'manual');
+  assert.deepEqual({ ...scene.session.input }, before);
+
+  // 「なし」 goes to this condition's starting point from a hand-set one too.
+  scene.setModelControl('intervention', 'none');
+  assert.deepEqual({ ...scene.session.input }, { ...scene.session.baseline.input });
+  assert.equal(intervention().value, 'none');
+  assert.equal(scene.getMetrics().find((row) => row.id === 'changed').labelJa, '変えたもの');
 });
