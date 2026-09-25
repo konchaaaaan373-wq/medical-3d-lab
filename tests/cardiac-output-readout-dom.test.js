@@ -153,15 +153,15 @@ test('read-out: a phone gets four rows and a way to the rest', async () => {
     const session = new ExperimentSession();
     panel.update(await readoutFor(session));
 
-    // The scene declares which rows survive a small screen: the start line,
-    // and the figures the opening experiment (weaker contraction) is about —
-    // stroke volume and output, and the filling pressure that moves the other
-    // way. The stylesheet decides at what width that applies; what is
+    // The scene declares which rows survive a small screen: what was changed,
+    // then the same four computed results whatever is moved — output, stroke
+    // volume, arterial pressure and the filling pressure that often moves the
+    // other way. The stylesheet decides at what width that applies; what is
     // asserted here is the declaration and the affordance.
     const compact = panel.element.children
       .filter((node) => node.dataset?.compact === 'key')
       .map((node) => findByClass(node, 'metric-label')[0].children[1].textContent);
-    assert.deepEqual(compact, ['開始時（基準）', '1回拍出量 SV', '心拍出量 CO', '左室充満圧（LVEDP）']);
+    assert.deepEqual(compact, ['開始時（基準）のまま', '心拍出量 CO', '1回拍出量 SV', '平均動脈圧 MAP', '左室充満圧（LVEDP）']);
 
     // Output without the pressure it cost is the wrong half of this scene's
     // teaching, so the two travel together.

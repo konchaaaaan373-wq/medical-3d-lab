@@ -106,6 +106,7 @@ export const CONTROLS = [
     // volumes plus the *whole* volume of the three chambers, which is a sum
     // over two different zero-pressure references. See MODEL_SCOPE.
     id: 'fillingVolumeMl',
+    unitShort: 'mL',
     // A name short enough for a read-out row. The full label belongs on the
     // control, where there is a line to spend on it.
     short: 'Filling',
@@ -119,6 +120,7 @@ export const CONTROLS = [
     // pressure it is measured across is this model's systemic venous pressure,
     // which is not a central venous pressure.
     id: 'systemicResistanceMmHgSPerMl',
+    unitShort: 'mmHg·s/mL',
     // A name short enough for a read-out row. The full label belongs on the
     // control, where there is a line to spend on it.
     short: 'Resistance',
@@ -129,6 +131,7 @@ export const CONTROLS = [
   },
   {
     id: 'contractilityEesMmHgPerMl',
+    unitShort: 'mmHg/mL',
     // A name short enough for a read-out row. The full label belongs on the
     // control, where there is a line to spend on it.
     short: 'Contractility',
@@ -143,6 +146,7 @@ export const CONTROLS = [
     // "faster is more" home, and nothing in the declared range contradicts
     // them (see §14 of the card).
     id: 'heartRatePerMin',
+    unitShort: '/min',
     // A name short enough for a read-out row. The full label belongs on the
     // control, where there is a line to spend on it.
     short: 'Rate',
@@ -154,74 +158,53 @@ export const CONTROLS = [
 ];
 
 /**
- * The experiments a reader can run without designing one.
+ * The two pads: each moves two of the four independent inputs.
  *
- * Each is one question, one press and one way back: it moves exactly one of
- * the four inputs, from the reference heart's starting value to `to`, and
- * holds the other three. Nothing here is a new model state — the press goes
- * through `setModelControl` like a slider — and every `to` is a value the
- * scene already uses and the model already verifies:
+ * A hypothesis to try, not a finding (owner's brief, 2026-09-25): the heart's
+ * own two inputs on one pad, the circulation's on the other.
  *
- * - contractility 2.74 → 1.2 mmHg/mL: the reduced-contractility preset's own
- *   elastance (`PRESET_OVERRIDES`), so the two paths agree;
- * - resistance 1.1 → 1.6: the step the resistance lesson and the reel take;
- * - filling 710 → 830: the volume intervention's +120.
+ * | Pad    | x: left → right                  | y: bottom → top             |
+ * | ------ | -------------------------------- | --------------------------- |
+ * | heart  | contractility: weaker → stronger | rate: slower → faster       |
+ * | blood  | filling: less → more             | resistance: lower → higher  |
  *
- * `watch` is what the read-out puts first while this experiment is chosen —
- * the figures it is about, plus the one that moves the *other* way, which a
- * shorter list would hide (weaker contraction lowers output and raises the
- * filling pressure). The rest stay one press away under 「他の指標」.
- *
- * Heart rate is not offered as an experiment: across the model's range output
- * never falls as the rate rises (§14 of the model card), and a one-press
- * experiment would teach "faster is more".
+ * The pad is an input surface, not a map of conditions: no region of it is
+ * coloured or named as normal, failing or improved, and no corner is a goal.
+ * Every point inside it is inside each input's declared range, and all
+ * sixteen corner combinations of the four ranges solve — which is a statement
+ * about the numerics, not that each corner is a plausible patient (the model
+ * card, §4).
  */
-export const EXPERIMENTS = [
+export const CONTROL_PADS = [
   {
-    id: 'weaker-contraction',
-    control: 'contractilityEesMmHgPerMl',
-    to: 1.2,
-    question: 'Weaken the heart’s contraction — what changes?',
-    questionJa: '心臓の収縮を弱めると、どう変わる？',
-    action: 'Weaken contraction',
-    actionJa: '収縮を弱める',
-    watch: ['sv', 'co', 'lvedp'],
+    id: 'heart',
+    label: 'Heart',
+    labelJa: '心臓',
+    x: 'contractilityEesMmHgPerMl',
+    y: 'heartRatePerMin',
   },
   {
-    id: 'higher-resistance',
-    control: 'systemicResistanceMmHgSPerMl',
-    to: 1.6,
-    question: 'Raise the systemic resistance — what changes?',
-    questionJa: '血管抵抗を上げると、どう変わる？',
-    action: 'Raise resistance',
-    actionJa: '血管抵抗を上げる',
-    watch: ['map', 'sv', 'co'],
-  },
-  {
-    id: 'more-filling',
-    control: 'fillingVolumeMl',
-    to: 830,
-    question: 'More circulating filling (a model quantity, not a fluid volume) — what changes?',
-    questionJa: '循環充満量（モデル内の量）を増やすと、どう変わる？',
-    action: 'Increase filling',
-    actionJa: '充満量を増やす',
-    watch: ['sv', 'co', 'lvedp'],
+    id: 'circulation',
+    label: 'Blood & vessels',
+    labelJa: '血液・血管',
+    x: 'fillingVolumeMl',
+    y: 'systemicResistanceMmHgSPerMl',
   },
 ];
 
-/** The words around the experiment: the way back and the way to the others. */
-export const EXPERIMENT_COPY = {
+/** The pads' fixed words. */
+export const PAD_COPY = {
+  hint: 'Drag a point to change two inputs; use an axis to change one.',
+  hintJa: '点で2項目、軸で1項目を調整',
+  start: 'Start',
+  startJa: '開始時',
   undo: 'Undo',
-  undoJa: '元に戻す',
-  others: 'Try another',
-  othersJa: 'ほかの条件を試す',
-  othersNote: 'Choosing one starts it from the reference heart.',
-  othersNoteJa: '選ぶと、基準の心臓から始まります。',
+  undoJa: '直前の操作を戻す',
 };
 
 /**
- * How each of the four inputs is moved in the editor: the words on the two
- * buttons, and how far one press goes.
+ * How each of the four inputs is moved on its axis: the words on its two ends
+ * and its two buttons, and how far one press goes.
  *
  * The words name the direction in the input's own terms — filling is
  * "less / more", contractility "weaker / stronger" — rather than a bare − and
@@ -234,23 +217,12 @@ export const EXPERIMENT_COPY = {
  * are the model's (`CONTROL_DOMAIN`) and are not widened here.
  */
 export const CONTROL_EDITOR = {
-  fillingVolumeMl: { nudge: 20, decrease: 'Less', decreaseJa: '減らす', increase: 'More', increaseJa: '増やす' },
-  systemicResistanceMmHgSPerMl: { nudge: 0.05, decrease: 'Lower', decreaseJa: '下げる', increase: 'Higher', increaseJa: '上げる' },
-  contractilityEesMmHgPerMl: { nudge: 0.16, decrease: 'Weaker', decreaseJa: '弱める', increase: 'Stronger', increaseJa: '強める' },
-  heartRatePerMin: { nudge: 3, decrease: 'Slower', decreaseJa: '下げる', increase: 'Faster', increaseJa: '上げる' },
+  fillingVolumeMl: { nudge: 20, decrease: 'Less', decreaseJa: '減らす', increase: 'More', increaseJa: '増やす', low: 'less', lowJa: '少ない', high: 'more', highJa: '多い' },
+  systemicResistanceMmHgSPerMl: { nudge: 0.05, decrease: 'Lower', decreaseJa: '下げる', increase: 'Higher', increaseJa: '上げる', low: 'lower', lowJa: '低い', high: 'higher', highJa: '高い' },
+  contractilityEesMmHgPerMl: { nudge: 0.16, decrease: 'Weaker', decreaseJa: '弱める', increase: 'Stronger', increaseJa: '強める', low: 'weaker', lowJa: '弱い', high: 'stronger', highJa: '強い' },
+  heartRatePerMin: { nudge: 3, decrease: 'Slower', decreaseJa: '下げる', increase: 'Faster', increaseJa: '上げる', low: 'slower', lowJa: '遅い', high: 'faster', highJa: '速い' },
 };
 
-/** The editor's fixed words. */
-export const EDITOR_COPY = {
-  label: 'Input to change',
-  labelJa: '変える入力',
-  current: 'Now',
-  currentJa: '現在',
-  start: 'Start',
-  startJa: '開始時',
-  resetOne: 'Reset this',
-  resetOneJa: 'この項目を戻す',
-};
 
 /**
  * The console's copy.
@@ -269,29 +241,20 @@ export const MODEL_CONTROLS = {
   reset: true,
   // The whole experiment back to where it started — the starting state the
   // reader chose, not the page's opening state, and not the view (that is in
-  // the menu). It stands beside the editor's 「この項目を戻す」, so the two
-  // scopes are read against each other.
-  resetLabel: 'Reset all',
-  resetLabelJa: '全体を戻す',
+  // the menu). It stands beside 「直前の操作を戻す」, so the two scopes are
+  // read against each other.
+  resetLabel: 'Back to start',
+  resetLabelJa: '開始時に戻す',
   hideChoiceEffects: true,
-  editor: EDITOR_COPY,
-  // Everything past the experiment: the four inputs, the start state and
-  // an intervention. It carries on from the condition on screen — opening
-  // it changes nothing.
-  advanced: {
-    label: 'Adjust in detail',
-    labelJa: '詳しく調整',
-  },
-  // Inside it, one more press: starting from another state, or applying an
+  // Behind one press: starting from another state, or applying an
   // intervention, replaces the condition rather than adjusting it.
-  groups: {
-    start: {
-      label: 'Start state · intervention',
-      labelJa: '開始状態・介入',
-      note: 'Choosing a start state begins a new experiment and replaces your changes. An intervention is applied to the start state.',
-      noteJa: '開始状態を選ぶと新しい実験になり、調整は置き換わります。介入は開始状態に対してかかります。',
-    },
+  advanced: {
+    label: 'Start state · intervention',
+    labelJa: '開始状態・介入',
+    note: 'Choosing a start state begins a new experiment and replaces your changes. An intervention is applied to the start state.',
+    noteJa: '開始状態を選ぶと新しい実験になり、調整は置き換わります。介入は開始状態に対してかかります。',
   },
+  pads: PAD_COPY,
 };
 
 /**

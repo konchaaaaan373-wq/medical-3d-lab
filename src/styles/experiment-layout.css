@@ -154,184 +154,233 @@
   color: inherit;
 }
 
-/* ---------- the editor: four inputs named, one moved ---------- */
+/* ---------- the two pads ---------- */
 
-#ui[data-layout='experiment'] .model-control.is-editor {
+/* The pads side by side, the heart's first (left), and under them one line of
+   actions: undo one operation, back to the start. */
+#ui[data-layout='experiment'] .console .model-controls > .model-control-list {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px 10px;
+  min-width: 0;
+}
+
+#ui[data-layout='experiment'] .model-control.is-pad[data-pad='heart'] {
+  order: -1;
+}
+
+#ui[data-layout='experiment'] .model-control-actions {
+  grid-column: 1 / -1;
   display: flex;
-  flex-direction: column;
+  flex-wrap: wrap;
+  align-items: flex-start;
   gap: 6px;
-  min-width: 0;
+  /* "More" sits at the right end of this line (the console grid puts it
+     there); the actions leave it the room. */
+  padding-right: 52px;
 }
 
-#ui[data-layout='experiment'] .model-editor-tabs {
-  display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
-  gap: 4px;
+#ui[data-layout='experiment'] .model-control-undo-short {
+  display: none;
 }
 
-#ui[data-layout='experiment'] .model-editor-tab {
-  position: relative;
+/* Opened, the start state · intervention takes the line's full width under
+   the buttons. */
+#ui[data-layout='experiment'] .model-control-actions .model-controls-advanced[open] {
+  flex-basis: 100%;
+}
+
+/* Choosing a start state or an intervention is a separate act — it replaces
+   the condition rather than adjusting it — so while that menu is open the
+   pads step back at every width. At 1280×720 the pads and the open menu
+   together ran the console past the bottom of the window, and the chips could
+   not be pressed (verify:disease). */
+#ui[data-layout='experiment'] .console:has(.model-controls-advanced[open]) .model-control.is-pad {
+  display: none;
+}
+
+#ui[data-layout='experiment'] .model-control-undo,
+#ui[data-layout='experiment'] .model-control-actions .model-control-reset {
   min-height: 44px;
-  min-width: 0;
-  padding: 0 4px;
-  border-radius: 10px;
-  border: 1px solid rgba(167, 182, 206, 0.24);
-  background: rgba(255, 255, 255, 0.03);
-  color: var(--ink-dim);
-  font-size: 13px;
-  font-weight: 600;
-  line-height: 1.15;
-  cursor: pointer;
-}
-
-#ui[data-layout='experiment'] .model-editor-tab[aria-selected='true'] {
-  color: var(--accent-ink, #04212a);
-  background: var(--accent);
-  border-color: var(--accent);
-}
-
-/* "Moved from the start": a dot that is always in the box and only shows. */
-#ui[data-layout='experiment'] .model-editor-tab-mark {
-  position: absolute;
-  top: 3px;
-  right: 5px;
-  font-size: 12px;
-  line-height: 1;
-  visibility: hidden;
-}
-
-#ui[data-layout='experiment'] .model-editor-tab.is-changed .model-editor-tab-mark {
-  visibility: visible;
-}
-
-#ui[data-layout='experiment'] .model-editor-panel {
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
-  min-width: 0;
-}
-
-/* The full name — definition and unit — on one line, so switching inputs
-   cannot change the editor's height. The whole name is also its title. */
-#ui[data-layout='experiment'] .model-editor-name {
-  display: block;
-  font-size: 12px;
-  line-height: 18px;
-  height: 18px;
-  color: var(--ink-dim);
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-
-#ui[data-layout='experiment'] .model-editor-row {
-  display: grid;
-  grid-template-columns: auto minmax(0, 1fr) auto;
-  align-items: center;
-  gap: 8px;
-}
-
-#ui[data-layout='experiment'] .model-editor-step {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  gap: 4px;
-  min-width: 44px;
-  min-height: 44px;
-  padding: 0 10px;
+  padding: 0 12px;
   border-radius: 10px;
   border: 1px solid rgba(167, 182, 206, 0.3);
   background: rgba(255, 255, 255, 0.04);
   color: var(--ink);
   font-size: 13px;
-  font-weight: 600;
-  touch-action: manipulation;
+  text-decoration: none;
+  white-space: nowrap;
+  margin: 0;
 }
 
-#ui[data-layout='experiment'] .model-editor-step-sign {
-  font-size: 18px;
-  line-height: 1;
+#ui[data-layout='experiment'] .model-control-undo:disabled,
+#ui[data-layout='experiment'] .model-control-actions .model-control-reset:disabled {
+  opacity: 0.4;
 }
 
-#ui[data-layout='experiment'] .model-editor-step:disabled {
-  opacity: 0.35;
-}
-
-/* The track: the range is 44 px tall so the whole strip is its hit area, and
-   it takes the gesture — no page scroll, no camera turn — while dragged. */
-#ui[data-layout='experiment'] .model-editor-track {
-  position: relative;
-  display: block;
+/* One pad: its name; the y axis (a button at each end and a range between)
+   beside the surface; the x axis under it. Fixed sizes throughout, so a
+   first change, a value growing a digit or a start mark appearing moves
+   nothing. */
+#ui[data-layout='experiment'] .model-control.is-pad {
+  --pad-h: 150px;
+  display: grid;
+  grid-template-rows: auto var(--pad-h) 44px;
+  gap: 4px;
   min-width: 0;
 }
 
-#ui[data-layout='experiment'] .model-editor-slider {
-  display: block;
+#ui[data-layout='experiment'] .pad-name {
+  font-size: 12px;
+  font-weight: 650;
+  line-height: 16px;
+  color: var(--ink-dim);
+}
+
+#ui[data-layout='experiment'] .pad-body {
+  display: grid;
+  grid-template-columns: 44px minmax(0, 1fr);
+  gap: 4px;
+  min-width: 0;
+}
+
+#ui[data-layout='experiment'] .pad-y {
+  display: grid;
+  grid-template-rows: 44px minmax(0, 1fr) 44px;
+  gap: 2px;
+}
+
+/* The y range: an ordinary horizontal range turned a quarter, so it works the
+   same in every browser and keeps its keyboard, name and value. Its length is
+   the track's height. */
+#ui[data-layout='experiment'] .pad-y-track {
+  position: relative;
+  min-height: 0;
+}
+
+#ui[data-layout='experiment'] .pad-range-y {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: calc(var(--pad-h) - 92px);
+  height: 44px;
+  margin: 0;
+  transform: translate(-50%, -50%) rotate(-90deg);
+  touch-action: none;
+}
+
+#ui[data-layout='experiment'] .pad-x {
+  display: grid;
+  grid-template-columns: 44px minmax(0, 1fr) 44px;
+  gap: 4px;
+  align-items: center;
+}
+
+#ui[data-layout='experiment'] .pad-range-x {
   width: 100%;
   height: 44px;
   margin: 0;
   touch-action: none;
 }
 
-/* Where this experiment started, on the track: a tick, not a colour band, and
-   not called "normal". Placed on the thumb's travel, which is inset by half a
-   thumb at each end. */
-#ui[data-layout='experiment'] .model-editor-start-mark {
+#ui[data-layout='experiment'] .pad-step {
+  display: inline-flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  width: 44px;
+  height: 44px;
+  padding: 0;
+  border-radius: 10px;
+  border: 1px solid rgba(167, 182, 206, 0.3);
+  background: rgba(255, 255, 255, 0.04);
+  color: var(--ink);
+  font-size: 17px;
+  font-weight: 700;
+  line-height: 1;
+  touch-action: manipulation;
+}
+
+#ui[data-layout='experiment'] .pad-step:disabled {
+  opacity: 0.35;
+}
+
+/* The surface: a plain field. No colour bands, no named regions, no corner
+   that reads as a goal — it is an input, not a map of conditions. */
+#ui[data-layout='experiment'] .pad-area {
+  position: relative;
+  min-width: 0;
+  border-radius: 10px;
+  border: 1px solid rgba(167, 182, 206, 0.28);
+  background: rgba(255, 255, 255, 0.03);
+  touch-action: none;
+  user-select: none;
+  -webkit-user-select: none;
+  cursor: grab;
+  overflow: hidden;
+}
+
+#ui[data-layout='experiment'] .pad-area.is-dragging {
+  cursor: grabbing;
+  border-color: rgba(214, 226, 245, 0.55);
+}
+
+/* The current point: filled. The point's travel is inset by its radius (14
+   px), the same inset the pointer mapping uses. */
+#ui[data-layout='experiment'] .pad-thumb {
   position: absolute;
-  top: 8px;
-  bottom: 8px;
-  left: calc(9px + var(--start, 0) * (100% - 18px));
-  width: 2px;
-  margin-left: -1px;
-  background: var(--ink-dim);
-  border-radius: 1px;
+  left: calc(14px + var(--px, 0.5) * (100% - 28px));
+  top: calc(14px + (1 - var(--py, 0.5)) * (100% - 28px));
+  width: 22px;
+  height: 22px;
+  margin: -11px 0 0 -11px;
+  border-radius: 50%;
+  background: var(--accent);
+  box-shadow: 0 0 0 3px rgba(4, 18, 26, 0.85);
   pointer-events: none;
 }
 
-#ui[data-layout='experiment'] .model-editor-start-mark[hidden] {
-  display: none;
+/* Where this experiment started: a hollow ring, told from the point by shape
+   as well as fill. Not called normal. */
+#ui[data-layout='experiment'] .pad-start {
+  position: absolute;
+  left: calc(14px + var(--sx, 0.5) * (100% - 28px));
+  top: calc(14px + (1 - var(--sy, 0.5)) * (100% - 28px));
+  width: 16px;
+  height: 16px;
+  margin: -8px 0 0 -8px;
+  border-radius: 50%;
+  border: 2px solid var(--ink-dim);
+  pointer-events: none;
 }
 
-#ui[data-layout='experiment'] .model-editor-values {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  min-height: 44px;
+/* The two values, inside the surface where the finger is not: the y value at
+   the top, the x value at the bottom. */
+#ui[data-layout='experiment'] .pad-read {
+  position: absolute;
+  left: 6px;
+  right: 6px;
+  font-size: 12px;
+  line-height: 16px;
+  color: var(--ink-dim);
   white-space: nowrap;
-  font-size: 12px;
-  color: var(--ink-dim);
-}
-
-#ui[data-layout='experiment'] .model-editor-caption {
-  margin-right: 4px;
-}
-
-#ui[data-layout='experiment'] .model-editor-current-value {
-  font-size: 16px;
-  font-weight: 700;
-  color: var(--ink);
-  font-variant-numeric: tabular-nums;
-  display: inline-block;
-  min-width: 3.2em;
-}
-
-#ui[data-layout='experiment'] .model-editor-start-value {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  pointer-events: none;
   font-variant-numeric: tabular-nums;
 }
 
-#ui[data-layout='experiment'] .model-editor-reset {
-  margin-left: auto;
-  min-height: 44px;
-  padding: 0 10px;
-  border-radius: 8px;
-  border: 1px solid rgba(167, 182, 206, 0.3);
-  background: none;
-  color: var(--ink-dim);
-  font-size: 12px;
+#ui[data-layout='experiment'] .pad-read-y {
+  top: 4px;
 }
 
-#ui[data-layout='experiment'] .model-editor-reset:disabled {
-  opacity: 0.4;
+#ui[data-layout='experiment'] .pad-read-x {
+  bottom: 4px;
+  text-align: right;
+}
+
+#ui[data-layout='experiment'] .pad-end {
+  display: none;
 }
 
 /* ---------- the start state and the intervention: one press away ---------- */
@@ -394,16 +443,15 @@
   color: var(--ink-faint);
 }
 
-/* The console as one grid. The experiment across the top — its question,
-   then its one press and the way back — and under it one line of the rest:
-   another experiment, adjusting in detail, and "More". The notice last.
-   The panels inside the console are flattened into it, so each of those
-   lands where it is placed here. */
+/* ---------- the console as one grid ----------
+   Row 1: the pads and, on their last line, the actions — with "More" at the
+   right of that line. Row 2: the start state · intervention, and the notice.
+   The panels inside the console are flattened into it. */
 #ui#ui[data-layout='experiment'] .console {
   display: grid;
-  grid-template-columns: auto auto minmax(0, 1fr) auto;
+  grid-template-columns: auto minmax(0, 1fr) auto;
   align-items: center;
-  column-gap: 8px;
+  column-gap: 10px;
   row-gap: 8px;
 }
 
@@ -412,264 +460,44 @@
 }
 
 #ui[data-layout='experiment'] .console > .model-controls.is-primary,
-#ui[data-layout='experiment'] .console > .controls,
-#ui[data-layout='experiment'] .console .model-controls > .model-control-list,
-#ui[data-layout='experiment'] .console .model-control.is-experiment {
+#ui[data-layout='experiment'] .console > .controls {
   display: contents;
 }
 
-#ui[data-layout='experiment'] .console .model-experiment-question {
+#ui#ui[data-layout='experiment'] .console .model-controls.is-primary {
+  max-height: none;
+  overflow: visible;
+}
+
+#ui[data-layout='experiment'] .console .model-controls > .model-control-list {
   grid-column: 1 / -1;
   grid-row: 1;
-  margin: 0;
-  font-size: 13px;
-  font-weight: 600;
-  line-height: 1.35;
-  color: var(--ink);
-  min-width: 0;
 }
 
-#ui[data-layout='experiment'] .console .model-experiment-actions {
-  grid-column: 1 / -1;
-  grid-row: 2;
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) auto;
-  gap: 8px;
+#ui[data-layout='experiment'] .console .model-controls-head {
+  display: none;
 }
 
-/* The one press: the largest thing on the console. Pressed, it stays where it
-   is and says so; the way back beside it becomes available. */
-#ui[data-layout='experiment'] .model-experiment-act {
-  min-height: 52px;
-  padding: 0 16px;
-  border-radius: 12px;
-  border: 1px solid var(--accent);
-  background: var(--accent);
-  color: var(--accent-ink, #04212a);
-  font-size: 16px;
-  font-weight: 700;
-  cursor: pointer;
-}
-
-#ui[data-layout='experiment'] .model-experiment-act[aria-pressed='true'] {
-  background: rgba(56, 225, 239, 0.12);
-  color: var(--accent);
-  cursor: default;
-}
-
-#ui[data-layout='experiment'] .model-experiment-act[aria-pressed='true']::before {
-  content: '✓ ';
-}
-
-#ui[data-layout='experiment'] .model-experiment-undo {
-  min-height: 52px;
-  min-width: 96px;
-  padding: 0 14px;
-  border-radius: 12px;
-  border: 1px solid rgba(167, 182, 206, 0.35);
-  background: rgba(255, 255, 255, 0.04);
-  color: var(--ink);
-  font-size: 14px;
-  font-weight: 600;
-}
-
-#ui[data-layout='experiment'] .model-experiment-undo:disabled {
-  opacity: 0.4;
-}
-
-/* The line under the experiment: the other experiments, the detail, More. */
-#ui[data-layout='experiment'] .console .model-experiment-others {
-  grid-column: 1;
-  grid-row: 3;
-  position: relative;
-  min-width: 0;
-}
-
-#ui[data-layout='experiment'] .console .model-controls-advanced {
-  grid-column: 2;
-  grid-row: 3;
-  min-width: 0;
-}
-
+/* "More" on the actions' line, at its right. */
 #ui[data-layout='experiment'] .console .controls > .button-row {
-  grid-column: 4;
-  grid-row: 3;
-  flex-wrap: nowrap;
+  grid-column: 3;
+  grid-row: 1;
+  align-self: end;
   justify-content: flex-end;
+  flex-wrap: nowrap;
   gap: 4px;
-}
-
-#ui[data-layout='experiment'] .console .controls > .disclaimer {
-  grid-column: 1 / -1;
-  grid-row: 5;
-  margin: 0;
-  font-size: 12px;
 }
 
 #ui[data-layout='experiment'] .console .button-row > .button-gap {
   display: none;
 }
 
-/* Holds only the (hidden) title: the whole-reset stands in the editor. */
-#ui[data-layout='experiment'] .console .model-controls-head {
-  display: none;
-}
-
-#ui[data-layout='experiment'] .model-experiment-others > summary,
-#ui[data-layout='experiment'] .model-controls-advanced > summary {
-  list-style: none;
-  cursor: pointer;
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  min-height: 44px;
-  padding: 0 10px;
-  border-radius: 10px;
-  border: 1px solid rgba(167, 182, 206, 0.24);
-  font-size: 13px;
-  color: var(--ink-dim);
-  white-space: nowrap;
-}
-
-#ui[data-layout='experiment'] .model-experiment-others > summary::-webkit-details-marker {
-  display: none;
-}
-
-/* Another experiment opens as a small menu over the console, like "More": it
-   is two choices, and opening it moves nothing. */
-#ui[data-layout='experiment'] .model-experiment-others-body {
-  position: absolute;
-  left: 0;
-  bottom: calc(100% + 8px);
-  z-index: 5;
-  width: min(320px, calc(100vw - 40px));
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-  padding: 8px;
-  border-radius: 12px;
-  border: 1px solid var(--border);
-  background: #0c121c;
-  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.45);
-}
-
-#ui[data-layout='experiment'] .model-experiment-others-list {
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-}
-
-#ui[data-layout='experiment'] .model-experiment-other {
-  min-height: 44px;
-  padding: 6px 12px;
-  border-radius: 10px;
-  border: 1px solid rgba(167, 182, 206, 0.3);
-  background: rgba(255, 255, 255, 0.04);
-  color: var(--ink);
-  font-size: 13px;
-  text-align: left;
-}
-
-#ui[data-layout='experiment'] .model-experiment-other[hidden] {
-  display: none;
-}
-
-#ui[data-layout='experiment'] .model-experiment-others-note {
-  margin: 2px 4px 0;
-  font-size: 12px;
-  color: var(--ink-faint);
-}
-
-/* Adjusting in detail is a mode of its own: while it is open it takes the
-   console's full width, from the top. The experiment is the same condition —
-   pressing the experiment again is one close away. */
-#ui[data-layout='experiment'] .console .model-controls-advanced[open] {
+#ui[data-layout='experiment'] .console .controls > .disclaimer {
   grid-column: 1 / -1;
-  grid-row: 1;
-}
-
-#ui[data-layout='experiment'] .console:has(.model-controls-advanced[open]) .model-experiment-question,
-#ui[data-layout='experiment'] .console:has(.model-controls-advanced[open]) .model-experiment-actions,
-#ui[data-layout='experiment'] .console:has(.model-controls-advanced[open]) .model-experiment-others {
-  display: none;
-}
-
-/* "More" shares the first line with the open disclosure's summary — the
-   disclosure's own line is empty to the right of it — so adjusting in detail
-   costs the heart no extra row. */
-#ui[data-layout='experiment'] .console:has(.model-controls-advanced[open]) .controls > .button-row {
-  grid-row: 1;
-  grid-column: 4;
-  align-self: start;
-  z-index: 1;
-}
-
-/* Both resets inside the editor are buttons of one kind, side by side, so
-   their two scopes — this input, the whole experiment — are read against
-   each other; and both are 44 px (verify:disease measures it). */
-#ui[data-layout='experiment'] .model-editor-values .model-control-reset {
-  min-height: 44px;
-  padding: 0 10px;
-  border-radius: 8px;
-  border: 1px solid rgba(167, 182, 206, 0.3);
-  background: none;
-  color: var(--ink-dim);
+  grid-row: 2;
+  margin: 0;
   font-size: 12px;
-  text-decoration: none;
-  white-space: nowrap;
-  margin-left: 0;
-}
-
-/* The start state and the intervention: one press further in. Opening them
-   is choosing a new start, not adjusting this one, so while they are open
-   the editor steps back and the console does not take the heart's band. */
-#ui[data-layout='experiment'] .console:has(.model-controls-group[open]) .model-controls-advanced-body > .model-control-list {
-  display: none;
-}
-
-#ui[data-layout='experiment'] .model-controls-group {
-  margin-top: 0;
-}
-
-/* The disclosure's summary has a fixed width, so the start-state summary can
-   stand beside it on the console's first line (below). */
-#ui[data-layout='experiment'] .console .model-controls-advanced > summary {
-  width: 124px;
-  justify-content: center;
-}
-
-/* On the console's first line, beside 「詳しく調整」: the start state and
-   the intervention are one press further in, and a line of their own cost the
-   heart 52 px on a phone. Positioned against the console (a fixed box, so the
-   containing block), at the console's padding plus the summary's width. */
-#ui[data-layout='experiment'] .console:has(.model-controls-advanced[open]) .model-controls-group > summary {
-  position: absolute;
-  top: var(--console-pad-top, 8px);
-  left: calc(var(--console-pad-left, 12px) + 132px);
-}
-
-#ui[data-layout='experiment'] .model-controls-group > summary {
-  list-style: none;
-  cursor: pointer;
-  display: inline-flex;
-  align-items: center;
-  min-height: 44px;
-  padding: 0 10px;
-  border-radius: 10px;
-  border: 1px solid rgba(167, 182, 206, 0.24);
-  font-size: 13px;
-  color: var(--ink-dim);
-}
-
-#ui[data-layout='experiment'] .model-controls-group > summary::-webkit-details-marker {
-  display: none;
-}
-
-#ui[data-layout='experiment'] .model-controls-group > .model-control-list {
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
-  margin-top: 8px;
+  line-height: 1.35;
 }
 
 /* During a lesson the lesson drives the condition; the controls it would
@@ -830,7 +658,7 @@
      the press and the figures stay within about 1240 px of each other, and
      the space beyond is margin rather than a gap between them. */
   #ui[data-layout='experiment'] {
-    --experiment-column: 384px;
+    --experiment-column: 440px;
     --experiment-edge: max(14px, env(safe-area-inset-right), calc((100vw - 1240px) / 2));
     padding-right: var(--experiment-edge);
   }
@@ -1015,14 +843,14 @@
 
   #ui[data-layout='experiment'] .metrics.has-compact {
     display: grid;
-    grid-template-columns: repeat(3, minmax(0, 1fr));
+    grid-template-columns: repeat(4, minmax(0, 1fr));
     gap: 4px 10px;
     min-width: 0;
     padding: 8px 12px;
   }
 
   #ui[data-layout='experiment'] .metrics.has-compact .metric.is-qualitative {
-    grid-column: 1 / 3;
+    grid-column: 1 / 4;
     grid-row: 1;
     padding-bottom: 4px;
     margin: 0;
@@ -1044,7 +872,7 @@
   }
 
   #ui[data-layout='experiment'] .metrics.has-compact .metrics-more {
-    grid-column: 3;
+    grid-column: 4;
     grid-row: 1;
     justify-self: end;
     align-self: start;
@@ -1082,35 +910,55 @@
   }
 
   #ui[data-layout='experiment'] .metrics.has-compact .metric:not(.is-qualitative) .metric-change { grid-area: 1 / 1; }
-  #ui[data-layout='experiment'] .metrics.has-compact .metric:not(.is-qualitative) .metric-value { grid-area: 1 / 2; font-size: 20px; line-height: 1.15; }
+  #ui[data-layout='experiment'] .metrics.has-compact .metric:not(.is-qualitative) .metric-value { grid-area: 1 / 2; font-size: 16px; line-height: 1.15; }
   #ui[data-layout='experiment'] .metrics.has-compact .metric:not(.is-qualitative) .metric-unit { grid-area: 1 / 3; font-size: 12px; }
   #ui[data-layout='experiment'] .metrics.has-compact .metric:not(.is-qualitative) .metric-reference { grid-area: 2 / 1 / 3 / 3; font-size: 12px; margin: 0; }
   #ui[data-layout='experiment'] .metrics.has-compact .metric:not(.is-qualitative) .metric-delta { grid-area: 2 / 3; font-size: 12px; margin: 0; }
 
-  /* The console: the editor, then the disclosure and the reset, then the
-     tools and the notice. Not a scroll box — "More" opens above its button
-     and a scrolling console clips it (L-116) — and nothing inside it scrolls
-     either: the four inputs are one row and one editor, so there is nothing
-     to scroll to. */
+  /* The console: the two pads, their actions and "More", then the start
+     state · intervention and the notice. Not a scroll box — "More" opens
+     above its button and a scrolling console clips it (L-116) — and nothing
+     inside it scrolls either. */
   #ui#ui[data-layout='experiment'] .console {
     max-height: none !important;
     overflow: visible;
     padding: 8px 12px 6px;
     row-gap: 6px;
-    --console-pad-top: 8px;
-    --console-pad-left: 12px;
+    column-gap: 8px;
   }
 
-  /* The editor's step buttons keep their words where there is room. */
-  #ui[data-layout='experiment'] .model-editor-step {
-    padding: 0 8px;
+  #ui[data-layout='experiment'] .console .model-controls > .model-control-list {
+    gap: 6px 8px;
   }
 
-  /* Choosing a start state or an intervention is a separate act: while that
-     menu is open the editor steps back, so the heart keeps its band. The
-     clinical-use notice stays: a caveat is never what gives
-     (tests/medical-caveat.test.js). */
-  #ui[data-layout='experiment'] .console:has(.model-controls-advanced[open]) .model-controls > .model-control-list {
+  #ui[data-layout='experiment'] .model-control.is-pad {
+    --pad-h: 136px;
+  }
+
+  #ui[data-layout='experiment'] .model-control-undo-long {
+    display: none;
+  }
+
+  #ui[data-layout='experiment'] .model-control-undo-short {
+    display: inline;
+  }
+
+  #ui[data-layout='experiment'] .model-control-undo,
+  #ui[data-layout='experiment'] .model-control-actions .model-control-reset,
+  #ui[data-layout='experiment'] .model-control-actions .model-controls-advanced > summary {
+    padding: 0 9px;
+    font-size: 12px;
+  }
+
+  /* One line for the three actions and "More" at 375 px: measured, the three
+     came to 288 px in a 284 px line and the last wrapped (costing the heart a
+     row). The chevron gives way; the words do not. */
+  #ui[data-layout='experiment'] .model-control-actions {
+    gap: 4px;
+    padding-right: 48px;
+  }
+
+  #ui[data-layout='experiment'] .model-control-actions .model-controls-advanced > summary::before {
     display: none;
   }
 
@@ -1150,43 +998,54 @@
     min-height: 44px;
   }
 
-  /* Choosing a start state or an intervention on a phone: the figures strip
-     and the long note step back too. It is a choice about where to start, not
-     a moment of reading figures, and with them the console left the heart no
-     band at 390×664 (verify:disease). The strip returns the moment the menu
-     closes; the clinical-use notice never goes. */
-  #ui[data-layout='experiment']:has(.model-controls-group[open]) .rail,
-  #ui[data-layout='experiment'] .model-controls-group[open] .model-controls-advanced-note {
+  /* Choosing a start state or an intervention is a separate act: while that
+     menu is open the pads step back, and so do the figures strip and the
+     long note — it is a choice about where to start, not a moment of reading
+     figures, and with them the console left the heart no band at 390×664
+     (verify:disease). The clinical-use notice never goes
+     (tests/medical-caveat.test.js). */
+  #ui[data-layout='experiment']:has(.model-controls-advanced[open]) .rail,
+  #ui[data-layout='experiment'] .model-controls-advanced[open] .model-controls-advanced-note {
     display: none;
-  }
-
-  /* The narrowest phones: the bold figure is plainly the current one, so its
-     caption gives way before anything wraps. */
-  @media (max-width: 400px) {
-    #ui[data-layout='experiment'] .model-editor-current .model-editor-caption {
-      display: none;
-    }
   }
 }
 
-/* A short phone keeps one line of the read-out's heading: what the figures
-   are compared with. What moved is marked on the input tabs. */
+/* A short phone: the pads a little shorter, and what was changed on one line
+   beside its label rather than under it — what the reader changed stays on
+   screen at every height. */
 @media (max-width: 600px) and (max-height: 760px) {
+  #ui[data-layout='experiment'] .model-control.is-pad {
+    --pad-h: 108px;
+  }
+
+  #ui[data-layout='experiment'] .metrics.has-compact .metric.is-qualitative {
+    flex-direction: row;
+    align-items: baseline;
+    gap: 6px;
+    /* One fixed line: the change arriving beside the label must not make
+       the strip 2 px taller (measured). */
+    height: 20px;
+    overflow: hidden;
+  }
+
+  #ui[data-layout='experiment'] .metrics.has-compact .metric.is-qualitative .metric-label {
+    flex: none;
+  }
+
   #ui[data-layout='experiment'] .metrics.has-compact .metric.is-qualitative .metric-figure {
-    display: none;
+    min-width: 0;
+    min-height: 0;
   }
 }
 
 /* A phone under 600 px of page (an iPhone SE with Safari's toolbars is 553):
-   the read-out keeps the change and drops the value it started at, and the
-   step buttons keep only their sign — their names are in the accessible
-   label. */
+   the read-out keeps the change and drops the value it started at. */
 @media (max-width: 600px) and (max-height: 600px) {
   #ui[data-layout='experiment'] .metrics.has-compact .metric:not(.is-qualitative) .metric-reference {
     display: none;
   }
 
-  #ui[data-layout='experiment'] .model-editor-step-words {
-    display: none;
+  #ui[data-layout='experiment'] .model-control.is-pad {
+    --pad-h: 100px;
   }
 }

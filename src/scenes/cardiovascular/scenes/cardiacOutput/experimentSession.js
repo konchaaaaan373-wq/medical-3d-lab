@@ -53,6 +53,9 @@ import {
 
 const CACHE_LIMIT = 256;
 
+/** How many operations undo can go back. */
+const HISTORY_LIMIT = 50;
+
 /** A frozen copy, so nothing downstream can edit a stored condition. */
 const freezeInput = (input) => Object.freeze({ ...input });
 
@@ -83,6 +86,10 @@ export class ExperimentSession {
      * lands on exactly those values from there.
      */
     this._adjustedAfter = INTERVENTION_IDS.NONE;
+    /** Undo steps: the condition before each of the reader's operations. */
+    this._history = [];
+    /** The operation the last recorded change belonged to. */
+    this._lastOp = undefined;
     this.selectPreset(presetId);
   }
 
@@ -160,6 +167,9 @@ export class ExperimentSession {
     this._presetId = presetId;
     this._intervention = INTERVENTION_IDS.NONE;
     this._adjustedAfter = INTERVENTION_IDS.NONE;
+    // A new experiment: nothing before it to go back to.
+    this._history = [];
+    this._lastOp = undefined;
     this._input = freezeInput(presetInput(presetId));
     // Solve the starting condition first: it is both what is on screen and the
     // snapshot everything is compared against, and they must be one solve.
@@ -177,29 +187,98 @@ export class ExperimentSession {
    * @param {string} id one of `CONTROL_IDS`
    * @param {number} value
    */
-  setControl(id, value) {
-    if (!CONTROL_IDS.includes(id)) throw new RangeError(`unknown control: ${id}`);
+  setControl(id, value, options) {
+    return this.setControls({ [id]: value }, options);
+  }
+
+  /**
+   * Moves one or more inputs as **one** change: the two axes of a pad land
+   * together, in one solve, and are undone together.
+   *
+   * Only the inputs named move. With an intervention applied, the others keep
+   * the values it gave them: a reader who has pressed dobutamine and then
+   * raises the filling is asking "this, with more filling", and the rule used
+   * to answer with the preset's own contractility and resistance — a second
+   * change nobody asked for (owner's review of the phone recordings,
+   * 2026-09-25). The intervention stops being "applied" and is remembered as
+   * where the condition came from, for the label only.
+   *
+   * A condition the model refuses is **not committed**: the inputs, the
+   * intervention and the history go back to what they were, `applied` goes
+   * false and `problems` says why. The controls then read back the last
+   * condition that solved, never a value nothing was computed for.
+   *
+   * @param {Record<string, number>} changes input id → new value
+   * @param {{ op?: unknown }} [options] `op` names the reader's operation (one
+   *   drag, one press). The first change of a new `op` records an undo step;
+   *   the rest of that operation's changes do not, so one drag is one undo.
+   *   Without `op` — a restore, a lesson, the reel — nothing is recorded.
+   */
+  setControls(changes, { op } = {}) {
+    const entries = Object.entries(changes);
+    for (const [id] of entries) {
+      if (!CONTROL_IDS.includes(id)) throw new RangeError(`unknown control: ${id}`);
+    }
     // Setting a control to the value it already has is not moving it, and must
     // not do anything. `restoreSessionState` puts a reader back by replaying
     // every control at its captured value, and with an intervention selected
     // those values *are* the intervention's; a replay that counted as four
     // manual moves handed back the right numbers with the chip silently reading
     // "none".
-    if (this._input[id] === value) return this._view;
+    const moving = entries.filter(([id, value]) => this._input[id] !== value);
+    if (moving.length === 0) return this._view;
 
-    // Moving one input changes that input and nothing else. With an
-    // intervention applied, the others stay at the values the intervention
-    // gave them: a reader who has pressed dobutamine and then raises the
-    // filling is asking "this, with more filling", and the rule used to answer
-    // with the preset's own contractility and resistance — a second change
-    // nobody asked for (owner's review of the phone recordings, 2026-09-25).
-    //
-    // The intervention stops being "applied" — the condition is now the
-    // reader's — and is remembered as where it came from, for the label only.
+    const before = this._snapshot();
+    if (op !== undefined && op !== this._lastOp) {
+      this._history.push(before);
+      if (this._history.length > HISTORY_LIMIT) this._history.shift();
+      this._lastOp = op;
+    }
     if (this._intervention !== INTERVENTION_IDS.NONE) this._adjustedAfter = this._intervention;
     this._intervention = INTERVENTION_IDS.NONE;
-    this._input = freezeInput({ ...this._input, [id]: value });
-    return this._apply(this._input);
+    this._input = freezeInput({ ...this._input, ...Object.fromEntries(moving) });
+    this._apply(this._input);
+    if (!this._applied) {
+      const problems = this._problems;
+      this._restore(before);
+      if (op !== undefined && this._history[this._history.length - 1] === before) this._history.pop();
+      this._applied = false;
+      this._problems = problems;
+    }
+    return this._view;
+  }
+
+  /** Whether there is a step to undo. */
+  get canUndo() {
+    return this._history.length > 0;
+  }
+
+  /**
+   * Back one operation: the inputs (and which intervention they came from) as
+   * they were before the reader's last drag or press.
+   *
+   * **Inputs only.** The model here is a periodic steady state — every
+   * condition is solved to its settled beat — so there is no clock or internal
+   * state to wind back; restoring the inputs restores the whole solved view.
+   * What it is not is a record of how the reader got there.
+   */
+  undo() {
+    const step = this._history.pop();
+    if (!step) return this._view;
+    this._restore(step);
+    this._lastOp = undefined;
+    return this._view;
+  }
+
+  _snapshot() {
+    return { input: this._input, intervention: this._intervention, adjustedAfter: this._adjustedAfter };
+  }
+
+  _restore({ input, intervention, adjustedAfter }) {
+    this._intervention = intervention;
+    this._adjustedAfter = adjustedAfter;
+    this._input = input;
+    this._apply(input);
   }
 
   /**
@@ -239,6 +318,10 @@ export class ExperimentSession {
    * @param {string} interventionId
    */
   selectIntervention(interventionId) {
+    // An intervention is computed from the starting condition, so it starts
+    // the condition afresh: undo does not step back across it.
+    this._history = [];
+    this._lastOp = undefined;
     if (interventionId === INTERVENTION_IDS.NONE) {
       if (this._intervention === INTERVENTION_IDS.NONE && this._adjustedAfter === INTERVENTION_IDS.NONE) return this._view;
       this._intervention = INTERVENTION_IDS.NONE;
@@ -283,6 +366,10 @@ export class ExperimentSession {
    * re-solving it could only introduce a difference.
    */
   reset() {
+    // Back to the start of this experiment is a fresh start of it: the steps
+    // that led away from it are not replayed by undo.
+    this._history = [];
+    this._lastOp = undefined;
     this._intervention = INTERVENTION_IDS.NONE;
     this._adjustedAfter = INTERVENTION_IDS.NONE;
     this._input = this._baseline.input;

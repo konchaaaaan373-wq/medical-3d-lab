@@ -34,8 +34,7 @@ import {
   CONSOLE_LAYOUT,
   CONTROLS,
   CONTROL_EDITOR,
-  EXPERIMENTS,
-  EXPERIMENT_COPY,
+  CONTROL_PADS,
   LEARNING_LABEL,
   LEARNING_MODULES,
   REEL_LABEL,
@@ -171,8 +170,6 @@ export class CardiacOutputScene {
     this.comparing = false;
 
     this.session = new ExperimentSession({ presetId: PRESET_IDS.REFERENCE });
-    /** Which experiment the console offers; presentation only — see `experiment`. */
-    this.experimentId = EXPERIMENTS[0].id;
 
     /**
      * Muscle volume, computed once from the reference condition and never again.
@@ -321,7 +318,13 @@ export class CardiacOutputScene {
     this.blood.update(elapsed);
     this.circuit.update(dt);
     if (this.comparing && this.reference) {
-      this.reference.setPhase(this.phase);
+      // Its own rate — see `setComparison`. A phase driven from outside (the
+      // reel) is one clock for both, because the sequence is a presentation of
+      // one beat, not a comparison of two rates.
+      this._referencePhase = this.cardiacPhaseDriven
+        ? this.phase
+        : advanceCardiacPhase(this._referencePhase ?? this.phase, dt, this.session.baseline.metrics.heartRatePerMin);
+      this.reference.setPhase(this._referencePhase);
       this.reference.update(elapsed);
     }
   }
@@ -386,37 +389,10 @@ export class CardiacOutputScene {
    * exactly the values being restored. `tests/cardiac-output-scene.test.js`
    * holds that ordering.
    */
-  /** The experiment the page offers first, or the one the reader chose since. */
-  get experiment() {
-    return EXPERIMENTS.find((entry) => entry.id === this.experimentId) ?? EXPERIMENTS[0];
-  }
-
   getModelControls() {
     const input = this.session.input;
     const start = this.session.baseline.input;
-    // Looked up rather than read through the getter, so the list can be built
-    // from a bare session (the console's DOM tests do).
-    const experiment = EXPERIMENTS.find((entry) => entry.id === this.experimentId) ?? EXPERIMENTS[0];
     return [
-      {
-        // The first thing on the console: one question, one press, one way
-        // back. The press moves one input through the same path as the
-        // editor, so the experiment and "adjust in detail" are one condition
-        // seen two ways — there is no second state to keep in step.
-        //
-        // First in the list: choosing another experiment starts it from the
-        // reference heart, so a restore replays it before everything else.
-        id: 'experiment',
-        kind: 'experiment',
-        label: 'Experiment',
-        labelJa: '実験',
-        value: experiment.id,
-        experiment,
-        applied: input[experiment.control] === experiment.to,
-        moved: this.session.moved,
-        options: EXPERIMENTS,
-        copy: EXPERIMENT_COPY,
-      },
       {
         // Secondary, behind 「開始状態・介入」: choosing one starts a new
         // experiment. First in the list because a restore replays the list in
@@ -424,7 +400,6 @@ export class CardiacOutputScene {
         id: 'preset',
         kind: 'choice',
         advanced: true,
-        group: 'start',
         label: 'Start state',
         labelJa: '開始状態',
         caption: 'Start state — choosing one starts a new experiment',
@@ -435,17 +410,12 @@ export class CardiacOutputScene {
       {
         // After the preset and before the four inputs, which is also the order
         // a restore replays them in: the intervention is computed from the
-        // preset's starting condition, and the four values land last. Since a
-        // manual move keeps the intervention's values (see `setControl`), that
-        // replay arrives at the same condition either way.
-        //
-        // The row reports where the condition came from — the intervention
-        // applied or the one adjusted since — so a restore carries the label
-        // too, and 「なし」 is lit only when there is none.
+        // preset's starting condition, and the four values land last. A manual
+        // move keeps the intervention's values, so that replay arrives at the
+        // same condition, and the row reports where it came from.
         id: 'intervention',
         kind: 'choice',
         advanced: true,
-        group: 'start',
         label: 'Intervention',
         labelJa: '介入',
         caption: 'Try an intervention',
@@ -453,48 +423,57 @@ export class CardiacOutputScene {
         value: this.session.origin,
         options: INTERVENTION_OPTIONS,
       },
-      // The experiment itself: the four inputs, always on screen, one of them
-      // open in the editor at a time. Each is still its own entry, so a
-      // restore and a lesson move them exactly as before.
+      // The four inputs, each its own entry — a restore and a lesson move them
+      // one at a time, as before — drawn as two pads of two axes each
+      // (`CONTROL_PADS`). A pad moves its two inputs as one change; each axis
+      // also has its own control that moves that input alone.
       ...CONTROLS.map((control) => {
         const domain = CONTROL_DOMAIN[control.id];
         const words = CONTROL_EDITOR[control.id];
+        const pad = CONTROL_PADS.find((entry) => entry.x === control.id || entry.y === control.id);
         return {
           id: control.id,
           label: control.label,
           labelJa: control.labelJa,
           short: control.short,
           shortJa: control.shortJa,
+          unit: control.unitShort,
           min: domain.min,
           max: domain.max,
           step: domain.step,
           value: input[control.id],
-          // Where this experiment started, for the mark on the track and for
-          // 「この項目を戻す」. Not a normal value: the start state is a teaching
-          // condition, not a reference range.
+          // Where this experiment started: the hollow mark on the pad. Not a
+          // normal value — the start state is a teaching condition.
           start: start[control.id],
-          editor: true,
-          // Behind 「詳しく調整」: the experiment is what the page offers first.
-          advanced: true,
+          pad: pad ? { id: pad.id, axis: pad.x === control.id ? 'x' : 'y', label: pad.label, labelJa: pad.labelJa } : undefined,
           ...words,
-          format: (value) => `${formatControl(control.id, value)}${control.unit}`,
+          format: (value) => formatControl(control.id, value),
         };
       }),
+      {
+        // Undo: one of the reader's operations — a drag, a press — back. Not
+        // replayed by a restore (its value is nothing).
+        id: 'history',
+        kind: 'history',
+        label: 'Undo last change',
+        labelJa: '直前の操作を戻す',
+        shortJa: '1つ戻す',
+        value: null,
+        canUndo: this.session.canUndo,
+      },
     ];
   }
 
   /**
-   * @param {string} id `preset`, `intervention` or one of the four
-   * @param {number|string} value
+   * @param {string} id `preset`, `intervention`, `history`, one of the four,
+   *   or a pad's id with an object of its two inputs
+   * @param {number|string|Record<string, number>|null} value
+   * @param {{ op?: unknown }} [detail] the reader's operation, for undo
    */
-  setModelControl(id, value) {
-    if (id === 'experiment') {
-      // Another experiment starts from the reference heart — a new
-      // experiment, not this one continued. The same one again is nothing.
-      const next = EXPERIMENTS.find((entry) => entry.id === value);
-      if (!next || next.id === this.experimentId) return;
-      this.experimentId = next.id;
-      this.session.selectPreset(PRESET_IDS.REFERENCE);
+  setModelControl(id, value, detail = {}) {
+    if (id === 'history') {
+      if (value === 'undo') this.session.undo();
+      else return;
     } else if (id === 'preset') {
       this.session.selectPreset(String(value));
     } else if (id === 'intervention') {
@@ -506,8 +485,14 @@ export class CardiacOutputScene {
       // has to re-apply it (the four values that follow then land on top), so
       // it is re-applied here rather than ignored.
       else this.session.selectIntervention(String(value));
+    } else if (value && typeof value === 'object') {
+      // A pad: its two inputs, one change.
+      this.session.setControls(
+        Object.fromEntries(Object.entries(value).map(([key, entry]) => [key, Number(entry)])),
+        { op: detail.op }
+      );
     } else {
-      this.session.setControl(id, Number(value));
+      this.session.setControl(id, Number(value), { op: detail.op });
     }
     this._applyState();
   }
@@ -700,8 +685,10 @@ export class CardiacOutputScene {
     const fromJa = fromOption?.shortJa ?? fromOption?.labelJa;
     rows.push({
       id: 'changed',
-      label: atStart ? `At the start (${fromEn})` : `Compared with the start (${fromEn})`,
-      labelJa: atStart ? `開始時（${fromJa}）` : `開始時（${fromJa}）と比べて`,
+      // What the reader changed — inputs, not results. The figures under it
+      // are what the model computed from them.
+      label: atStart ? `At the start (${fromEn}) — nothing changed` : `You changed (from ${fromEn})`,
+      labelJa: atStart ? `開始時（${fromJa}）のまま` : `変えた入力（${fromJa}から）`,
       value: atStart ? '' : `${origin(false)}${change.value}`,
       valueJa: atStart ? '' : `${origin(true)}${change.valueJa}`,
       unit: '',
@@ -837,23 +824,23 @@ export class CardiacOutputScene {
         unit: 'dyn·s·cm⁻⁵',
       }
     );
-    // What this experiment is about goes first and on the face of the panel;
-    // the rest is one press away under 「他の指標」. Presentation only: every
-    // row is computed either way, and the one that moves the *other* way is in
-    // the experiment's own list (see EXPERIMENTS).
+    // The computed results on the face of the panel, always the same four in
+    // the same order — output, stroke volume, arterial pressure and the
+    // filling pressure that often moves the other way — so nothing is
+    // reshuffled while the reader is moving an input. The rest are one press
+    // away under 「他の指標」.
     //
     // Before anything has moved, the rows carry their start value and ±0 but
     // say they are quiet: the panel keeps the room for them — so nothing moves
     // when they fill in — without repeating "start → now ±0" on every figure.
-    const experiment = EXPERIMENTS.find((entry) => entry.id === this.experimentId) ?? EXPERIMENTS[0];
-    const watch = experiment.watch;
+    const headline = ['co', 'sv', 'map', 'lvedp'];
     for (const row of rows) {
       if (row.id === 'changed' || row.id === 'unsolved') continue;
-      row.emphasis = watch.includes(row.id);
-      row.compact = watch.includes(row.id);
+      row.emphasis = headline.includes(row.id);
+      row.compact = headline.includes(row.id);
       if (atStart && !this.comparing) row.quiet = true;
     }
-    const rank = (row) => (row.id === 'unsolved' ? -2 : row.id === 'changed' ? -1 : watch.includes(row.id) ? watch.indexOf(row.id) : watch.length);
+    const rank = (row) => (row.id === 'unsolved' ? -2 : row.id === 'changed' ? -1 : headline.includes(row.id) ? headline.indexOf(row.id) : headline.length);
     rows.sort((a, b) => rank(a) - rank(b));
     return rows;
   }
@@ -895,10 +882,12 @@ export class CardiacOutputScene {
    * Side by side with the condition before the reader started moving things.
    *
    * Built on first use: it doubles the chamber geometry and most readers never
-   * turn it on. Both hearts are drawn from the same model and run on one phase,
-   * so they reach end-diastole together even when the rates differ — which is a
-   * synchronised *display* of two states and not a claim that they beat at the
-   * same rate. Neither heart's rate is changed to achieve it.
+   * turn it on. Both hearts are drawn from the same model. They start the
+   * comparison in step, and each then beats at **its own** rate: the "before"
+   * heart at the starting condition's rate, the current one at the current
+   * rate. They used to share one phase, which forced two different rates into
+   * step and hid exactly the difference a rate change makes (owner's brief,
+   * 2026-09-25). At equal rates they stay in step, as they should.
    *
    * @param {boolean} enabled
    */
@@ -923,7 +912,10 @@ export class CardiacOutputScene {
       this.reference.setState(this.session.baseline.metrics, this.session.baseline.cycle);
       this.reference.visible = enabled;
       this.reference.position.copy(COMPARISON_AXIS).multiplyScalar(enabled ? -COMPARISON_OFFSET : 0);
-      if (enabled) this.reference.setPhase(this.phase);
+      if (enabled) {
+        this._referencePhase = this.phase;
+        this.reference.setPhase(this.phase);
+      }
     }
     this.primary.position.copy(COMPARISON_AXIS).multiplyScalar(enabled ? COMPARISON_OFFSET : 0);
     // The circuit is about one condition, and two conditions cannot share it

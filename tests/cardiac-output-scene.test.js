@@ -201,15 +201,13 @@ test('the preset comes first in the controls, because restoring replays them in 
   // would find their condition gone. Ordering is the whole guard.
   const scene = await buildScene();
   const controls = scene.getModelControls();
-  // The experiment first: choosing another one starts it from the reference
-  // heart, so replayed anywhere later it would wipe what follows.
-  assert.equal(controls[0].id, 'experiment', 'another experiment starts afresh, so it lands first');
-  assert.equal(controls[1].id, 'preset', 'the preset resets everything else, so it lands next');
-  assert.equal(controls[2].id, 'intervention', 'the intervention is computed from the preset, so it lands next');
-  // And the four inputs last, which is right: they land on top of whatever
-  // the intervention did, so they have to win.
-  assert.deepEqual(controls.slice(3).map((c) => c.id), CONTROLS.map((c) => c.id));
-  assert.deepEqual(controls.slice(3).map((c) => c.id).sort(), [...CONTROL_IDS].sort());
+  assert.equal(controls[0].id, 'preset', 'the preset resets everything, so it lands first');
+  assert.equal(controls[1].id, 'intervention', 'the intervention is computed from the preset, so it lands next');
+  // Then the four inputs, which land on top of whatever the intervention did.
+  assert.deepEqual(controls.slice(2, 6).map((c) => c.id), CONTROLS.map((c) => c.id));
+  // And undo last, with no value: a restore replays it as nothing.
+  assert.equal(controls[6].id, 'history');
+  assert.equal(controls[6].value, null);
 
   // And replaying a captured snapshot in that order really does restore it.
   scene.setModelControl('preset', PRESET_IDS.REDUCED_CONTRACTILITY);
@@ -763,13 +761,14 @@ test('the first row says what the figures are read against, and what moved: from
   const rows = () => CardiacOutputScene.prototype.getMetrics.call(scene);
 
   // One fixed line: what the figures are read against, then what moved.
-  assert.equal(first().labelJa, '開始時（基準）');
+  assert.equal(first().labelJa, '開始時（基準）のまま');
   assert.equal(first().valueJa, '', 'nothing to say before anything has moved');
   assert.equal(rows()[0].id, 'changed', 'and it leads the panel');
 
   // One input: named with its direction and both values.
   session.setControl('systemicResistanceMmHgSPerMl', 1.6);
-  assert.equal(first().labelJa, '開始時（基準）と比べて', 'the comparison does not follow the reader');
+  // What the reader changed — inputs, named as such — and against which start.
+  assert.equal(first().labelJa, '変えた入力（基準から）', 'the comparison does not follow the reader');
   assert.equal(first().valueJa, '血管抵抗 ↑ 1.1 → 1.6（他は固定）', 'one moved control is spelled out');
   assert.equal(first().unit, '', 'the unit slot renders one language only, so nothing bilingual goes in it');
 
@@ -783,7 +782,7 @@ test('the first row says what the figures are read against, and what moved: from
   // first, and quoted in words, not in the model's units.
   session.selectPreset(PRESET_IDS.REDUCED_CONTRACTILITY);
   session.selectIntervention('dobutamine');
-  assert.equal(first().labelJa, '開始時（収縮力低下）と比べて');
+  assert.equal(first().labelJa, '変えた入力（収縮力低下から）');
   assert.equal(first().valueJa, 'ドブタミン（模式）：収縮力 ↑・血管抵抗 ↓（他は固定）');
   assert.doesNotMatch(first().valueJa, /\d/, 'an intervention is described, not quoted in model units');
 
@@ -791,33 +790,6 @@ test('the first row says what the figures are read against, and what moved: from
   // still listed because they are still in the condition.
   session.setControl('fillingVolumeMl', 760);
   assert.equal(first().valueJa, 'ドブタミン（模式）適用後を調整：収縮力 ↑・充満量 ↑・血管抵抗 ↓（他は固定）');
-});
-
-test('the four inputs are the editor behind 「詳しく調整」; the start state and the intervention one press further', async () => {
-  const { CONTROL_EDITOR } = await import('../src/data/cardiacOutput.js');
-  const scene = await buildScene();
-  const controls = scene.getModelControls();
-  const byId = Object.fromEntries(controls.map((c) => [c.id, c]));
-  assert.equal(byId.preset.advanced, true, 'choosing a start state is secondary');
-  assert.equal(byId.intervention.advanced, true, 'so is an intervention');
-  assert.equal(byId.preset.group, 'start', 'and grouped apart from the four inputs');
-  assert.equal(byId.intervention.group, 'start');
-  assert.ok(!controls.some((c) => c.hidden), 'nothing listed is left undrawn');
-  for (const id of CONTROL_IDS) {
-    const control = byId[id];
-    assert.equal(control.editor, true, `${id} is in the editor`);
-    assert.equal(control.advanced, true, `${id} is behind 「詳しく調整」 — the experiment comes first`);
-    assert.equal(control.start, scene.session.baseline.input[id], `${id} carries where the experiment started`);
-    assert.ok(control.decreaseJa && control.increaseJa, `${id} names its two directions`);
-    // A press is a whole number of the model's step and inside its range.
-    const { nudge } = CONTROL_EDITOR[id];
-    const domain = CONTROL_DOMAIN[id];
-    const steps = nudge / domain.step;
-    assert.ok(Math.abs(steps - Math.round(steps)) < 1e-9, `${id}: one press is a whole number of steps`);
-    assert.ok(nudge < (domain.max - domain.min) / 10, `${id}: one press is a small step`);
-    assert.equal(control.min, domain.min);
-    assert.equal(control.max, domain.max);
-  }
 });
 
 test('each headline figure carries its direction in words and an arrow, and no grade of importance', async () => {
@@ -944,96 +916,62 @@ test('the intervention row reports where the condition came from, and 「なし�
   scene.setModelControl('intervention', 'none');
   assert.deepEqual({ ...scene.session.input }, { ...scene.session.baseline.input });
   assert.equal(intervention().value, 'none');
-  assert.equal(scene.getMetrics().find((row) => row.id === 'changed').labelJa, '開始時（収縮力低下）', 'back at its starting condition');
+  assert.equal(scene.getMetrics().find((row) => row.id === 'changed').labelJa, '開始時（収縮力低下）のまま', 'back at its starting condition');
 });
 
-test('the first experiment: one press moves contractility alone, to the reduced preset’s own value, and the figures are that solve', async () => {
-  const { EXPERIMENTS } = await import('../src/data/cardiacOutput.js');
+
+test('the four inputs are drawn as two pads; each is still its own entry, and a pad moves its two in one change', async () => {
+  const { CONTROL_PADS } = await import('../src/data/cardiacOutput.js');
   const scene = await buildScene();
-  const experiment = () => scene.getModelControls().find((control) => control.id === 'experiment');
-  assert.equal(experiment().value, 'weaker-contraction', 'the page opens on the contraction experiment');
-  assert.equal(experiment().experiment.questionJa, '心臓の収縮を弱めると、どう変わる？');
-  assert.equal(experiment().applied, false);
-  assert.equal(experiment().moved, false);
-
-  // The press is a control move: exactly one input changes, to a value the
-  // model already uses for this (the reduced-contractility preset).
-  const before = { ...scene.session.input };
-  const spec = experiment().experiment;
-  scene.setModelControl(spec.control, spec.to);
-  assert.equal(spec.to, presetInput(PRESET_IDS.REDUCED_CONTRACTILITY).contractilityEesMmHgPerMl);
-  const after = { ...scene.session.input };
-  const moved = CONTROL_IDS.filter((id) => after[id] !== before[id]);
-  assert.deepEqual(moved, ['contractilityEesMmHgPerMl'], 'one input, the others held');
-  assert.equal(experiment().applied, true);
-  assert.equal(experiment().moved, true);
-
-  // The figures are the model's answer for that input, not a canned result.
-  const truth = solveCardiacOutput({ ...after });
-  const rows = Object.fromEntries(scene.getMetrics().map((row) => [row.id, row]));
-  assert.ok(Math.abs(Number(rows.sv.value) - truth.metrics.strokeVolumeMl) <= 0.6);
-  assert.ok(Math.abs(Number(rows.co.value) - truth.metrics.cardiacOutputLMin) <= 0.06);
-  assert.equal(rows.sv.change, 'down');
-  assert.equal(rows.co.change, 'down');
-  // The figure that moves the other way is on the face of the panel too.
-  assert.equal(rows.lvedp.change, 'up');
-  assert.deepEqual(scene.getMetrics().filter((row) => row.compact && row.id !== 'changed').map((row) => row.id), ['sv', 'co', 'lvedp']);
-
-  // Back.
-  scene.resetModelControls();
-  assert.deepEqual({ ...scene.session.input }, before);
-  assert.equal(experiment().applied, false);
-
-  // Every experiment moves one input to a value inside the verified domain.
-  for (const entry of EXPERIMENTS) {
-    const domain = CONTROL_DOMAIN[entry.control];
-    assert.ok(entry.to >= domain.min && entry.to <= domain.max, `${entry.id} stays in the domain`);
-    assert.notEqual(entry.to, presetInput(PRESET_IDS.REFERENCE)[entry.control], `${entry.id} changes something`);
-    assert.ok(entry.watch.length > 0 && entry.watch.length <= 3, `${entry.id} names at most three figures to watch`);
+  const byId = Object.fromEntries(scene.getModelControls().map((c) => [c.id, c]));
+  // The pads as specified: the heart's own inputs, and the circulation's.
+  assert.deepEqual(CONTROL_PADS.map((pad) => [pad.id, pad.x, pad.y]), [
+    ['heart', 'contractilityEesMmHgPerMl', 'heartRatePerMin'],
+    ['circulation', 'fillingVolumeMl', 'systemicResistanceMmHgSPerMl'],
+  ]);
+  for (const id of CONTROL_IDS) {
+    assert.ok(byId[id].pad, `${id} is on a pad`);
+    assert.ok(!byId[id].advanced, `${id} is on the face of the console, not behind a disclosure`);
+    assert.equal(byId[id].start, scene.session.baseline.input[id]);
+    assert.ok(byId[id].lowJa && byId[id].highJa, `${id} names its two ends`);
   }
+  assert.equal(byId.preset.advanced, true);
+  assert.equal(byId.intervention.advanced, true);
+
+  // A pad: both inputs, one solve, one undo step; the other pad's inputs held.
+  const start = { ...scene.session.input };
+  const revision = scene.session.view.revision;
+  scene.setModelControl('heart', { contractilityEesMmHgPerMl: 2.0, heartRatePerMin: 90 }, { op: 'drag' });
+  assert.equal(scene.session.view.revision, revision + 1, 'one change, one solve');
+  assert.deepEqual({ ...scene.session.input }, { ...start, contractilityEesMmHgPerMl: 2.0, heartRatePerMin: 90 });
+  // One axis alone: only its input.
+  scene.setModelControl('fillingVolumeMl', 800, { op: 'press' });
+  assert.deepEqual({ ...scene.session.input }, { ...start, contractilityEesMmHgPerMl: 2.0, heartRatePerMin: 90, fillingVolumeMl: 800 });
+  assert.equal(scene.getModelControls().find((c) => c.id === 'history').canUndo, true);
+  // Undo: the press, then the whole drag.
+  scene.setModelControl('history', 'undo');
+  assert.equal(scene.session.input.fillingVolumeMl, start.fillingVolumeMl);
+  assert.equal(scene.session.input.heartRatePerMin, 90);
+  scene.setModelControl('history', 'undo');
+  assert.deepEqual({ ...scene.session.input }, start);
+  // A replayed history entry (a restore) does nothing.
+  scene.setModelControl('history', null);
+  assert.deepEqual({ ...scene.session.input }, start);
 });
 
-test('before anything moves the figures are quiet; after the press they carry start, now and the change', async () => {
+test('side by side, each heart beats at its own rate: a rate difference is not synchronised away', async () => {
   const scene = await buildScene();
-  const rows = () => Object.fromEntries(scene.getMetrics().map((row) => [row.id, row]));
-  assert.equal(rows().sv.quiet, true, 'no "start → now ±0" on every figure at the start');
-  assert.ok(rows().sv.reference != null, 'but the start value is there, holding its room');
-  const spec = scene.getModelControls()[0].experiment;
-  scene.setModelControl(spec.control, spec.to);
-  assert.equal(rows().sv.quiet, undefined);
-  assert.match(rows().sv.delta, /^\u2212\d/);
-});
-
-test('another experiment starts from the reference heart; the detail editor carries on from the condition on screen', async () => {
-  const scene = await buildScene();
-  const spec = scene.getModelControls()[0].experiment;
-  scene.setModelControl(spec.control, spec.to);
-  // Opening the detail changes nothing: the editor reads the same condition,
-  // against the same start.
-  const editor = Object.fromEntries(scene.getModelControls().filter((c) => c.editor).map((c) => [c.id, c]));
-  assert.equal(editor.contractilityEesMmHgPerMl.value, spec.to);
-  assert.equal(editor.contractilityEesMmHgPerMl.start, presetInput(PRESET_IDS.REFERENCE).contractilityEesMmHgPerMl);
-  scene.setModelControl('heartRatePerMin', 80);
-  assert.equal(scene.session.input.contractilityEesMmHgPerMl, spec.to, 'adjusting in detail keeps the experiment’s change');
-
-  // Choosing another experiment is a new one: from the reference heart.
-  scene.setModelControl('experiment', 'higher-resistance');
-  assert.deepEqual({ ...scene.session.input }, presetInput(PRESET_IDS.REFERENCE));
-  const next = scene.getModelControls()[0];
-  assert.equal(next.value, 'higher-resistance');
-  assert.equal(next.experiment.control, 'systemicResistanceMmHgSPerMl');
-  assert.deepEqual(scene.getMetrics().filter((row) => row.compact && row.id !== 'changed').map((row) => row.id), ['map', 'sv', 'co']);
-
-  // The same one again is nothing.
-  scene.setModelControl(next.experiment.control, next.experiment.to);
-  const held = { ...scene.session.input };
-  scene.setModelControl('experiment', 'higher-resistance');
-  assert.deepEqual({ ...scene.session.input }, held);
-
-  // And a snapshot replayed in order comes back to the same experiment and condition.
-  const snapshot = scene.getModelControls().map(({ id, value }) => ({ id, value }));
-  scene.setModelControl('experiment', 'weaker-contraction');
-  for (const { id, value } of snapshot) scene.setModelControl(id, value);
-  assert.equal(scene.getModelControls()[0].value, 'higher-resistance');
-  assert.deepEqual({ ...scene.session.input }, held);
+  scene.setModelControl('heartRatePerMin', 105);
+  scene.setComparison(true);
+  const start = scene.phase;
+  scene.update(0.2, 0.2);
+  const wrap = (value) => ((value % 1) + 1) % 1;
+  assert.ok(Math.abs(scene.phase - wrap(start + (0.2 * 105) / 60)) < 1e-9, 'the current heart at 105/min');
+  assert.ok(Math.abs(scene._referencePhase - wrap(start + (0.2 * 70) / 60)) < 1e-9, 'the "before" heart at its own 70/min');
+  // At equal rates they stay in step.
+  scene.setModelControl('heartRatePerMin', 70);
+  scene.setComparison(false);
+  scene.setComparison(true);
+  scene.update(0.2, 0.4);
+  assert.ok(Math.abs(scene.phase - scene._referencePhase) < 1e-9);
 });

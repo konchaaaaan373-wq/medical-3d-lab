@@ -1121,8 +1121,10 @@ export async function createApp({ stage, ui, onRetryModel = null }) {
   const modelControls = scene.getModelControls
     ? createModelControls({
         controls: scene.getModelControls(),
-        onChange: (id, value) => {
-          scene.setModelControl(id, value);
+        // `detail` carries the reader's operation (one drag, one press), so a
+        // scene with undo can take a whole drag back in one step.
+        onChange: (id, value, detail) => {
+          scene.setModelControl(id, value, detail);
           // A model may canonicalise an input or make options mutually
           // exclusive. Read the accepted state back immediately so the
           // controls can never display a combination the model does not have.

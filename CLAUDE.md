@@ -416,6 +416,13 @@ scope panel の 4 点をセットで持ちます。** どれか 1 つでも欠�
 [`docs/organ-3d-playbook.md`](docs/organ-3d-playbook.md)。
 **新しい臓器の形を作り終えたら、末尾のチェックリストを測ってください。**
 
+### 病態モデルの操作を変えるとき
+
+操作 UI・入力・アニメーションとの連携を変える前に
+[`docs/pathology-interaction-principles.md`](docs/pathology-interaction-principles.md)
+（操作原則 12 項と入力契約）を読んでください。個別モデルの採否（例: 心拍出量の
+XY パッド）はそのモデルカードに書き、原則の文書には書きません。
+
 ### 新しいシーンを足すとき
 
 [`docs/adding-a-scene.md`](docs/adding-a-scene.md) の

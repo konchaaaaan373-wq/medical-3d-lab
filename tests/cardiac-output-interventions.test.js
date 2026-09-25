@@ -218,7 +218,9 @@ test('there is no state an intervention leaves behind that nothing can restore',
   // `_adjustedAfter` is recoverable: the intervention row reports it as the
   // origin, and replaying that intervention and then the four values lands on
   // the same condition with the same label (held in cardiac-output-scene.test.js).
-  const recoverable = new Set(['_presetId', '_intervention', '_adjustedAfter', '_input', '_baseline', '_view',
+  // `_history` and `_lastOp` are the undo steps, not the condition: a restore
+  // is a fresh start and correctly begins with nothing to undo.
+  const recoverable = new Set(['_presetId', '_intervention', '_adjustedAfter', '_history', '_lastOp', '_input', '_baseline', '_view',
     '_applied', '_problems', '_cache', '_warmStart', '_revision', 'solverOptions']);
   const held = Object.keys(session).filter((key) => key.startsWith('_') || key === 'solverOptions');
   for (const key of held) {
@@ -290,4 +292,36 @@ test('the copy offers exactly the interventions the model has', () => {
       `${option.value} carries a quantity with a dose unit: ${words}`
     );
   }
+});
+
+test('one operation is one undo step; a refused condition is not committed', async () => {
+  const session = new ExperimentSession({ presetId: PRESET_IDS.REFERENCE });
+  const start = { ...session.input };
+  // A drag: many changes under one operation.
+  for (const ees of [2.6, 2.4, 2.2]) session.setControls({ contractilityEesMmHgPerMl: ees, heartRatePerMin: 80 }, { op: 'drag-1' });
+  // A press on one axis: its own operation, the other inputs held.
+  session.setControls({ fillingVolumeMl: 760 }, { op: 'press-2' });
+  assert.deepEqual({ ...session.input }, { ...start, contractilityEesMmHgPerMl: 2.2, heartRatePerMin: 80, fillingVolumeMl: 760 });
+  session.undo();
+  assert.deepEqual({ ...session.input }, { ...start, contractilityEesMmHgPerMl: 2.2, heartRatePerMin: 80 }, 'the press is undone alone');
+  session.undo();
+  assert.deepEqual({ ...session.input }, start, 'the whole drag is one step');
+  assert.equal(session.canUndo, false);
+
+  // Without an operation (a restore, a lesson) nothing is recorded.
+  session.setControls({ heartRatePerMin: 90 });
+  assert.equal(session.canUndo, false);
+
+  // Refused: not committed, and says so.
+  const before = { ...session.input };
+  session.setControls({ heartRatePerMin: 400 }, { op: 'bad' });
+  assert.equal(session.applied, false);
+  assert.ok(session.problems.length > 0);
+  assert.deepEqual({ ...session.input }, before, 'the refused value is not what the controls read back');
+  assert.equal(session.canUndo, false, 'and it left no undo step');
+
+  // A new start clears the steps.
+  session.setControls({ heartRatePerMin: 95 }, { op: 'x' });
+  session.reset();
+  assert.equal(session.canUndo, false);
 });

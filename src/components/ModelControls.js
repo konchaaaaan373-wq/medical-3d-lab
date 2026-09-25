@@ -44,21 +44,54 @@ export function createModelControls({ controls, onChange, onReset, copy = {} }) 
   const rows = new Map();
   const tactile = controls.some((control) => control.kind === 'action' || control.kind === 'choice');
 
-  const editorControls = controls.filter((control) => control.editor && !control.hidden);
-  const editor = editorControls.length ? createInputEditor(editorControls, onChange, copy.editor ?? {}) : null;
-  if (editor) for (const control of editorControls) rows.set(control.id, { setValue: (value, definition) => editor.setValue(control.id, value, definition) });
+  // Inputs a scene places on a pad (`pad: { id, axis }`) are drawn two to a
+  // pad, where the first of the pair is listed. Each is still its own entry.
+  const pads = new Map();
+  for (const control of controls) {
+    if (!control.pad || control.hidden) continue;
+    const entry = pads.get(control.pad.id) ?? {};
+    entry[control.pad.axis] = control;
+    pads.set(control.pad.id, entry);
+  }
+  const padViews = new Map();
+  for (const [id, axes] of pads) {
+    if (!axes.x || !axes.y) continue;
+    const view = createXYPad({ id, words: axes.x.pad, copy: copy.pads ?? {}, x: axes.x, y: axes.y, onChange });
+    // Drawn where the first of its two inputs is listed.
+    view.first = controls.find((control) => control.pad?.id === id).id;
+    padViews.set(id, view);
+    rows.set(axes.x.id, { setValue: (value, definition) => view.setValue('x', value, definition) });
+    rows.set(axes.y.id, { setValue: (value, definition) => view.setValue('y', value, definition) });
+  }
 
+  let historyActions = null;
   const inputs = controls.map((control) => {
     // A control a scene lists but does not draw — kept in the list because the
     // list is also what a session capture replays, in order.
     if (control.hidden) return null;
     // The inputs a scene hands to the editor are drawn once, together, where
     // the first of them is listed.
-    if (control.editor) return control === editorControls[0] ? editor.element : null;
-    if (control.kind === 'experiment') {
-      const experiment = createExperiment(control, onChange, onReset);
-      rows.set(control.id, { setValue: (value, definition) => experiment.setValue(definition ?? control) });
-      return experiment.element;
+    if (control.pad && padViews.has(control.pad.id)) {
+      const pad = padViews.get(control.pad.id);
+      return pad.first === control.id ? pad.element : null;
+    }
+    if (control.kind === 'history') {
+      // Undo: one of the reader's operations back, through the same path.
+      const button = el('button', {
+        class: 'model-control-undo',
+        type: 'button',
+        on: { click: () => onChange(control.id, 'undo') },
+        title: control.labelJa,
+      }, [
+        el('span', { class: 'lang-en', text: control.label }),
+        el('span', { class: 'lang-ja model-control-undo-long', text: control.labelJa }),
+        // A narrow screen's word for the same button; the long one is its title.
+        el('span', { class: 'lang-ja model-control-undo-short', text: control.shortJa ?? control.labelJa }),
+      ]);
+      button.disabled = !control.canUndo;
+      historyActions = el('div', { class: 'model-control-actions', dataset: { control: control.id } }, [button]);
+      rows.set(control.id, { setValue: (value, definition) => { button.disabled = !definition?.canUndo; } });
+      return historyActions;
     }
     if (control.kind === 'choice') {
       const buttons = new Map();
@@ -240,28 +273,6 @@ export function createModelControls({ controls, onChange, onReset, copy = {} }) 
   // the scene is about, not every input the model has.
   const primaryInputs = inputs.filter((node, index) => node && !controls[index].advanced);
   const advancedInputs = inputs.filter((node, index) => node && controls[index].advanced);
-  // A scene may gather some of its advanced controls under a second, nested
-  // disclosure (`group`), so what is behind "adjust in detail" opens in the
-  // order it is needed rather than all at once.
-  const advancedLoose = inputs.filter((node, index) => node && controls[index].advanced && !controls[index].group);
-  const groupIds = [...new Set(controls.filter((control) => control.advanced && control.group).map((control) => control.group))];
-  const advancedGroups = groupIds.map((group) => {
-    const words = copy.groups?.[group] ?? {};
-    return el('details', { class: 'model-controls-group', dataset: { group } }, [
-      el('summary', { class: 'model-controls-group-toggle' }, [
-        el('span', { class: 'lang-en', text: words.label ?? group }),
-        el('span', { class: 'lang-ja', text: words.labelJa ?? group }),
-      ]),
-      el('div', { class: 'model-control-list' },
-        inputs.filter((node, index) => node && controls[index].advanced && controls[index].group === group)),
-      words.note || words.noteJa
-        ? el('p', { class: 'model-controls-advanced-note' }, [
-            el('span', { class: 'lang-en', text: words.note ?? '' }),
-            el('span', { class: 'lang-ja', text: words.noteJa ?? '' }),
-          ])
-        : null,
-    ]);
-  });
   const advanced = advancedInputs.length
     ? el('details', { class: 'model-controls-advanced' }, [
         el('summary', { class: 'model-controls-advanced-toggle' }, [
@@ -275,8 +286,7 @@ export function createModelControls({ controls, onChange, onReset, copy = {} }) 
                 el('span', { class: 'lang-ja', text: copy.advanced?.noteJa ?? '' }),
               ])
             : null,
-          el('div', { class: 'model-control-list' }, advancedLoose),
-          ...advancedGroups,
+          el('div', { class: 'model-control-list' }, advancedInputs),
         ]),
       ])
     : null;
@@ -293,10 +303,15 @@ export function createModelControls({ controls, onChange, onReset, copy = {} }) 
         el('span', { class: 'lang-ja', text: copy.resetLabelJa ?? '戻す' }),
       ]);
 
-  // With an editor, the reset for everything stands beside the editor's own
-  // "reset this one", where the difference between the two is readable.
-  const adopted = Boolean(editor && reset);
-  if (adopted) editor.adopt(reset);
+  // With an undo, the reset for everything stands beside it, where the
+  // difference between the two — one operation, the whole experiment — is
+  // readable.
+  const adopted = Boolean(historyActions && reset);
+  if (adopted) historyActions.append(reset);
+  // …and the way to another start state or an intervention on the same line:
+  // one line of actions under the pads, not three.
+  const advancedInActions = Boolean(historyActions && advanced);
+  if (advancedInActions) historyActions.append(advanced);
 
   const title = copy.title ?? 'Loading conditions';
   const titleJa = copy.titleJa ?? '負荷条件';
@@ -317,7 +332,7 @@ export function createModelControls({ controls, onChange, onReset, copy = {} }) 
         ])
       : null,
     el('div', { class: 'model-control-list' }, primaryInputs),
-    advanced,
+    advancedInActions ? null : advanced,
   ]);
 
   return {
@@ -333,308 +348,275 @@ export function createModelControls({ controls, onChange, onReset, copy = {} }) 
   };
 }
 
-/**
- * Several numeric inputs, one open at a time.
- *
- * The inputs are always named on screen (the row of tabs), and the one chosen
- * is moved in a single editor whose place and size do not change: choosing a
- * tab swaps which input the editor edits — it changes no value — and a first
- * move, a value growing a digit or the reset becoming available changes only
- * text inside boxes that are already there. Four stacked sliders in a
- * scrolling list put three of the four out of sight and moved the one under
- * the reader's finger when a row above it appeared (owner's phone recordings,
- * 2026-09-25).
- *
- * One `<input type=range>` serves all of them, and it is never replaced, so a
- * drag keeps its pointer capture and focus while the scene re-renders around
- * it. The two buttons move one `nudge` at a time — a drag for watching a
- * change unfold, a press for a step that lands where it was meant to.
- *
- * @param {{id:string,label:string,labelJa:string,short?:string,shortJa?:string,min:number,max:number,step:number,value:number,start?:number,nudge?:number,decrease?:string,decreaseJa?:string,increase?:string,increaseJa?:string,format?:(v:number)=>string}[]} items
- * @param {(id: string, value: number) => void} onChange
- * @param {{label?:string,labelJa?:string,current?:string,currentJa?:string,start?:string,startJa?:string,resetOne?:string,resetOneJa?:string}} words
- */
-function createInputEditor(items, onChange, words) {
-  const state = new Map(items.map((item) => [item.id, { ...item }]));
-  let active = items[0].id;
-  const bilingual = (en, ja, className = '') => [
-    el('span', { class: `lang-en ${className}`.trim(), text: en ?? '' }),
-    el('span', { class: `lang-ja ${className}`.trim(), text: ja ?? '' }),
-  ];
-  const setText = (pair, en, ja) => {
-    pair[0].textContent = en ?? '';
-    pair[1].textContent = ja ?? '';
-  };
-
-  const tabs = new Map();
-  const tabList = el('div', {
-    class: 'model-editor-tabs',
-    role: 'tablist',
-    'aria-label': `${words.label ?? 'Input to change'} / ${words.labelJa ?? '変える入力'}`,
-    on: {
-      keydown: (event) => {
-        if (event.key !== 'ArrowRight' && event.key !== 'ArrowLeft') return;
-        const ids = [...tabs.keys()];
-        const next = ids[(ids.indexOf(active) + (event.key === 'ArrowRight' ? 1 : ids.length - 1)) % ids.length];
-        select(next);
-        tabs.get(next).focus();
-        event.preventDefault();
-      },
-    },
-  }, items.map((item) => {
-    const tab = el('button', {
-      class: 'model-editor-tab',
-      type: 'button',
-      role: 'tab',
-      id: `model-editor-tab-${item.id}`,
-      dataset: { input: item.id },
-      'aria-controls': 'model-editor-panel',
-      on: { click: () => select(item.id) },
-    }, [
-      ...bilingual(item.short ?? item.label, item.shortJa ?? item.labelJa, 'model-editor-tab-name'),
-      // Whether this input is off its starting value. Always in the box, only
-      // its visibility changes, so marking a tab moves nothing.
-      el('span', { class: 'model-editor-tab-mark', 'aria-hidden': 'true', text: '●' }),
-    ]);
-    tabs.set(item.id, tab);
-    return tab;
-  }));
-
-  const name = bilingual('', '');
-  // The input's full name — its definition and unit — on one line of its own.
-  const nameBox = el('span', { class: 'model-editor-name' }, name);
-  const currentValue = el('span', { class: 'model-editor-current-value' });
-  const startValue = el('span', { class: 'model-editor-start-value' });
-  const decreaseWords = bilingual('', '');
-  const increaseWords = bilingual('', '');
-  const startMark = el('span', { class: 'model-editor-start-mark', 'aria-hidden': 'true' });
-
-  const step = (direction) => {
-    const item = state.get(active);
-    const nudge = Number(item.nudge ?? item.step);
-    const raw = item.value + direction * nudge;
-    const snapped = item.min + Math.round((raw - item.min) / item.step) * item.step;
-    const digits = decimals(item.step);
-    const value = Number(Math.min(item.max, Math.max(item.min, snapped)).toFixed(digits));
-    if (value === item.value) return;
-    commit(value);
-  };
-  const decrease = el('button', { class: 'model-editor-step', type: 'button', dataset: { direction: 'down' }, on: { click: () => step(-1) } }, [
-    el('span', { class: 'model-editor-step-sign', 'aria-hidden': 'true', text: '−' }),
-    el('span', { class: 'model-editor-step-words' }, decreaseWords),
-  ]);
-  const increase = el('button', { class: 'model-editor-step', type: 'button', dataset: { direction: 'up' }, on: { click: () => step(1) } }, [
-    el('span', { class: 'model-editor-step-sign', 'aria-hidden': 'true', text: '+' }),
-    el('span', { class: 'model-editor-step-words' }, increaseWords),
-  ]);
-  const slider = el('input', {
-    class: 'slider slider-sm model-editor-slider',
-    type: 'range',
-    on: { input: (event) => commit(Number(event.target.value), { fromSlider: true }) },
-  });
-  const resetOne = el('button', {
-    class: 'model-editor-reset',
-    type: 'button',
-    on: { click: () => commit(state.get(active).start) },
-  }, bilingual(words.resetOne ?? 'Reset this', words.resetOneJa ?? 'この項目を戻す'));
-
-  let valuesLine;
-  const panel = el('div', {
-    class: 'model-editor-panel',
-    role: 'tabpanel',
-    id: 'model-editor-panel',
-  }, [
-    el('div', { class: 'model-editor-head' }, [nameBox]),
-    el('div', { class: 'model-editor-row' }, [
-      decrease,
-      el('span', { class: 'model-editor-track' }, [slider, startMark]),
-      increase,
-    ]),
-    valuesLine = el('div', { class: 'model-editor-values' }, [
-      el('span', { class: 'model-editor-current' }, [
-        ...bilingual(words.current ?? 'Now', words.currentJa ?? '現在', 'model-editor-caption'),
-        currentValue,
-      ]),
-      el('span', { class: 'model-editor-start' }, [
-        ...bilingual(words.start ?? 'Start', words.startJa ?? '開始時', 'model-editor-caption'),
-        startValue,
-      ]),
-      resetOne,
-    ]),
-  ]);
-
-  function commit(value, { fromSlider = false } = {}) {
-    const item = state.get(active);
-    item.value = value;
-    render({ keepSlider: fromSlider });
-    onChange(item.id, value);
-  }
-
-  function select(id) {
-    if (!state.has(id) || id === active) return;
-    active = id;
-    render();
-  }
-
-  function render({ keepSlider = false } = {}) {
-    const item = state.get(active);
-    const format = item.format ?? ((value) => String(value));
-    for (const [id, tab] of tabs) {
-      const selected = id === active;
-      tab.setAttribute('aria-selected', String(selected));
-      tab.tabIndex = selected ? 0 : -1;
-      const entry = state.get(id);
-      tab.classList.toggle('is-changed', entry.start != null && entry.value !== entry.start);
-    }
-    panel.setAttribute('aria-labelledby', `model-editor-tab-${active}`);
-    panel.dataset.input = active;
-    setText(name, item.label, item.labelJa);
-    nameBox.title = `${item.labelJa} / ${item.label}`;
-    setText(decreaseWords, item.decrease ?? 'Less', item.decreaseJa ?? '減らす');
-    setText(increaseWords, item.increase ?? 'More', item.increaseJa ?? '増やす');
-    decrease.setAttribute('aria-label', `${item.shortJa ?? item.labelJa}を${item.decreaseJa ?? '減らす'}`);
-    increase.setAttribute('aria-label', `${item.shortJa ?? item.labelJa}を${item.increaseJa ?? '増やす'}`);
-    decrease.disabled = item.value <= item.min;
-    increase.disabled = item.value >= item.max;
-    // The range's own attributes change only when a different input is
-    // chosen, and its value is not written back while it is the thing being
-    // dragged: a value assigned to a range under the finger is the one way to
-    // make it jump.
-    if (slider.dataset.input !== item.id) {
-      slider.dataset.input = item.id;
-      slider.min = String(item.min);
-      slider.max = String(item.max);
-      slider.step = String(item.step);
-      slider.setAttribute('aria-label', `${item.label} / ${item.labelJa}`);
-      keepSlider = false;
-    }
-    if (!keepSlider) slider.value = String(item.value);
-    slider.setAttribute('aria-valuetext', format(item.value));
-    currentValue.textContent = format(item.value);
-    const hasStart = item.start != null;
-    startValue.textContent = hasStart ? format(item.start) : '';
-    startMark.hidden = !hasStart;
-    if (hasStart) {
-      const fraction = (item.start - item.min) / (item.max - item.min);
-      startMark.style.setProperty('--start', String(Math.min(1, Math.max(0, fraction))));
-    }
-    resetOne.disabled = !hasStart || item.value === item.start;
-  }
-
-  render();
-
-  return {
-    element: el('div', { class: 'model-control is-editor', dataset: { control: 'editor' } }, [tabList, panel]),
-    /** The model's accepted value and starting point for one input. */
-    setValue(id, value, definition) {
-      const item = state.get(id);
-      if (!item) return;
-      item.value = Number(value);
-      if (definition?.start != null) item.start = Number(definition.start);
-      render({ keepSlider: id === active && globalThis.document?.activeElement === slider && Number(slider.value) === item.value });
-    },
-    get active() {
-      return active;
-    },
-    /** Places a button (the console's whole-reset) at the end of the values line. */
-    adopt(node) {
-      valuesLine.append(node);
-    },
-  };
-}
-
 function decimals(step) {
   const text = String(step);
   return text.includes('.') ? text.split('.')[1].length : 0;
 }
 
-/**
- * One experiment a reader can run without designing it: a question, one
- * press, a way back, and the other experiments one press away.
- *
- * The press and the way back go through the same `onChange` / `onReset` as
- * every other control — the experiment moves one input to one value, and
- * nothing here knows what that input means. Choosing another experiment is
- * `onChange('experiment', id)`, which the scene treats as starting it.
- *
- * Nothing in it changes size when pressed: the press and the undo swap which
- * of the two is available, and the question is one line.
- *
- * @param {{ id: string, value: string, experiment: {id:string,control:string,to:number,question:string,questionJa:string,action:string,actionJa:string}, applied: boolean, moved: boolean, options: object[], copy: object }} control
- */
-function createExperiment(control, onChange, onReset) {
-  const words = control.copy ?? {};
-  const question = [el('span', { class: 'lang-en' }), el('span', { class: 'lang-ja' })];
-  const actionWords = [el('span', { class: 'lang-en' }), el('span', { class: 'lang-ja' })];
-  let current = control;
-  const act = el('button', {
-    class: 'model-experiment-act',
-    type: 'button',
-    on: { click: () => onChange(current.experiment.control, current.experiment.to) },
-  }, actionWords);
-  const undo = el('button', {
-    class: 'model-experiment-undo',
-    type: 'button',
-    on: { click: () => onReset() },
-  }, [
-    el('span', { class: 'lang-en', text: words.undo ?? 'Undo' }),
-    el('span', { class: 'lang-ja', text: words.undoJa ?? '元に戻す' }),
-  ]);
-  const others = new Map();
-  const otherList = el('div', { class: 'model-experiment-others-list' }, (control.options ?? []).map((option) => {
-    const button = el('button', {
-      class: 'model-experiment-other',
-      type: 'button',
-      dataset: { value: option.id },
-      on: {
-        click: () => {
-          chooser.open = false;
-          onChange(control.id, option.id);
-        },
-      },
-    }, [
-      el('span', { class: 'lang-en', text: option.question }),
-      el('span', { class: 'lang-ja', text: option.questionJa }),
-    ]);
-    others.set(option.id, button);
-    return button;
-  }));
-  const chooser = el('details', { class: 'model-experiment-others' }, [
-    el('summary', { class: 'model-experiment-others-toggle' }, [
-      el('span', { class: 'lang-en', text: words.others ?? 'Try another' }),
-      el('span', { class: 'lang-ja', text: words.othersJa ?? 'ほかの条件を試す' }),
-    ]),
-    el('div', { class: 'model-experiment-others-body' }, [
-      otherList,
-      words.othersNote || words.othersNoteJa
-        ? el('p', { class: 'model-experiment-others-note' }, [
-            el('span', { class: 'lang-en', text: words.othersNote ?? '' }),
-            el('span', { class: 'lang-ja', text: words.othersNoteJa ?? '' }),
-          ])
-        : null,
-    ]),
-  ]);
-  const heading = el('p', { class: 'model-experiment-question' }, question);
+let operationCount = 0;
+/** A fresh token for one of the reader's operations (one drag, one press). */
+const nextOperation = () => `op-${(operationCount += 1)}`;
 
-  function setValue(next) {
-    current = next;
-    question[0].textContent = next.experiment.question;
-    question[1].textContent = next.experiment.questionJa;
-    actionWords[0].textContent = next.experiment.action;
-    actionWords[1].textContent = next.experiment.actionJa;
-    act.setAttribute('aria-pressed', String(Boolean(next.applied)));
-    act.disabled = Boolean(next.applied);
-    undo.disabled = !next.moved;
-    for (const [id, button] of others) button.hidden = id === next.experiment.id;
-  }
-  setValue(control);
+function snap(value, control) {
+  const step = Number(control.step) || 0;
+  const clamped = Math.min(control.max, Math.max(control.min, value));
+  if (!step) return clamped;
+  const snapped = control.min + Math.round((clamped - control.min) / step) * step;
+  return Number(Math.min(control.max, snapped).toFixed(decimals(step)));
+}
+
+/**
+ * Two independent inputs on one surface — and each of them on its own axis.
+ *
+ * ## What the point means
+ *
+ * The point *is* the two values that are applied: its position is computed
+ * from them, and nothing about it springs back, glides on or snaps. Where the
+ * reader grabs it — on the point or anywhere in the surface — the distance
+ * between the finger and the point is kept for the whole drag, so a grab
+ * never jumps the values, and a tap that does not move changes nothing.
+ *
+ * A drag sends its latest position at most once a frame, and the last one is
+ * sent on release: nothing is lost and nothing piles up. It is one operation
+ * (`op`), so the scene can undo it as one. A cancelled drag (the system took
+ * the pointer, the page was hidden) ends where the last applied value is, and
+ * drops what had not been sent yet.
+ *
+ * ## One axis alone
+ *
+ * Under the surface, a range for x with a button at each end; beside it, the
+ * same for y. They move **only their own input** — the reader never has to
+ * drag the point perfectly straight to hold the other one. They are ordinary
+ * range inputs: named, with the value in words, reachable by keyboard. The
+ * surface itself is for a pointer and is hidden from assistive technology;
+ * the group is named for both inputs.
+ *
+ * @param {{ id: string, words: {label?:string,labelJa?:string}, copy: object, x: object, y: object, onChange: Function }} options
+ */
+function createXYPad({ id, words, copy, x, y, onChange }) {
+  const axes = { x: { ...x }, y: { ...y } };
+  const withUnit = (axis, value) => `${formatterFor({ ...axes[axis], unit: '' })(value)}${axes[axis].unit ? ` ${axes[axis].unit}` : ''}`;
+  const fraction = (axis, value) => {
+    const { min, max } = axes[axis];
+    return Math.min(1, Math.max(0, (value - min) / (max - min)));
+  };
+
+  // --- the surface -------------------------------------------------------
+  const thumb = el('span', { class: 'pad-thumb' });
+  const startMark = el('span', { class: 'pad-start', title: `${copy.startJa ?? '開始時'}` });
+  const readX = el('span', { class: 'pad-read pad-read-x' });
+  const readY = el('span', { class: 'pad-read pad-read-y' });
+  const endWords = (axis) => [
+    el('span', { class: `pad-end pad-end-${axis}-low` }, [
+      el('span', { class: 'lang-en', text: axes[axis].low ?? '' }),
+      el('span', { class: 'lang-ja', text: axes[axis].lowJa ?? '' }),
+    ]),
+    el('span', { class: `pad-end pad-end-${axis}-high` }, [
+      el('span', { class: 'lang-en', text: axes[axis].high ?? '' }),
+      el('span', { class: 'lang-ja', text: axes[axis].highJa ?? '' }),
+    ]),
+  ];
+  const area = el('div', { class: 'pad-area', 'aria-hidden': 'true' }, [
+    ...endWords('x'),
+    ...endWords('y'),
+    readY,
+    readX,
+    startMark,
+    thumb,
+  ]);
+
+  /** @type {{ pointerId: number, op: string, dx: number, dy: number, pending: object|null, frame: number, sent: object }|null} */
+  let drag = null;
+
+  const place = () => {
+    area.style.setProperty('--px', String(fraction('x', axes.x.value)));
+    area.style.setProperty('--py', String(fraction('y', axes.y.value)));
+    area.style.setProperty('--sx', String(fraction('x', axes.x.start ?? axes.x.value)));
+    area.style.setProperty('--sy', String(fraction('y', axes.y.start ?? axes.y.value)));
+    // Name and value only: the unit and the definition are in the range's
+    // name and value text and in the surface's title, where there is room.
+    readX.textContent = `${axes.x.shortJa ?? axes.x.labelJa} ${formatterFor({ ...axes.x, unit: '' })(axes.x.value)}`;
+    readY.textContent = `${axes.y.shortJa ?? axes.y.labelJa} ${formatterFor({ ...axes.y, unit: '' })(axes.y.value)}`;
+    area.title = `${axes.y.labelJa}: ${withUnit('y', axes.y.value)}\n${axes.x.labelJa}: ${withUnit('x', axes.x.value)}`;
+    area.classList.toggle('is-moved', axes.x.value !== axes.x.start || axes.y.value !== axes.y.start);
+  };
+
+  // Pixel geometry of the point's travel: inset by the point's radius.
+  const INSET = 14;
+  const geometry = () => {
+    const rect = area.getBoundingClientRect();
+    return { rect, w: Math.max(1, rect.width - 2 * INSET), h: Math.max(1, rect.height - 2 * INSET) };
+  };
+  const pointAt = ({ rect, w, h }) => ({
+    px: rect.left + INSET + fraction('x', axes.x.value) * w,
+    py: rect.top + INSET + (1 - fraction('y', axes.y.value)) * h,
+  });
+
+  const flush = () => {
+    if (!drag) return;
+    drag.frame = 0;
+    const next = drag.pending;
+    drag.pending = null;
+    if (!next || (next.x === drag.sent.x && next.y === drag.sent.y)) return;
+    drag.sent = next;
+    onChange(id, { [axes.x.id]: next.x, [axes.y.id]: next.y }, { op: drag.op });
+  };
+
+  const end = ({ commit }) => {
+    if (!drag) return;
+    const current = drag;
+    if (current.frame) cancelAnimationFrame(current.frame);
+    if (commit) flush();
+    drag = null;
+    area.classList.remove('is-dragging');
+    try {
+      if (area.hasPointerCapture?.(current.pointerId)) area.releasePointerCapture(current.pointerId);
+    } catch {
+      // The pointer is already gone; nothing to release.
+    }
+  };
+
+  area.addEventListener('pointerdown', (event) => {
+    // One pointer owns the surface; a second touch neither takes it over nor
+    // reaches the camera behind it.
+    if (drag) {
+      event.preventDefault();
+      return;
+    }
+    if (event.button !== undefined && event.button > 0) return;
+    event.preventDefault();
+    const geo = geometry();
+    const point = pointAt(geo);
+    drag = {
+      pointerId: event.pointerId,
+      op: nextOperation(),
+      // Kept for the whole drag: where the finger is relative to the point.
+      dx: point.px - event.clientX,
+      dy: point.py - event.clientY,
+      pending: null,
+      frame: 0,
+      sent: { x: axes.x.value, y: axes.y.value },
+    };
+    area.classList.add('is-dragging');
+    try {
+      area.setPointerCapture(event.pointerId);
+    } catch {
+      // Synthetic events in tests have no capture; the drag still works.
+    }
+  });
+  area.addEventListener('pointermove', (event) => {
+    if (!drag || event.pointerId !== drag.pointerId) return;
+    event.preventDefault();
+    const { rect, w, h } = geometry();
+    const fx = (event.clientX + drag.dx - rect.left - INSET) / w;
+    const fy = 1 - (event.clientY + drag.dy - rect.top - INSET) / h;
+    drag.pending = {
+      x: snap(axes.x.min + Math.min(1, Math.max(0, fx)) * (axes.x.max - axes.x.min), axes.x),
+      y: snap(axes.y.min + Math.min(1, Math.max(0, fy)) * (axes.y.max - axes.y.min), axes.y),
+    };
+    if (!drag.frame) drag.frame = requestAnimationFrame(flush);
+  });
+  area.addEventListener('pointerup', (event) => {
+    if (drag && event.pointerId === drag.pointerId) end({ commit: true });
+  });
+  // The system took the pointer: keep what was applied, drop what was not.
+  area.addEventListener('pointercancel', (event) => {
+    if (drag && event.pointerId === drag.pointerId) end({ commit: false });
+  });
+  area.addEventListener('lostpointercapture', (event) => {
+    if (drag && event.pointerId === drag.pointerId) end({ commit: false });
+  });
+  globalThis.document?.addEventListener?.('visibilitychange', () => {
+    if (globalThis.document.visibilityState === 'hidden') end({ commit: false });
+  });
+
+  // --- one axis alone ------------------------------------------------------
+  const axisControl = (axis) => {
+    const control = axes[axis];
+    let op = nextOperation();
+    const fresh = () => {
+      op = nextOperation();
+    };
+    const range = el('input', {
+      class: `slider slider-sm pad-range pad-range-${axis}`,
+      type: 'range',
+      min: String(control.min),
+      max: String(control.max),
+      step: String(control.step),
+      value: String(control.value),
+      'aria-label': `${control.labelJa} / ${control.label}`,
+      on: {
+        pointerdown: fresh,
+        keydown: fresh,
+        input: (event) => onChange(control.id, Number(event.target.value), { op }),
+      },
+    });
+    const step = (direction) => {
+      const nudge = Number(control.nudge ?? control.step);
+      const value = snap(axes[axis].value + direction * nudge, axes[axis]);
+      if (value !== axes[axis].value) onChange(control.id, value, { op: nextOperation() });
+    };
+    const button = (direction) =>
+      el('button', {
+        class: 'pad-step',
+        type: 'button',
+        dataset: { axis, direction: direction > 0 ? 'up' : 'down' },
+        'aria-label': `${control.shortJa ?? control.labelJa}を${direction > 0 ? control.increaseJa ?? '増やす' : control.decreaseJa ?? '減らす'}`,
+        title: `${direction > 0 ? control.increaseJa ?? '増やす' : control.decreaseJa ?? '減らす'}`,
+        on: { click: () => step(direction) },
+      }, [el('span', { 'aria-hidden': 'true', text: direction > 0 ? '+' : '−' })]);
+    const down = button(-1);
+    const up = button(1);
+    return { range, down, up };
+  };
+  const ax = axisControl('x');
+  const ay = axisControl('y');
+
+  const sync = () => {
+    for (const [axis, parts] of [['x', ax], ['y', ay]]) {
+      const control = axes[axis];
+      // Not written back while it is the thing being dragged: a value assigned
+      // to a range under the finger is the one way to make it jump.
+      if (globalThis.document?.activeElement !== parts.range || Number(parts.range.value) !== control.value) {
+        parts.range.value = String(control.value);
+      }
+      parts.range.setAttribute('aria-valuetext', withUnit(axis, control.value));
+      parts.down.disabled = control.value <= control.min;
+      parts.up.disabled = control.value >= control.max;
+    }
+    place();
+  };
+  sync();
+
+  const element = el('div', {
+    class: 'model-control is-pad',
+    role: 'group',
+    'aria-label': `${words?.labelJa ?? ''}: ${axes.x.shortJa ?? axes.x.labelJa}・${axes.y.shortJa ?? axes.y.labelJa}`,
+    dataset: { control: `pad-${id}`, pad: id },
+  }, [
+    el('span', { class: 'pad-name' }, [
+      el('span', { class: 'lang-en', text: words?.label ?? '' }),
+      el('span', { class: 'lang-ja', text: words?.labelJa ?? '' }),
+    ]),
+    el('div', { class: 'pad-body' }, [
+      el('div', { class: 'pad-y' }, [ay.up, el('span', { class: 'pad-y-track' }, [ay.range]), ay.down]),
+      area,
+    ]),
+    el('div', { class: 'pad-x' }, [ax.down, ax.range, ax.up]),
+  ]);
 
   return {
-    element: el('div', { class: 'model-control is-experiment', dataset: { control: control.id } }, [
-      heading,
-      el('div', { class: 'model-experiment-actions' }, [act, undo]),
-      chooser,
-    ]),
-    setValue,
+    element,
+    /** The model's accepted value and start for one axis. */
+    setValue(axis, value, definition) {
+      const next = Number(value);
+      // Something else changed this input while it was being dragged (undo,
+      // reset, a refused condition): the drag ends where the model is, and
+      // nothing it had not sent is sent later.
+      if (drag && next !== drag.sent[axis]) end({ commit: false });
+      axes[axis].value = next;
+      if (definition?.start != null) axes[axis].start = Number(definition.start);
+      sync();
+    },
   };
 }
