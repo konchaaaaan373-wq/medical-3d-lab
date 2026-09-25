@@ -161,12 +161,49 @@ test('clearing an intervention always lands on this preset’s starting conditio
   assert.deepEqual({ ...session.input }, start, 'clearing goes to the starting condition');
   assert.equal(session.interventionId, INTERVENTION_IDS.NONE);
 
-  // Moving a control while one is selected lands in the same place, with that
-  // one control moved — so there is nowhere for a drug's effect to survive.
+  // Moving a control while one is applied keeps what the intervention did and
+  // changes that one input — "this, with a slower rate". It used to land on the
+  // starting condition with the one control moved, which silently took the
+  // intervention's other changes away (owner's phone recordings, 2026-09-25).
   session.selectIntervention(INTERVENTION_IDS.VOLUME_LOADING);
+  const loaded = { ...session.input };
   session.setControl('heartRatePerMin', 64);
-  assert.equal(session.interventionId, INTERVENTION_IDS.NONE);
-  assert.deepEqual({ ...session.input }, { ...start, heartRatePerMin: 64 });
+  assert.equal(session.interventionId, INTERVENTION_IDS.NONE, 'the condition is now the reader\'s');
+  assert.equal(session.adjustedAfter, INTERVENTION_IDS.VOLUME_LOADING, 'and it says where it came from');
+  assert.deepEqual({ ...session.input }, { ...loaded, heartRatePerMin: 64 });
+  // Clearing still goes to the starting condition, from here too.
+  session.selectIntervention(INTERVENTION_IDS.NONE);
+  assert.deepEqual({ ...session.input }, start);
+  assert.equal(session.adjustedAfter, INTERVENTION_IDS.NONE);
+});
+
+test('after dobutamine, moving one input leaves every other input where the drug put it', () => {
+  const session = new ExperimentSession({ presetId: PRESET_IDS.REDUCED_CONTRACTILITY });
+  session.selectIntervention(INTERVENTION_IDS.DOBUTAMINE);
+  const onDrug = { ...session.input };
+  assert.notEqual(onDrug.contractilityEesMmHgPerMl, session.baseline.input.contractilityEesMmHgPerMl);
+
+  session.setControl('fillingVolumeMl', onDrug.fillingVolumeMl + 40);
+  assert.deepEqual({ ...session.input }, { ...onDrug, fillingVolumeMl: onDrug.fillingVolumeMl + 40 });
+  assert.equal(session.adjustedAfter, INTERVENTION_IDS.DOBUTAMINE);
+  assert.equal(session.origin, INTERVENTION_IDS.DOBUTAMINE);
+  // The comparison is still against where the experiment started.
+  assert.equal(session.baseline.input.contractilityEesMmHgPerMl, presetInput(PRESET_IDS.REDUCED_CONTRACTILITY).contractilityEesMmHgPerMl);
+
+  // Putting one input back moves that one only.
+  session.resetControl('fillingVolumeMl');
+  assert.deepEqual({ ...session.input }, onDrug);
+});
+
+test('putting one input back leaves the others as they are', () => {
+  const session = new ExperimentSession({ presetId: PRESET_IDS.REFERENCE });
+  const start = { ...session.baseline.input };
+  session.setControl('fillingVolumeMl', 800);
+  session.setControl('heartRatePerMin', 90);
+  session.resetControl('fillingVolumeMl');
+  assert.deepEqual({ ...session.input }, { ...start, heartRatePerMin: 90 });
+  session.reset();
+  assert.deepEqual({ ...session.input }, start);
 });
 
 test('there is no state an intervention leaves behind that nothing can restore', () => {
@@ -178,7 +215,10 @@ test('there is no state an intervention leaves behind that nothing can restore',
   session.setControl('fillingVolumeMl', 780);
   session.selectIntervention(INTERVENTION_IDS.DOBUTAMINE);
 
-  const recoverable = new Set(['_presetId', '_intervention', '_input', '_baseline', '_view',
+  // `_adjustedAfter` is recoverable: the intervention row reports it as the
+  // origin, and replaying that intervention and then the four values lands on
+  // the same condition with the same label (held in cardiac-output-scene.test.js).
+  const recoverable = new Set(['_presetId', '_intervention', '_adjustedAfter', '_input', '_baseline', '_view',
     '_applied', '_problems', '_cache', '_warmStart', '_revision', 'solverOptions']);
   const held = Object.keys(session).filter((key) => key.startsWith('_') || key === 'solverOptions');
   for (const key of held) {

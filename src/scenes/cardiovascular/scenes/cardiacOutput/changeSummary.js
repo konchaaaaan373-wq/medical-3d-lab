@@ -127,3 +127,26 @@ export function signedDelta(now, before, digits = 0) {
     ? { delta: `+${magnitude}`, deltaSign: 'up' }
     : { delta: `−${magnitude}`, deltaSign: 'down' };
 }
+
+/**
+ * Which way a figure moved, for the arrow beside it — and nothing more.
+ *
+ * It used to grade the size too (↑↑ at 20 %, ≈ under 3 %). That put figures in
+ * different units on one scale of importance and invited "↑↑, so this is the
+ * one that matters" — a clinical judgement the model does not make (owner's
+ * review, 2026-09-25). The direction is the sign of the difference between the
+ * two *displayed* values, so the arrow can never disagree with the signed
+ * figure beside it, and it is carried by the arrow's shape and its words, not
+ * by a colour.
+ *
+ * @param {number|string} now the displayed value
+ * @param {number|string} before the displayed reference
+ */
+export function changeOf(now, before) {
+  const difference = Number(now) - Number(before);
+  if (!Number.isFinite(difference)) return {};
+  if (difference === 0) return { change: 'flat', changeLabel: 'no change', changeLabelJa: '変化なし' };
+  return difference > 0
+    ? { change: 'up', changeLabel: 'higher', changeLabelJa: '上昇' }
+    : { change: 'down', changeLabel: 'lower', changeLabelJa: '低下' };
+}

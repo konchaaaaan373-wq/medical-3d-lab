@@ -23,7 +23,12 @@ import { el } from '../utils/dom.js';
  * Every scene that hands the same rows every time is unaffected — the nodes
  * are reused, and reordering a list that has not changed order does nothing.
  */
-export function createMetricsPanel() {
+/**
+ * @param {{ moreLabel?: {show:string,showJa:string,hide:string,hideJa:string} }} [options]
+ *   the words on the button to the rest of the figures, for a scene whose
+ *   readers would not call them "all figures"
+ */
+export function createMetricsPanel({ moreLabel } = {}) {
   const element = el('div', { class: 'panel metrics' });
   const rows = new Map();
 
@@ -44,8 +49,8 @@ export function createMetricsPanel() {
   const moreLabelEn = el('span', { class: 'lang-en' });
   const moreLabelJa = el('span', { class: 'lang-ja' });
   const setMoreLabel = () => {
-    moreLabelEn.textContent = expanded ? 'Fewer figures' : 'All figures';
-    moreLabelJa.textContent = expanded ? '主要な数値だけ' : 'すべての数値';
+    moreLabelEn.textContent = expanded ? (moreLabel?.hide ?? 'Fewer figures') : (moreLabel?.show ?? 'All figures');
+    moreLabelJa.textContent = expanded ? (moreLabel?.hideJa ?? '主要な数値だけ') : (moreLabel?.showJa ?? 'すべての数値');
   };
   const more = el('button', {
     class: 'metrics-more',

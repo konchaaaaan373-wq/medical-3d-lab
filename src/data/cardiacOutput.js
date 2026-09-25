@@ -154,6 +154,39 @@ export const CONTROLS = [
 ];
 
 /**
+ * How each of the four inputs is moved in the editor: the words on the two
+ * buttons, and how far one press goes.
+ *
+ * The words name the direction in the input's own terms — filling is
+ * "less / more", contractility "weaker / stronger" — rather than a bare − and
+ * +, because which side is "more" is the first thing a reader would otherwise
+ * have to find out by trying.
+ *
+ * `nudge` is one press. About a twentieth of each input's declared range and a
+ * whole number of its step, so twenty presses cross the range and no press
+ * lands between slider positions. Presentation only: the range and the step
+ * are the model's (`CONTROL_DOMAIN`) and are not widened here.
+ */
+export const CONTROL_EDITOR = {
+  fillingVolumeMl: { nudge: 20, decrease: 'Less', decreaseJa: '減らす', increase: 'More', increaseJa: '増やす' },
+  systemicResistanceMmHgSPerMl: { nudge: 0.05, decrease: 'Lower', decreaseJa: '下げる', increase: 'Higher', increaseJa: '上げる' },
+  contractilityEesMmHgPerMl: { nudge: 0.16, decrease: 'Weaker', decreaseJa: '弱める', increase: 'Stronger', increaseJa: '強める' },
+  heartRatePerMin: { nudge: 3, decrease: 'Slower', decreaseJa: '下げる', increase: 'Faster', increaseJa: '上げる' },
+};
+
+/** The editor's fixed words. */
+export const EDITOR_COPY = {
+  label: 'Input to change',
+  labelJa: '変える入力',
+  current: 'Now',
+  currentJa: '現在',
+  start: 'Start',
+  startJa: '開始時',
+  resetOne: 'Reset this',
+  resetOneJa: 'この項目を戻す',
+};
+
+/**
  * The console's copy.
  *
  * No subtitle any more. The sentence that used to sit here — every figure is
@@ -165,32 +198,25 @@ export const CONTROLS = [
 export const MODEL_CONTROLS = {
   primary: true,
   placement: 'console',
-  // No heading. 「状態を選び、介入を 1 つ加える」 was an instruction written as
-  // a title, and it read as one: the two captioned rows already say what they
-  // are, and the title card says what the screen is for.
   title: '',
   titleJa: '',
   reset: true,
-  // Back to where the *chosen condition* started — not to the page's opening
-  // state. "Start over" read as the second, and it does not do that.
-  resetLabel: 'Undo changes',
-  resetLabelJa: '元に戻す',
-  // The option cards carry only their names. What each does is said where it
-  // is read against the figures — the first row of the read-out — and in the
-  // button's title, so the console is a row of choices rather than a grid of
-  // paragraphs.
+  // The whole experiment back to where it started — the starting state the
+  // reader chose, not the page's opening state, and not the view (that is in
+  // the menu). It stands beside the editor's 「この項目を戻す」, so the two
+  // scopes are read against each other.
+  resetLabel: 'Reset all',
+  resetLabelJa: '全体を戻す',
   hideChoiceEffects: true,
+  editor: EDITOR_COPY,
+  // The four inputs are the experiment and are always on screen (the editor
+  // below). What is behind one press is the two things that *start* or *change
+  // the whole* experiment: the starting state and an intervention.
   advanced: {
-    // Short: it shares a line with the toolbar, and at 1024 px the longer
-    // 「（4 つを自分で動かす）」 pushed the toolbar's labels onto one character
-    // per line. The note inside says what the four are.
-    label: 'Adjust the inputs',
-    labelJa: '詳細パラメータ',
-    // What a reader needs before dragging: one quantity per slider, and that
-    // dragging clears the intervention. "Nothing is scaled afterwards" was an
-    // assurance about the implementation; it stays in the model card.
-    note: 'Each slider changes only the quantity named on it. Moving one clears the selected intervention.',
-    noteJa: '各スライダーは、書かれている量だけを変えます。動かすと、選んでいた介入は解除されます。',
+    label: 'Start state · intervention',
+    labelJa: '開始状態・介入',
+    note: 'Choosing a start state begins a new experiment and replaces your changes. An intervention is applied to the start state.',
+    noteJa: '開始状態を選ぶと新しい実験になり、調整は置き換わります。介入は開始状態に対してかかります。',
   },
 };
 

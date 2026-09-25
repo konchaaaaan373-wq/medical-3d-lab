@@ -266,7 +266,13 @@ export async function createApp({ stage, ui, onRetryModel = null }) {
       if (!element) return 0;
       const rect = element.getBoundingClientRect();
       if (!rect.width || !rect.height || !crosses(rect)) return 0;
-      return Math.min(0.5, Math.max(0, read(rect)));
+      // Half the frame is the most one band may take — except in the
+      // experiment layout, whose phone read-out stands on the console and
+      // reaches higher than that: capped at a half, a strip whose top was 58%
+      // of the way up the screen read as 50%, the heart was framed 50 px under
+      // it, and opening the sliders (63%) changed nothing the camera could
+      // see. The layout's 2% minimum band is what guards the other end.
+      return Math.min(meta.layout === 'experiment' ? 0.9 : 0.5, Math.max(0, read(rect)));
     };
     const spansWidth = (rect) => rect.left < width / 2 && rect.right > width / 2;
     const spansHeight = (rect) => rect.top < height / 2 && rect.bottom > height / 2;
@@ -275,13 +281,22 @@ export async function createApp({ stage, ui, onRetryModel = null }) {
     // across the top, so there it is part of the top band instead — which is
     // why this asks where the element actually is rather than which one it is.
     const railAcrossTop = (rect) =>
-      spansWidth(rect) && rect.top < height / 2 && (rect.bottom < height * 0.6 || railIsStrip(rect));
+      spansWidth(rect) && rect.top < height / 2 && (rect.bottom < height * 0.6 || railIsStrip(rect)) && !railOnConsole(rect);
     // On a phone the experiment layout's read-out is a full-width strip under
     // the title. It may cross the middle of a short frame, and counted as a
     // right-hand column it took half the width and pushed a 56 px heart into
     // the left edge. A strip across the frame is a top band only.
     const railIsStrip = (rect) => meta.layout === 'experiment' && rect.left < width * 0.2 && rect.right > width * 0.8;
-    const right = band('.rail', (rect) => spansHeight(rect) && !railIsStrip(rect), (rect) => (width - rect.left) / width);
+    // …and on a phone that strip stands on the console, at the bottom: its
+    // band is the bottom one, however far up a short screen it reaches. Told
+    // by where it stands — directly on the console — and not by the middle of
+    // the frame: with the sliders open on a 664 px phone its bottom was at
+    // 316, above the middle, it was taken for a top band, and the heart's
+    // band came out negative.
+    const consoleTop = ui.querySelector('.console')?.getBoundingClientRect().top;
+    const railOnConsole = (rect) =>
+      railIsStrip(rect) && Number.isFinite(consoleTop) && Math.abs(consoleTop - rect.bottom) < 24;
+    const railRight = band('.rail', (rect) => spansHeight(rect) && !railIsStrip(rect), (rect) => (width - rect.left) / width);
     /**
      * The console is the exception to "it has to cross the middle".
      *
@@ -306,15 +321,23 @@ export async function createApp({ stage, ui, onRetryModel = null }) {
      * 1024 px window the panel covered its left half. Counted only while it is
      * actually floating there; opened inline, it is part of the console band.
      */
+    //
+    // It stands on whichever side the layout puts it — left of a centred
+    // console, or left of a console in the right-hand column — and is counted
+    // on that side.
     const besidePanel = ui.querySelector('.console .model-controls-advanced[open] > .model-controls-advanced-body');
-    const left =
-      besidePanel && getComputedStyle(besidePanel).position === 'absolute'
-        ? band(
-            '.console .model-controls-advanced[open] > .model-controls-advanced-body',
-            (rect) => spansHeight(rect) && rect.left < width / 2,
-            (rect) => rect.right / width
-          )
-        : 0;
+    const floating = besidePanel && ['absolute', 'fixed'].includes(getComputedStyle(besidePanel).position);
+    const besideSelector = '.console .model-controls-advanced[open] > .model-controls-advanced-body';
+    // Counted whenever it is open, not only when it crosses the middle of
+    // the frame: a panel of four sliders under a title card can end just
+    // above the middle and still stand where the heart is drawn.
+    const left = floating
+      ? band(besideSelector, (rect) => rect.left < width / 2, (rect) => rect.right / width)
+      : 0;
+    const right = Math.max(
+      railRight,
+      floating ? band(besideSelector, (rect) => rect.left >= width / 2, (rect) => (width - rect.left) / width) : 0
+    );
     // The experiment layout's title card carries a line saying what the screen
     // is for, and at 1024–1280 px it reached down into the model's band — the
     // loop ran under it. It is counted as a top band there when it reaches
@@ -328,7 +351,12 @@ export async function createApp({ stage, ui, onRetryModel = null }) {
         band('.rail', railAcrossTop, (rect) => rect.bottom / height),
         titleBand
       ),
-      bottom: band('.console', reachesIntoBand, (rect) => (height - rect.top) / height),
+      bottom: Math.max(
+        band('.console', reachesIntoBand, (rect) => (height - rect.top) / height),
+        // On a phone the experiment layout's read-out is a strip standing
+        // directly on the console, so the model's band ends at its top.
+        band('.rail', railOnConsole, (rect) => (height - rect.top) / height)
+      ),
       right,
       left,
     };
@@ -848,7 +876,7 @@ export async function createApp({ stage, ui, onRetryModel = null }) {
   });
 
   // Optional: scenes that expose a model can show a live read-out beside the view.
-  const metricsPanel = scene.getMetrics ? createMetricsPanel() : null;
+  const metricsPanel = scene.getMetrics ? createMetricsPanel({ moreLabel: meta.metricsMore }) : null;
   if (meta.modelControls?.primary) metricsPanel?.element.classList.add('is-primary');
   // Optional: a scene whose model produces pressures can plot its own loop.
   const pvPanel = scene.getPressureVolume
@@ -1336,6 +1364,8 @@ export async function createApp({ stage, ui, onRetryModel = null }) {
   // not its position: a build marker below it moves it up by 48 px.
   publishHeight(consoleElement, ui, '--console-top', (box) => box.top);
   publishHeight(titleCard, ui, '--title-bottom', (box) => box.bottom);
+  // Where the read-out ends, for a layout that stands the console under it.
+  if (metricsPanel) publishHeight(metricsPanel.element, ui, '--metrics-bottom', (box) => box.bottom);
 
   ui.append(
     // The global navigation is `position: fixed` and anchored to the viewport,
@@ -2046,25 +2076,27 @@ export async function createApp({ stage, ui, onRetryModel = null }) {
    * fit the new band, the same fit "go to it" uses.
    */
   let bandsBeforeToggle = null;
-  let consoleHeightBeforeToggle = 0;
   consoleElement.addEventListener('click', () => {
     bandsBeforeToggle = JSON.stringify(safeAreaInsets());
-    consoleHeightBeforeToggle = consoleElement.getBoundingClientRect().height;
   }, true);
   consoleElement.addEventListener('toggle', (event) => {
-    // And the console itself does not grow to hold what opened: it keeps the
-    // height it had and scrolls to it. On a phone the band above the console
-    // is already a fifth of the screen, and growing the console took it under
-    // the fit's floor — `fitPoseToSafeArea` then returns the unfitted pose,
-    // which is *closer*, and the heart jumped under the read-out.
+    // The console used to keep its height here and scroll, because a taller
+    // console took a phone's band under the fit's floor and the heart jumped
+    // to a close-up. The experiment layout now fits into any band down to 2%,
+    // so the console may grow to show what opened — on a phone, the sliders —
+    // and the camera follows it smaller rather than being covered.
     const disclosure = event.target;
-    if (disclosure?.open && consoleHeightBeforeToggle > 0) {
-      consoleElement.style.height = `${Math.round(consoleHeightBeforeToggle)}px`;
-      requestAnimationFrame(() => disclosure.scrollIntoView?.({ block: 'nearest' }));
-    } else if (!consoleElement.querySelector('details[open]')) {
-      consoleElement.style.height = '';
-    }
-    requestAnimationFrame(() => {
+    if (disclosure?.open) requestAnimationFrame(() => disclosure.scrollIntoView?.({ block: 'nearest' }));
+    // Measured twice: once on the next frame, and once after the panels that
+    // are positioned from published heights (`--console-top`, set by a
+    // ResizeObserver) have caught up. The first measurement alone saw the
+    // phone's read-out where it had been and decided nothing had changed.
+    requestAnimationFrame(refitToBands);
+    setTimeout(refitToBands, 320);
+  }, true);
+
+  function refitToBands() {
+    {
       const measured = safeAreaInsets();
       if (!measured || JSON.stringify(measured) === bandsBeforeToggle) return;
       bandsBeforeToggle = JSON.stringify(measured);
@@ -2093,8 +2125,8 @@ export async function createApp({ stage, ui, onRetryModel = null }) {
       view.active = true;
       viewer.controls.autoRotate = false;
       syncZoomLimits();
-    });
-  }, true);
+    }
+  }
 
   // The canvases have no size until they are in the document.
   pvPanel?.resize();

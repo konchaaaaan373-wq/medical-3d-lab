@@ -16,8 +16,8 @@ import {
   resistanceAt,
 } from './reelStoryboard.js';
 import { ExperimentSession } from './experimentSession.js';
-import { describeChange, signedDelta } from './changeSummary.js';
-import { CONTROL_DOMAIN, CONTROL_IDS, PRESET_IDS, REFERENCE_GEOMETRY } from '../../../../models/cardiacOutput.js';
+import { changeOf, describeChange, signedDelta } from './changeSummary.js';
+import { CONTROL_DOMAIN, PRESET_IDS, REFERENCE_GEOMETRY } from '../../../../models/cardiacOutput.js';
 import {
   advanceCardiacPhase,
   beatPhaseAt,
@@ -33,6 +33,7 @@ import {
   COMPARISON_LABEL,
   CONSOLE_LAYOUT,
   CONTROLS,
+  CONTROL_EDITOR,
   LEARNING_LABEL,
   LEARNING_MODULES,
   REEL_LABEL,
@@ -112,6 +113,9 @@ export class CardiacOutputScene {
     // it. Declared, not detected — see `src/styles/experiment-layout.css`.
     layout: 'experiment',
     console: CONSOLE_LAYOUT,
+    // "All figures" is the vocabulary of a dashboard; these are the model's
+    // other outputs, one press away.
+    metricsMore: { show: 'Other measures', showJa: '他の指標', hide: 'Fewer', hideJa: '閉じる' },
     titleCard: { foldTrust: true },
     stages: STAGES,
     legend: LEGEND,
@@ -367,57 +371,64 @@ export class CardiacOutputScene {
    */
   getModelControls() {
     const input = this.session.input;
+    const start = this.session.baseline.input;
     return [
       {
+        // Secondary, behind 「開始状態・介入」: choosing one starts a new
+        // experiment. First in the list because a restore replays the list in
+        // order and the preset resets everything.
         id: 'preset',
         kind: 'choice',
-        // The circulation being experimented on, and — below it — what is done
-        // to it. Two different kinds of choice, so they are two rows with two
-        // captions rather than five cards in one grid.
-        label: 'Condition',
-        labelJa: '状態',
-        caption: 'Heart',
-        captionJa: '心臓の状態',
+        advanced: true,
+        label: 'Start state',
+        labelJa: '開始状態',
+        caption: 'Start state — choosing one starts a new experiment',
+        captionJa: '開始状態（選ぶと新しい実験）',
         value: this.session.presetId,
         options: PRESET_OPTIONS,
       },
       {
-        // After the preset and before the sliders, which is also the order a
-        // restore replays them in: the preset resets everything, the
-        // intervention is computed from the preset's own starting condition,
-        // and the sliders land last and win — which is right, because a slider
-        // position is a manual condition and clears any intervention anyway.
+        // After the preset and before the four inputs, which is also the order
+        // a restore replays them in: the intervention is computed from the
+        // preset's starting condition, and the four values land last. Since a
+        // manual move keeps the intervention's values (see `setControl`), that
+        // replay arrives at the same condition either way.
+        //
+        // The row reports where the condition came from — the intervention
+        // applied or the one adjusted since — so a restore carries the label
+        // too, and 「なし」 is lit only when there is none.
         id: 'intervention',
         kind: 'choice',
+        advanced: true,
         label: 'Intervention',
         labelJa: '介入',
-        caption: 'Intervention',
-        captionJa: '介入',
-        // A hand-set condition is not "no intervention", and the row must not
-        // say it is: moving a slider clears the intervention in the session,
-        // which left 「なし」 lit while the figures beside it had moved. So the
-        // row reports what is on screen — a status, not a choice, and not a
-        // model state: the session has no "manual" intervention, and
-        // `setModelControl` ignores this value when a restore replays it.
-        value: this.session.moved && this.session.interventionId === INTERVENTION_IDS.NONE
-          ? MANUAL_CONDITION
-          : this.session.interventionId,
-        options: [...INTERVENTION_OPTIONS, MANUAL_OPTION],
+        caption: 'Try an intervention',
+        captionJa: '介入を試す',
+        value: this.session.origin,
+        options: INTERVENTION_OPTIONS,
       },
+      // The experiment itself: the four inputs, always on screen, one of them
+      // open in the editor at a time. Each is still its own entry, so a
+      // restore and a lesson move them exactly as before.
       ...CONTROLS.map((control) => {
         const domain = CONTROL_DOMAIN[control.id];
+        const words = CONTROL_EDITOR[control.id];
         return {
           id: control.id,
           label: control.label,
           labelJa: control.labelJa,
+          short: control.short,
+          shortJa: control.shortJa,
           min: domain.min,
           max: domain.max,
           step: domain.step,
           value: input[control.id],
-          // Secondary: the four inputs are how the model is parameterised, and
-          // the scene is about choosing a condition and one thing to do to it.
-          // They are still here, one press away, moving the same model.
-          advanced: true,
+          // Where this experiment started, for the mark on the track and for
+          // 「この項目を戻す」. Not a normal value: the start state is a teaching
+          // condition, not a reference range.
+          start: start[control.id],
+          editor: true,
+          ...words,
           format: (value) => `${formatControl(control.id, value)}${control.unit}`,
         };
       }),
@@ -425,20 +436,20 @@ export class CardiacOutputScene {
   }
 
   /**
-   * @param {string} id `preset` or one of the four
+   * @param {string} id `preset`, `intervention` or one of the four
    * @param {number|string} value
    */
   setModelControl(id, value) {
     if (id === 'preset') {
       this.session.selectPreset(String(value));
     } else if (id === 'intervention') {
-      // "Manual" is a report, not something to select — see getModelControls.
-      if (value === MANUAL_CONDITION) return;
-      // 「なし」 means this condition's starting point. From a hand-set
-      // condition the session already holds no intervention, so asking it to
-      // clear one did nothing — the button a reader presses to undo their
-      // sliders has to actually undo them.
-      if (value === INTERVENTION_IDS.NONE && this.session.moved) this.session.reset();
+      // 「なし」 means this experiment's starting condition, from anywhere —
+      // including a condition adjusted after an intervention.
+      if (value === INTERVENTION_IDS.NONE) this.session.selectIntervention(INTERVENTION_IDS.NONE);
+      // The row already reads this intervention: either it is applied, or it
+      // is what the reader has adjusted since. A replay of it during a restore
+      // has to re-apply it (the four values that follow then land on top), so
+      // it is re-applied here rather than ignored.
       else this.session.selectIntervention(String(value));
     } else {
       this.session.setControl(id, Number(value));
@@ -561,18 +572,17 @@ export class CardiacOutputScene {
    */
   getMetrics() {
     const m = this.state;
-    // "Before" is shown whenever there is a before to show: while the second
-    // heart is drawn, and whenever the condition on screen is not the one this
-    // state started at. It used to be the first case only, so a reader who
-    // pressed dobutamine saw 4.5 and had to remember that it had been 3.7.
-    // With nothing changed and nothing compared there is no column, because a
-    // row reading "3.7 → 3.7 ±0" is noise, not a comparison.
-    const changed = CONTROL_IDS.some((id) => this.session.view.input[id] !== this.session.baseline.input[id]);
-    const ref = this.comparing || changed ? this.session.baseline.metrics : null;
+    // Every row is read against where this experiment started, always —
+    // including before anything has moved, when the difference is ±0. The
+    // column used to appear with the first change, and that appearance pushed
+    // the console, and the slider under the reader's finger, down (owner's
+    // phone recordings, 2026-09-25). A column that is always there cannot
+    // move anything when it fills in.
+    const ref = this.session.baseline.metrics;
     const mmHg = (value) => Math.round(value);
     const rows = [];
     /** The signed change on a headline row, at the precision it is shown with. */
-    const delta = (now, before, digits = 0) => (ref ? signedDelta(now, before, digits) : {});
+    const delta = (now, before, digits = 0) => (ref ? { ...signedDelta(now, before, digits), ...changeOf(now, before) } : {});
 
     // A condition that could not be solved is not answered with the previous
     // one's numbers pretending to be current. Every reachable slider position
@@ -614,12 +624,29 @@ export class CardiacOutputScene {
       shown: this.session.view.input,
       interventionId: this.session.interventionId,
     });
+    // Named as *from → to* — the starting condition the figures are read
+    // against, then where the reader is now — so the before value on every
+    // row below says what it is the value of. A starting condition on its own
+    // is the start of an experiment and is named alone.
+    // One fixed line: what the figures are read against, and where the
+    // condition came from. It names the state, not a history, so it does not
+    // grow as the reader keeps moving things.
+    const fromOption = PRESET_OPTIONS.find((option) => option.value === this.session.presetId);
+    const applied = INTERVENTION_OPTIONS.find((option) => option.value === this.session.interventionId && option.value !== INTERVENTION_IDS.NONE);
+    const adjusted = INTERVENTION_OPTIONS.find((option) => option.value === this.session.adjustedAfter && option.value !== INTERVENTION_IDS.NONE);
+    const atStart = change.moved.length === 0;
+    const origin = (ja) => {
+      const pick = (option) => (ja ? option.shortJa ?? option.labelJa : option.short ?? option.label);
+      if (applied) return `${pick(applied)}${ja ? '：' : ': '}`;
+      if (adjusted) return ja ? `${pick(adjusted)}適用後を調整：` : `Adjusted after ${pick(adjusted)}: `;
+      return '';
+    };
     rows.push({
       id: 'changed',
-      label: change.label,
-      labelJa: change.labelJa,
-      value: change.value,
-      valueJa: change.valueJa,
+      label: `Compared with: ${fromOption?.short ?? fromOption?.label} at the start`,
+      labelJa: `比較元：${fromOption?.shortJa ?? fromOption?.labelJa}（開始時）`,
+      value: atStart ? 'unchanged from the start' : `${origin(false)}${change.value}`,
+      valueJa: atStart ? '開始時のまま' : `${origin(true)}${change.valueJa}`,
       unit: '',
       emphasis: true,
       compact: true,
@@ -663,8 +690,10 @@ export class CardiacOutputScene {
         // Out of the detail and onto the face of the panel, because the cost of
         // filling is the thing this scene most needs a reader to see at the
         // same moment as the benefit.
-        label: 'LV end-diastolic pressure',
-        labelJa: '左室拡張末期圧',
+        // Named as what it is to a reader — the pressure it took to fill the
+        // ventricle — with the measured quantity in brackets.
+        label: 'LV filling pressure (LVEDP)',
+        labelJa: '左室充満圧（LVEDP）',
         value: mmHg(m.endDiastolicPressureMmHg),
         reference: ref ? mmHg(ref.endDiastolicPressureMmHg) : undefined,
         unit: 'mmHg',
@@ -846,13 +875,13 @@ export class CardiacOutputScene {
     return {
       centre: min.clone().add(max).multiplyScalar(0.5),
       corners,
-      // The box is the assembly's extreme extents seen at an angle, so its
-      // silhouette fills well under the box: at 0.9 the loop measured about
-      // 62% of the band's height and the heart was the smallest thing on the
-      // screen after the panels. At 1.1 the tubes still clear the band's edges
-      // with room to spare (measured at 1440×900 and 390×844), and the heart is
-      // what the eye lands on.
-      coverage: 1.1,
+      // The whole box, not more. At 1.1 — chosen when the loop sat in a wide
+      // band and measured as filling only 62% of it — the lower run of the
+      // loop slid under the read-out on a phone, where the band is tight and
+      // the box is the silhouette. Nothing may cover the model (the owner's
+      // rule), so the box is fitted with a little to spare for the tubes'
+      // own thickness, and the heart is a little smaller.
+      coverage: 0.95,
     };
   }
 
@@ -887,17 +916,6 @@ export class CardiacOutputScene {
     disposeObject(this.root);
   }
 }
-
-/** The intervention row's value while the condition has been set by hand. */
-const MANUAL_CONDITION = 'manual';
-
-/** Shown only while it is true; never pressable. */
-const MANUAL_OPTION = Object.freeze({
-  value: MANUAL_CONDITION,
-  label: 'Adjusted by hand',
-  labelJa: '手動調整',
-  status: true,
-});
 
 /** Rounding a control's value for display, at the precision the model has. */
 function formatControl(id, value) {
