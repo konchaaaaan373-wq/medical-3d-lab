@@ -598,7 +598,29 @@
   grid-row: 3;
 }
 
-/* The start state and the intervention: one press further in. */
+/* Both resets inside the editor are buttons of one kind, side by side, so
+   their two scopes — this input, the whole experiment — are read against
+   each other; and both are 44 px (verify:disease measures it). */
+#ui[data-layout='experiment'] .model-editor-values .model-control-reset {
+  min-height: 44px;
+  padding: 0 10px;
+  border-radius: 8px;
+  border: 1px solid rgba(167, 182, 206, 0.3);
+  background: none;
+  color: var(--ink-dim);
+  font-size: 12px;
+  text-decoration: none;
+  white-space: nowrap;
+  margin-left: 0;
+}
+
+/* The start state and the intervention: one press further in. Opening them
+   is choosing a new start, not adjusting this one, so while they are open
+   the editor steps back and the console does not take the heart's band. */
+#ui[data-layout='experiment'] .console:has(.model-controls-group[open]) .model-controls-advanced-body > .model-control-list {
+  display: none;
+}
+
 #ui[data-layout='experiment'] .model-controls-group {
   margin-top: 8px;
 }
