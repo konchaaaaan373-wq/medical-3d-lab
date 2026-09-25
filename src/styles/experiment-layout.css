@@ -871,6 +871,26 @@
     text-overflow: ellipsis;
   }
 
+  /* What was changed, on one fixed line beside its label, at every phone
+     height: the change arriving must not make the strip taller — measured
+     2 px at 390×844 when it sat on a line of its own (verify:disease). */
+  #ui[data-layout='experiment'] .metrics.has-compact .metric.is-qualitative {
+    flex-direction: row;
+    align-items: baseline;
+    gap: 6px;
+    height: 20px;
+    overflow: hidden;
+  }
+
+  #ui[data-layout='experiment'] .metrics.has-compact .metric.is-qualitative .metric-label {
+    flex: none;
+  }
+
+  #ui[data-layout='experiment'] .metrics.has-compact .metric.is-qualitative .metric-figure {
+    min-width: 0;
+    min-height: 0;
+  }
+
   #ui[data-layout='experiment'] .metrics.has-compact .metrics-more {
     grid-column: 4;
     grid-row: 1;
@@ -1018,24 +1038,6 @@
     --pad-h: 108px;
   }
 
-  #ui[data-layout='experiment'] .metrics.has-compact .metric.is-qualitative {
-    flex-direction: row;
-    align-items: baseline;
-    gap: 6px;
-    /* One fixed line: the change arriving beside the label must not make
-       the strip 2 px taller (measured). */
-    height: 20px;
-    overflow: hidden;
-  }
-
-  #ui[data-layout='experiment'] .metrics.has-compact .metric.is-qualitative .metric-label {
-    flex: none;
-  }
-
-  #ui[data-layout='experiment'] .metrics.has-compact .metric.is-qualitative .metric-figure {
-    min-width: 0;
-    min-height: 0;
-  }
 }
 
 /* A phone under 600 px of page (an iPhone SE with Safari's toolbars is 553):

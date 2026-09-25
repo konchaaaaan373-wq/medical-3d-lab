@@ -370,8 +370,10 @@ clinical review has looked at the corners.
 - with first-time users: the task list is in F-212 and has not been run;
 - whether the pairing (heart / blood & vessels) helps more than a single-axis
   layout with the same model, start and read-out — not compared;
-- that the left ventricle is readable while operating at 390×664 (about
-  140 px for the heart and loop together);
+- that the left ventricle is readable while operating on a short phone: at
+  390×664 the ventricle is drawn about 75 px tall on a preview build (production
+  has 34 px more for it), and at 375×553 about 35 px — there the two pads and a
+  readable heart do not yet fit together;
 - clinical review of the ranges' corners.
 
 ### Screen, 2026-09-25 — one input after an intervention, and what "before" is
