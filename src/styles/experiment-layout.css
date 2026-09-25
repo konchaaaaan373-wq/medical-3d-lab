@@ -594,8 +594,14 @@
   display: none;
 }
 
+/* "More" shares the first line with the open disclosure's summary — the
+   disclosure's own line is empty to the right of it — so adjusting in detail
+   costs the heart no extra row. */
 #ui[data-layout='experiment'] .console:has(.model-controls-advanced[open]) .controls > .button-row {
-  grid-row: 3;
+  grid-row: 1;
+  grid-column: 4;
+  align-self: start;
+  z-index: 1;
 }
 
 /* Both resets inside the editor are buttons of one kind, side by side, so
@@ -622,7 +628,24 @@
 }
 
 #ui[data-layout='experiment'] .model-controls-group {
-  margin-top: 8px;
+  margin-top: 0;
+}
+
+/* The disclosure's summary has a fixed width, so the start-state summary can
+   stand beside it on the console's first line (below). */
+#ui[data-layout='experiment'] .console .model-controls-advanced > summary {
+  width: 124px;
+  justify-content: center;
+}
+
+/* On the console's first line, beside 「詳しく調整」: the start state and
+   the intervention are one press further in, and a line of their own cost the
+   heart 52 px on a phone. Positioned against the console (a fixed box, so the
+   containing block), at the console's padding plus the summary's width. */
+#ui[data-layout='experiment'] .console:has(.model-controls-advanced[open]) .model-controls-group > summary {
+  position: absolute;
+  top: var(--console-pad-top, 8px);
+  left: calc(var(--console-pad-left, 12px) + 132px);
 }
 
 #ui[data-layout='experiment'] .model-controls-group > summary {
@@ -907,6 +930,8 @@
     overflow: visible;
     margin: 0;
     padding: 12px 14px 10px;
+    --console-pad-top: 12px;
+    --console-pad-left: 14px;
     /* No backdrop filter: a filter makes the console the containing block of
        its `position: fixed` children (L-116). */
     backdrop-filter: none;
@@ -1072,6 +1097,8 @@
     overflow: visible;
     padding: 8px 12px 6px;
     row-gap: 6px;
+    --console-pad-top: 8px;
+    --console-pad-left: 12px;
   }
 
   /* The editor's step buttons keep their words where there is room. */
@@ -1121,6 +1148,16 @@
     justify-content: flex-start;
     gap: 10px;
     min-height: 44px;
+  }
+
+  /* Choosing a start state or an intervention on a phone: the figures strip
+     and the long note step back too. It is a choice about where to start, not
+     a moment of reading figures, and with them the console left the heart no
+     band at 390×664 (verify:disease). The strip returns the moment the menu
+     closes; the clinical-use notice never goes. */
+  #ui[data-layout='experiment']:has(.model-controls-group[open]) .rail,
+  #ui[data-layout='experiment'] .model-controls-group[open] .model-controls-advanced-note {
+    display: none;
   }
 
   /* The narrowest phones: the bold figure is plainly the current one, so its
