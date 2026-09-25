@@ -252,9 +252,39 @@
   padding: 12px 16px;
 }
 
-#ui[data-layout='experiment'] .title-card .eyebrow,
-#ui[data-layout='experiment'] .title-card .subtitle {
+#ui[data-layout='experiment'] .title-card .eyebrow {
   display: none;
+}
+
+/* What the screen is for, in one line under the title. */
+#ui[data-layout='experiment'] .title-card .subtitle {
+  display: block;
+  margin: 4px 0 0;
+  max-width: 30em;
+  font-size: 13px;
+  line-height: 1.5;
+  letter-spacing: 0;
+  color: var(--ink-dim);
+}
+
+/* The console has no heading: its two rows are captioned, and the purpose is
+   said under the title. What remains of the head row is the reset. */
+#ui[data-layout='experiment'] .model-controls-title:empty,
+#ui[data-layout='experiment'] .model-controls-title:not(:has(span:not(:empty))) {
+  display: none;
+}
+
+/* The reset sits in the console's top corner, beside the first row, rather
+   than on a line of its own that held nothing else. */
+#ui[data-layout='experiment'] .console {
+  position: relative;
+}
+
+#ui[data-layout='experiment'] .console .model-controls-head {
+  position: absolute;
+  top: 10px;
+  right: 16px;
+  z-index: 1;
 }
 
 #ui[data-layout='experiment'] .title-trust-fold {
@@ -602,6 +632,258 @@
   #ui[data-layout='experiment'] .title-card .title-ja {
     font-size: 16px;
   }
+
+  /*
+   * A phone stacks what a desktop puts side by side. Measured on an iPhone
+   * (390×664 of page): the title card and the read-out stood side by side at
+   * about 150 px each, the purpose line wrapped one word to a line, the
+   * read-out was clipped (its last row and the way to the rest cut off), and
+   * the heart got what was left. So: the title and its purpose across the
+   * top, the read-out as one full-width strip under it — what was done, then
+   * CO / MAP / LVEDP as three cells — then the model, then the choices.
+   */
+  #ui[data-layout='experiment'] .top-bar,
+  #ui[data-layout='experiment'] .top-bar:has(.metrics.has-compact) {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 6px;
+    max-height: 52dvh !important;
+  }
+
+  #ui[data-layout='experiment'] .top-left {
+    width: 100%;
+    max-width: none;
+    flex: 0 0 auto;
+    overflow: visible;
+  }
+
+  #ui[data-layout='experiment'] .title-card {
+    max-width: none;
+    width: 100%;
+    display: grid;
+    grid-template-columns: auto minmax(0, 1fr);
+    align-items: baseline;
+    column-gap: 12px;
+    padding: 8px 12px 9px;
+  }
+
+  #ui[data-layout='experiment'] .title-card > .title-ja,
+  #ui[data-layout='experiment'] .title-card > .title {
+    grid-column: 1;
+  }
+
+  #ui[data-layout='experiment'] .title-card > .title-trust-fold {
+    grid-column: 2;
+    justify-self: end;
+    margin-top: 0;
+  }
+
+  #ui[data-layout='experiment'] .title-card > .title-trust-fold[open] {
+    grid-column: 1 / -1;
+    justify-self: stretch;
+  }
+
+  #ui[data-layout='experiment'] .title-card > .subtitle {
+    grid-column: 1 / -1;
+    max-width: none;
+    font-size: 12px;
+    line-height: 1.45;
+  }
+
+  #ui[data-layout='experiment'] .rail {
+    width: 100%;
+    min-height: 0;
+    align-items: stretch;
+    flex: 0 1 auto;
+  }
+
+  #ui[data-layout='experiment'] .rail > .legend {
+    display: none;
+  }
+
+  #ui[data-layout='experiment'] .rail > .rail-buttons {
+    justify-content: flex-end;
+  }
+
+  #ui[data-layout='experiment'] .metrics.has-compact {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 6px 10px;
+    min-width: 0;
+    padding: 8px 12px;
+  }
+
+  #ui[data-layout='experiment'] .metrics.has-compact .metric {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 1px;
+    padding: 0;
+    margin: 0;
+    border: 0;
+  }
+
+  #ui[data-layout='experiment'] .metrics.has-compact .metric.is-qualitative {
+    grid-column: 1 / -1;
+    padding-bottom: 6px;
+    border-bottom: 1px solid rgba(167, 182, 206, 0.2);
+  }
+
+  #ui[data-layout='experiment'] .metrics.has-compact .metric .metric-label {
+    font-size: 12px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    max-width: 100%;
+  }
+
+  #ui[data-layout='experiment'] .metrics.has-compact .metric .metric-figure {
+    flex-wrap: wrap;
+    justify-content: flex-start;
+    text-align: left;
+    gap: 0 4px;
+  }
+
+  #ui[data-layout='experiment'] .metrics.has-compact .metric.is-key:not(.is-qualitative) .metric-value {
+    font-size: 20px;
+    line-height: 1.15;
+  }
+
+  #ui[data-layout='experiment'] .metrics.has-compact .metric .metric-reference,
+  #ui[data-layout='experiment'] .metrics.has-compact .metric .metric-delta,
+  #ui[data-layout='experiment'] .metrics.has-compact .metric .metric-unit {
+    font-size: 12px;
+  }
+
+  #ui[data-layout='experiment'] .metrics.has-compact .metric .metric-delta {
+    font-weight: 700;
+    color: var(--ink);
+  }
+
+  /* Two lines per cell: the figure and its unit, then where it started and by
+     how much it moved. Wrapped as a flex row, 「9 mmHg 12 →」 kept the start on
+     the first line and left 「−3」 alone on the second. */
+  #ui[data-layout='experiment'] .metrics.has-compact .metric:not(.is-qualitative) .metric-figure {
+    display: grid;
+    grid-template-columns: auto minmax(0, 1fr);
+    align-items: baseline;
+    column-gap: 4px;
+  }
+
+  #ui[data-layout='experiment'] .metrics.has-compact .metric:not(.is-qualitative) .metric-value { grid-area: 1 / 1; }
+  #ui[data-layout='experiment'] .metrics.has-compact .metric:not(.is-qualitative) .metric-unit { grid-area: 1 / 2; }
+  #ui[data-layout='experiment'] .metrics.has-compact .metric:not(.is-qualitative) .metric-reference { grid-area: 2 / 1; margin: 0; }
+  #ui[data-layout='experiment'] .metrics.has-compact .metric:not(.is-qualitative) .metric-delta { grid-area: 2 / 2; margin: 0; }
+  #ui[data-layout='experiment'] .metrics.has-compact .metric:not(.is-qualitative) .metric-change { display: none; }
+
+  /* Beside the first row rather than on a line of its own. */
+  #ui[data-layout='experiment'] .metrics.has-compact .metric.is-qualitative {
+    grid-column: 1 / 3;
+    grid-row: 1;
+  }
+
+  #ui[data-layout='experiment'] .metrics.has-compact .metrics-more {
+    grid-column: 3;
+    grid-row: 1;
+    justify-self: end;
+    align-self: start;
+    margin: 0;
+    padding: 4px 8px;
+    min-height: 0;
+  }
+
+  /* The reset sits in the console's corner instead of taking a row. */
+  #ui[data-layout='experiment'] .console {
+    position: relative;
+  }
+
+  #ui[data-layout='experiment'] .console .model-controls-head {
+    position: absolute;
+    top: 8px;
+    right: 12px;
+    z-index: 1;
+  }
+
+  /*
+   * A phone's console, measured on an iPhone in Safari (390×664 of page):
+   * the console is capped at 40% of the height and the read-out takes the top
+   * 40%, which left the heart 80 px — under the framing's floor, where the
+   * camera fell back to the authored close-up and the heart sat behind both.
+   * Two lines come back here: each caption stands above its row, so the
+   * intervention row fits on one line instead of wrapping to two, and the
+   * four inputs' toggle shares the toolbar's line as it does on a desktop.
+   */
+  #ui[data-layout='experiment'] .model-control.is-choice.has-caption {
+    display: flex;
+    flex-direction: column;
+    align-items: stretch;
+    gap: 3px;
+  }
+
+  #ui[data-layout='experiment'] .model-choice-caption {
+    font-size: 12px;
+  }
+
+  /* Wraps only when it does not fit: in Japanese the three interventions fit
+     one line down to 320 px, in English they do not ("Dobutamine
+     (schematic)" ran out of its button at 320 px — Codex review on #157). */
+  #ui[data-layout='experiment'] .model-choice-group {
+    flex-wrap: wrap;
+    gap: 6px;
+  }
+
+  #ui[data-layout='experiment'] .model-choice-button {
+    padding: 0 11px;
+  }
+
+  #ui[data-layout='experiment'] .model-choice-label {
+    font-size: 13px;
+  }
+
+  #ui[data-layout='experiment'] .console {
+    display: grid;
+    grid-template-columns: auto minmax(0, 1fr);
+    align-items: center;
+    overflow-y: auto;
+  }
+
+  #ui[data-layout='experiment'] .console > * {
+    grid-column: 1 / -1;
+  }
+
+  #ui[data-layout='experiment'] .console > .model-controls.is-primary,
+  #ui[data-layout='experiment'] .console > .controls {
+    display: contents;
+  }
+
+  #ui[data-layout='experiment'] .console .model-controls-head,
+  #ui[data-layout='experiment'] .console .model-control-list,
+  #ui[data-layout='experiment'] .console .controls > .disclaimer {
+    grid-column: 1 / -1;
+  }
+
+  #ui[data-layout='experiment'] .console .model-controls-advanced {
+    grid-column: 1;
+  }
+
+  #ui[data-layout='experiment'] .console .model-controls-advanced[open] {
+    grid-column: 1 / -1;
+  }
+
+  #ui[data-layout='experiment'] .console .model-controls-advanced > summary {
+    min-height: 44px;
+    padding: 0 12px;
+  }
+
+  #ui[data-layout='experiment'] .console .controls > .button-row {
+    grid-column: 2;
+    justify-content: flex-end;
+    flex-wrap: nowrap;
+    margin: 0;
+  }
+
+  #ui[data-layout='experiment'] .console .controls > .button-row > .button-gap {
+    display: none;
+  }
 }
 
 /*
@@ -648,4 +930,43 @@
    stood one character per line. */
 #ui[data-layout='experiment'] .console .button-row .btn {
   white-space: nowrap;
+}
+
+/* The language switch, "hide controls" and feedback, moved into "More" by the
+   shell for this layout: one column of full-width items like the rest. */
+#ui[data-layout='experiment'] .console-more-menu > .rail-buttons {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 6px;
+  padding-top: 6px;
+  border-top: 1px solid var(--border);
+}
+
+/* A phone under 600 px of page (an iPhone SE with Safari's toolbars is 553)
+   has no room for the purpose line and a heart both. The line goes; the title
+   and the captioned choices still say what the screen is. */
+@media (max-width: 600px) and (max-height: 600px) {
+  #ui[data-layout='experiment'] .title-card > .subtitle {
+    display: none;
+  }
+
+  /* And the read-out keeps the change but not the value it started at, and the
+     first row keeps what moved but not the intervention's name — the name is
+     on the lit button below. */
+  #ui[data-layout='experiment'] .metrics.has-compact .metric:not(.is-qualitative) .metric-reference {
+    display: none;
+  }
+
+  #ui[data-layout='experiment'] .metrics.has-compact .metric:not(.is-qualitative) .metric-delta {
+    grid-area: 1 / 3;
+  }
+
+  #ui[data-layout='experiment'] .metrics.has-compact .metric:not(.is-qualitative) .metric-figure {
+    grid-template-columns: auto auto minmax(0, 1fr);
+  }
+
+  #ui[data-layout='experiment'] .metrics.has-compact .metric.is-qualitative .metric-label {
+    display: none;
+  }
 }

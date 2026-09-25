@@ -153,7 +153,14 @@ export function framePose(pose, aspect, view = 'data', fovDegrees = 42, bottomIn
  * @param {{left?: number, right?: number, top?: number, bottom?: number}} [options.insets]
  * @param {number} [options.coverage]
  */
-export function fitPoseToSafeArea(pose, { bounds, aspect, fovDegrees, insets = {}, coverage = 0.88 }) {
+/**
+ * `minimumBand` is the smallest band, as a fraction of the frame, the fit will
+ * answer. Below it the pose comes back unfitted. That default suits a scene
+ * whose authored pose is a sensible wide shot; a scene whose authored pose is
+ * a close-up may ask for a lower one, and get a small subject in the space the
+ * panels leave rather than a large one behind them.
+ */
+export function fitPoseToSafeArea(pose, { bounds, aspect, fovDegrees, insets = {}, coverage = 0.88, minimumBand = 0.2 }) {
   const unchanged = { position: pose.position.clone(), target: pose.target.clone() };
   if (!bounds?.centre || !bounds.corners?.length || !(coverage > 0)) return unchanged;
   const left = clamp01(insets.left);
@@ -164,7 +171,7 @@ export function fitPoseToSafeArea(pose, { bounds, aspect, fovDegrees, insets = {
   // alone is the honest answer rather than an arbitrary one.
   const bandWidth = 1 - left - right;
   const bandHeight = 1 - top - bottom;
-  if (bandWidth < 0.2 || bandHeight < 0.2) return unchanged;
+  if (bandWidth < minimumBand || bandHeight < minimumBand) return unchanged;
 
   const forward = pose.target.clone().sub(pose.position);
   if (forward.lengthSq() < 1e-8) return unchanged;

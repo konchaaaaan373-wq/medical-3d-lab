@@ -253,3 +253,33 @@ test('limits: the floor clears the framing the same subject asks for', () => {
   // range the buttons offer, applied to that framing.
   assert.ok(limits.minDistance < wanted * 0.5, 'the zoom buttons can reach their own end of the range');
 });
+
+test('a scene may ask the fit to answer a band under the default floor, and gets a subject inside it', async () => {
+  const { fitPoseToSafeArea } = await import('../src/app/framing.js');
+  // Measured on an iPhone in Safari: the read-out covered the top 40% and the
+  // console the bottom 48%, leaving 12% — under the default floor, so the fit
+  // returned the authored close-up and the heart was drawn at twice its size
+  // behind both panels.
+  const insets = { top: 0.405, bottom: 0.473, left: 0, right: 0 };
+  const pose = { position: new Vector3(0, 0, 30), target: new Vector3(0, 0, 0) };
+  const corners = [];
+  for (const x of [-7, 7]) for (const y of [-5, 5]) for (const z of [-3, 3]) corners.push(new Vector3(x, y, z));
+  const bounds = { centre: new Vector3(), corners };
+  const aspect = 390 / 664;
+  const options = { bounds, aspect, fovDegrees: 42, coverage: 1, insets };
+
+  const declined = fitPoseToSafeArea(pose, options);
+  assert.equal(declined.position.z, 30, 'by default the fit leaves the close-up alone');
+
+  const fitted = fitPoseToSafeArea(pose, { ...options, minimumBand: 0.04 });
+  // Every corner must land inside the band the panels leave — not over them.
+  const camera = new PerspectiveCamera(42, aspect, 0.1, 1000);
+  camera.position.copy(fitted.position);
+  camera.lookAt(fitted.target);
+  camera.updateMatrixWorld();
+  const band = [1 - 2 * (1 - insets.bottom), 1 - 2 * insets.top].sort((p, q) => p - q);
+  for (const corner of corners) {
+    const y = corner.clone().project(camera).y;
+    assert.ok(y >= band[0] - 1e-6 && y <= band[1] + 1e-6, `a corner at ndc y ${y.toFixed(3)} is outside the band ${band.map((v) => v.toFixed(3))}`);
+  }
+});
