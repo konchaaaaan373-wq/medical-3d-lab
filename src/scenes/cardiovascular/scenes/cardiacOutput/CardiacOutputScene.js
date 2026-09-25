@@ -16,7 +16,7 @@ import {
   resistanceAt,
 } from './reelStoryboard.js';
 import { ExperimentSession } from './experimentSession.js';
-import { describeChange, signedDelta } from './changeSummary.js';
+import { changeOf, describeChange, signedDelta } from './changeSummary.js';
 import { CONTROL_DOMAIN, CONTROL_IDS, PRESET_IDS, REFERENCE_GEOMETRY } from '../../../../models/cardiacOutput.js';
 import {
   advanceCardiacPhase,
@@ -33,6 +33,8 @@ import {
   COMPARISON_LABEL,
   CONSOLE_LAYOUT,
   CONTROLS,
+  CUSTOM_SCENARIO,
+  SCENARIOS,
   LEARNING_LABEL,
   LEARNING_MODULES,
   REEL_LABEL,
@@ -112,6 +114,9 @@ export class CardiacOutputScene {
     // it. Declared, not detected — see `src/styles/experiment-layout.css`.
     layout: 'experiment',
     console: CONSOLE_LAYOUT,
+    // "All figures" is the vocabulary of a dashboard; these are the model's
+    // other outputs, one press away.
+    metricsMore: { show: 'Other measures', showJa: '他の指標', hide: 'Fewer', hideJa: '閉じる' },
     titleCard: { foldTrust: true },
     stages: STAGES,
     legend: LEGEND,
@@ -214,9 +219,18 @@ export class CardiacOutputScene {
     this.outline = new CavityOutline({ cutAngle: ANATOMY.cutAngle, color: PALETTE.outline });
     this.outline.visible = false;
 
+    // Where the cavity wall stood at end-diastole *before* the reader changed
+    // anything — the starting condition's solved shape, not a copy of this
+    // one scaled. Drawn over the beating heart whenever the condition has
+    // moved, so a change in filling reads as the cavity outgrowing its old
+    // outline, in the heart itself, rather than only as a number. Off while
+    // the two hearts stand side by side, where the second heart says it.
+    this.beforeOutline = new CavityOutline({ cutAngle: ANATOMY.cutAngle, color: PALETTE.before });
+    this.beforeOutline.visible = false;
+
     this.primary = new THREE.Group();
     this.primary.name = 'current-condition';
-    this.primary.add(this.ventricle, this.apparatus, this.blood, this.outline);
+    this.primary.add(this.ventricle, this.apparatus, this.blood, this.outline, this.beforeOutline);
 
     this.root.add(this._createLights(), this.primary, this.circuit.object);
 
@@ -342,6 +356,21 @@ export class CardiacOutputScene {
 
   _applyOutlineShape() {
     this.outline?.setShape({ ...this.edShape, baseY: ANATOMY.baseY });
+    if (this.beforeOutline) {
+      const before = ventricleShape({
+        cavityVolumeMl: this.session.baseline.metrics.edvMl,
+        myocardialVolumeMl: this.myocardialVolumeMl,
+        longToShortAxisRatio: REFERENCE_GEOMETRY.longToShortAxisRatio,
+      });
+      this.beforeOutline.setShape({ ...before, baseY: ANATOMY.baseY });
+    }
+  }
+
+  /** Whether the condition on screen differs from the one it is read against. */
+  _changedFromStart() {
+    const shown = this.session.view.input;
+    const start = this.session.baseline.input;
+    return CONTROL_IDS.some((id) => shown[id] !== start[id]);
   }
 
   _applyOutlineVisibility() {
@@ -349,6 +378,12 @@ export class CardiacOutputScene {
     // this decides whether it is drawn. It earns its place while comparing,
     // where the stroke is what the two hearts are being read for.
     this.outline?.setOpacity((this.comparing ? 1 : 0) * this._emptiedFraction());
+    // Presentation only, like the mark above: the shape is the solved one.
+    const showBefore = !this.comparing && this._changedFromStart();
+    if (this.beforeOutline) {
+      this.beforeOutline.visible = showBefore;
+      this.beforeOutline.setOpacity(showBefore ? 0.85 : 0);
+    }
     this.reference?.setOutline(this.comparing ? this.reference.emptiedFraction() : 0);
   }
 
@@ -365,12 +400,28 @@ export class CardiacOutputScene {
    * exactly the values being restored. `tests/cardiac-output-scene.test.js`
    * holds that ordering.
    */
+  /**
+   * Which scenario the condition on screen is, or "custom".
+   *
+   * Read off the session every time rather than remembered: a scenario is a
+   * preset, an intervention and at most a control moved, so it is a property
+   * of the solved condition, and a remembered one could outlive the slider
+   * that moved the condition away from it.
+   */
+  scenarioId() {
+    return scenarioOf(this.session);
+  }
+
   getModelControls() {
     const input = this.session.input;
     return [
       {
         id: 'preset',
         kind: 'choice',
+        // Not drawn: the scenario row below is the control a reader meets.
+        // Kept in the list, first, because a restore replays the list in order
+        // and the preset resets everything — see the scenario's own comment.
+        hidden: true,
         // The circulation being experimented on, and — below it — what is done
         // to it. Two different kinds of choice, so they are two rows with two
         // captions rather than five cards in one grid.
@@ -389,6 +440,7 @@ export class CardiacOutputScene {
         // position is a manual condition and clears any intervention anyway.
         id: 'intervention',
         kind: 'choice',
+        hidden: true,
         label: 'Intervention',
         labelJa: '介入',
         caption: 'Intervention',
@@ -403,6 +455,35 @@ export class CardiacOutputScene {
           ? MANUAL_CONDITION
           : this.session.interventionId,
         options: [...INTERVENTION_OPTIONS, MANUAL_OPTION],
+      },
+      {
+        // The one row a reader meets first: named situations, each exactly a
+        // preset, optionally an intervention, optionally one control moved
+        // (see SCENARIOS). Its value is *derived* from the session, not stored,
+        // so it cannot disagree with what is solved: a slider that moves the
+        // condition off every scenario turns it into "Custom", a status chip
+        // that is not pressable. After the preset and the intervention in the
+        // list, so a restore that replays them lands on the same scenario, and
+        // before the sliders, which land last and win.
+        id: 'scenario',
+        kind: 'choice',
+        label: 'Scenario',
+        labelJa: 'シナリオ',
+        caption: 'Choose one — the heart and the figures change',
+        captionJa: '選ぶと、心臓と数値が変わります',
+        value: scenarioOf(this.session),
+        options: [
+          ...SCENARIOS.map((scenario) => ({
+            value: scenario.id,
+            label: scenario.title,
+            labelJa: scenario.titleJa,
+            short: scenario.label,
+            shortJa: scenario.labelJa,
+            tag: scenario.tag,
+            tagJa: scenario.tagJa,
+          })),
+          { value: CUSTOM_SCENARIO.id, label: CUSTOM_SCENARIO.label, labelJa: CUSTOM_SCENARIO.labelJa, status: true },
+        ],
       },
       ...CONTROLS.map((control) => {
         const domain = CONTROL_DOMAIN[control.id];
@@ -429,7 +510,19 @@ export class CardiacOutputScene {
    * @param {number|string} value
    */
   setModelControl(id, value) {
-    if (id === 'preset') {
+    if (id === 'scenario') {
+      // "Custom" is a report, not something to select.
+      const scenario = SCENARIOS.find((entry) => entry.id === value);
+      if (!scenario) return;
+      // Always from the scenario's own starting condition: selecting a preset
+      // resets everything, so a scenario never inherits a previous one's
+      // sliders.
+      this.session.selectPreset(scenario.preset);
+      if (scenario.intervention) this.session.selectIntervention(scenario.intervention);
+      for (const [control, target] of Object.entries(scenario.controls ?? {})) {
+        this.session.setControl(control, target);
+      }
+    } else if (id === 'preset') {
       this.session.selectPreset(String(value));
     } else if (id === 'intervention') {
       // "Manual" is a report, not something to select — see getModelControls.
@@ -572,7 +665,7 @@ export class CardiacOutputScene {
     const mmHg = (value) => Math.round(value);
     const rows = [];
     /** The signed change on a headline row, at the precision it is shown with. */
-    const delta = (now, before, digits = 0) => (ref ? signedDelta(now, before, digits) : {});
+    const delta = (now, before, digits = 0) => (ref ? { ...signedDelta(now, before, digits), ...changeOf(now, before) } : {});
 
     // A condition that could not be solved is not answered with the previous
     // one's numbers pretending to be current. Every reachable slider position
@@ -614,12 +707,20 @@ export class CardiacOutputScene {
       shown: this.session.view.input,
       interventionId: this.session.interventionId,
     });
+    // Named as *from → to* — the starting condition the figures are read
+    // against, then where the reader is now — so the before value on every
+    // row below says what it is the value of. A starting condition on its own
+    // is the start of an experiment and is named alone.
+    const fromOption = PRESET_OPTIONS.find((option) => option.value === this.session.presetId);
+    const scenarioId = scenarioOf(this.session);
+    const scenario = SCENARIOS.find((entry) => entry.id === scenarioId) ?? CUSTOM_SCENARIO;
+    const atStart = change.moved.length === 0;
     rows.push({
       id: 'changed',
-      label: change.label,
-      labelJa: change.labelJa,
-      value: change.value,
-      valueJa: change.valueJa,
+      label: atStart ? (fromOption?.short ?? fromOption?.label) : `${fromOption?.short ?? fromOption?.label} → ${scenario.label}`,
+      labelJa: atStart ? (fromOption?.shortJa ?? fromOption?.labelJa) : `${fromOption?.shortJa ?? fromOption?.labelJa} → ${scenario.labelJa}`,
+      value: atStart ? 'the starting point — choose a scenario to compare' : change.value,
+      valueJa: atStart ? 'ここを起点に比べます' : change.valueJa,
       unit: '',
       emphasis: true,
       compact: true,
@@ -663,8 +764,10 @@ export class CardiacOutputScene {
         // Out of the detail and onto the face of the panel, because the cost of
         // filling is the thing this scene most needs a reader to see at the
         // same moment as the benefit.
-        label: 'LV end-diastolic pressure',
-        labelJa: '左室拡張末期圧',
+        // Named as what it is to a reader — the pressure it took to fill the
+        // ventricle — with the measured quantity in brackets.
+        label: 'LV filling pressure (LVEDP)',
+        labelJa: '左室充満圧（LVEDP）',
         value: mmHg(m.endDiastolicPressureMmHg),
         reference: ref ? mmHg(ref.endDiastolicPressureMmHg) : undefined,
         unit: 'mmHg',
@@ -846,13 +949,13 @@ export class CardiacOutputScene {
     return {
       centre: min.clone().add(max).multiplyScalar(0.5),
       corners,
-      // The box is the assembly's extreme extents seen at an angle, so its
-      // silhouette fills well under the box: at 0.9 the loop measured about
-      // 62% of the band's height and the heart was the smallest thing on the
-      // screen after the panels. At 1.1 the tubes still clear the band's edges
-      // with room to spare (measured at 1440×900 and 390×844), and the heart is
-      // what the eye lands on.
-      coverage: 1.1,
+      // The whole box, not more. At 1.1 — chosen when the loop sat in a wide
+      // band and measured as filling only 62% of it — the lower run of the
+      // loop slid under the read-out on a phone, where the band is tight and
+      // the box is the silhouette. Nothing may cover the model (the owner's
+      // rule), so the box is fitted with a little to spare for the tubes'
+      // own thickness, and the heart is a little smaller.
+      coverage: 0.95,
     };
   }
 
@@ -886,6 +989,26 @@ export class CardiacOutputScene {
     this.circuit?.dispose();
     disposeObject(this.root);
   }
+}
+
+/**
+ * Which scenario a session's condition is, or "custom" — see `scenarioId`.
+ * A function of the session alone, so the read-out can name it without a
+ * built scene.
+ */
+export function scenarioOf(session) {
+  const shown = session.view.input;
+  for (const scenario of SCENARIOS) {
+    if (session.presetId !== scenario.preset) continue;
+    const intervention = scenario.intervention ?? INTERVENTION_IDS.NONE;
+    if (session.interventionId !== intervention) continue;
+    // Any slider move clears the intervention, so a matching intervention is
+    // the scenario unmodified.
+    if (scenario.intervention) return scenario.id;
+    const expected = { ...session.baseline.input, ...(scenario.controls ?? {}) };
+    if (CONTROL_IDS.every((key) => shown[key] === expected[key])) return scenario.id;
+  }
+  return CUSTOM_SCENARIO.id;
 }
 
 /** The intervention row's value while the condition has been set by hand. */

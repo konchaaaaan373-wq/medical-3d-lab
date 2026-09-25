@@ -16,7 +16,7 @@ import { el } from '../utils/dom.js';
  * input is touched, never how the model is solved.
  *
  * @param {{
- *   controls: {id:string,label:string,labelJa:string,min?:number,max?:number,step?:number,value:number|string,format?:(v:number)=>string,kind?:'range'|'action'|'choice',advanced?:boolean,caption?:string,captionJa?:string,actionLabel?:string,actionLabelJa?:string,effect?:string,effectJa?:string,options?:{value:string,label:string,labelJa:string,status?:boolean,short?:string,shortJa?:string,tag?:string,tagJa?:string,effect?:string,effectJa?:string}[]}[],
+ *   controls: {id:string,label:string,labelJa:string,min?:number,max?:number,step?:number,value:number|string,format?:(v:number)=>string,kind?:'range'|'action'|'choice',advanced?:boolean,hidden?:boolean,caption?:string,captionJa?:string,actionLabel?:string,actionLabelJa?:string,effect?:string,effectJa?:string,options?:{value:string,label:string,labelJa:string,status?:boolean,short?:string,shortJa?:string,tag?:string,tagJa?:string,effect?:string,effectJa?:string}[]}[],
  *   onChange: (id: string, value: number|string) => void,
  *   onReset: () => void,
  *   copy?: {title?:string,titleJa?:string,subtitle?:string,subtitleJa?:string,primary?:boolean,reset?:boolean,resetLabel?:string,resetLabelJa?:string,hideChoiceEffects?:boolean,advanced?:{label?:string,labelJa?:string,note?:string,noteJa?:string}},
@@ -45,6 +45,9 @@ export function createModelControls({ controls, onChange, onReset, copy = {} }) 
   const tactile = controls.some((control) => control.kind === 'action' || control.kind === 'choice');
 
   const inputs = controls.map((control) => {
+    // A control a scene lists but does not draw — kept in the list because the
+    // list is also what a session capture replays, in order.
+    if (control.hidden) return null;
     if (control.kind === 'choice') {
       const buttons = new Map();
       let current = String(control.value);
@@ -223,8 +226,8 @@ export function createModelControls({ controls, onChange, onReset, copy = {} }) 
   // press. They move the model through the same `onChange` as everything else;
   // what changes is only that the first thing a reader sees is the few choices
   // the scene is about, not every input the model has.
-  const primaryInputs = inputs.filter((_, index) => !controls[index].advanced);
-  const advancedInputs = inputs.filter((_, index) => controls[index].advanced);
+  const primaryInputs = inputs.filter((node, index) => node && !controls[index].advanced);
+  const advancedInputs = inputs.filter((node, index) => node && controls[index].advanced);
   const advanced = advancedInputs.length
     ? el('details', { class: 'model-controls-advanced' }, [
         el('summary', { class: 'model-controls-advanced-toggle' }, [

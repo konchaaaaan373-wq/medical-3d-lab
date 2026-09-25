@@ -68,7 +68,7 @@ test('read-out: the notice is the first row on screen, and it leaves when the mo
   const before = labels(panel);
   assert.ok(before.length > 5, 'a full read-out');
   assert.doesNotMatch(before[0], /1 つ前の条件/, 'no notice while the model is solving');
-  assert.match(before[0], /変えたもの/, 'the panel leads with what changed');
+  assert.match(before[0], /基準/, 'the panel leads with what the figures are read against');
 
   // Refused.
   session.setInput({ ...session.input, heartRatePerMin: 400 });
@@ -160,11 +160,11 @@ test('read-out: a phone gets four rows and a way to the rest', async () => {
     const compact = panel.element.children
       .filter((node) => node.dataset?.compact === 'key')
       .map((node) => findByClass(node, 'metric-label')[0].children[1].textContent);
-    assert.deepEqual(compact, ['変えたもの', '心拍出量 CO', '平均動脈圧 MAP', '左室拡張末期圧']);
+    assert.deepEqual(compact, ['基準', '心拍出量 CO', '平均動脈圧 MAP', '左室充満圧（LVEDP）']);
 
     // Output without the pressure it cost is the wrong half of this scene's
     // teaching, so the two travel together.
-    assert.ok(compact.includes('心拍出量 CO') && compact.includes('左室拡張末期圧'));
+    assert.ok(compact.includes('心拍出量 CO') && compact.includes('左室充満圧（LVEDP）'));
 
     assert.ok(panel.element.classList.contains('has-compact'), 'the panel knows it has a compact set');
 

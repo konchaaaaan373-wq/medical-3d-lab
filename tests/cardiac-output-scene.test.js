@@ -202,10 +202,13 @@ test('the preset comes first in the controls, because restoring replays them in 
   const controls = scene.getModelControls();
   assert.equal(controls[0].id, 'preset', 'the preset resets everything, so it lands first');
   assert.equal(controls[1].id, 'intervention', 'the intervention is computed from the preset, so it lands next');
+  // The scenario the reader sees is derived from those two, and lands after
+  // them: replaying it re-applies the same preset and intervention.
+  assert.equal(controls[2].id, 'scenario', 'the scenario, derived from the two above, lands third');
   // And the sliders last, which is right: a slider position is a manual
   // condition and clears any intervention anyway, so it has to win.
-  assert.deepEqual(controls.slice(2).map((c) => c.id), CONTROLS.map((c) => c.id));
-  assert.deepEqual(controls.slice(2).map((c) => c.id).sort(), [...CONTROL_IDS].sort());
+  assert.deepEqual(controls.slice(3).map((c) => c.id), CONTROLS.map((c) => c.id));
+  assert.deepEqual(controls.slice(3).map((c) => c.id).sort(), [...CONTROL_IDS].sort());
 
   // And replaying a captured snapshot in that order really does restore it.
   scene.setModelControl('preset', PRESET_IDS.REDUCED_CONTRACTILITY);
@@ -263,7 +266,7 @@ test('coming back from the sequence keeps the intervention that was selected', a
 
 test('every control offered is one the model declares, at the model’s own range', async () => {
   const scene = await buildScene();
-  for (const control of scene.getModelControls().slice(2)) {
+  for (const control of scene.getModelControls().slice(3)) {
     const domain = CONTROL_DOMAIN[control.id];
     assert.ok(domain, `${control.id} is a model input`);
     assert.equal(control.min, domain.min);
@@ -706,67 +709,121 @@ test('whatever the reader has done, every panel is reading one solved beat', asy
   assert.equal(checked, 36, 'the whole product was walked');
 });
 
-test('the first row says what was done, in the reader\'s words: which inputs, which way, what was held', async () => {
+test('the first row says what the figures are read against, and what moved: from → to, which inputs, which way', async () => {
   const { CardiacOutputScene } = await import(
     '../src/scenes/cardiovascular/scenes/cardiacOutput/CardiacOutputScene.js'
   );
-  // D-12 of the external review. Two hearts side by side show that something
-  // differs; they do not show *which* of the four it was, and "I changed one
-  // thing" is the claim the whole scene rests on.
-  //
-  // The row used to say it in the model's vocabulary — 「2 つ: 抵抗・収縮力（他 2
-  // 固定）」 — which counted inputs instead of saying what happened to them. It
-  // now names each moved input with its direction, and the held ones while
-  // there are few enough to name. What it guarantees is unchanged.
+  // D-12 of the external review: "I only changed one thing" is the claim the
+  // scene rests on, so the read-out says what was changed. It now also names
+  // what the before values below it are the values *of* — 「基準 → 充満量↑」 —
+  // because with one row of scenarios the starting condition is not always
+  // the page's opening one (dobutamine is read against reduced contractility).
   const session = new ExperimentSession();
   const scene = { session, comparing: false, state: session.view.metrics };
-
-  const rowsFor = (comparing) => {
-    scene.comparing = comparing;
+  const first = () => {
     scene.state = session.view.metrics;
-    return CardiacOutputScene.prototype.getMetrics.call(scene);
+    return CardiacOutputScene.prototype.getMetrics.call(scene).find((row) => row.id === 'changed');
   };
+  const rows = () => CardiacOutputScene.prototype.getMetrics.call(scene);
 
-  // Emitted whether or not the second heart is drawn, and first: the figures
-  // under it are read against it.
-  const off = rowsFor(false).find((row) => row.id === 'changed');
-  assert.ok(off, 'the row is there without the comparison');
-  assert.match(off.valueJa, /^なし/);
-  assert.equal(rowsFor(false)[0].id, 'changed', 'and it leads the panel');
-  assert.match(rowsFor(true).find((row) => row.id === 'changed').valueJa, /^なし/);
+  // A starting condition is named alone: it starts an experiment.
+  assert.equal(first().labelJa, '基準');
+  assert.equal(first().valueJa, 'ここを起点に比べます');
+  assert.equal(rows()[0].id, 'changed', 'and it leads the panel');
 
-  // One slider: named, with its direction, both values and the number held.
+  // One slider: from → Custom, named with its direction and both values.
   session.setControl('systemicResistanceMmHgSPerMl', 1.6);
-  const one = rowsFor(false).find((row) => row.id === 'changed');
-  assert.equal(one.labelJa, '手動調整');
-  assert.equal(one.valueJa, '血管抵抗 ↑ 1.1 → 1.6（他は固定）', 'one moved control is spelled out, and the rest said to be held');
-  assert.equal(one.unit, '', 'the unit slot renders one language only, so nothing bilingual goes in it');
+  // …which is exactly the "higher afterload" scenario, so it is named as one.
+  assert.equal(first().labelJa, '基準 → 後負荷↑');
+  assert.equal(first().valueJa, '血管抵抗 ↑ 1.1 → 1.6（他は固定）', 'one moved control is spelled out');
+  assert.equal(first().unit, '', 'the unit slot renders one language only, so nothing bilingual goes in it');
 
   // Two sliders: both named with their directions, so a multi-input condition
-  // never reads as a one-factor comparison.
+  // never reads as a one-factor comparison — and it is Custom.
   session.setControl('heartRatePerMin', 90);
-  const two = rowsFor(false).find((row) => row.id === 'changed');
-  assert.equal(two.valueJa, '血管抵抗 ↑・心拍数 ↑（他は固定）', 'both moved inputs named with their directions');
-  assert.equal(two.value, 'Resistance ↑ · Rate ↑ (rest held)');
+  assert.equal(first().labelJa, '基準 → カスタム');
+  assert.equal(first().valueJa, '血管抵抗 ↑・心拍数 ↑（他は固定）');
+  assert.equal(first().value, 'Resistance ↑ · Rate ↑ (rest held)');
 
-  // The drug is a multi-input change by construction, and is reported as one:
-  // its full name (the long name is where its caveat lives), both moved inputs
-  // with their directions, the primary action first — and the rate named as
-  // held, because that is the assumption most easily taken for a fact about
-  // the drug.
+  // Dobutamine is read against reduced contractility, its primary action
+  // first, and quoted in words, not in the model's units.
   session.selectPreset(PRESET_IDS.REDUCED_CONTRACTILITY);
   session.selectIntervention('dobutamine');
-  const drug = rowsFor(false).find((row) => row.id === 'changed');
-  assert.equal(drug.labelJa, 'ドブタミン作用の模式例（心拍数は固定）');
-  assert.equal(drug.valueJa, '収縮力 ↑・血管抵抗 ↓（他は固定）');
-  assert.match(drug.labelJa, /心拍数は固定/, 'the held rate is said once, in the name');
-  assert.doesNotMatch(drug.valueJa, /\d/, 'an intervention is described, not quoted in model units');
+  assert.equal(first().labelJa, '収縮力低下 → ドブタミン');
+  assert.equal(first().valueJa, '収縮力 ↑・血管抵抗 ↓（他は固定）');
+  assert.doesNotMatch(first().valueJa, /\d/, 'an intervention is described, not quoted in model units');
 
-  // And the filling step names its caveat through its label, not a volume.
+  session.selectPreset(PRESET_IDS.REFERENCE);
   session.selectIntervention('volume-loading');
-  const volume = rowsFor(false).find((row) => row.id === 'changed');
-  assert.match(volume.labelJa, /モデル入力/);
-  assert.equal(volume.valueJa, '充満量 ↑（他は固定）');
+  assert.equal(first().labelJa, '基準 → 充満量↑');
+  assert.equal(first().valueJa, '充満量 ↑（他は固定）');
+});
+
+test('scenarios: each is exactly a preset, an intervention and at most one control, and reads back as itself', async () => {
+  const { SCENARIOS } = await import('../src/data/cardiacOutput.js');
+  const scene = await buildScene();
+  const scenario = () => scene.getModelControls().find((control) => control.id === 'scenario');
+  assert.equal(scenario().value, 'reference', 'the page opens on the reference heart');
+  assert.equal(scenario().hidden, undefined, 'and the scenario row is the one drawn');
+  assert.ok(scene.getModelControls().find((c) => c.id === 'preset').hidden, 'the preset row is not drawn');
+  assert.ok(scene.getModelControls().find((c) => c.id === 'intervention').hidden, 'nor the intervention row');
+
+  for (const entry of SCENARIOS) {
+    scene.setModelControl('scenario', entry.id);
+    assert.equal(scenario().value, entry.id, `${entry.id} reads back as itself`);
+    assert.equal(scene.session.presetId, entry.preset, `${entry.id} is on its own preset`);
+    assert.equal(scene.session.interventionId, entry.intervention ?? 'none');
+    // Nothing a scenario sets is outside the verified domain.
+    assert.equal(scene.session.applied, true, `${entry.id} solves`);
+    for (const [control, value] of Object.entries(entry.controls ?? {})) {
+      assert.equal(scene.session.input[control], value);
+      const domain = CONTROL_DOMAIN[control];
+      assert.ok(value >= domain.min && value <= domain.max, `${entry.id} stays inside ${control}'s domain`);
+    }
+  }
+
+  // A scenario never inherits the previous one's sliders.
+  scene.setModelControl('scenario', 'higher-afterload');
+  scene.setModelControl('scenario', 'more-filling');
+  assert.equal(scene.session.input.systemicResistanceMmHgSPerMl, presetInput(PRESET_IDS.REFERENCE).systemicResistanceMmHgSPerMl);
+
+  // A slider moved off a scenario is Custom — a status, never a model state.
+  scene.setModelControl('fillingVolumeMl', 900);
+  assert.equal(scenario().value, 'custom');
+  assert.equal(scenario().options.find((o) => o.value === 'custom').status, true);
+  const before = { ...scene.session.input };
+  scene.setModelControl('scenario', 'custom');
+  assert.deepEqual({ ...scene.session.input }, before, 'a replayed "custom" is ignored');
+
+  // And the reference chip is the way back to the page's opening condition.
+  scene.setModelControl('scenario', 'reference');
+  assert.deepEqual({ ...scene.session.input }, presetInput(PRESET_IDS.REFERENCE));
+  assert.equal(scenario().value, 'reference');
+
+  // "Higher afterload" is the step the resistance lesson already takes — not
+  // a number invented for the button.
+  const { LEARNING_MODULES } = await import('../src/data/cardiacOutput.js');
+  const lesson = LEARNING_MODULES.find((module) => module.manipulation?.control === 'systemicResistanceMmHgSPerMl');
+  assert.equal(SCENARIOS.find((entry) => entry.id === 'higher-afterload').controls.systemicResistanceMmHgSPerMl, lesson.manipulation.to);
+});
+
+test('each headline figure carries a direction and whether the change is large, in words as well as arrows', async () => {
+  const scene = await buildScene();
+  scene.setModelControl('scenario', 'more-filling');
+  const rows = Object.fromEntries(scene.getMetrics().map((row) => [row.id, row]));
+  for (const id of ['co', 'sv', 'map', 'lvedp']) {
+    assert.ok(['up', 'down', 'flat'].includes(rows[id].change), `${id} has a direction`);
+    assert.ok(rows[id].changeLabelJa, `${id} says it in words, for a screen reader`);
+  }
+  // Filling raises the filling pressure proportionally most: that is the
+  // lesson the arrows exist to make visible without arithmetic.
+  assert.equal(rows.lvedp.change, 'up');
+  assert.equal(rows.lvedp.changeStrong, true, 'the filling pressure is marked as a large change');
+  assert.equal(rows.co.changeStrong, false, 'output rises, but not by a fifth');
+
+  scene.setModelControl('scenario', 'reference');
+  const back = Object.fromEntries(scene.getMetrics().map((row) => [row.id, row]));
+  assert.equal(back.co.change, undefined, 'nothing changed, no arrow');
 });
 
 test('a refused condition never leaves the previous answer standing as the current one', async () => {
@@ -887,5 +944,5 @@ test('a hand-set condition is reported as one, and 「なし」 undoes it', asyn
   scene.setModelControl('intervention', 'none');
   assert.deepEqual({ ...scene.session.input }, { ...scene.session.baseline.input });
   assert.equal(intervention().value, 'none');
-  assert.equal(scene.getMetrics().find((row) => row.id === 'changed').labelJa, '変えたもの');
+  assert.equal(scene.getMetrics().find((row) => row.id === 'changed').labelJa, '収縮力低下', 'back at its starting condition');
 });

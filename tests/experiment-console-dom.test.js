@@ -50,7 +50,7 @@ async function sceneWithSession(session) {
   };
 }
 
-test('console: the two choices lead, captioned; the four inputs are one press away and still move the model', async () => {
+test('console: one row of scenarios leads, captioned; the four inputs are one press away and still move the model', async () => {
   await withDocument(async () => {
     const session = new ExperimentSession();
     const { CardiacOutputScene, controls } = await sceneWithSession(session);
@@ -71,24 +71,28 @@ test('console: the two choices lead, captioned; the four inputs are one press aw
       4,
       'and there are no others — nothing was duplicated on the way in'
     );
+    // One row a reader meets first. The preset and intervention rows still
+    // exist — a session capture replays them — but they are not drawn: two
+    // operation groups before the first touch was the confusion this fixes.
     const choices = findByClass(console_.element, 'model-choice-group');
-    assert.equal(choices.length, 2, 'condition and intervention are two groups');
-    for (const group of choices) {
-      assert.equal(findByClass(advanced, 'model-choice-group').includes(group), false, 'and neither is hidden');
-    }
+    assert.equal(choices.length, 1, 'one row of scenarios');
+    const buttons = findByClass(choices[0], 'model-choice-button').filter((node) => node.tagName.toLowerCase() === 'button');
+    assert.deepEqual(
+      buttons.map((button) => button.dataset.value),
+      ['reference', 'reduced-contractility', 'more-filling', 'higher-afterload', 'dobutamine']
+    );
+    assert.equal(findByClass(advanced, 'model-choice-group').length, 0, 'and it is not behind the disclosure');
 
-    // Two captions, so the two rows cannot be read as one list of five.
+    // Its caption says what touching it does — the orientation is the label
+    // of the control, not a paragraph above it.
     const captions = findByClass(console_.element, 'model-choice-caption').map(text);
-    assert.equal(captions.length, 2);
-    assert.match(captions[0], /状態/);
-    assert.match(captions[1], /介入/);
+    assert.equal(captions.length, 1);
+    assert.match(captions[0], /心臓と数値が変わります/);
 
     // Short names on the buttons; the full name — which carries the caveat —
     // stays in the accessible name and the title.
-    const dobutamine = findByClass(console_.element, 'model-choice-button').find((button) =>
-      /Dobutamine/.test(button.getAttribute('aria-label') ?? '')
-    );
-    assert.match(text(dobutamine), /ドブタミン（模式）/);
+    const dobutamine = buttons.find((button) => button.dataset.value === 'dobutamine');
+    assert.match(text(dobutamine), /ドブタミン/);
     assert.match(dobutamine.getAttribute('aria-label'), /心拍数は固定/);
     assert.match(dobutamine.getAttribute('title'), /心拍数は固定/);
     assert.equal(findByClass(console_.element, 'model-choice-effect').length, 0, 'no paragraph per card');
@@ -129,6 +133,10 @@ test('read-out: before → after with a signed change, and the first row renamed
     session.selectIntervention('dobutamine');
     panel.update(metrics());
     const co = row('心拍出量');
+    // A large change says so twice — in the arrow's shape and in words.
+    assert.equal(text(findByClass(co, 'metric-change')[0]), '↑↑');
+    assert.equal(co.dataset.strong, 'true');
+    assert.match(co.getAttribute('aria-label'), /大きく上昇/);
     const before = text(findByClass(co, 'metric-reference')[0]);
     const now = text(findByClass(co, 'metric-value')[0]);
     const delta = text(findByClass(co, 'metric-delta')[0]);
@@ -141,14 +149,14 @@ test('read-out: before → after with a signed change, and the first row renamed
     assert.equal(co.dataset.delta, 'up');
 
     // The row that says what was done is named after what was done. The panel
-    // used to build a row's label once, so this read "変えたもの" forever.
+    // used to build a row's label once, so it kept its first name forever.
     const first = panel.element.children[0];
-    assert.match(text(first), /ドブタミン作用の模式例/);
+    assert.match(text(first), /収縮力低下 → ドブタミン/);
     assert.match(text(first), /収縮力 ↑/);
 
     session.selectIntervention('none');
     panel.update(metrics());
-    assert.match(text(panel.element.children[0]), /変えたもの/, 'and renamed back');
+    assert.doesNotMatch(text(panel.element.children[0]), /→/, 'and renamed back to the starting condition alone');
     assert.equal(text(findByClass(row('心拍出量'), 'metric-delta')[0]), '');
   });
 });
@@ -206,7 +214,7 @@ test('toolbar: the tools a scene names go behind "More"; the experiment stays in
   });
 });
 
-test('console: "adjusted by hand" appears only while true, and is not a button', async () => {
+test('console: "Custom" appears only while true, and is not a button', async () => {
   await withDocument(async () => {
     const session = new ExperimentSession();
     const { CardiacOutputScene, controls } = await sceneWithSession(session);
@@ -217,20 +225,20 @@ test('console: "adjusted by hand" appears only while true, and is not a button',
       copy: CardiacOutputScene.meta.modelControls,
     });
     const [status] = findByClass(console_.element, 'model-choice-status');
-    assert.ok(status, 'the row carries the status');
+    assert.ok(status, 'the scenario row carries the status');
     assert.notEqual(status.tagName.toLowerCase(), 'button', 'nothing to press');
-    assert.equal(status.hidden, true, 'hidden while nothing is set by hand');
-    const none = findByClass(console_.element, 'model-choice-button').find((node) => node.dataset.value === 'none');
-    assert.equal(none.getAttribute('aria-pressed'), 'true');
+    assert.equal(status.hidden, true, 'hidden while the condition is a scenario');
+    const reference = findByClass(console_.element, 'model-choice-button').find((node) => node.dataset.value === 'reference');
+    assert.equal(reference.getAttribute('aria-pressed'), 'true');
 
     session.setControl('fillingVolumeMl', 800);
     console_.sync(controls());
-    assert.equal(status.hidden, false, 'shown once a slider has moved the condition');
-    assert.equal(none.getAttribute('aria-pressed'), 'false', 'and 「なし」 no longer claims to be selected');
+    assert.equal(status.hidden, false, 'shown once a slider has moved the condition off every scenario');
+    assert.equal(reference.getAttribute('aria-pressed'), 'false', 'and no scenario claims to be selected');
 
     session.reset();
     console_.sync(controls());
     assert.equal(status.hidden, true, 'and gone again after a reset');
-    assert.equal(none.getAttribute('aria-pressed'), 'true');
+    assert.equal(reference.getAttribute('aria-pressed'), 'true');
   });
 });

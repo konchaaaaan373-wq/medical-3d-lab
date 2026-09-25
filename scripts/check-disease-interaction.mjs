@@ -241,17 +241,13 @@ for (const slug of SLUGS) {
 
     const camera = () =>
       page.evaluate(() => window.__app?.viewer?.camera.position.toArray().map((v) => v.toFixed(2)).join(',') ?? null);
-    // `button`: the row also carries the "adjusted by hand" status, which shares
-    // the class and is not pressable.
-    const choices = page.locator('.model-control[data-control="intervention"] button.model-choice-button');
+    // `button`: the row also carries the "Custom" status, which shares the
+    // class and is not pressable. The scenario that was lit is pressed again
+    // afterwards, so the reset check below compares against the baseline the
+    // page opened on and not one this block quietly changed (L-111).
+    const choices = page.locator('.model-control[data-control="scenario"] button.model-choice-button');
     if ((await choices.count()) > 1) {
-      // An intervention may bring its own condition with it (dobutamine's
-      // evidence belongs to the reduced-contractility preset, and choosing it
-      // switches there), so the condition is put back as well as the
-      // intervention — otherwise the reset check below compares against a
-      // baseline this block quietly changed.
-      const presets = page.locator('.model-control[data-control="preset"] button.model-choice-button');
-      const selectedPreset = await presets.evaluateAll((nodes) => nodes.findIndex((node) => node.classList.contains('is-selected')));
+      const selectedAtStart = await choices.evaluateAll((nodes) => nodes.findIndex((node) => node.classList.contains('is-selected')));
       const before = await camera();
       await choices.last().click();
       await page.waitForTimeout(1500);
@@ -268,8 +264,7 @@ for (const slug of SLUGS) {
       if (moved > 0.05) {
         problems.push(`experiment layout: pressing an intervention moved the camera (${before} -> ${after})`);
       }
-      if (selectedPreset >= 0) await presets.nth(selectedPreset).click();
-      await choices.first().click();
+      await choices.nth(Math.max(0, selectedAtStart)).click();
       await page.waitForTimeout(900);
     }
 
@@ -308,7 +303,12 @@ for (const slug of SLUGS) {
           }
         });
         const hits = [];
-        for (const [name, selector] of [['read-out', '.metrics'], ['console', '.console'], ['title', '.title-card']]) {
+        for (const [name, selector] of [
+          ['read-out', '.metrics'],
+          ['console', '.console'],
+          ['title', '.title-card'],
+          ['sliders', '.model-controls-advanced[open] > .model-controls-advanced-body'],
+        ]) {
           const node = document.querySelector(selector);
           const rect = node?.getBoundingClientRect();
           if (!rect?.width) continue;
@@ -320,19 +320,27 @@ for (const slug of SLUGS) {
         }
         return { box: box.map(Math.round), hits };
       });
-    const interventions = page.locator('.model-control[data-control="intervention"] button.model-choice-button');
-    const presetButtons = page.locator('.model-control[data-control="preset"] button.model-choice-button');
-    const startPreset = await presetButtons.evaluateAll((nodes) => nodes.findIndex((node) => node.classList.contains('is-selected')));
+    const scenarios = page.locator('.model-control[data-control="scenario"] button.model-choice-button');
+    const startScenario = await scenarios.evaluateAll((nodes) => nodes.findIndex((node) => node.classList.contains('is-selected')));
+    const sliders = page.locator('.model-controls-advanced > summary');
     for (const [width, height, enforced] of [
       [1440, 900, true], [1280, 720, true], [1024, 768, true],
       [390, 844, true], [390, 664, true], [375, 667, true], [375, 553, false],
     ]) {
       await page.setViewportSize({ width, height });
       await page.waitForTimeout(1500);
-      for (const moment of ['at rest', 'after an intervention']) {
-        if (moment !== 'at rest') {
-          await interventions.last().click();
+      // And with the sliders open: the point of them is to watch the heart
+      // while dragging, so a layout that opens them over the heart — or grows
+      // the console into it — fails here.
+      for (const moment of ['at rest', 'after an intervention', 'with the sliders open']) {
+        if (moment === 'after an intervention') {
+          await scenarios.last().click();
           await page.waitForTimeout(1500);
+        }
+        if (moment === 'with the sliders open') {
+          if (!(await sliders.count())) continue;
+          await sliders.first().click();
+          await page.waitForTimeout(2500);
         }
         const result = await covered();
         if (!result || result.hits.length === 0) continue;
@@ -340,8 +348,11 @@ for (const slug of SLUGS) {
         if (enforced) problems.push(line);
         else console.log(`  ${slug}: ${line} [reported, not enforced — F-212]`);
       }
-      if (startPreset >= 0) await presetButtons.nth(startPreset).click();
-      await interventions.first().click();
+      if (await sliders.count()) {
+        const open = await sliders.first().evaluate((node) => node.parentElement.open);
+        if (open) await sliders.first().click();
+      }
+      await scenarios.nth(Math.max(0, startScenario)).click();
       await page.waitForTimeout(600);
     }
     if (desktopSize) await page.setViewportSize(desktopSize);

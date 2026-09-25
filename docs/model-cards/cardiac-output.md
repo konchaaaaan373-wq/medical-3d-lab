@@ -428,8 +428,8 @@ before choosing it. Nothing on screen showed that condition and
 gone and "clear" quietly meant something else than it had a minute earlier. The
 condition is no longer remembered at all: clearing an intervention, or moving a
 slider while one is selected, lands on the preset's starting condition — one
-rule, the same before and after a round trip, and the preset chip on screen says
-where it goes. What the change does not alter is the thing that matters: an
+rule, the same before and after a round trip, and the read-out's first row
+names the starting condition it goes to (「収縮力低下 → カスタム」). What the change does not alter is the thing that matters: an
 intervention is still computed from the baseline, so a drug's effect cannot be
 added on top of a hand-set condition.
 

@@ -13,6 +13,7 @@
  * quantity, not in place of it.
  */
 import { PRESET_IDS } from '../models/cardiacOutput.js';
+import { INTERVENTION_IDS } from '../models/cardiacInterventions.js';
 
 export const PALETTE = {
   myocardium: '#b4505f',
@@ -23,6 +24,10 @@ export const PALETTE = {
   vein: '#5a7098',
   resistance: '#ffc46b',
   outline: '#7ff0ff',
+  // The starting condition's end-diastolic cavity, drawn over the current
+  // heart once the reader has changed something. Pale and warm so it cannot
+  // be mistaken for the cyan end-diastolic mark of the side-by-side view.
+  before: '#f3e3b0',
 };
 
 export const LEGEND = [
@@ -37,6 +42,7 @@ export const LEGEND = [
   { key: 'artery', label: 'Oxygenated (schematic)', labelJa: '酸素化された血液（模式）' },
   { key: 'vein', label: 'Deoxygenated (schematic)', labelJa: '脱酸素化された血液（模式）' },
   { key: 'resistance', label: 'Where the resistance is', labelJa: '血管抵抗のある場所' },
+  { key: 'before', label: 'Cavity before the change, at end-diastole', labelJa: '変更前の内腔（拡張末期）' },
 ];
 
 /**
@@ -165,34 +171,102 @@ export const CONTROLS = [
 export const MODEL_CONTROLS = {
   primary: true,
   placement: 'console',
-  // No heading. 「状態を選び、介入を 1 つ加える」 was an instruction written as
-  // a title, and it read as one: the two captioned rows already say what they
-  // are, and the title card says what the screen is for.
   title: '',
   titleJa: '',
   reset: true,
-  // Back to where the *chosen condition* started — not to the page's opening
-  // state. "Start over" read as the second, and it does not do that.
-  resetLabel: 'Undo changes',
-  resetLabelJa: '元に戻す',
-  // The option cards carry only their names. What each does is said where it
-  // is read against the figures — the first row of the read-out — and in the
-  // button's title, so the console is a row of choices rather than a grid of
-  // paragraphs.
+  // Back to where the current scenario started. The way back to the page's
+  // opening state is the 「基準」 chip, which is always on screen.
+  resetLabel: 'Reset',
+  resetLabelJa: 'リセット',
   hideChoiceEffects: true,
   advanced: {
-    // Short: it shares a line with the toolbar, and at 1024 px the longer
-    // 「（4 つを自分で動かす）」 pushed the toolbar's labels onto one character
-    // per line. The note inside says what the four are.
-    label: 'Adjust the inputs',
-    labelJa: '詳細パラメータ',
-    // What a reader needs before dragging: one quantity per slider, and that
-    // dragging clears the intervention. "Nothing is scaled afterwards" was an
-    // assurance about the implementation; it stays in the model card.
-    note: 'Each slider changes only the quantity named on it. Moving one clears the selected intervention.',
-    noteJa: '各スライダーは、書かれている量だけを変えます。動かすと、選んでいた介入は解除されます。',
+    // "Adjust it yourself": the sliders are the second layer, for a reader who
+    // has seen what the scenarios do and wants to move one input on their own.
+    label: 'Adjust yourself',
+    labelJa: '自分で調整',
+    note: 'Each slider changes only the quantity named on it. Moving one leaves the scenario and shows “Custom”.',
+    noteJa: '各スライダーは書かれている量だけを変えます。動かすとシナリオを離れ、「カスタム」になります。',
   },
 };
+
+/**
+ * The scenarios: the one control a reader meets first.
+ *
+ * The console used to offer two rows — the heart's condition, and what is done
+ * to it — and behind them four sliders. Medically that split is right; as the
+ * first thing on a phone it asked a newcomer to understand it before touching
+ * anything (owner's review of the phone, 2026-09-25). So the first control is
+ * one row of named situations, each of which is exactly a preset, optionally an
+ * intervention, and optionally one control moved — nothing here is a new model
+ * state, and nothing is computed in this file.
+ *
+ * `from` is what the scenario is read against: the preset's own starting
+ * condition. "More filling" is read against the reference heart; dobutamine
+ * against reduced contractility, because that is the only circulation its
+ * evidence licenses (`requiresPreset`). The two starting conditions are read
+ * against nothing — choosing one *starts* an experiment, which is why no
+ * change is shown for them (see F-212, "baseline for state comparison").
+ *
+ * "Higher afterload" moves the systemic resistance from 1.1 to 1.6, the same
+ * step the resistance lesson and the reel already take — not a new number.
+ */
+export const SCENARIOS = [
+  {
+    id: 'reference',
+    label: 'Reference',
+    labelJa: '基準',
+    title: 'The reference heart — a representative teaching condition',
+    titleJa: '基準の心臓（教育用の代表条件）',
+    preset: PRESET_IDS.REFERENCE,
+  },
+  {
+    id: 'reduced-contractility',
+    label: 'Weaker contraction',
+    labelJa: '収縮力低下',
+    title: 'Reduced contractility — LV elastance lowered, nothing else changed',
+    titleJa: '収縮力低下（左室 Ees のみ低下・他は同じ）',
+    preset: PRESET_IDS.REDUCED_CONTRACTILITY,
+  },
+  {
+    id: 'more-filling',
+    label: 'Filling ↑',
+    labelJa: '充満量↑',
+    title: 'More circulating filling (a model input, not a fluid volume), from the reference heart',
+    titleJa: '循環充満量を増やす（モデル入力・輸液量ではない）— 基準の心臓から',
+    preset: PRESET_IDS.REFERENCE,
+    intervention: INTERVENTION_IDS.VOLUME_LOADING,
+  },
+  {
+    id: 'higher-afterload',
+    label: 'Afterload ↑',
+    labelJa: '後負荷↑',
+    title: 'Systemic resistance raised from 1.1 to 1.6 (the model’s lumped resistance), from the reference heart',
+    titleJa: '体血管抵抗を 1.1 → 1.6 に上げる（モデル内の集中抵抗）— 基準の心臓から',
+    preset: PRESET_IDS.REFERENCE,
+    controls: { systemicResistanceMmHgSPerMl: 1.6 },
+  },
+  {
+    id: 'dobutamine',
+    label: 'Dobutamine',
+    labelJa: 'ドブタミン',
+    // Where it applies is on the chip itself: pressing it moves the reader to
+    // the reduced-contractility heart, and a switch nobody announced reads as
+    // a bug.
+    tag: 'on weak contraction',
+    tagJa: '収縮力低下に',
+    title: 'Dobutamine, a schematic example with the rate held — applied to the reduced-contractility heart',
+    titleJa: 'ドブタミン作用の模式例（心拍数は固定）— 収縮力低下の心臓に',
+    preset: PRESET_IDS.REDUCED_CONTRACTILITY,
+    intervention: INTERVENTION_IDS.DOBUTAMINE,
+  },
+];
+
+/** The scenario row's value once a slider has moved the condition off every scenario. */
+export const CUSTOM_SCENARIO = Object.freeze({
+  id: 'custom',
+  label: 'Custom',
+  labelJa: 'カスタム',
+});
 
 /**
  * Which console buttons are the experiment and which are the rest.
