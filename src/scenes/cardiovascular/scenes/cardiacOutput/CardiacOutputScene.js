@@ -100,8 +100,12 @@ export class CardiacOutputScene {
     id: 'cardiac-output',
     title: 'Cardiac output',
     titleJa: '心拍出量',
-    subtitle: 'Filling, resistance, contractility, rate — one circulation solving for all of them',
-    subtitleJa: '充満・血管抵抗・収縮力・心拍数 ｜ 1 つの循環がすべてを解く',
+    // What the screen is for, in one line under the title. The earlier line —
+    // 「1 つの循環がすべてを解く」 — described the model, not what a reader can
+    // do with it, and a first-time reader was left to work that out from the
+    // controls.
+    subtitle: 'Change the heart’s condition or add a drug, and see how cardiac output and blood pressure change.',
+    subtitleJa: '心臓の状態や薬を変えると、心拍出量と血圧がどう変わるかを確かめられます。',
     progression: { enabled: false },
     // The shell's arrangement for a one-factor experiment: the subject in the
     // middle, what was done and what came of it beside it, the choices under
@@ -372,8 +376,8 @@ export class CardiacOutputScene {
         // captions rather than five cards in one grid.
         label: 'Condition',
         labelJa: '状態',
-        caption: '1 · Condition',
-        captionJa: '① 状態',
+        caption: 'Heart',
+        captionJa: '心臓の状態',
         value: this.session.presetId,
         options: PRESET_OPTIONS,
       },
@@ -387,8 +391,8 @@ export class CardiacOutputScene {
         kind: 'choice',
         label: 'Intervention',
         labelJa: '介入',
-        caption: '2 · One intervention',
-        captionJa: '② 介入（1 つ）',
+        caption: 'Intervention',
+        captionJa: '介入',
         // A hand-set condition is not "no intervention", and the row must not
         // say it is: moving a slider clears the intervention in the session,
         // which left 「なし」 lit while the figures beside it had moved. So the
@@ -670,10 +674,12 @@ export class CardiacOutputScene {
       },
       {
         id: 'pvp',
-        // Promoted alongside the filling pressure for the same reason: raising
-        // the filling raises output *and* the pressure behind the left heart,
-        // and a reader who sees only the first has been shown half of it.
-        // Reviewed externally 2026-09-22 and asked for explicitly.
+        // Promoted alongside the filling pressure after the external review of
+        // 2026-09-22, and moved back under "all figures" on 2026-09-25 at the
+        // owner's direction: the read-out carried five headline figures and
+        // read as a dashboard. The cost of filling is still on the face of
+        // the panel — the LV end-diastolic pressure above says it — and this
+        // row is one press away, with its before value and change.
         //
         // It is this model's pulmonary venous compartment and nothing more —
         // not a wedge pressure, not a capillary pressure, and no threshold in
@@ -684,7 +690,6 @@ export class CardiacOutputScene {
         reference: ref ? mmHg(ref.meanPulmonaryVenousPressureMmHg) : undefined,
         unit: 'mmHg',
         ...delta(mmHg(m.meanPulmonaryVenousPressureMmHg), mmHg(ref?.meanPulmonaryVenousPressureMmHg), 0),
-        emphasis: true,
       },
       {
         id: 'bp',

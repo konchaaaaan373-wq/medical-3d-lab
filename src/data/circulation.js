@@ -42,8 +42,9 @@ export const ANNOTATIONS = [
 export const MODEL_CONTROLS = {
   primary: true,
   placement: 'console',
-  title: 'Choose one state, then compare with baseline',
-  titleJa: '状態を1つ選び、基準と比べる',
+  // A heading, not an instruction — the same fix as cardiac-output's console.
+  title: 'State',
+  titleJa: '状態',
   subtitle: 'These are not doses and cannot be combined. CaO2 is fixed; global DO2 is calculated from CO.',
   subtitleJa: '用量ではなく、併用もできません。CaO₂固定で、global DO₂はCOから算出します。',
   reset: false,

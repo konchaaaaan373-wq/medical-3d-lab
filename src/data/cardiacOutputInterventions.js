@@ -47,8 +47,8 @@ export const INTERVENTION_OPTIONS = [
     // `requiresPreset` in the model). In the experiment layout the condition
     // row is the first thing read, and a chip that moved without being told to
     // reads as a bug.
-    tag: 'on reduced contractility',
-    tagJa: '収縮力低下に適用',
+    tag: 'reduced contractility only',
+    tagJa: '収縮力低下のみ',
     effect: 'elastance up and resistance down together · rate held',
     effectJa: 'エラスタンス ↑ と血管抵抗 ↓ を同時に・心拍数は固定',
   },

@@ -63,21 +63,18 @@ export function describeChange({ baseline, shown, interventionId }) {
       moved,
       label: 'Changed',
       labelJa: '変えたもの',
-      value: 'nothing yet — choose one intervention below',
-      valueJa: 'なし — 下の ② から 1 つ選ぶ',
+      value: 'nothing',
+      valueJa: 'なし',
     };
   }
 
-  // Held inputs are named while there are two or fewer — that is where one of
-  // them is the assumption worth seeing (the rate, under dobutamine) — and
-  // counted beyond that, where a list would be longer than the change.
+  // What was held is said once and short. It used to be listed — 「（充満量・
+  // 心拍数は固定）」 — which under dobutamine repeated the 「心拍数は固定」 the
+  // label had just said, and made the line the longest thing in the read-out.
+  // The moved inputs are named one by one, so "the rest" is exact.
   const heldClause = (ja) => {
     if (held.length === 0) return '';
-    if (held.length <= 2) {
-      const list = held.map((id) => name(id, ja)).join(ja ? '・' : ', ');
-      return ja ? `（${list}は固定）` : ` (${list} held)`;
-    }
-    return ja ? `（他 ${held.length} つは固定）` : ` (other ${held.length} held)`;
+    return ja ? '（他は固定）' : ' (rest held)';
   };
   const option =
     interventionId && interventionId !== INTERVENTION_IDS.NONE

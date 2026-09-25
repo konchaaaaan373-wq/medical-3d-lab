@@ -739,15 +739,15 @@ test('the first row says what was done, in the reader\'s words: which inputs, wh
   session.setControl('systemicResistanceMmHgSPerMl', 1.6);
   const one = rowsFor(false).find((row) => row.id === 'changed');
   assert.equal(one.labelJa, '手動調整');
-  assert.equal(one.valueJa, '血管抵抗 ↑ 1.1 → 1.6（他 3 つは固定）', 'one moved control is spelled out, with the rest counted');
+  assert.equal(one.valueJa, '血管抵抗 ↑ 1.1 → 1.6（他は固定）', 'one moved control is spelled out, and the rest said to be held');
   assert.equal(one.unit, '', 'the unit slot renders one language only, so nothing bilingual goes in it');
 
   // Two sliders: both named with their directions, so a multi-input condition
   // never reads as a one-factor comparison.
   session.setControl('heartRatePerMin', 90);
   const two = rowsFor(false).find((row) => row.id === 'changed');
-  assert.equal(two.valueJa, '血管抵抗 ↑・心拍数 ↑（収縮力・充満量は固定）', 'two moved, two held, all four named');
-  assert.equal(two.value, 'Resistance ↑ · Rate ↑ (Contractility, Filling held)');
+  assert.equal(two.valueJa, '血管抵抗 ↑・心拍数 ↑（他は固定）', 'both moved inputs named with their directions');
+  assert.equal(two.value, 'Resistance ↑ · Rate ↑ (rest held)');
 
   // The drug is a multi-input change by construction, and is reported as one:
   // its full name (the long name is where its caveat lives), both moved inputs
@@ -758,14 +758,15 @@ test('the first row says what was done, in the reader\'s words: which inputs, wh
   session.selectIntervention('dobutamine');
   const drug = rowsFor(false).find((row) => row.id === 'changed');
   assert.equal(drug.labelJa, 'ドブタミン作用の模式例（心拍数は固定）');
-  assert.equal(drug.valueJa, '収縮力 ↑・血管抵抗 ↓（充満量・心拍数は固定）');
+  assert.equal(drug.valueJa, '収縮力 ↑・血管抵抗 ↓（他は固定）');
+  assert.match(drug.labelJa, /心拍数は固定/, 'the held rate is said once, in the name');
   assert.doesNotMatch(drug.valueJa, /\d/, 'an intervention is described, not quoted in model units');
 
   // And the filling step names its caveat through its label, not a volume.
   session.selectIntervention('volume-loading');
   const volume = rowsFor(false).find((row) => row.id === 'changed');
   assert.match(volume.labelJa, /モデル入力/);
-  assert.equal(volume.valueJa, '充満量 ↑（他 3 つは固定）');
+  assert.equal(volume.valueJa, '充満量 ↑（他は固定）');
 });
 
 test('a refused condition never leaves the previous answer standing as the current one', async () => {

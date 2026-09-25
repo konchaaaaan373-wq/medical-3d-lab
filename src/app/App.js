@@ -17,7 +17,6 @@ import {
   distanceScaleForAspect,
   dollyAboutNdc,
   fitPoseToSafeArea,
-  insetsAboveFloor,
   framePose,
   orbitLimitsForSubject,
   shiftIntoBand,
@@ -276,8 +275,13 @@ export async function createApp({ stage, ui, onRetryModel = null }) {
     // across the top, so there it is part of the top band instead — which is
     // why this asks where the element actually is rather than which one it is.
     const railAcrossTop = (rect) =>
-      spansWidth(rect) && rect.top < height / 2 && rect.bottom < height * 0.6;
-    const right = band('.rail', spansHeight, (rect) => (width - rect.left) / width);
+      spansWidth(rect) && rect.top < height / 2 && (rect.bottom < height * 0.6 || railIsStrip(rect));
+    // On a phone the experiment layout's read-out is a full-width strip under
+    // the title. It may cross the middle of a short frame, and counted as a
+    // right-hand column it took half the width and pushed a 56 px heart into
+    // the left edge. A strip across the frame is a top band only.
+    const railIsStrip = (rect) => meta.layout === 'experiment' && rect.left < width * 0.2 && rect.right > width * 0.8;
+    const right = band('.rail', (rect) => spansHeight(rect) && !railIsStrip(rect), (rect) => (width - rect.left) / width);
     /**
      * The console is the exception to "it has to cross the middle".
      *
@@ -311,10 +315,18 @@ export async function createApp({ stage, ui, onRetryModel = null }) {
             (rect) => rect.right / width
           )
         : 0;
+    // The experiment layout's title card carries a line saying what the screen
+    // is for, and at 1024–1280 px it reached down into the model's band — the
+    // loop ran under it. It is counted as a top band there when it reaches
+    // into the band's width.
+    const titleBand = meta.layout === 'experiment'
+      ? band('.top-left > .title-card', (rect) => rect.right > 0 && rect.left < width * (1 - right), (rect) => rect.bottom / height)
+      : 0;
     return {
       top: Math.max(
         band('.global-scene-nav', spansWidth, (rect) => rect.bottom / height),
-        band('.rail', railAcrossTop, (rect) => rect.bottom / height)
+        band('.rail', railAcrossTop, (rect) => rect.bottom / height),
+        titleBand
       ),
       bottom: band('.console', reachesIntoBand, (rect) => (height - rect.top) / height),
       right,
@@ -323,12 +335,17 @@ export async function createApp({ stage, ui, onRetryModel = null }) {
   };
 
   /**
-   * The experiment layout asks for a fit even when the panels leave less than
-   * the fit's floor — see `insetsAboveFloor`. Every other scene keeps the
-   * fit's own answer, which is to leave the pose unfitted.
+   * The experiment layout is fitted into whatever band the panels leave, down
+   * to 2% of the frame, rather than the fit's default floor of 20%.
+   *
+   * Measured on an iPhone in Safari (390×664 of page): the read-out and the
+   * console left 12%, the fit declined, and the authored close-up drew the
+   * heart at twice its size behind both panels. Stretching the band back to
+   * the floor (the first fix) still put the numbers over the heart on an
+   * iPhone SE. The rule the owner set is the one kept here: the heart may be
+   * small, it may not be covered. Every other scene keeps the default.
    */
-  const fittableInsets = (insets) =>
-    insets && meta.layout === 'experiment' ? insetsAboveFloor(insets) : insets;
+  const minimumBand = meta.layout === 'experiment' ? 0.02 : undefined;
 
   /**
    * The width at which this product is one column — the same number the
@@ -352,12 +369,13 @@ export async function createApp({ stage, ui, onRetryModel = null }) {
     // Every other scene keeps the framing it has: this is opt-in on a capability
     // the scene either offers or does not.
     const bounds = scene.getSubjectBounds?.();
-    const insets = bounds ? fittableInsets(safeAreaInsets()) : null;
+    const insets = bounds ? safeAreaInsets() : null;
     return insets ? fitPoseToSafeArea(framed, {
       bounds,
       aspect: viewer.camera.aspect,
       fovDegrees: viewer.camera.fov,
       insets,
+      ...(minimumBand ? { minimumBand } : {}),
       // A scene may also say how much of that band its subject should take. The
       // brain is the whole of what is drawn and fills it; the heart is an organ
       // with vessels leaving it in every direction, and filling the band cut
@@ -1262,6 +1280,16 @@ export async function createApp({ stage, ui, onRetryModel = null }) {
     controlsInConsole ? modelControls?.element : null,
     controlPanel.element,
   ]);
+  // The experiment layout keeps its secondary tools in one place, "More". The
+  // language switch, "hide controls" and feedback sat in their own row under
+  // the read-out, and on a phone that row stood exactly where the heart goes:
+  // measured at 390×664 it left the heart a 32 px band. Moved, not copied —
+  // the same nodes with the same listeners, so nothing else changes.
+  if (meta.layout === 'experiment') {
+    const railButtons = rail.querySelector('.rail-buttons');
+    const menu = consoleElement.querySelector('.console-more-menu');
+    if (railButtons && menu) menu.append(railButtons);
+  }
   // On a phone the display panel docks just above the console. Only the console
   // knows how tall it is, and it differs by scene.
   publishHeight(consoleElement, ui, '--console-height');
@@ -2040,7 +2068,7 @@ export async function createApp({ stage, ui, onRetryModel = null }) {
       const measured = safeAreaInsets();
       if (!measured || JSON.stringify(measured) === bandsBeforeToggle) return;
       bandsBeforeToggle = JSON.stringify(measured);
-      const insets = fittableInsets(measured);
+      const insets = measured;
       if (!readerOwnsCamera) {
         setShot(shotSource);
         view.active = true;
@@ -2056,6 +2084,7 @@ export async function createApp({ stage, ui, onRetryModel = null }) {
           fovDegrees: viewer.camera.fov,
           insets,
           ...(bounds.coverage > 0 ? { coverage: bounds.coverage } : {}),
+          ...(minimumBand ? { minimumBand } : {}),
         }
       );
       userZoom = 1;

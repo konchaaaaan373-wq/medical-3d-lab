@@ -110,8 +110,8 @@ export const CONTROLS = [
     // control, where there is a line to spend on it.
     short: 'Filling',
     shortJa: '充満量',
-    label: 'Circulating filling, in the model · mL',
-    labelJa: '循環充満量（モデル内）・ mL',
+    label: 'Circulating filling (model quantity, mL)',
+    labelJa: '循環充満量（モデル内の量・mL）',
     unit: '',
   },
   {
@@ -123,8 +123,8 @@ export const CONTROLS = [
     // control, where there is a line to spend on it.
     short: 'Resistance',
     shortJa: '血管抵抗',
-    label: 'Systemic resistance · the model’s lumped resistance · mmHg·s/mL',
-    labelJa: '体血管抵抗（モデルの集中抵抗）・ mmHg·s/mL',
+    label: 'Systemic resistance (the model’s lumped resistance, mmHg·s/mL)',
+    labelJa: '体血管抵抗（モデル内の集中抵抗・mmHg·s/mL）',
     unit: '',
   },
   {
@@ -133,8 +133,8 @@ export const CONTROLS = [
     // control, where there is a line to spend on it.
     short: 'Contractility',
     shortJa: '収縮力',
-    label: 'Contractility · LV elastance Ees, mmHg/mL',
-    labelJa: '収縮力 ・ 左室エラスタンス Ees（mmHg/mL）',
+    label: 'Contractility (LV elastance Ees, mmHg/mL)',
+    labelJa: '収縮力（左室エラスタンス Ees・mmHg/mL）',
     unit: '',
   },
   {
@@ -147,8 +147,8 @@ export const CONTROLS = [
     // control, where there is a line to spend on it.
     short: 'Rate',
     shortJa: '心拍数',
-    label: 'Heart rate · /min · only the rate changes; not a model of tachycardia',
-    labelJa: '心拍数 ・ /min ・ 変わるのは心拍数だけ。頻脈の評価ではありません',
+    label: 'Heart rate (/min) — not a model of tachycardia',
+    labelJa: '心拍数（/min）— 頻脈の評価ではありません',
     unit: '',
   },
 ];
@@ -165,8 +165,11 @@ export const CONTROLS = [
 export const MODEL_CONTROLS = {
   primary: true,
   placement: 'console',
-  title: 'Choose a condition, then one intervention',
-  titleJa: '状態を選び、介入を 1 つ加える',
+  // No heading. 「状態を選び、介入を 1 つ加える」 was an instruction written as
+  // a title, and it read as one: the two captioned rows already say what they
+  // are, and the title card says what the screen is for.
+  title: '',
+  titleJa: '',
   reset: true,
   // Back to where the *chosen condition* started — not to the page's opening
   // state. "Start over" read as the second, and it does not do that.
@@ -183,10 +186,11 @@ export const MODEL_CONTROLS = {
     // per line. The note inside says what the four are.
     label: 'Adjust the inputs',
     labelJa: '詳細パラメータ',
-    note:
-      'Each slider moves only the quantity named on it; moving one clears the intervention. Every figure is re-solved from the result — nothing is scaled afterwards.',
-    noteJa:
-      '各スライダーは書いてある量だけを動かします（動かすと介入は解除）。数値はすべて結果から解き直したもので、あとから倍率をかけてはいません。',
+    // What a reader needs before dragging: one quantity per slider, and that
+    // dragging clears the intervention. "Nothing is scaled afterwards" was an
+    // assurance about the implementation; it stays in the model card.
+    note: 'Each slider changes only the quantity named on it. Moving one clears the selected intervention.',
+    noteJa: '各スライダーは、書かれている量だけを変えます。動かすと、選んでいた介入は解除されます。',
   },
 };
 
@@ -204,8 +208,8 @@ export const CONSOLE_LAYOUT = {
 };
 
 export const COMPARISON_LABEL = {
-  label: 'Side by side',
-  labelJa: '操作前と並べる',
+  label: 'Compare with before',
+  labelJa: '変更前と並べる',
   description: 'Side by side with this preset’s starting condition — the same scale, the same phase.',
   descriptionJa: 'このプリセットの操作前の条件と並べます。縮尺も位相も同じです。',
 };
@@ -444,15 +448,15 @@ export const ANNOTATIONS = [
 export const COMPARISON_ANNOTATIONS = [
   {
     id: 'before-heart',
-    text: 'Before — this condition as it started',
-    sub: '操作前（この状態の開始時）',
+    text: 'Before',
+    sub: '変更前',
     anchor: 'comparisonBefore',
     comparisonOnly: true,
   },
   {
     id: 'current-heart',
-    text: 'Now',
-    sub: 'いまの条件',
+    text: 'After',
+    sub: '変更後',
     anchor: 'comparisonNow',
     comparisonOnly: true,
   },
@@ -544,8 +548,9 @@ export const DISCLAIMER =
   'Educational model. A representative teaching circulation with no reflex regulation — it shows why the relationships point the way they do, and predicts nothing about any patient.';
 export const DISCLAIMER_JA =
   '教育用モデルです。反射性調節を持たない代表的な循環で、関係の向きと理由を示すものであり、個々の患者について何も予測しません。';
-export const DISCLAIMER_SHORT = 'Educational model — a teaching circulation with no reflex regulation.';
-export const DISCLAIMER_SHORT_JA = '教育用モデル — 反射性調節を持たない教育用の循環です。';
+// Said once: the earlier line read 「教育用モデル — …教育用の循環です」.
+export const DISCLAIMER_SHORT = 'Educational model. Reflex regulation is not included.';
+export const DISCLAIMER_SHORT_JA = '教育用モデルです。反射による調節は含みません。';
 
 /** Shown in place of the read-out when a requested condition has no settled solution. */
 export const UNSOLVED_NOTICE = {

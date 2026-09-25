@@ -256,7 +256,16 @@ for (const slug of SLUGS) {
       await choices.last().click();
       await page.waitForTimeout(1500);
       const after = await camera();
-      if (before && after !== before) {
+      // Compared with a tolerance, and why: with no input at all the camera
+      // still creeps about 0.002 world units a second (measured 2026-09-25 at
+      // 1440×900, distance 33) — the shell's easing converging, not a reframe.
+      // Compared exactly at two decimals, the check went red whenever a
+      // rounding boundary fell inside its 1.5 s window. A reframe moves whole
+      // units: the one this guards against moved 0.24.
+      const moved = before && after
+        ? Math.hypot(...before.split(',').map((value, i) => Number(value) - Number(after.split(',')[i])))
+        : 0;
+      if (moved > 0.05) {
         problems.push(`experiment layout: pressing an intervention moved the camera (${before} -> ${after})`);
       }
       if (selectedPreset >= 0) await presets.nth(selectedPreset).click();
@@ -264,51 +273,76 @@ for (const slug of SLUGS) {
       await page.waitForTimeout(900);
     }
 
-    // On a phone, in the space Safari actually leaves a page (390×664 on an
-    // iPhone 13 with its toolbars; 375×553 on an SE). Found on the device, not
-    // here: the read-out and the console left the heart under the framing's
-    // floor, the camera fell back to the authored close-up, and the heart was
-    // drawn at twice its size behind both panels. 844 px tall — the only phone
-    // height this check used to open — never reaches the floor.
+    // Nothing on the screen may cover the model — not the read-out, not the
+    // console, not the title. The owner's rule (2026-09-25): the heart may be
+    // drawn small, it may not be hidden. Found on the device, not here: on an
+    // iPhone in Safari (390×664 of page) the framing fell under its floor and
+    // drew the heart at twice its size behind both panels, and the phone
+    // layout then put the figures over it. 844 px tall — the only phone height
+    // this check used to open — never showed either.
+    //
+    // Measured at rest and again after an intervention, because the read-out's
+    // first row grows a line when something has been done. 375×553 (an SE with
+    // Safari's toolbars) is reported, not enforced: the band there is tens of
+    // pixels and a 2 px touch is not the failure this is for (F-212).
     const desktopSize = page.viewportSize();
-    // 375×553 is reported and not enforced: there the read-out and the console
-    // leave 41 px, and a heart that fits the widened band still runs under
-    // both. That is a lack of room, not a framing fault — see F-212.
-    for (const [width, height, enforced] of [[390, 664, true], [375, 553, false]]) {
-      await page.setViewportSize({ width, height });
-      await page.waitForTimeout(1500);
-      const framing = await page.evaluate(() => {
+    const covered = () =>
+      page.evaluate(() => {
         const { viewer, scene } = window.__app ?? {};
         if (!viewer || !scene?.root) return null;
         const probe = viewer.camera.position.clone();
-        let top = Infinity;
-        let bottom = -Infinity;
+        const box = [Infinity, Infinity, -Infinity, -Infinity];
         scene.root.updateWorldMatrix(true, true);
         scene.root.traverse((object) => {
           const position = object.geometry?.attributes?.position;
           if (!position || object.isPoints || !object.visible) return;
-          for (let i = 0; i < position.count; i += 13) {
+          for (let i = 0; i < position.count; i += 9) {
             probe.fromBufferAttribute(position, i).applyMatrix4(object.matrixWorld).project(viewer.camera);
             if (Math.abs(probe.z) > 1) continue;
+            const x = ((probe.x + 1) / 2) * innerWidth;
             const y = ((1 - probe.y) / 2) * innerHeight;
-            top = Math.min(top, y);
-            bottom = Math.max(bottom, y);
+            box[0] = Math.min(box[0], x);
+            box[1] = Math.min(box[1], y);
+            box[2] = Math.max(box[2], x);
+            box[3] = Math.max(box[3], y);
           }
         });
-        const rail = document.querySelector('.metrics')?.getBoundingClientRect();
-        const console_ = document.querySelector('.console')?.getBoundingClientRect();
-        return { top, bottom, band: [rail?.bottom ?? 0, console_?.top ?? innerHeight] };
+        const hits = [];
+        for (const [name, selector] of [['read-out', '.metrics'], ['console', '.console'], ['title', '.title-card']]) {
+          const node = document.querySelector(selector);
+          const rect = node?.getBoundingClientRect();
+          if (!rect?.width) continue;
+          const dx = Math.min(box[2], rect.right) - Math.max(box[0], rect.left);
+          const dy = Math.min(box[3], rect.bottom) - Math.max(box[1], rect.top);
+          // A 4 px margin: the box is of vertices, and a curve's silhouette
+          // sits inside it.
+          if (dx > 4 && dy > 4) hits.push(`${name} ${Math.round(dy)}px`);
+        }
+        return { box: box.map(Math.round), hits };
       });
-      if (!framing) continue;
-      const centre = (framing.top + framing.bottom) / 2;
-      const [bandTop, bandBottom] = framing.band;
-      const height_ = framing.bottom - framing.top;
-      if (centre < bandTop || centre > bandBottom || height_ > (bandBottom - bandTop) * 1.5) {
-        (enforced ? (line) => problems.push(line) : (line) => console.log(`  ${slug}: ${line} [reported, not enforced — F-212]`))(
-          `experiment layout ${width}x${height}: the model (${Math.round(framing.top)}..${Math.round(framing.bottom)}) ` +
-            `is not framed into the band between the read-out and the console (${Math.round(bandTop)}..${Math.round(bandBottom)})`
-        );
+    const interventions = page.locator('.model-control[data-control="intervention"] button.model-choice-button');
+    const presetButtons = page.locator('.model-control[data-control="preset"] button.model-choice-button');
+    const startPreset = await presetButtons.evaluateAll((nodes) => nodes.findIndex((node) => node.classList.contains('is-selected')));
+    for (const [width, height, enforced] of [
+      [1440, 900, true], [1280, 720, true], [1024, 768, true],
+      [390, 844, true], [390, 664, true], [375, 667, true], [375, 553, false],
+    ]) {
+      await page.setViewportSize({ width, height });
+      await page.waitForTimeout(1500);
+      for (const moment of ['at rest', 'after an intervention']) {
+        if (moment !== 'at rest') {
+          await interventions.last().click();
+          await page.waitForTimeout(1500);
+        }
+        const result = await covered();
+        if (!result || result.hits.length === 0) continue;
+        const line = `experiment layout ${width}x${height} ${moment}: the model (${result.box.join(',')}) is covered by ${result.hits.join(', ')}`;
+        if (enforced) problems.push(line);
+        else console.log(`  ${slug}: ${line} [reported, not enforced — F-212]`);
       }
+      if (startPreset >= 0) await presetButtons.nth(startPreset).click();
+      await interventions.first().click();
+      await page.waitForTimeout(600);
     }
     if (desktopSize) await page.setViewportSize(desktopSize);
     await page.waitForTimeout(900);
