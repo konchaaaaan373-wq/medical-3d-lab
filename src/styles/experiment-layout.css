@@ -823,8 +823,11 @@
     font-size: 12px;
   }
 
+  /* Wraps only when it does not fit: in Japanese the three interventions fit
+     one line down to 320 px, in English they do not ("Dobutamine
+     (schematic)" ran out of its button at 320 px — Codex review on #157). */
   #ui[data-layout='experiment'] .model-choice-group {
-    flex-wrap: nowrap;
+    flex-wrap: wrap;
     gap: 6px;
   }
 
