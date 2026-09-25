@@ -994,8 +994,11 @@ for (const slug of SLUGS) {
     const close = page.locator('.learn-close').first();
     if (await close.isVisible().catch(() => false)) await close.click();
     await page.waitForTimeout(1200);
-    const reset = page.locator('.model-control-reset');
-    if (await reset.count()) await reset.first().click();
+    // The reset a reader can see: the experiment's 「元に戻す」 where the
+    // scene opens on one, else the controls panel's.
+    const undo = page.locator('.model-experiment-undo');
+    const reset = (await undo.count()) && (await undo.first().isVisible()) ? undo : page.locator('.model-control-reset');
+    if ((await reset.count()) && (await reset.first().isEnabled())) await reset.first().click();
     await page.waitForTimeout(1500);
     const back = await state();
     if (back.controls !== before.controls) {
