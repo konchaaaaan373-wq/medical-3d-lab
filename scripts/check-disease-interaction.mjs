@@ -725,8 +725,16 @@ for (const slug of SLUGS) {
   // (`ModelControls`, `copy.reset`). Looking for only the first reported
   // `circulation` and `cardiac-output` as having no reset at all, which is the
   // kind of false red that teaches people to ignore a checker.
+  // A third: a scene that opens on one experiment carries its way back on the
+  // experiment (「元に戻す」), and its whole-reset is behind 「詳しく調整」 —
+  // so the reset pressed here is the one a reader can see.
   const consoleReset = page.locator('button', { hasText: 'モデル初期化' });
-  const reset = (await consoleReset.count()) ? consoleReset : page.locator('.model-control-reset');
+  const experimentUndo = page.locator('.model-experiment-undo');
+  const reset = (await consoleReset.count())
+    ? consoleReset
+    : (await experimentUndo.count()) && (await experimentUndo.first().isVisible())
+      ? experimentUndo
+      : page.locator('.model-control-reset');
   if (!(await reset.count())) problems.push('no reset control');
   else {
     await reset.first().click();
