@@ -130,11 +130,7 @@ export function createMetricsPanel({ moreLabel } = {}) {
         row.delta.textContent = metric.delta == null ? '' : String(metric.delta);
         if (metric.delta == null) delete row.node.dataset.delta;
         else row.node.dataset.delta = metric.deltaSign ?? 'flat';
-        // A large change is drawn with two arrows: the shape carries the size
-        // as well as the direction, so neither depends on a colour.
-        const arrow = metric.change === 'up' ? '↑' : metric.change === 'down' ? '↓' : metric.change === 'flat' ? '≈' : '';
-        row.change.textContent = metric.changeStrong && arrow !== '≈' ? arrow + arrow : arrow;
-        row.node.dataset.strong = metric.changeStrong ? 'true' : 'false';
+        row.change.textContent = metric.change === 'up' ? '↑' : metric.change === 'down' ? '↓' : metric.change === 'flat' ? '≈' : '';
         if (metric.change) {
           row.node.dataset.change = metric.change;
           const changeLabel = [metric.changeLabel, metric.changeLabelJa].filter(Boolean).join(' / ');

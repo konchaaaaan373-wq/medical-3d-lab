@@ -160,7 +160,7 @@ test('read-out: a phone gets four rows and a way to the rest', async () => {
     const compact = panel.element.children
       .filter((node) => node.dataset?.compact === 'key')
       .map((node) => findByClass(node, 'metric-label')[0].children[1].textContent);
-    assert.deepEqual(compact, ['基準', '心拍出量 CO', '平均動脈圧 MAP', '左室充満圧（LVEDP）']);
+    assert.deepEqual(compact, ['比較元：基準（開始時）', '心拍出量 CO', '平均動脈圧 MAP', '左室充満圧（LVEDP）']);
 
     // Output without the pressure it cost is the wrong half of this scene's
     // teaching, so the two travel together.

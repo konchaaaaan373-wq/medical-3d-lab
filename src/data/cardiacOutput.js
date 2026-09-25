@@ -13,7 +13,6 @@
  * quantity, not in place of it.
  */
 import { PRESET_IDS } from '../models/cardiacOutput.js';
-import { INTERVENTION_IDS } from '../models/cardiacInterventions.js';
 
 export const PALETTE = {
   myocardium: '#b4505f',
@@ -24,10 +23,6 @@ export const PALETTE = {
   vein: '#5a7098',
   resistance: '#ffc46b',
   outline: '#7ff0ff',
-  // The starting condition's end-diastolic cavity, drawn over the current
-  // heart once the reader has changed something. Pale and warm so it cannot
-  // be mistaken for the cyan end-diastolic mark of the side-by-side view.
-  before: '#f3e3b0',
 };
 
 export const LEGEND = [
@@ -42,7 +37,6 @@ export const LEGEND = [
   { key: 'artery', label: 'Oxygenated (schematic)', labelJa: '酸素化された血液（模式）' },
   { key: 'vein', label: 'Deoxygenated (schematic)', labelJa: '脱酸素化された血液（模式）' },
   { key: 'resistance', label: 'Where the resistance is', labelJa: '血管抵抗のある場所' },
-  { key: 'before', label: 'Cavity before the change, at end-diastole', labelJa: '変更前の内腔（拡張末期）' },
 ];
 
 /**
@@ -160,6 +154,39 @@ export const CONTROLS = [
 ];
 
 /**
+ * How each of the four inputs is moved in the editor: the words on the two
+ * buttons, and how far one press goes.
+ *
+ * The words name the direction in the input's own terms — filling is
+ * "less / more", contractility "weaker / stronger" — rather than a bare − and
+ * +, because which side is "more" is the first thing a reader would otherwise
+ * have to find out by trying.
+ *
+ * `nudge` is one press. About a twentieth of each input's declared range and a
+ * whole number of its step, so twenty presses cross the range and no press
+ * lands between slider positions. Presentation only: the range and the step
+ * are the model's (`CONTROL_DOMAIN`) and are not widened here.
+ */
+export const CONTROL_EDITOR = {
+  fillingVolumeMl: { nudge: 20, decrease: 'Less', decreaseJa: '減らす', increase: 'More', increaseJa: '増やす' },
+  systemicResistanceMmHgSPerMl: { nudge: 0.05, decrease: 'Lower', decreaseJa: '下げる', increase: 'Higher', increaseJa: '上げる' },
+  contractilityEesMmHgPerMl: { nudge: 0.16, decrease: 'Weaker', decreaseJa: '弱める', increase: 'Stronger', increaseJa: '強める' },
+  heartRatePerMin: { nudge: 3, decrease: 'Slower', decreaseJa: '下げる', increase: 'Faster', increaseJa: '上げる' },
+};
+
+/** The editor's fixed words. */
+export const EDITOR_COPY = {
+  label: 'Input to change',
+  labelJa: '変える入力',
+  current: 'Now',
+  currentJa: '現在',
+  start: 'Start',
+  startJa: '開始時',
+  resetOne: 'Reset this',
+  resetOneJa: 'この項目を戻す',
+};
+
+/**
  * The console's copy.
  *
  * No subtitle any more. The sentence that used to sit here — every figure is
@@ -174,99 +201,24 @@ export const MODEL_CONTROLS = {
   title: '',
   titleJa: '',
   reset: true,
-  // Back to where the current scenario started. The way back to the page's
-  // opening state is the 「基準」 chip, which is always on screen.
-  resetLabel: 'Reset',
-  resetLabelJa: 'リセット',
+  // The whole experiment back to where it started — the starting state the
+  // reader chose, not the page's opening state, and not the view (that is in
+  // the menu). It stands beside the editor's 「この項目を戻す」, so the two
+  // scopes are read against each other.
+  resetLabel: 'Reset all',
+  resetLabelJa: '全体を戻す',
   hideChoiceEffects: true,
+  editor: EDITOR_COPY,
+  // The four inputs are the experiment and are always on screen (the editor
+  // below). What is behind one press is the two things that *start* or *change
+  // the whole* experiment: the starting state and an intervention.
   advanced: {
-    // "Adjust it yourself": the sliders are the second layer, for a reader who
-    // has seen what the scenarios do and wants to move one input on their own.
-    label: 'Adjust yourself',
-    labelJa: '自分で調整',
-    note: 'Each slider changes only the quantity named on it. Moving one leaves the scenario and shows “Custom”.',
-    noteJa: '各スライダーは書かれている量だけを変えます。動かすとシナリオを離れ、「カスタム」になります。',
+    label: 'Start state · intervention',
+    labelJa: '開始状態・介入',
+    note: 'Choosing a start state begins a new experiment and replaces your changes. An intervention is applied to the start state.',
+    noteJa: '開始状態を選ぶと新しい実験になり、調整は置き換わります。介入は開始状態に対してかかります。',
   },
 };
-
-/**
- * The scenarios: the one control a reader meets first.
- *
- * The console used to offer two rows — the heart's condition, and what is done
- * to it — and behind them four sliders. Medically that split is right; as the
- * first thing on a phone it asked a newcomer to understand it before touching
- * anything (owner's review of the phone, 2026-09-25). So the first control is
- * one row of named situations, each of which is exactly a preset, optionally an
- * intervention, and optionally one control moved — nothing here is a new model
- * state, and nothing is computed in this file.
- *
- * `from` is what the scenario is read against: the preset's own starting
- * condition. "More filling" is read against the reference heart; dobutamine
- * against reduced contractility, because that is the only circulation its
- * evidence licenses (`requiresPreset`). The two starting conditions are read
- * against nothing — choosing one *starts* an experiment, which is why no
- * change is shown for them (see F-212, "baseline for state comparison").
- *
- * "Higher afterload" moves the systemic resistance from 1.1 to 1.6, the same
- * step the resistance lesson and the reel already take — not a new number.
- */
-export const SCENARIOS = [
-  {
-    id: 'reference',
-    label: 'Reference',
-    labelJa: '基準',
-    title: 'The reference heart — a representative teaching condition',
-    titleJa: '基準の心臓（教育用の代表条件）',
-    preset: PRESET_IDS.REFERENCE,
-  },
-  {
-    id: 'reduced-contractility',
-    label: 'Weaker contraction',
-    labelJa: '収縮力低下',
-    title: 'Reduced contractility — LV elastance lowered, nothing else changed',
-    titleJa: '収縮力低下（左室 Ees のみ低下・他は同じ）',
-    preset: PRESET_IDS.REDUCED_CONTRACTILITY,
-  },
-  {
-    id: 'more-filling',
-    label: 'Filling ↑',
-    labelJa: '充満量↑',
-    title: 'More circulating filling (a model input, not a fluid volume), from the reference heart',
-    titleJa: '循環充満量を増やす（モデル入力・輸液量ではない）— 基準の心臓から',
-    preset: PRESET_IDS.REFERENCE,
-    intervention: INTERVENTION_IDS.VOLUME_LOADING,
-  },
-  {
-    id: 'higher-afterload',
-    label: 'Afterload ↑',
-    labelJa: '後負荷↑',
-    title: 'Systemic resistance raised from 1.1 to 1.6 (the model’s lumped resistance), from the reference heart',
-    titleJa: '体血管抵抗を 1.1 → 1.6 に上げる（モデル内の集中抵抗）— 基準の心臓から',
-    preset: PRESET_IDS.REFERENCE,
-    controls: { systemicResistanceMmHgSPerMl: 1.6 },
-  },
-  {
-    id: 'dobutamine',
-    label: 'Dobutamine',
-    labelJa: 'ドブタミン',
-    // Where it applies is on the chip itself: pressing it moves the reader to
-    // the reduced-contractility heart, and a switch nobody announced reads as
-    // a bug.
-    tag: 'on weak contraction',
-    tagJa: '収縮力低下に',
-    title: 'Dobutamine, a schematic example with the rate held — applied to the reduced-contractility heart',
-    titleJa: 'ドブタミン作用の模式例（心拍数は固定）— 収縮力低下の心臓に',
-    preset: PRESET_IDS.REDUCED_CONTRACTILITY,
-    intervention: INTERVENTION_IDS.DOBUTAMINE,
-  },
-];
-
-/** The scenario row's value once a slider has moved the condition off every scenario. */
-export const CUSTOM_SCENARIO = Object.freeze({
-  id: 'custom',
-  label: 'Custom',
-  labelJa: 'カスタム',
-});
 
 /**
  * Which console buttons are the experiment and which are the rest.

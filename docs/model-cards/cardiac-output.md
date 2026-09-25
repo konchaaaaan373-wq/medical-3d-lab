@@ -66,10 +66,14 @@ multiplier on anything below them.
 | Dobutamine, a schematic example (rate held) | elastance ×1.5 **and** resistance ×0.85, together | **rate**, filling |
 
 Both are computed from the preset's starting condition, so choosing the same
-one twice produces the same condition twice — and clearing one, or moving a
-slider, returns there. There is no second condition remembered behind the
-scenes: a state a reader cannot see and a snapshot cannot carry is a state whose
-meaning changes silently across a sequence or a lesson. An effect that falls outside the
+one twice produces the same condition twice, and clearing one returns there.
+**Moving one input after an intervention changes that input only**: the others
+keep the values the intervention gave them, and the screen says 「ドブタミン
+（模式）適用後を調整」. It does not claim the drug is still acting — the model has
+no drug, only the inputs the example set — and it does not stack a second drug
+effect on anything. The condition is entirely the four input values plus which
+intervention it came from, so a snapshot carries it and a round trip restores
+it (`tests/cardiac-output-scene.test.js`). An effect that falls outside the
 verified range is refused rather than clamped — dobutamine from the reference
 heart is, which is why it is offered on the condition its evidence comes from.
 
@@ -289,6 +293,24 @@ supports is refusing to publish the reduction.
 
 **Catalog status:** `alpha`
 
+### Screen, 2026-09-25 — one input after an intervention, and what "before" is
+
+Not a model revision: the solver, its inputs and their ranges are unchanged.
+Two rules of the experiment around it changed, after the owner's phone
+recordings.
+
+- Moving one input after an intervention used to rebuild the condition from
+  the preset's start with that one input moved — so raising the filling after
+  dobutamine silently took the drug's contractility and resistance away. It now
+  keeps them (§4, Interventions). Revision 5's reason for the old rule — a
+  hidden condition a snapshot could not carry — does not return: the condition
+  is the four values, and the label is recoverable from the intervention row.
+- Every figure is read against where the experiment started, from the first
+  frame (±0 before anything moves). The column used to appear with the first
+  change and pushed the controls down under the reader's finger.
+- The arrows beside the figures give direction only. The earlier ↑↑ for a
+  change of 20 % or more put figures in different units on one scale.
+
 ### Revisions 7–9 — end-diastole is an event, not the tallest sample
 
 *One change, three adoptions: `npm run revisions:adopt` ran again each time the
@@ -428,8 +450,8 @@ before choosing it. Nothing on screen showed that condition and
 gone and "clear" quietly meant something else than it had a minute earlier. The
 condition is no longer remembered at all: clearing an intervention, or moving a
 slider while one is selected, lands on the preset's starting condition — one
-rule, the same before and after a round trip, and the read-out's first row
-names the starting condition it goes to (「収縮力低下 → カスタム」). What the change does not alter is the thing that matters: an
+rule, the same before and after a round trip, and the preset chip on screen says
+where it goes. What the change does not alter is the thing that matters: an
 intervention is still computed from the baseline, so a drug's effect cannot be
 added on top of a hand-set condition.
 

@@ -50,62 +50,110 @@ async function sceneWithSession(session) {
   };
 }
 
-test('console: one row of scenarios leads, captioned; the four inputs are one press away and still move the model', async () => {
+test('console: the four inputs are always named, one editor moves the chosen one, and choosing one changes nothing', async () => {
   await withDocument(async () => {
     const session = new ExperimentSession();
     const { CardiacOutputScene, controls } = await sceneWithSession(session);
     const changes = [];
     const console_ = createModelControls({
       controls: controls(),
-      onChange: (id, value) => changes.push([id, value]),
+      onChange: (id, value) => {
+        changes.push([id, value]);
+        session.setControl(id, value);
+        console_.sync(controls());
+      },
       onReset: () => {},
       copy: CardiacOutputScene.meta.modelControls,
     });
 
+    // The four are on screen from the start, not behind a disclosure, and
+    // there is exactly one slider — the editor's.
+    const tabs = findByClass(console_.element, 'model-editor-tab');
+    assert.deepEqual(tabs.map((tab) => tab.dataset.input), CONTROLS_ORDER);
     const [advanced] = findByClass(console_.element, 'model-controls-advanced');
-    assert.ok(advanced, 'the four inputs have a disclosure');
-    assert.equal(advanced.tagName.toLowerCase(), 'details');
-    assert.equal(findByClass(advanced, 'slider').length, 4, 'all four sliders are inside it');
-    assert.equal(
-      findByClass(console_.element, 'slider').length,
-      4,
-      'and there are no others — nothing was duplicated on the way in'
-    );
-    // One row a reader meets first. The preset and intervention rows still
-    // exist — a session capture replays them — but they are not drawn: two
-    // operation groups before the first touch was the confusion this fixes.
-    const choices = findByClass(console_.element, 'model-choice-group');
-    assert.equal(choices.length, 1, 'one row of scenarios');
-    const buttons = findByClass(choices[0], 'model-choice-button').filter((node) => node.tagName.toLowerCase() === 'button');
-    assert.deepEqual(
-      buttons.map((button) => button.dataset.value),
-      ['reference', 'reduced-contractility', 'more-filling', 'higher-afterload', 'dobutamine']
-    );
-    assert.equal(findByClass(advanced, 'model-choice-group').length, 0, 'and it is not behind the disclosure');
+    assert.equal(findByClass(advanced, 'model-editor-tab').length, 0, 'the inputs are not behind the disclosure');
+    assert.equal(findByClass(advanced, 'model-choice-group').length, 2, 'the start state and the intervention are');
+    const sliders = findByClass(console_.element, 'slider');
+    assert.equal(sliders.length, 1, 'one slider, for the chosen input');
+    const [slider] = sliders;
 
-    // Its caption says what touching it does — the orientation is the label
-    // of the control, not a paragraph above it.
-    const captions = findByClass(console_.element, 'model-choice-caption').map(text);
-    assert.equal(captions.length, 1);
-    assert.match(captions[0], /心臓と数値が変わります/);
+    // Filling is open first.
+    assert.equal(tabs[0].getAttribute('aria-selected'), 'true');
+    assert.equal(slider.getAttribute('aria-label').startsWith('Circulating filling'), true);
 
-    // Short names on the buttons; the full name — which carries the caveat —
-    // stays in the accessible name and the title.
-    const dobutamine = buttons.find((button) => button.dataset.value === 'dobutamine');
-    assert.match(text(dobutamine), /ドブタミン/);
-    assert.match(dobutamine.getAttribute('aria-label'), /心拍数は固定/);
-    assert.match(dobutamine.getAttribute('title'), /心拍数は固定/);
-    assert.equal(findByClass(console_.element, 'model-choice-effect').length, 0, 'no paragraph per card');
+    // Choosing another input is a view change: no value moves.
+    tabs[1].dispatchEvent({ type: 'click' });
+    assert.deepEqual(changes, [], 'choosing an input changes no value');
+    assert.equal(tabs[1].getAttribute('aria-selected'), 'true');
+    assert.equal(slider.min, '0.7');
+    assert.equal(slider.value, String(session.input.systemicResistanceMmHgSPerMl));
 
-    // A slider behind the disclosure is still wired to the model.
-    const [resistance] = findByClass(advanced, 'slider').filter(
-      (input) => input.getAttribute('aria-label')?.startsWith('Systemic resistance')
-    );
-    resistance.value = '1.6';
-    resistance.dispatchEvent({ type: 'input', target: resistance });
+    // A drag goes to the model, and the slider is the same node afterwards —
+    // nothing is rebuilt under the finger.
+    slider.value = '1.6';
+    slider.dispatchEvent({ type: 'input', target: slider });
     assert.deepEqual(changes, [['systemicResistanceMmHgSPerMl', 1.6]]);
+    assert.equal(findByClass(console_.element, 'slider')[0], slider, 'the slider was not replaced');
+    assert.equal(tabs[1].classList.contains('is-changed'), true, 'the tab is marked as moved');
+    assert.equal(tabs[0].classList.contains('is-changed'), false, 'the others are not');
+
+    // Switching away and back keeps the value and the start.
+    tabs[0].dispatchEvent({ type: 'click' });
+    tabs[1].dispatchEvent({ type: 'click' });
+    assert.equal(slider.value, '1.6');
+    const start = text(findByClass(console_.element, 'model-editor-start-value')[0]);
+    assert.equal(start, '1.10', 'the start is still where the experiment started');
   });
 });
+
+test('console: the two buttons move one step, stop at the ends, and 「この項目を戻す」 moves only this input', async () => {
+  await withDocument(async () => {
+    const session = new ExperimentSession();
+    const { CardiacOutputScene, controls } = await sceneWithSession(session);
+    const console_ = createModelControls({
+      controls: controls(),
+      onChange: (id, value) => {
+        session.setControl(id, value);
+        console_.sync(controls());
+      },
+      onReset: () => {},
+      copy: CardiacOutputScene.meta.modelControls,
+    });
+    const [down, up] = findByClass(console_.element, 'model-editor-step');
+    const [resetOne] = findByClass(console_.element, 'model-editor-reset');
+    const tabs = findByClass(console_.element, 'model-editor-tab');
+    assert.equal(resetOne.disabled, true, 'nothing to put back at the start');
+    // The two resets stand side by side, so their scopes are read against
+    // each other: this input, and the whole experiment.
+    const [values] = findByClass(console_.element, 'model-editor-values');
+    const [resetAll] = findByClass(values, 'model-control-reset');
+    assert.ok(resetAll, 'the whole-experiment reset is beside 「この項目を戻す」');
+    assert.match(text(resetAll), /全体を戻す/);
+    assert.equal(findByClass(console_.element, 'model-control-reset').length, 1, 'and it is not drawn twice');
+    assert.match(up.getAttribute('aria-label'), /充満量を増やす/);
+
+    up.dispatchEvent({ type: 'click' });
+    assert.equal(session.input.fillingVolumeMl, 730, 'one press is one nudge');
+    assert.equal(resetOne.disabled, false);
+
+    // Move a second input, then put the first back: the second stays.
+    tabs[3].dispatchEvent({ type: 'click' });
+    up.dispatchEvent({ type: 'click' });
+    assert.equal(session.input.heartRatePerMin, 73);
+    tabs[0].dispatchEvent({ type: 'click' });
+    resetOne.dispatchEvent({ type: 'click' });
+    assert.equal(session.input.fillingVolumeMl, 710);
+    assert.equal(session.input.heartRatePerMin, 73, 'the other input is left where it was');
+
+    // At the top of the range the button stops, and never leaves the domain.
+    for (let i = 0; i < 40; i += 1) if (!up.disabled) up.dispatchEvent({ type: 'click' });
+    assert.equal(session.input.fillingVolumeMl, 980);
+    assert.equal(up.disabled, true);
+    assert.equal(down.disabled, false);
+  });
+});
+
+const CONTROLS_ORDER = ['fillingVolumeMl', 'systemicResistanceMmHgSPerMl', 'contractilityEesMmHgPerMl', 'heartRatePerMin'];
 
 test('console: a scene that declares nothing advanced keeps every slider in view', async () => {
   await withDocument(async () => {
@@ -119,7 +167,7 @@ test('console: a scene that declares nothing advanced keeps every slider in view
   });
 });
 
-test('read-out: before → after with a signed change, and the first row renamed in place', async () => {
+test('read-out: every row reads start → now with a signed change from the first frame, and the first row renamed in place', async () => {
   await withDocument(async () => {
     const session = new ExperimentSession({ presetId: PRESET_IDS.REDUCED_CONTRACTILITY });
     const { metrics } = await sceneWithSession(session);
@@ -127,20 +175,21 @@ test('read-out: before → after with a signed change, and the first row renamed
 
     panel.update(metrics());
     const row = (label) => panel.element.children.find((node) => text(node).includes(label));
-    assert.equal(text(findByClass(row('心拍出量'), 'metric-delta')[0]), '', 'nothing changed, nothing shown');
-    assert.equal(text(findByClass(row('心拍出量'), 'metric-reference')[0]), '');
+    // The column is there before anything moves, so it cannot push the
+    // console down when it fills in.
+    assert.equal(text(findByClass(row('心拍出量'), 'metric-delta')[0]), '±0');
+    assert.match(text(findByClass(row('心拍出量'), 'metric-reference')[0]), /^\d+\.\d →$/);
 
     session.selectIntervention('dobutamine');
     panel.update(metrics());
     const co = row('心拍出量');
-    // A large change says so twice — in the arrow's shape and in words.
-    assert.equal(text(findByClass(co, 'metric-change')[0]), '↑↑');
-    assert.equal(co.dataset.strong, 'true');
-    assert.match(co.getAttribute('aria-label'), /大きく上昇/);
+    // The direction in the arrow's shape and in words; no grade of size.
+    assert.equal(text(findByClass(co, 'metric-change')[0]), '↑');
+    assert.match(co.getAttribute('aria-label'), /上昇/);
+    assert.doesNotMatch(co.getAttribute('aria-label'), /大きく/);
     const before = text(findByClass(co, 'metric-reference')[0]);
     const now = text(findByClass(co, 'metric-value')[0]);
     const delta = text(findByClass(co, 'metric-delta')[0]);
-    assert.match(before, /^\d+\.\d →$/, 'the value it started at');
     assert.equal(
       delta,
       `+${(Number(now) - Number(before.replace(' →', ''))).toFixed(1)}`,
@@ -148,16 +197,16 @@ test('read-out: before → after with a signed change, and the first row renamed
     );
     assert.equal(co.dataset.delta, 'up');
 
-    // The row that says what was done is named after what was done. The panel
-    // used to build a row's label once, so it kept its first name forever.
+    // The first row names what the figures are read against and what was
+    // done, and is updated in place.
     const first = panel.element.children[0];
-    assert.match(text(first), /収縮力低下 → ドブタミン/);
+    assert.match(text(first), /比較元：収縮力低下/);
     assert.match(text(first), /収縮力 ↑/);
 
     session.selectIntervention('none');
     panel.update(metrics());
-    assert.doesNotMatch(text(panel.element.children[0]), /→/, 'and renamed back to the starting condition alone');
-    assert.equal(text(findByClass(row('心拍出量'), 'metric-delta')[0]), '');
+    assert.match(text(panel.element.children[0]), /開始時のまま/);
+    assert.equal(text(findByClass(row('心拍出量'), 'metric-delta')[0]), '±0');
   });
 });
 
@@ -211,34 +260,5 @@ test('toolbar: the tools a scene names go behind "More"; the experiment stays in
     // A scene that declares nothing gets the row it always had.
     const plain = build({ ...CardiacOutputScene.meta, console: undefined });
     assert.equal(findByClass(plain, 'console-more').length, 0);
-  });
-});
-
-test('console: "Custom" appears only while true, and is not a button', async () => {
-  await withDocument(async () => {
-    const session = new ExperimentSession();
-    const { CardiacOutputScene, controls } = await sceneWithSession(session);
-    const console_ = createModelControls({
-      controls: controls(),
-      onChange: () => {},
-      onReset: () => {},
-      copy: CardiacOutputScene.meta.modelControls,
-    });
-    const [status] = findByClass(console_.element, 'model-choice-status');
-    assert.ok(status, 'the scenario row carries the status');
-    assert.notEqual(status.tagName.toLowerCase(), 'button', 'nothing to press');
-    assert.equal(status.hidden, true, 'hidden while the condition is a scenario');
-    const reference = findByClass(console_.element, 'model-choice-button').find((node) => node.dataset.value === 'reference');
-    assert.equal(reference.getAttribute('aria-pressed'), 'true');
-
-    session.setControl('fillingVolumeMl', 800);
-    console_.sync(controls());
-    assert.equal(status.hidden, false, 'shown once a slider has moved the condition off every scenario');
-    assert.equal(reference.getAttribute('aria-pressed'), 'false', 'and no scenario claims to be selected');
-
-    session.reset();
-    console_.sync(controls());
-    assert.equal(status.hidden, true, 'and gone again after a reset');
-    assert.equal(reference.getAttribute('aria-pressed'), 'true');
   });
 });

@@ -129,39 +129,24 @@ export function signedDelta(now, before, digits = 0) {
 }
 
 /**
- * Which way a figure moved, and whether by a lot — for the arrow beside it.
+ * Which way a figure moved, for the arrow beside it — and nothing more.
  *
- * The read-out used to give every figure the same weight: a reader who raised
- * the filling saw CO +0.5, MAP +9 and LVEDP +3 in identical type and had to
- * divide in their head to see that the filling pressure moved proportionally
- * most. So the size of a change is judged *relative to where it started*:
- *
- * - under 3% either way reads as unchanged (≈), which is below what these
- *   figures are shown precisely enough to mean;
- * - 20% or more is a large change (↑↑ / ↓↓).
- *
- * Both thresholds are presentation, not physiology: they decide how an arrow
- * is drawn, never what the model says, and the signed figure is always beside
- * the arrow. The direction is carried by the arrow's shape and its words, not
+ * It used to grade the size too (↑↑ at 20 %, ≈ under 3 %). That put figures in
+ * different units on one scale of importance and invited "↑↑, so this is the
+ * one that matters" — a clinical judgement the model does not make (owner's
+ * review, 2026-09-25). The direction is the sign of the difference between the
+ * two *displayed* values, so the arrow can never disagree with the signed
+ * figure beside it, and it is carried by the arrow's shape and its words, not
  * by a colour.
  *
  * @param {number|string} now the displayed value
  * @param {number|string} before the displayed reference
  */
 export function changeOf(now, before) {
-  const current = Number(now);
-  const start = Number(before);
-  if (!Number.isFinite(current) || !Number.isFinite(start) || start === 0) return {};
-  const relative = (current - start) / Math.abs(start);
-  if (Math.abs(relative) < 0.03) {
-    return { change: 'flat', changeStrong: false, changeLabel: 'about the same', changeLabelJa: 'ほぼ同じ' };
-  }
-  const strong = Math.abs(relative) >= 0.2;
-  const up = relative > 0;
-  return {
-    change: up ? 'up' : 'down',
-    changeStrong: strong,
-    changeLabel: `${strong ? 'much ' : ''}${up ? 'higher' : 'lower'}`,
-    changeLabelJa: `${strong ? '大きく' : ''}${up ? '上昇' : '低下'}`,
-  };
+  const difference = Number(now) - Number(before);
+  if (!Number.isFinite(difference)) return {};
+  if (difference === 0) return { change: 'flat', changeLabel: 'no change', changeLabelJa: '変化なし' };
+  return difference > 0
+    ? { change: 'up', changeLabel: 'higher', changeLabelJa: '上昇' }
+    : { change: 'down', changeLabel: 'lower', changeLabelJa: '低下' };
 }

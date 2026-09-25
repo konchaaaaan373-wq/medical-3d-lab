@@ -42,6 +42,11 @@ export const INTERVENTION_OPTIONS = [
     // it qualifies.
     short: 'Dobutamine (schematic)',
     shortJa: 'ドブタミン（模式）',
+    // Where it applies, on the chip, before it is pressed: choosing it moves
+    // the experiment to the reduced-contractility heart (`requiresPreset`),
+    // and a switch nobody announced reads as a bug.
+    tag: 'on the weaker heart',
+    tagJa: '収縮力低下の心臓で',
     // Said on the button because pressing it on the reference heart switches
     // the condition row too (its evidence belongs to that preset — see
     // `requiresPreset` in the model). In the experiment layout the condition

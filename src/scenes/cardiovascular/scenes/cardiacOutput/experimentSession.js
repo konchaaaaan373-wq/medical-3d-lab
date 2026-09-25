@@ -75,7 +75,30 @@ export class ExperimentSession {
      * beside it, and that is deliberate — see `selectIntervention`.
      */
     this._intervention = INTERVENTION_IDS.NONE;
+    /**
+     * The intervention whose effect the reader has since adjusted by hand, or
+     * `none`. Only a label: the condition itself is entirely in `_input`. It is
+     * recoverable from the control snapshot because a restore replays the
+     * intervention (see `origin`) and then the four values, and `setControl`
+     * lands on exactly those values from there.
+     */
+    this._adjustedAfter = INTERVENTION_IDS.NONE;
     this.selectPreset(presetId);
+  }
+
+  /**
+   * Where the condition on screen came from: the intervention applied, or the
+   * one the reader has adjusted since, or `none`. What the intervention row
+   * reports, so a restore that replays it and then the four values arrives at
+   * the same condition with the same label.
+   */
+  get origin() {
+    return this._intervention !== INTERVENTION_IDS.NONE ? this._intervention : this._adjustedAfter;
+  }
+
+  /** The intervention the reader has adjusted since applying it, or `none`. */
+  get adjustedAfter() {
+    return this._adjustedAfter;
   }
 
   /** The intervention currently applied, or `none`. */
@@ -136,6 +159,7 @@ export class ExperimentSession {
   selectPreset(presetId) {
     this._presetId = presetId;
     this._intervention = INTERVENTION_IDS.NONE;
+    this._adjustedAfter = INTERVENTION_IDS.NONE;
     this._input = freezeInput(presetInput(presetId));
     // Solve the starting condition first: it is both what is on screen and the
     // snapshot everything is compared against, and they must be one solve.
@@ -163,14 +187,29 @@ export class ExperimentSession {
     // "none".
     if (this._input[id] === value) return this._view;
 
-    // Moving one is taking manual control back, and it lands in the same place
-    // clearing the intervention does: this preset's starting condition, with
-    // this control moved. See `selectIntervention` for why there is nowhere
-    // else for it to land.
-    const from = this._intervention === INTERVENTION_IDS.NONE ? this._input : this._baseline.input;
+    // Moving one input changes that input and nothing else. With an
+    // intervention applied, the others stay at the values the intervention
+    // gave them: a reader who has pressed dobutamine and then raises the
+    // filling is asking "this, with more filling", and the rule used to answer
+    // with the preset's own contractility and resistance — a second change
+    // nobody asked for (owner's review of the phone recordings, 2026-09-25).
+    //
+    // The intervention stops being "applied" — the condition is now the
+    // reader's — and is remembered as where it came from, for the label only.
+    if (this._intervention !== INTERVENTION_IDS.NONE) this._adjustedAfter = this._intervention;
     this._intervention = INTERVENTION_IDS.NONE;
-    this._input = freezeInput({ ...from, [id]: value });
+    this._input = freezeInput({ ...this._input, [id]: value });
     return this._apply(this._input);
+  }
+
+  /**
+   * Puts one input back to where this experiment started, and leaves the
+   * others where they are.
+   *
+   * @param {string} id one of `CONTROL_IDS`
+   */
+  resetControl(id) {
+    return this.setControl(id, this._baseline.input[id]);
   }
 
   /**
@@ -201,8 +240,9 @@ export class ExperimentSession {
    */
   selectIntervention(interventionId) {
     if (interventionId === INTERVENTION_IDS.NONE) {
-      if (this._intervention === INTERVENTION_IDS.NONE) return this._view;
+      if (this._intervention === INTERVENTION_IDS.NONE && this._adjustedAfter === INTERVENTION_IDS.NONE) return this._view;
       this._intervention = INTERVENTION_IDS.NONE;
+      this._adjustedAfter = INTERVENTION_IDS.NONE;
       this._input = this._baseline.input;
       return this._apply(this._input);
     }
@@ -210,6 +250,7 @@ export class ExperimentSession {
     const required = interventionPreset(interventionId);
     if (required && required !== this._presetId) this.selectPreset(required);
     this._intervention = interventionId;
+    this._adjustedAfter = INTERVENTION_IDS.NONE;
 
     const applied = applyIntervention(this._baseline.input, interventionId);
     if (!applied.input) {
@@ -243,6 +284,7 @@ export class ExperimentSession {
    */
   reset() {
     this._intervention = INTERVENTION_IDS.NONE;
+    this._adjustedAfter = INTERVENTION_IDS.NONE;
     this._input = this._baseline.input;
     this._view = this._baseline;
     this._applied = true;

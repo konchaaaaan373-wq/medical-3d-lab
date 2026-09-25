@@ -229,7 +229,8 @@ for (const slug of SLUGS) {
     const viewport = page.viewportSize();
     const outside = await page.evaluate(({ width, height }) => {
       const nodes = [
-        ...document.querySelectorAll('button.model-choice-button'),
+        ...document.querySelectorAll('.model-editor-tab'),
+        ...document.querySelectorAll('.model-editor-step'),
         ...document.querySelectorAll(".metrics .metric.is-key"),
       ];
       return nodes
@@ -241,46 +242,112 @@ for (const slug of SLUGS) {
 
     const camera = () =>
       page.evaluate(() => window.__app?.viewer?.camera.position.toArray().map((v) => v.toFixed(2)).join(',') ?? null);
-    // `button`: the row also carries the "Custom" status, which shares the
-    // class and is not pressable. The scenario that was lit is pressed again
-    // afterwards, so the reset check below compares against the baseline the
-    // page opened on and not one this block quietly changed (L-111).
-    const choices = page.locator('.model-control[data-control="scenario"] button.model-choice-button');
-    if ((await choices.count()) > 1) {
-      const selectedAtStart = await choices.evaluateAll((nodes) => nodes.findIndex((node) => node.classList.contains('is-selected')));
+    const cameraMoved = (before, after) =>
+      before && after ? Math.hypot(...before.split(',').map((value, i) => Number(value) - Number(after.split(',')[i]))) : 0;
+    const inputs = () => page.evaluate(() => ({ ...window.__app.scene.session.input }));
+    const origin = () => page.evaluate(() => window.__app.scene.session.origin);
+    const tab = (id) => page.locator(`.model-editor-tab[data-input="${id}"]`);
+    const up = page.locator('.model-editor-step[data-direction="up"]');
+    const resetAll = page.locator('.model-editor-values .model-control-reset');
+    const resetOne = page.locator('.model-editor-reset');
+    const menu = page.locator('.model-controls-advanced > summary');
+    const closeMenu = async () => {
+      if (await menu.evaluate((node) => node.parentElement.open)) await menu.click();
+    };
+    const choose = async (value) => {
+      if (!(await menu.evaluate((node) => node.parentElement.open))) await menu.click();
+      await page.locator(`.model-controls-advanced button.model-choice-button[data-value="${value}"]`).click();
+      await closeMenu();
+    };
+
+    // A parameter change is not a reframe: pressing "+" moved the camera once
+    // (L-111's family). Compared with a tolerance, and why: with no input at
+    // all the camera still creeps about 0.002 world units a second — the
+    // shell's easing converging. A reframe moves whole units.
+    {
       const before = await camera();
-      await choices.last().click();
+      await up.click();
+      await tab('heartRatePerMin').click();
       await page.waitForTimeout(1500);
       const after = await camera();
-      // Compared with a tolerance, and why: with no input at all the camera
-      // still creeps about 0.002 world units a second (measured 2026-09-25 at
-      // 1440×900, distance 33) — the shell's easing converging, not a reframe.
-      // Compared exactly at two decimals, the check went red whenever a
-      // rounding boundary fell inside its 1.5 s window. A reframe moves whole
-      // units: the one this guards against moved 0.24.
-      const moved = before && after
-        ? Math.hypot(...before.split(',').map((value, i) => Number(value) - Number(after.split(',')[i])))
-        : 0;
-      if (moved > 0.05) {
-        problems.push(`experiment layout: pressing an intervention moved the camera (${before} -> ${after})`);
+      if (cameraMoved(before, after) > 0.05) problems.push(`experiment layout: changing an input or choosing another one moved the camera (${before} -> ${after})`);
+      await resetAll.click();
+      await tab('fillingVolumeMl').click();
+      await page.waitForTimeout(600);
+    }
+
+    // The state contract, driven through the screen (owner's review of the
+    // phone recordings, 2026-09-25):
+    // choosing an input changes nothing; two inputs moved and one put back
+    // leaves the other; after dobutamine, moving one input keeps the drug's
+    // other values; "reset all" goes back to *this* experiment's start.
+    {
+      const start = await inputs();
+      await up.click();
+      await tab('heartRatePerMin').click();
+      await up.click();
+      const two = await inputs();
+      for (const id of ['systemicResistanceMmHgSPerMl', 'contractilityEesMmHgPerMl', 'heartRatePerMin', 'fillingVolumeMl']) {
+        const before = await inputs();
+        await tab(id).click();
+        if (JSON.stringify(await inputs()) !== JSON.stringify(before)) problems.push(`experiment layout: choosing ${id} changed a value`);
       }
-      await choices.nth(Math.max(0, selectedAtStart)).click();
+      await tab('fillingVolumeMl').click();
+      await resetOne.click();
+      const afterOne = await inputs();
+      if (afterOne.fillingVolumeMl !== start.fillingVolumeMl || afterOne.heartRatePerMin !== two.heartRatePerMin) {
+        problems.push(`experiment layout: 「この項目を戻す」 moved more than its input (${JSON.stringify(afterOne)})`);
+      }
+      await resetAll.click();
+
+      await choose('reduced-contractility');
+      const reducedStart = await inputs();
+      await choose('dobutamine');
+      const onDrug = await inputs();
+      await tab('fillingVolumeMl').click();
+      await up.click();
+      const adjusted = await inputs();
+      const expected = { ...onDrug, fillingVolumeMl: adjusted.fillingVolumeMl };
+      if (JSON.stringify(adjusted) !== JSON.stringify(expected) || adjusted.fillingVolumeMl === onDrug.fillingVolumeMl) {
+        problems.push(`experiment layout: after dobutamine, one input moved others (${JSON.stringify(onDrug)} -> ${JSON.stringify(adjusted)})`);
+      }
+      if ((await origin()) !== 'dobutamine') problems.push('experiment layout: the condition adjusted after dobutamine no longer says where it came from');
+      await resetAll.click();
+      if (JSON.stringify(await inputs()) !== JSON.stringify(reducedStart)) problems.push('experiment layout: 「全体を戻す」 did not return to this experiment\'s start');
+      await choose('reference');
       await page.waitForTimeout(900);
     }
 
-    // Nothing on the screen may cover the model — not the read-out, not the
-    // console, not the title. The owner's rule (2026-09-25): the heart may be
-    // drawn small, it may not be hidden. Found on the device, not here: on an
-    // iPhone in Safari (390×664 of page) the framing fell under its floor and
-    // drew the heart at twice its size behind both panels, and the phone
-    // layout then put the figures over it. 844 px tall — the only phone height
-    // this check used to open — never showed either.
-    //
-    // Measured at rest and again after an intervention, because the read-out's
-    // first row grows a line when something has been done. 375×553 (an SE with
-    // Safari's toolbars) is reported, not enforced: the band there is tens of
-    // pixels and a 2 px touch is not the failure this is for (F-212).
-    const desktopSize = page.viewportSize();
+    // Nothing the reader is touching may move. The first change used to add a
+    // row above the sliders and grow the read-out, and the slider under the
+    // finger slid down (phone recordings, 14:09 at 30.0 s → 30.5 s). The
+    // editor's box is measured before any input, after the first press, after
+    // a drag and after more presses; its top may not move by more than 1 px.
+    // A drag is also checked to be one drag: the value follows the pointer to
+    // the end, the page does not scroll, and the slider keeps focus.
+    const editorBox = () =>
+      page.evaluate(() =>
+        ['.model-editor-slider', '.model-editor-step[data-direction="up"]', '.model-editor-tabs'].map((selector) => {
+          const rect = document.querySelector(selector).getBoundingClientRect();
+          return [Math.round(rect.top), Math.round(rect.height)];
+        })
+      );
+    const dragAcross = async () => {
+      const box = await page.locator('.model-editor-slider').boundingBox();
+      const y = box.y + box.height / 2;
+      await page.mouse.move(box.x + box.width * 0.45, y);
+      await page.mouse.down();
+      const seen = [];
+      for (const fraction of [0.55, 0.65, 0.75, 0.85]) {
+        await page.mouse.move(box.x + box.width * fraction, y, { steps: 4 });
+        seen.push((await inputs()).fillingVolumeMl);
+      }
+      await page.mouse.up();
+      return seen;
+    };
+
+    // Covering: at every size and in each state a reader passes through. The
+    // heart may be drawn small; it may not be hidden (owner, 2026-09-25).
     const covered = () =>
       page.evaluate(() => {
         const { viewer, scene } = window.__app ?? {};
@@ -307,52 +374,88 @@ for (const slug of SLUGS) {
           ['read-out', '.metrics'],
           ['console', '.console'],
           ['title', '.title-card'],
-          ['sliders', '.model-controls-advanced[open] > .model-controls-advanced-body'],
         ]) {
           const node = document.querySelector(selector);
           const rect = node?.getBoundingClientRect();
           if (!rect?.width) continue;
           const dx = Math.min(box[2], rect.right) - Math.max(box[0], rect.left);
           const dy = Math.min(box[3], rect.bottom) - Math.max(box[1], rect.top);
-          // A 4 px margin: the box is of vertices, and a curve's silhouette
-          // sits inside it.
           if (dx > 4 && dy > 4) hits.push(`${name} ${Math.round(dy)}px`);
         }
-        return { box: box.map(Math.round), hits };
+        // Everything in the console inside the console: a line that is too
+        // long for a narrow phone runs out of the panel rather than wrapping.
+        const consoleRect = document.querySelector('.console')?.getBoundingClientRect();
+        const spill = [...document.querySelectorAll('.console .model-editor-panel *, .console .model-editor-tab, .console .button-row')]
+          .filter((node) => {
+            const rect = node.getBoundingClientRect();
+            return rect.width > 0 && consoleRect && (rect.right > consoleRect.right + 1 || rect.left < consoleRect.left - 1);
+          })
+          .map((node) => node.className || node.tagName);
+        return { box: box.map(Math.round), hits, spill: [...new Set(spill)].slice(0, 3), height: Math.round(box[3] - box[1]) };
       });
-    const scenarios = page.locator('.model-control[data-control="scenario"] button.model-choice-button');
-    const startScenario = await scenarios.evaluateAll((nodes) => nodes.findIndex((node) => node.classList.contains('is-selected')));
-    const sliders = page.locator('.model-controls-advanced > summary');
+    const desktopSize = page.viewportSize();
     for (const [width, height, enforced] of [
       [1440, 900, true], [1280, 720, true], [1024, 768, true],
-      [390, 844, true], [390, 664, true], [375, 667, true], [375, 553, false],
+      [430, 932, true], [390, 844, true], [390, 664, true], [375, 667, true], [375, 553, false],
     ]) {
       await page.setViewportSize({ width, height });
       await page.waitForTimeout(1500);
-      // And with the sliders open: the point of them is to watch the heart
-      // while dragging, so a layout that opens them over the heart — or grows
-      // the console into it — fails here.
-      for (const moment of ['at rest', 'after an intervention', 'with the sliders open']) {
-        if (moment === 'after an intervention') {
-          await scenarios.last().click();
+      const where = `${width}x${height}`;
+
+      await tab('fillingVolumeMl').click();
+      const rest = await editorBox();
+      await up.click();
+      await page.waitForTimeout(400);
+      const first = await editorBox();
+      const seen = await dragAcross();
+      await page.waitForTimeout(400);
+      const dragged = await editorBox();
+      for (let i = 0; i < 3; i += 1) await up.click();
+      await page.waitForTimeout(400);
+      const more = await editorBox();
+      for (const [label, box] of [['the first input', first], ['a drag', dragged], ['more presses', more]]) {
+        box.forEach(([top, size], index) => {
+          if (Math.abs(top - rest[index][0]) > 1 || Math.abs(size - rest[index][1]) > 1) {
+            problems.push(`experiment layout ${where}: ${label} moved the editor (${JSON.stringify(rest[index])} -> ${JSON.stringify([top, size])})`);
+          }
+        });
+      }
+      if (!seen.every((value, i) => i === 0 || value > seen[i - 1])) problems.push(`experiment layout ${where}: a drag did not follow the pointer (${seen.join(' → ')})`);
+      const scrolled = await page.evaluate(() => document.scrollingElement.scrollTop);
+      if (scrolled !== 0) problems.push(`experiment layout ${where}: a drag scrolled the page (${scrolled}px)`);
+
+      // Hit areas, not glyphs: every control in the editor is at least 44 px.
+      const small = await page.evaluate(() =>
+        [...document.querySelectorAll('.model-editor-tab, .model-editor-step, .model-editor-slider, .model-editor-reset, .model-editor-values .model-control-reset, .model-controls-advanced > summary')]
+          .map((node) => ({ node, rect: node.getBoundingClientRect() }))
+          .filter(({ rect }) => rect.width > 0 && (rect.height < 44 || rect.width < 44))
+          .map(({ node, rect }) => `${node.className} ${Math.round(rect.width)}x${Math.round(rect.height)}`)
+      );
+      for (const line of small) problems.push(`experiment layout ${where}: under 44 px — ${line}`);
+
+      for (const moment of ['with an input moved', 'with the start menu open', 'after dobutamine']) {
+        if (moment === 'with the start menu open') {
+          await menu.click();
           await page.waitForTimeout(1500);
         }
-        if (moment === 'with the sliders open') {
-          if (!(await sliders.count())) continue;
-          await sliders.first().click();
-          await page.waitForTimeout(2500);
+        if (moment === 'after dobutamine') {
+          await page.locator('.model-controls-advanced button.model-choice-button[data-value="dobutamine"]').click();
+          await closeMenu();
+          await page.waitForTimeout(1500);
         }
         const result = await covered();
-        if (!result || result.hits.length === 0) continue;
-        const line = `experiment layout ${width}x${height} ${moment}: the model (${result.box.join(',')}) is covered by ${result.hits.join(', ')}`;
-        if (enforced) problems.push(line);
-        else console.log(`  ${slug}: ${line} [reported, not enforced — F-212]`);
+        if (!result) continue;
+        const lines = [];
+        if (result.hits.length) lines.push(`the model (${result.box.join(',')}) is covered by ${result.hits.join(', ')}`);
+        if (result.spill.length) lines.push(`runs out of the console: ${result.spill.join(', ')}`);
+        for (const line of lines) {
+          const text = `experiment layout ${where} ${moment}: ${line}`;
+          if (enforced) problems.push(text);
+          else console.log(`  ${slug}: ${text} [reported, not enforced — F-212]`);
+        }
+        console.log(`  ${slug}: ${where} ${moment}: model drawn ${result.height}px tall`);
       }
-      if (await sliders.count()) {
-        const open = await sliders.first().evaluate((node) => node.parentElement.open);
-        if (open) await sliders.first().click();
-      }
-      await scenarios.nth(Math.max(0, startScenario)).click();
+      await choose('reference');
       await page.waitForTimeout(600);
     }
     if (desktopSize) await page.setViewportSize(desktopSize);

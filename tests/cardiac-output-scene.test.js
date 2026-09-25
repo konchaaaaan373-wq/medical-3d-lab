@@ -21,6 +21,7 @@ import {
   mechanismClaimProblems,
 } from '../src/catalog/release.js';
 import { MODEL_PROFILES } from '../src/catalog/modelProfiles.js';
+import { INTERVENTION_IDS } from '../src/models/cardiacInterventions.js';
 import { CONTROLS, PRESET_OPTIONS } from '../src/data/cardiacOutput.js';
 
 /**
@@ -202,13 +203,10 @@ test('the preset comes first in the controls, because restoring replays them in 
   const controls = scene.getModelControls();
   assert.equal(controls[0].id, 'preset', 'the preset resets everything, so it lands first');
   assert.equal(controls[1].id, 'intervention', 'the intervention is computed from the preset, so it lands next');
-  // The scenario the reader sees is derived from those two, and lands after
-  // them: replaying it re-applies the same preset and intervention.
-  assert.equal(controls[2].id, 'scenario', 'the scenario, derived from the two above, lands third');
-  // And the sliders last, which is right: a slider position is a manual
-  // condition and clears any intervention anyway, so it has to win.
-  assert.deepEqual(controls.slice(3).map((c) => c.id), CONTROLS.map((c) => c.id));
-  assert.deepEqual(controls.slice(3).map((c) => c.id).sort(), [...CONTROL_IDS].sort());
+  // And the four inputs last, which is right: they land on top of whatever
+  // the intervention did, so they have to win.
+  assert.deepEqual(controls.slice(2).map((c) => c.id), CONTROLS.map((c) => c.id));
+  assert.deepEqual(controls.slice(2).map((c) => c.id).sort(), [...CONTROL_IDS].sort());
 
   // And replaying a captured snapshot in that order really does restore it.
   scene.setModelControl('preset', PRESET_IDS.REDUCED_CONTRACTILITY);
@@ -221,6 +219,17 @@ test('the preset comes first in the controls, because restoring replays them in 
   assert.equal(scene.session.presetId, PRESET_IDS.REDUCED_CONTRACTILITY);
   assert.equal(scene.session.input.fillingVolumeMl, 900);
   assert.equal(scene.session.input.heartRatePerMin, 96);
+
+  // A condition adjusted after an intervention survives the round trip whole:
+  // the drug's values, the one input moved on top, and the label saying so.
+  scene.setModelControl('intervention', INTERVENTION_IDS.DOBUTAMINE);
+  scene.setModelControl('fillingVolumeMl', 760);
+  const adjusted = { ...scene.session.input };
+  const snapshot = scene.getModelControls().map(({ id, value }) => ({ id, value }));
+  scene.setModelControl('preset', PRESET_IDS.REFERENCE);
+  for (const { id, value } of snapshot) scene.setModelControl(id, value);
+  assert.deepEqual({ ...scene.session.input }, adjusted);
+  assert.equal(scene.session.adjustedAfter, INTERVENTION_IDS.DOBUTAMINE);
 });
 
 test('coming back from the sequence keeps the intervention that was selected', async () => {
@@ -431,8 +440,10 @@ test('comparison is against this preset’s own before-condition, from the same 
 
   scene.resetModelControls();
   const back = Object.fromEntries(scene.getMetrics().map((row) => [row.id, row]));
-  assert.equal(back.co.reference, undefined, 'and with nothing changed the column goes away again');
-  assert.equal(back.co.delta, undefined);
+  // With nothing changed the column stays, reading ±0: a column that appears
+  // with the first change pushes the controls under the reader's finger down.
+  assert.equal(back.co.reference, back.co.value, 'at the start the column reads the start');
+  assert.equal(back.co.delta, '±0');
 });
 
 test('the heart being compared against follows the baseline, not the button', async () => {
@@ -660,9 +671,17 @@ test('whatever the reader has done, every panel is reading one solved beat', asy
     assert.equal(truth.status, 'valid', `${where}: a reachable state does not solve`);
     const rows = Object.fromEntries(scene.getMetrics().map((row) => [row.id, row]));
     assert.equal(rows.unsolved, undefined, `${where}: an unsolved notice on a reachable state`);
-    assert.equal(rows.co.value, truth.metrics.cardiacOutputLMin.toFixed(1), `${where}: CO`);
-    assert.equal(rows.map.value, Math.round(truth.metrics.meanArterialPressureMmHg), `${where}: MAP`);
-    assert.equal(rows.edv.value, Math.round(truth.metrics.edvMl), `${where}: EDV`);
+    // The session solves warm-started from the last beat and this solves cold,
+    // so the two agree to the solver's tolerance, not to the last bit — and a
+    // value sitting on a rounding boundary (137.465 vs 137.505 mL) rounds two
+    // ways. So each figure is checked to be within half its displayed unit of
+    // the fresh solve, plus that tolerance. A stale number from a different
+    // condition is off by far more than that.
+    const near = (shown, exact, unit, label) =>
+      assert.ok(Math.abs(Number(shown) - exact) <= unit / 2 + 0.1 * unit, `${where}: ${label} ${shown} is not ${exact}`);
+    near(rows.co.value, truth.metrics.cardiacOutputLMin, 0.1, 'CO');
+    near(rows.map.value, truth.metrics.meanArterialPressureMmHg, 1, 'MAP');
+    near(rows.edv.value, truth.metrics.edvMl, 1, 'EDV');
 
     // The plots are that same solve, by identity rather than by value.
     const pv = scene.getPressureVolume();
@@ -700,8 +719,10 @@ test('whatever the reader has done, every panel is reading one solved beat', asy
         );
         assert.match(rows.co.delta, /^(\+|\u2212|±)\d/, `${where}: a moved condition without its change`);
       } else {
-        assert.equal(rows.edv.reference, undefined, `${where}: a comparison column with nothing to compare`);
-        assert.equal(rows.co.delta, undefined, `${where}: a change with nothing changed`);
+        // Nothing moved: the column is still there, reading the start and ±0,
+        // so it cannot push anything when it fills in.
+        assert.equal(Number(rows.edv.reference), Math.round(scene.session.baseline.metrics.edvMl), `${where}: the column is not the start`);
+        assert.equal(rows.co.delta, '±0', `${where}: a change with nothing changed`);
       }
       assert.equal(pv.reference, null, `${where}: a reference loop with nothing to compare`);
     }
@@ -726,22 +747,20 @@ test('the first row says what the figures are read against, and what moved: from
   };
   const rows = () => CardiacOutputScene.prototype.getMetrics.call(scene);
 
-  // A starting condition is named alone: it starts an experiment.
-  assert.equal(first().labelJa, '基準');
-  assert.equal(first().valueJa, 'ここを起点に比べます');
+  // One fixed line: what the figures are read against, then what moved.
+  assert.equal(first().labelJa, '比較元：基準（開始時）');
+  assert.equal(first().valueJa, '開始時のまま');
   assert.equal(rows()[0].id, 'changed', 'and it leads the panel');
 
-  // One slider: from → Custom, named with its direction and both values.
+  // One input: named with its direction and both values.
   session.setControl('systemicResistanceMmHgSPerMl', 1.6);
-  // …which is exactly the "higher afterload" scenario, so it is named as one.
-  assert.equal(first().labelJa, '基準 → 後負荷↑');
+  assert.equal(first().labelJa, '比較元：基準（開始時）', 'the comparison does not follow the reader');
   assert.equal(first().valueJa, '血管抵抗 ↑ 1.1 → 1.6（他は固定）', 'one moved control is spelled out');
   assert.equal(first().unit, '', 'the unit slot renders one language only, so nothing bilingual goes in it');
 
-  // Two sliders: both named with their directions, so a multi-input condition
-  // never reads as a one-factor comparison — and it is Custom.
+  // Two inputs: both named with their directions, so a multi-input condition
+  // never reads as a one-factor comparison.
   session.setControl('heartRatePerMin', 90);
-  assert.equal(first().labelJa, '基準 → カスタム');
   assert.equal(first().valueJa, '血管抵抗 ↑・心拍数 ↑（他は固定）');
   assert.equal(first().value, 'Resistance ↑ · Rate ↑ (rest held)');
 
@@ -749,81 +768,59 @@ test('the first row says what the figures are read against, and what moved: from
   // first, and quoted in words, not in the model's units.
   session.selectPreset(PRESET_IDS.REDUCED_CONTRACTILITY);
   session.selectIntervention('dobutamine');
-  assert.equal(first().labelJa, '収縮力低下 → ドブタミン');
-  assert.equal(first().valueJa, '収縮力 ↑・血管抵抗 ↓（他は固定）');
+  assert.equal(first().labelJa, '比較元：収縮力低下（開始時）');
+  assert.equal(first().valueJa, 'ドブタミン（模式）：収縮力 ↑・血管抵抗 ↓（他は固定）');
   assert.doesNotMatch(first().valueJa, /\d/, 'an intervention is described, not quoted in model units');
 
-  session.selectPreset(PRESET_IDS.REFERENCE);
-  session.selectIntervention('volume-loading');
-  assert.equal(first().labelJa, '基準 → 充満量↑');
-  assert.equal(first().valueJa, '充満量 ↑（他は固定）');
+  // Adjusted afterwards: says where it came from, and the drug's changes are
+  // still listed because they are still in the condition.
+  session.setControl('fillingVolumeMl', 760);
+  assert.equal(first().valueJa, 'ドブタミン（模式）適用後を調整：収縮力 ↑・充満量 ↑・血管抵抗 ↓（他は固定）');
 });
 
-test('scenarios: each is exactly a preset, an intervention and at most one control, and reads back as itself', async () => {
-  const { SCENARIOS } = await import('../src/data/cardiacOutput.js');
+test('the four inputs are always the editor; the start state and the intervention are behind one press', async () => {
+  const { CONTROL_EDITOR } = await import('../src/data/cardiacOutput.js');
   const scene = await buildScene();
-  const scenario = () => scene.getModelControls().find((control) => control.id === 'scenario');
-  assert.equal(scenario().value, 'reference', 'the page opens on the reference heart');
-  assert.equal(scenario().hidden, undefined, 'and the scenario row is the one drawn');
-  assert.ok(scene.getModelControls().find((c) => c.id === 'preset').hidden, 'the preset row is not drawn');
-  assert.ok(scene.getModelControls().find((c) => c.id === 'intervention').hidden, 'nor the intervention row');
-
-  for (const entry of SCENARIOS) {
-    scene.setModelControl('scenario', entry.id);
-    assert.equal(scenario().value, entry.id, `${entry.id} reads back as itself`);
-    assert.equal(scene.session.presetId, entry.preset, `${entry.id} is on its own preset`);
-    assert.equal(scene.session.interventionId, entry.intervention ?? 'none');
-    // Nothing a scenario sets is outside the verified domain.
-    assert.equal(scene.session.applied, true, `${entry.id} solves`);
-    for (const [control, value] of Object.entries(entry.controls ?? {})) {
-      assert.equal(scene.session.input[control], value);
-      const domain = CONTROL_DOMAIN[control];
-      assert.ok(value >= domain.min && value <= domain.max, `${entry.id} stays inside ${control}'s domain`);
-    }
+  const controls = scene.getModelControls();
+  const byId = Object.fromEntries(controls.map((c) => [c.id, c]));
+  assert.equal(byId.preset.advanced, true, 'choosing a start state is secondary');
+  assert.equal(byId.intervention.advanced, true, 'so is an intervention');
+  assert.ok(!controls.some((c) => c.hidden), 'nothing listed is left undrawn');
+  for (const id of CONTROL_IDS) {
+    const control = byId[id];
+    assert.equal(control.editor, true, `${id} is in the editor`);
+    assert.ok(!control.advanced, `${id} is not behind a disclosure`);
+    assert.equal(control.start, scene.session.baseline.input[id], `${id} carries where the experiment started`);
+    assert.ok(control.decreaseJa && control.increaseJa, `${id} names its two directions`);
+    // A press is a whole number of the model's step and inside its range.
+    const { nudge } = CONTROL_EDITOR[id];
+    const domain = CONTROL_DOMAIN[id];
+    const steps = nudge / domain.step;
+    assert.ok(Math.abs(steps - Math.round(steps)) < 1e-9, `${id}: one press is a whole number of steps`);
+    assert.ok(nudge < (domain.max - domain.min) / 10, `${id}: one press is a small step`);
+    assert.equal(control.min, domain.min);
+    assert.equal(control.max, domain.max);
   }
-
-  // A scenario never inherits the previous one's sliders.
-  scene.setModelControl('scenario', 'higher-afterload');
-  scene.setModelControl('scenario', 'more-filling');
-  assert.equal(scene.session.input.systemicResistanceMmHgSPerMl, presetInput(PRESET_IDS.REFERENCE).systemicResistanceMmHgSPerMl);
-
-  // A slider moved off a scenario is Custom — a status, never a model state.
-  scene.setModelControl('fillingVolumeMl', 900);
-  assert.equal(scenario().value, 'custom');
-  assert.equal(scenario().options.find((o) => o.value === 'custom').status, true);
-  const before = { ...scene.session.input };
-  scene.setModelControl('scenario', 'custom');
-  assert.deepEqual({ ...scene.session.input }, before, 'a replayed "custom" is ignored');
-
-  // And the reference chip is the way back to the page's opening condition.
-  scene.setModelControl('scenario', 'reference');
-  assert.deepEqual({ ...scene.session.input }, presetInput(PRESET_IDS.REFERENCE));
-  assert.equal(scenario().value, 'reference');
-
-  // "Higher afterload" is the step the resistance lesson already takes — not
-  // a number invented for the button.
-  const { LEARNING_MODULES } = await import('../src/data/cardiacOutput.js');
-  const lesson = LEARNING_MODULES.find((module) => module.manipulation?.control === 'systemicResistanceMmHgSPerMl');
-  assert.equal(SCENARIOS.find((entry) => entry.id === 'higher-afterload').controls.systemicResistanceMmHgSPerMl, lesson.manipulation.to);
 });
 
-test('each headline figure carries a direction and whether the change is large, in words as well as arrows', async () => {
+test('each headline figure carries its direction in words and an arrow, and no grade of importance', async () => {
   const scene = await buildScene();
-  scene.setModelControl('scenario', 'more-filling');
+  scene.setModelControl('fillingVolumeMl', 830);
   const rows = Object.fromEntries(scene.getMetrics().map((row) => [row.id, row]));
   for (const id of ['co', 'sv', 'map', 'lvedp']) {
     assert.ok(['up', 'down', 'flat'].includes(rows[id].change), `${id} has a direction`);
     assert.ok(rows[id].changeLabelJa, `${id} says it in words, for a screen reader`);
+    // The arrow can never disagree with the signed figure beside it.
+    assert.equal(rows[id].change, rows[id].deltaSign, `${id}: arrow and sign agree`);
+    // Figures in different units are not put on one scale of importance.
+    assert.equal(rows[id].changeStrong, undefined, `${id} is not graded`);
   }
-  // Filling raises the filling pressure proportionally most: that is the
-  // lesson the arrows exist to make visible without arithmetic.
   assert.equal(rows.lvedp.change, 'up');
-  assert.equal(rows.lvedp.changeStrong, true, 'the filling pressure is marked as a large change');
-  assert.equal(rows.co.changeStrong, false, 'output rises, but not by a fifth');
 
-  scene.setModelControl('scenario', 'reference');
+  scene.resetModelControls();
   const back = Object.fromEntries(scene.getMetrics().map((row) => [row.id, row]));
-  assert.equal(back.co.change, undefined, 'nothing changed, no arrow');
+  assert.equal(back.co.change, 'flat', 'nothing changed reads as no change');
+  assert.equal(back.co.changeLabelJa, '変化なし');
 });
 
 test('a refused condition never leaves the previous answer standing as the current one', async () => {
@@ -913,36 +910,22 @@ test('every one of those states survives being captured and restored', async () 
   }
 });
 
-test('a hand-set condition is reported as one, and 「なし」 undoes it', async () => {
-  // The row used to keep 「なし」 lit while the reader dragged the resistance:
-  // the session clears the intervention when a slider moves, so "none" was
-  // true of the session and false of the screen. The row now reports "adjusted
-  // by hand" — a status, never a model state and never a pressable choice.
+test('the intervention row reports where the condition came from, and 「なし」 undoes it', async () => {
   const scene = await buildScene();
   const intervention = () => scene.getModelControls().find((c) => c.id === 'intervention');
-  assert.equal(intervention().value, 'none', 'nothing moved: none');
+  assert.equal(intervention().value, 'none', 'nothing applied: none');
 
-  scene.setModelControl('systemicResistanceMmHgSPerMl', 1.6);
-  assert.equal(intervention().value, 'manual', 'a slider moved: not "none"');
-  const status = intervention().options.find((o) => o.value === 'manual');
-  assert.equal(status.status, true, 'offered as a status, which the console renders as no button');
-  assert.equal(scene.session.interventionId, 'none', 'and the session has no such intervention');
-
-  // After an intervention, touching a slider is also a hand-set condition —
-  // the session computes it from the starting point, without the drug.
+  // After an intervention, touching one input keeps the drug's values, and the
+  // row still reads the drug: that is where the condition came from.
   scene.setModelControl('intervention', 'dobutamine');
-  assert.equal(intervention().value, 'dobutamine', 'the preset intervention on its own');
+  const onDrug = { ...scene.session.input };
   scene.setModelControl('heartRatePerMin', 90);
-  assert.equal(intervention().value, 'manual', 'then changed by hand: says so');
+  assert.equal(intervention().value, 'dobutamine');
+  assert.deepEqual({ ...scene.session.input }, { ...onDrug, heartRatePerMin: 90 });
 
-  // A replayed "manual" is ignored rather than handed to the session.
-  const before = { ...scene.session.input };
-  scene.setModelControl('intervention', 'manual');
-  assert.deepEqual({ ...scene.session.input }, before);
-
-  // 「なし」 goes to this condition's starting point from a hand-set one too.
+  // 「なし」 goes to this experiment's starting point from there too.
   scene.setModelControl('intervention', 'none');
   assert.deepEqual({ ...scene.session.input }, { ...scene.session.baseline.input });
   assert.equal(intervention().value, 'none');
-  assert.equal(scene.getMetrics().find((row) => row.id === 'changed').labelJa, '収縮力低下', 'back at its starting condition');
+  assert.equal(scene.getMetrics().find((row) => row.id === 'changed').valueJa, '開始時のまま', 'back at its starting condition');
 });
