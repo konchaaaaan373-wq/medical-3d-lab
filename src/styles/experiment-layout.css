@@ -394,12 +394,14 @@
   color: var(--ink-faint);
 }
 
-/* The console as one grid: the editor across the top; under it the
-   disclosure (start state · intervention) beside the tools; the notice last.
-   The two panels inside the console are flattened into it. */
+/* The console as one grid. The experiment across the top — its question,
+   then its one press and the way back — and under it one line of the rest:
+   another experiment, adjusting in detail, and "More". The notice last.
+   The panels inside the console are flattened into it, so each of those
+   lands where it is placed here. */
 #ui#ui[data-layout='experiment'] .console {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) auto;
+  grid-template-columns: auto auto minmax(0, 1fr) auto;
   align-items: center;
   column-gap: 8px;
   row-gap: 8px;
@@ -410,64 +412,219 @@
 }
 
 #ui[data-layout='experiment'] .console > .model-controls.is-primary,
-#ui[data-layout='experiment'] .console > .controls {
+#ui[data-layout='experiment'] .console > .controls,
+#ui[data-layout='experiment'] .console .model-controls > .model-control-list,
+#ui[data-layout='experiment'] .console .model-control.is-experiment {
   display: contents;
 }
 
-#ui[data-layout='experiment'] .console .model-controls > .model-control-list,
-#ui[data-layout='experiment'] .console .controls > .disclaimer {
-  display: block;
+#ui[data-layout='experiment'] .console .model-experiment-question {
   grid-column: 1 / -1;
-  /* A grid item's min-content would otherwise widen the tracks to fit the
-     editor's longest line; the editor fits itself to the column instead. */
+  grid-row: 1;
+  margin: 0;
+  font-size: 13px;
+  font-weight: 600;
+  line-height: 1.35;
+  color: var(--ink);
   min-width: 0;
 }
 
-/* Holds only the (hidden) title now: the reset stands in the editor. */
-#ui[data-layout='experiment'] .console .model-controls-head {
-  display: none;
+#ui[data-layout='experiment'] .console .model-experiment-actions {
+  grid-column: 1 / -1;
+  grid-row: 2;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 8px;
+}
+
+/* The one press: the largest thing on the console. Pressed, it stays where it
+   is and says so; the way back beside it becomes available. */
+#ui[data-layout='experiment'] .model-experiment-act {
+  min-height: 52px;
+  padding: 0 16px;
+  border-radius: 12px;
+  border: 1px solid var(--accent);
+  background: var(--accent);
+  color: var(--accent-ink, #04212a);
+  font-size: 16px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+#ui[data-layout='experiment'] .model-experiment-act[aria-pressed='true'] {
+  background: rgba(56, 225, 239, 0.12);
+  color: var(--accent);
+  cursor: default;
+}
+
+#ui[data-layout='experiment'] .model-experiment-act[aria-pressed='true']::before {
+  content: '✓ ';
+}
+
+#ui[data-layout='experiment'] .model-experiment-undo {
+  min-height: 52px;
+  min-width: 96px;
+  padding: 0 14px;
+  border-radius: 12px;
+  border: 1px solid rgba(167, 182, 206, 0.35);
+  background: rgba(255, 255, 255, 0.04);
+  color: var(--ink);
+  font-size: 14px;
+  font-weight: 600;
+}
+
+#ui[data-layout='experiment'] .model-experiment-undo:disabled {
+  opacity: 0.4;
+}
+
+/* The line under the experiment: the other experiments, the detail, More. */
+#ui[data-layout='experiment'] .console .model-experiment-others {
+  grid-column: 1;
+  grid-row: 3;
+  position: relative;
+  min-width: 0;
 }
 
 #ui[data-layout='experiment'] .console .model-controls-advanced {
-  grid-column: 1;
+  grid-column: 2;
+  grid-row: 3;
   min-width: 0;
-  justify-self: start;
-}
-
-#ui[data-layout='experiment'] .console .model-controls-advanced[open] {
-  grid-column: 1 / -1;
-  justify-self: stretch;
 }
 
 #ui[data-layout='experiment'] .console .controls > .button-row {
-  grid-column: 2;
+  grid-column: 4;
+  grid-row: 3;
   flex-wrap: nowrap;
   justify-content: flex-end;
   gap: 4px;
+}
+
+#ui[data-layout='experiment'] .console .controls > .disclaimer {
+  grid-column: 1 / -1;
+  grid-row: 5;
+  margin: 0;
+  font-size: 12px;
 }
 
 #ui[data-layout='experiment'] .console .button-row > .button-gap {
   display: none;
 }
 
-#ui[data-layout='experiment'] .console .controls > .disclaimer {
-  margin: 0;
-  font-size: 12px;
+/* Holds only the (hidden) title: the whole-reset stands in the editor. */
+#ui[data-layout='experiment'] .console .model-controls-head {
+  display: none;
 }
 
-/* Both resets are buttons of one kind, side by side, so their two scopes —
-   this input, the whole experiment — are read against each other. */
-#ui[data-layout='experiment'] .model-editor-values .model-control-reset {
+#ui[data-layout='experiment'] .model-experiment-others > summary,
+#ui[data-layout='experiment'] .model-controls-advanced > summary {
+  list-style: none;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
   min-height: 44px;
   padding: 0 10px;
-  border-radius: 8px;
-  border: 1px solid rgba(167, 182, 206, 0.3);
-  background: none;
+  border-radius: 10px;
+  border: 1px solid rgba(167, 182, 206, 0.24);
+  font-size: 13px;
   color: var(--ink-dim);
-  font-size: 12px;
-  text-decoration: none;
   white-space: nowrap;
-  margin-left: 0;
+}
+
+#ui[data-layout='experiment'] .model-experiment-others > summary::-webkit-details-marker {
+  display: none;
+}
+
+/* Another experiment opens as a small menu over the console, like "More": it
+   is two choices, and opening it moves nothing. */
+#ui[data-layout='experiment'] .model-experiment-others-body {
+  position: absolute;
+  left: 0;
+  bottom: calc(100% + 8px);
+  z-index: 5;
+  width: min(320px, calc(100vw - 40px));
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 8px;
+  border-radius: 12px;
+  border: 1px solid var(--border);
+  background: #0c121c;
+  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.45);
+}
+
+#ui[data-layout='experiment'] .model-experiment-others-list {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+#ui[data-layout='experiment'] .model-experiment-other {
+  min-height: 44px;
+  padding: 6px 12px;
+  border-radius: 10px;
+  border: 1px solid rgba(167, 182, 206, 0.3);
+  background: rgba(255, 255, 255, 0.04);
+  color: var(--ink);
+  font-size: 13px;
+  text-align: left;
+}
+
+#ui[data-layout='experiment'] .model-experiment-other[hidden] {
+  display: none;
+}
+
+#ui[data-layout='experiment'] .model-experiment-others-note {
+  margin: 2px 4px 0;
+  font-size: 12px;
+  color: var(--ink-faint);
+}
+
+/* Adjusting in detail is a mode of its own: while it is open it takes the
+   console's full width, from the top. The experiment is the same condition —
+   pressing the experiment again is one close away. */
+#ui[data-layout='experiment'] .console .model-controls-advanced[open] {
+  grid-column: 1 / -1;
+  grid-row: 1;
+}
+
+#ui[data-layout='experiment'] .console:has(.model-controls-advanced[open]) .model-experiment-question,
+#ui[data-layout='experiment'] .console:has(.model-controls-advanced[open]) .model-experiment-actions,
+#ui[data-layout='experiment'] .console:has(.model-controls-advanced[open]) .model-experiment-others {
+  display: none;
+}
+
+#ui[data-layout='experiment'] .console:has(.model-controls-advanced[open]) .controls > .button-row {
+  grid-row: 3;
+}
+
+/* The start state and the intervention: one press further in. */
+#ui[data-layout='experiment'] .model-controls-group {
+  margin-top: 8px;
+}
+
+#ui[data-layout='experiment'] .model-controls-group > summary {
+  list-style: none;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  min-height: 44px;
+  padding: 0 10px;
+  border-radius: 10px;
+  border: 1px solid rgba(167, 182, 206, 0.24);
+  font-size: 13px;
+  color: var(--ink-dim);
+}
+
+#ui[data-layout='experiment'] .model-controls-group > summary::-webkit-details-marker {
+  display: none;
+}
+
+#ui[data-layout='experiment'] .model-controls-group > .model-control-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin-top: 8px;
 }
 
 /* During a lesson the lesson drives the condition; the controls it would
@@ -504,6 +661,12 @@
   text-align: left;
 }
 
+/* The line under the first row's label is there from the start, empty, so
+   the first press fills it in rather than adding it. */
+#ui[data-layout='experiment'] .metrics .metric.is-qualitative .metric-figure {
+  min-height: 18px;
+}
+
 #ui[data-layout='experiment'] .metrics .metric.is-qualitative .metric-value {
   font-size: 12px;
   font-weight: 500;
@@ -534,6 +697,14 @@
 #ui[data-layout='experiment'] .metrics .metric .metric-delta {
   font-weight: 700;
   color: var(--ink-dim);
+}
+
+/* Before anything has moved: the start value and the change keep their room
+   but are not shown, so the first press fills them in without moving a row. */
+#ui[data-layout='experiment'] .metrics .metric[data-quiet='true'] .metric-reference,
+#ui[data-layout='experiment'] .metrics .metric[data-quiet='true'] .metric-delta,
+#ui[data-layout='experiment'] .metrics .metric[data-quiet='true'] .metric-change {
+  visibility: hidden;
 }
 
 #ui[data-layout='experiment'] .metrics .metrics-more {
@@ -610,8 +781,13 @@
 /* ---------- desktop: the heart on the left, everything else on the right ---------- */
 
 @media (min-width: 900px) and (min-height: 600px) {
+  /* On a wide screen the column does not run to the window's edge: the heart,
+     the press and the figures stay within about 1240 px of each other, and
+     the space beyond is margin rather than a gap between them. */
   #ui[data-layout='experiment'] {
     --experiment-column: 384px;
+    --experiment-edge: max(14px, env(safe-area-inset-right), calc((100vw - 1240px) / 2));
+    padding-right: var(--experiment-edge);
   }
 
   /* The top bar runs the whole height, so the right-hand column is a band the
@@ -699,7 +875,7 @@
      console under a (1,8,0) selector. */
   #ui#ui[data-layout='experiment'] .console {
     position: fixed;
-    right: max(14px, env(safe-area-inset-right));
+    right: var(--experiment-edge);
     top: calc(var(--metrics-bottom, 480px) + 10px);
     bottom: auto;
     width: var(--experiment-column);
@@ -716,16 +892,19 @@
     background: rgba(9, 14, 22, 0.94);
   }
 
-  /* The toolbar keeps its words here, so it takes a row of its own under
-     the disclosure rather than squeezing beside it. */
-  #ui[data-layout='experiment'] .console .model-controls-advanced,
-  #ui[data-layout='experiment'] .console .controls > .button-row {
-    grid-column: 1 / -1;
+
+  /* "More" now holds the comparison, the plots and the lessons as well, and
+     the console stands near the top of the column: opened upward it ran under
+     the site navigation and its first items could not be pressed. It opens
+     downward here, into the column's free space. */
+  #ui[data-layout='experiment'] .console-more-menu {
+    bottom: auto;
+    top: calc(100% + 8px);
   }
 
-  #ui[data-layout='experiment'] .console .controls > .button-row {
-    flex-wrap: wrap;
-    justify-content: flex-start;
+  #ui[data-layout='experiment'] .console-more-menu .capture-menu {
+    bottom: auto;
+    top: 0;
   }
 }
 
@@ -884,6 +1063,42 @@
      (tests/medical-caveat.test.js). */
   #ui[data-layout='experiment'] .console:has(.model-controls-advanced[open]) .model-controls > .model-control-list {
     display: none;
+  }
+
+  /* "More" on a phone: a sheet over the read-out, from the console's top
+     edge up, never taller than the room above the console — it holds the
+     comparison, the plots and the lessons too, and at 390×664 it would have
+     run under the site navigation. It may scroll; so the capture choices
+     open inside it rather than beside it, where a scroll box would clip them
+     (L-116). */
+  #ui[data-layout='experiment'] .console-more-menu {
+    position: fixed;
+    left: max(14px, env(safe-area-inset-left));
+    right: max(14px, env(safe-area-inset-right));
+    bottom: calc(100dvh - var(--console-top, 480px) + 8px);
+    max-height: calc(var(--console-top, 480px) - 76px);
+    overflow-y: auto;
+    overscroll-behavior: contain;
+  }
+
+  #ui[data-layout='experiment'] .console-more-menu .capture-menu {
+    position: static;
+    margin-top: 4px;
+  }
+
+  /* In a menu an icon alone says nothing: the words the phone toolbar drops
+     come back here, in the reader's language (as `.btn.primary` does). */
+  #ui[data-lang='both'][data-layout='experiment'] .console-more-menu .btn-label.lang-en,
+  #ui[data-lang='ja'][data-layout='experiment'] .console-more-menu .btn-label.lang-ja,
+  #ui[data-lang='en'][data-layout='experiment'] .console-more-menu .btn-label.lang-en {
+    display: inline;
+  }
+
+  #ui[data-layout='experiment'] .console-more-menu > .btn,
+  #ui[data-layout='experiment'] .console-more-menu > .capture > .btn {
+    justify-content: flex-start;
+    gap: 10px;
+    min-height: 44px;
   }
 
   /* The narrowest phones: the bold figure is plainly the current one, so its

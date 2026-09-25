@@ -55,6 +55,11 @@ export function createModelControls({ controls, onChange, onReset, copy = {} }) 
     // The inputs a scene hands to the editor are drawn once, together, where
     // the first of them is listed.
     if (control.editor) return control === editorControls[0] ? editor.element : null;
+    if (control.kind === 'experiment') {
+      const experiment = createExperiment(control, onChange, onReset);
+      rows.set(control.id, { setValue: (value, definition) => experiment.setValue(definition ?? control) });
+      return experiment.element;
+    }
     if (control.kind === 'choice') {
       const buttons = new Map();
       let current = String(control.value);
@@ -235,6 +240,28 @@ export function createModelControls({ controls, onChange, onReset, copy = {} }) 
   // the scene is about, not every input the model has.
   const primaryInputs = inputs.filter((node, index) => node && !controls[index].advanced);
   const advancedInputs = inputs.filter((node, index) => node && controls[index].advanced);
+  // A scene may gather some of its advanced controls under a second, nested
+  // disclosure (`group`), so what is behind "adjust in detail" opens in the
+  // order it is needed rather than all at once.
+  const advancedLoose = inputs.filter((node, index) => node && controls[index].advanced && !controls[index].group);
+  const groupIds = [...new Set(controls.filter((control) => control.advanced && control.group).map((control) => control.group))];
+  const advancedGroups = groupIds.map((group) => {
+    const words = copy.groups?.[group] ?? {};
+    return el('details', { class: 'model-controls-group', dataset: { group } }, [
+      el('summary', { class: 'model-controls-group-toggle' }, [
+        el('span', { class: 'lang-en', text: words.label ?? group }),
+        el('span', { class: 'lang-ja', text: words.labelJa ?? group }),
+      ]),
+      el('div', { class: 'model-control-list' },
+        inputs.filter((node, index) => node && controls[index].advanced && controls[index].group === group)),
+      words.note || words.noteJa
+        ? el('p', { class: 'model-controls-advanced-note' }, [
+            el('span', { class: 'lang-en', text: words.note ?? '' }),
+            el('span', { class: 'lang-ja', text: words.noteJa ?? '' }),
+          ])
+        : null,
+    ]);
+  });
   const advanced = advancedInputs.length
     ? el('details', { class: 'model-controls-advanced' }, [
         el('summary', { class: 'model-controls-advanced-toggle' }, [
@@ -248,7 +275,8 @@ export function createModelControls({ controls, onChange, onReset, copy = {} }) 
                 el('span', { class: 'lang-ja', text: copy.advanced?.noteJa ?? '' }),
               ])
             : null,
-          el('div', { class: 'model-control-list' }, advancedInputs),
+          el('div', { class: 'model-control-list' }, advancedLoose),
+          ...advancedGroups,
         ]),
       ])
     : null;
@@ -518,4 +546,95 @@ function createInputEditor(items, onChange, words) {
 function decimals(step) {
   const text = String(step);
   return text.includes('.') ? text.split('.')[1].length : 0;
+}
+
+/**
+ * One experiment a reader can run without designing it: a question, one
+ * press, a way back, and the other experiments one press away.
+ *
+ * The press and the way back go through the same `onChange` / `onReset` as
+ * every other control — the experiment moves one input to one value, and
+ * nothing here knows what that input means. Choosing another experiment is
+ * `onChange('experiment', id)`, which the scene treats as starting it.
+ *
+ * Nothing in it changes size when pressed: the press and the undo swap which
+ * of the two is available, and the question is one line.
+ *
+ * @param {{ id: string, value: string, experiment: {id:string,control:string,to:number,question:string,questionJa:string,action:string,actionJa:string}, applied: boolean, moved: boolean, options: object[], copy: object }} control
+ */
+function createExperiment(control, onChange, onReset) {
+  const words = control.copy ?? {};
+  const question = [el('span', { class: 'lang-en' }), el('span', { class: 'lang-ja' })];
+  const actionWords = [el('span', { class: 'lang-en' }), el('span', { class: 'lang-ja' })];
+  let current = control;
+  const act = el('button', {
+    class: 'model-experiment-act',
+    type: 'button',
+    on: { click: () => onChange(current.experiment.control, current.experiment.to) },
+  }, actionWords);
+  const undo = el('button', {
+    class: 'model-experiment-undo',
+    type: 'button',
+    on: { click: () => onReset() },
+  }, [
+    el('span', { class: 'lang-en', text: words.undo ?? 'Undo' }),
+    el('span', { class: 'lang-ja', text: words.undoJa ?? '元に戻す' }),
+  ]);
+  const others = new Map();
+  const otherList = el('div', { class: 'model-experiment-others-list' }, (control.options ?? []).map((option) => {
+    const button = el('button', {
+      class: 'model-experiment-other',
+      type: 'button',
+      dataset: { value: option.id },
+      on: {
+        click: () => {
+          chooser.open = false;
+          onChange(control.id, option.id);
+        },
+      },
+    }, [
+      el('span', { class: 'lang-en', text: option.question }),
+      el('span', { class: 'lang-ja', text: option.questionJa }),
+    ]);
+    others.set(option.id, button);
+    return button;
+  }));
+  const chooser = el('details', { class: 'model-experiment-others' }, [
+    el('summary', { class: 'model-experiment-others-toggle' }, [
+      el('span', { class: 'lang-en', text: words.others ?? 'Try another' }),
+      el('span', { class: 'lang-ja', text: words.othersJa ?? 'ほかの条件を試す' }),
+    ]),
+    el('div', { class: 'model-experiment-others-body' }, [
+      otherList,
+      words.othersNote || words.othersNoteJa
+        ? el('p', { class: 'model-experiment-others-note' }, [
+            el('span', { class: 'lang-en', text: words.othersNote ?? '' }),
+            el('span', { class: 'lang-ja', text: words.othersNoteJa ?? '' }),
+          ])
+        : null,
+    ]),
+  ]);
+  const heading = el('p', { class: 'model-experiment-question' }, question);
+
+  function setValue(next) {
+    current = next;
+    question[0].textContent = next.experiment.question;
+    question[1].textContent = next.experiment.questionJa;
+    actionWords[0].textContent = next.experiment.action;
+    actionWords[1].textContent = next.experiment.actionJa;
+    act.setAttribute('aria-pressed', String(Boolean(next.applied)));
+    act.disabled = Boolean(next.applied);
+    undo.disabled = !next.moved;
+    for (const [id, button] of others) button.hidden = id === next.experiment.id;
+  }
+  setValue(control);
+
+  return {
+    element: el('div', { class: 'model-control is-experiment', dataset: { control: control.id } }, [
+      heading,
+      el('div', { class: 'model-experiment-actions' }, [act, undo]),
+      chooser,
+    ]),
+    setValue,
+  };
 }

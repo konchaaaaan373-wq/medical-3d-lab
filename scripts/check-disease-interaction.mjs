@@ -229,8 +229,9 @@ for (const slug of SLUGS) {
     const viewport = page.viewportSize();
     const outside = await page.evaluate(({ width, height }) => {
       const nodes = [
-        ...document.querySelectorAll('.model-editor-tab'),
-        ...document.querySelectorAll('.model-editor-step'),
+        ...document.querySelectorAll('.model-experiment-question'),
+        ...document.querySelectorAll('.model-experiment-act'),
+        ...document.querySelectorAll('.model-experiment-undo'),
         ...document.querySelectorAll(".metrics .metric.is-key"),
       ];
       return nodes
@@ -250,15 +251,83 @@ for (const slug of SLUGS) {
     const up = page.locator('.model-editor-step[data-direction="up"]');
     const resetAll = page.locator('.model-editor-values .model-control-reset');
     const resetOne = page.locator('.model-editor-reset');
-    const menu = page.locator('.model-controls-advanced > summary');
+    // The four inputs are behind 「詳しく調整」, and the start state and the
+    // intervention one press further in (2026-09-25: the page opens on one
+    // experiment, not on the console).
+    const detail = page.locator('.model-controls-advanced > summary');
+    const menu = page.locator('.model-controls-group > summary');
+    const isOpen = (summary) => summary.evaluate((node) => node.parentElement.open);
+    const openDetail = async () => {
+      if (!(await isOpen(detail))) await detail.click();
+    };
+    const closeDetail = async () => {
+      if (await isOpen(detail)) await detail.click();
+    };
     const closeMenu = async () => {
-      if (await menu.evaluate((node) => node.parentElement.open)) await menu.click();
+      if (await isOpen(menu)) await menu.click();
     };
     const choose = async (value) => {
-      if (!(await menu.evaluate((node) => node.parentElement.open))) await menu.click();
-      await page.locator(`.model-controls-advanced button.model-choice-button[data-value="${value}"]`).click();
+      await openDetail();
+      if (!(await isOpen(menu))) await menu.click();
+      await page.locator(`.model-controls-group button.model-choice-button[data-value="${value}"]`).click();
       await closeMenu();
     };
+    const act = page.locator('.model-experiment-act');
+    const undo = page.locator('.model-experiment-undo');
+
+    // The first screen: one experiment, run without designing it. One press
+    // moves exactly one input; nothing on the screen moves; the figures on the
+    // face of the read-out change, and they are the solve's; the detail editor
+    // carries on from the same condition; 「元に戻す」 goes back. And the
+    // comparison is offered only when there is something to compare.
+    {
+      const boxes = () =>
+        page.evaluate(() =>
+          ['.model-experiment-act', '.model-experiment-undo', '.metrics', '.console', '.metrics .metric.is-key'].map((selector) => {
+            const rect = document.querySelector(selector).getBoundingClientRect();
+            return [Math.round(rect.top), Math.round(rect.height)];
+          })
+        );
+      const compareDisabled = () => page.evaluate(() => document.querySelector('[data-control="compare"]')?.disabled ?? null);
+      const shown = () =>
+        page.evaluate(() => {
+          const read = (id) => [...document.querySelectorAll('.metrics .metric.is-key')].find((node) => node.textContent.includes(id))?.querySelector('.metric-value')?.textContent;
+          const m = window.__app.scene.session.view.metrics;
+          return { sv: read('SV'), co: read('CO'), solvedSv: String(Math.round(m.strokeVolumeMl)), solvedCo: m.cardiacOutputLMin.toFixed(1) };
+        });
+      const start = await inputs();
+      const restBoxes = await boxes();
+      const restCamera = await camera();
+      const restShown = await shown();
+      if ((await compareDisabled()) !== true) problems.push('experiment: the comparison is offered with nothing to compare');
+      await act.click();
+      await page.waitForTimeout(1500);
+      const pressed = await inputs();
+      const moved = Object.keys(start).filter((id) => start[id] !== pressed[id]);
+      if (JSON.stringify(moved) !== JSON.stringify(['contractilityEesMmHgPerMl'])) problems.push(`experiment: the first press moved ${moved.join(', ') || 'nothing'}`);
+      const pressedBoxes = await boxes();
+      pressedBoxes.forEach(([top, size], i) => {
+        if (Math.abs(top - restBoxes[i][0]) > 1 || Math.abs(size - restBoxes[i][1]) > 1) problems.push(`experiment: the press moved the screen (${JSON.stringify(restBoxes[i])} -> ${JSON.stringify([top, size])})`);
+      });
+      if (cameraMoved(restCamera, await camera()) > 0.05) problems.push('experiment: the press moved the camera');
+      const pressedShown = await shown();
+      if (pressedShown.sv === restShown.sv || pressedShown.co === restShown.co) problems.push(`experiment: the figures did not change (${JSON.stringify(restShown)} -> ${JSON.stringify(pressedShown)})`);
+      if (pressedShown.sv !== pressedShown.solvedSv || pressedShown.co !== pressedShown.solvedCo) problems.push(`experiment: the figures are not the solve's (${JSON.stringify(pressedShown)})`);
+      if ((await compareDisabled()) !== false) problems.push('experiment: after the press the comparison is still not offered');
+      await openDetail();
+      await tab('contractilityEesMmHgPerMl').click();
+      const editorValue = await page.locator('.model-editor-slider').inputValue();
+      if (Number(editorValue) !== pressed.contractilityEesMmHgPerMl) problems.push(`experiment: 「詳しく調整」 did not carry on from the experiment (${editorValue})`);
+      await tab('fillingVolumeMl').click();
+      await closeDetail();
+      await page.waitForTimeout(600);
+      await undo.click();
+      await page.waitForTimeout(1200);
+      if (JSON.stringify(await inputs()) !== JSON.stringify(start)) problems.push('experiment: 「元に戻す」 did not return to the start');
+      if ((await compareDisabled()) !== true) problems.push('experiment: back at the start, the comparison is still offered');
+      await openDetail();
+      await page.waitForTimeout(600);
+    }
 
     // A parameter change is not a reframe: pressing "+" moved the camera once
     // (L-111's family). Compared with a tolerance, and why: with no input at
@@ -399,8 +468,28 @@ for (const slug of SLUGS) {
       [430, 932, true], [390, 844, true], [390, 664, true], [375, 667, true], [375, 553, false],
     ]) {
       await page.setViewportSize({ width, height });
+      await closeDetail();
       await page.waitForTimeout(1500);
       const where = `${width}x${height}`;
+
+      // The first screen, before and after the one press, with nothing open.
+      for (const moment of ['at the start', 'after the experiment press']) {
+        if (moment === 'after the experiment press') {
+          await act.click();
+          await page.waitForTimeout(1500);
+        }
+        const result = await covered();
+        if (!result) continue;
+        if (result.hits.length) {
+          const text = `experiment layout ${where} ${moment}: the model (${result.box.join(',')}) is covered by ${result.hits.join(', ')}`;
+          if (enforced) problems.push(text);
+          else console.log(`  ${slug}: ${text} [reported, not enforced — F-212]`);
+        }
+        console.log(`  ${slug}: ${where} ${moment}: model drawn ${result.height}px tall`);
+      }
+      await undo.click();
+      await openDetail();
+      await page.waitForTimeout(1200);
 
       await tab('fillingVolumeMl').click();
       const rest = await editorBox();
@@ -426,7 +515,7 @@ for (const slug of SLUGS) {
 
       // Hit areas, not glyphs: every control in the editor is at least 44 px.
       const small = await page.evaluate(() =>
-        [...document.querySelectorAll('.model-editor-tab, .model-editor-step, .model-editor-slider, .model-editor-reset, .model-editor-values .model-control-reset, .model-controls-advanced > summary')]
+        [...document.querySelectorAll('.model-experiment-act, .model-experiment-undo, .model-experiment-others > summary, .model-editor-tab, .model-editor-step, .model-editor-slider, .model-editor-reset, .model-editor-values .model-control-reset, .model-controls-advanced > summary, .model-controls-group > summary')]
           .map((node) => ({ node, rect: node.getBoundingClientRect() }))
           .filter(({ rect }) => rect.width > 0 && (rect.height < 44 || rect.width < 44))
           .map(({ node, rect }) => `${node.className} ${Math.round(rect.width)}x${Math.round(rect.height)}`)
@@ -439,7 +528,7 @@ for (const slug of SLUGS) {
           await page.waitForTimeout(1500);
         }
         if (moment === 'after dobutamine') {
-          await page.locator('.model-controls-advanced button.model-choice-button[data-value="dobutamine"]').click();
+          await page.locator('.model-controls-group button.model-choice-button[data-value="dobutamine"]').click();
           await closeMenu();
           await page.waitForTimeout(1500);
         }
@@ -456,6 +545,7 @@ for (const slug of SLUGS) {
         console.log(`  ${slug}: ${where} ${moment}: model drawn ${result.height}px tall`);
       }
       await choose('reference');
+      await closeDetail();
       await page.waitForTimeout(600);
     }
     if (desktopSize) await page.setViewportSize(desktopSize);
@@ -666,7 +756,7 @@ for (const slug of SLUGS) {
   // and from every unit test.
   const dataButton = page.locator('button[data-control="data"]');
   if (await dataButton.count()) {
-    await dataButton.first().click();
+    await pressConsoleControl(page, 'button[data-control="data"]');
     await page.waitForFunction(() => document.querySelector('#ui')?.dataset.view === 'data');
     await page.waitForTimeout(1400);
     await page.screenshot({ path: join(outDir, `${slug}-data-view.png`) });
@@ -695,15 +785,51 @@ for (const slug of SLUGS) {
 
   const compareButton = page.locator('button[data-control="compare"]');
   if (await compareButton.count()) {
-    await compareButton.first().click();
+    // A scene may offer the comparison only once there is something to
+    // compare (cardiac output: after the first change). Make that change
+    // through the scene's own first press, where it has one.
+    const madeChange = (await compareButton.first().isDisabled()) && (await page.locator('.model-experiment-act').count());
+    if (madeChange) {
+      await page.locator('.model-experiment-act').click();
+      await page.waitForTimeout(1200);
+    }
+    await pressConsoleControl(page, 'button[data-control="compare"]');
     await page.waitForTimeout(2200);
     await page.screenshot({ path: join(outDir, `${slug}-compare.png`) });
     const referenced = await page.evaluate(() =>
       [...document.querySelectorAll('.metrics .metric-reference')].filter((node) => node.textContent.trim()).length
     );
     if (!referenced) problems.push('comparison is on and no row shows what it is compared against');
-    await compareButton.first().click();
+    // The two hearts at the same depth: the same condition drawn twice would
+    // otherwise be drawn at two sizes (owner's recording, 24 s). Measured as
+    // the projected height of each heart's outer wall.
+    const heights = await page.evaluate(() => {
+      const { viewer, scene } = window.__app ?? {};
+      if (!scene?.reference || !scene?.ventricle) return null;
+      const height = (object) => {
+        const box = [Infinity, -Infinity];
+        const probe = viewer.camera.position.clone();
+        object.updateWorldMatrix(true, true);
+        object.traverse((node) => {
+          const position = node.geometry?.attributes?.position;
+          if (!position || node.isPoints) return;
+          for (let i = 0; i < position.count; i += 7) {
+            probe.fromBufferAttribute(position, i).applyMatrix4(node.matrixWorld).project(viewer.camera);
+            box[0] = Math.min(box[0], probe.y);
+            box[1] = Math.max(box[1], probe.y);
+          }
+        });
+        return ((box[1] - box[0]) / 2) * innerHeight;
+      };
+      return { before: height(scene.reference.chamber), now: height(scene.ventricle) };
+    });
+    if (heights) console.log(`  ${slug}: comparison hearts drawn ${Math.round(heights.before)}px / ${Math.round(heights.now)}px tall`);
+    await pressConsoleControl(page, 'button[data-control="compare"]');
     await page.waitForTimeout(900);
+    if (madeChange) {
+      await page.locator('.model-experiment-undo').click();
+      await page.waitForTimeout(900);
+    }
   }
 
   // --- the lesson, end to end ---------------------------------------------
@@ -721,7 +847,7 @@ for (const slug of SLUGS) {
   const learnButton = page.locator('button[data-control="learn"]');
   if (await learnButton.count()) {
     const before = await state();
-    await learnButton.first().click();
+    await pressConsoleControl(page, 'button[data-control="learn"]');
     await page.waitForSelector('.learn-body', { timeout: 5000 });
     await page.waitForTimeout(600);
 

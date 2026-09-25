@@ -128,6 +128,11 @@ export function createMetricsPanel({ moreLabel } = {}) {
         row.unit.textContent = metric.unit;
         row.reference.textContent = metric.reference == null ? '' : `${metric.reference} →`;
         row.delta.textContent = metric.delta == null ? '' : String(metric.delta);
+        // A quiet row keeps its start value and change in the DOM — so they
+        // hold their room — and the stylesheet decides whether to show them.
+        // A scene sets it while nothing has moved.
+        if (metric.quiet) row.node.dataset.quiet = 'true';
+        else delete row.node.dataset.quiet;
         if (metric.delta == null) delete row.node.dataset.delta;
         else row.node.dataset.delta = metric.deltaSign ?? 'flat';
         row.change.textContent = metric.change === 'up' ? '↑' : metric.change === 'down' ? '↓' : metric.change === 'flat' ? '≈' : '';

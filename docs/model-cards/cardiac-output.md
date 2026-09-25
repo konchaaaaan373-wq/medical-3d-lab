@@ -293,6 +293,36 @@ supports is refusing to publish the reduction.
 
 **Catalog status:** `alpha`
 
+### Screen, 2026-09-25 (2) — the page opens on one experiment
+
+Not a model revision. The page no longer opens on the four inputs: it opens
+on one question — 「心臓の収縮を弱めると、どう変わる？」 — one press and a
+way back. The press moves **one input to one value**, through the same path
+as the editor, and the figures are the model's solve for it. The three
+experiments offered, and where their values come from:
+
+| Experiment | Input | From → to | Where the value comes from |
+| --- | --- | --- | --- |
+| Weaker contraction | elastance Ees | 2.74 → 1.2 mmHg/mL | the reduced-contractility preset |
+| Higher resistance | lumped resistance | 1.1 → 1.6 mmHg·s/mL | the resistance lesson and the reel |
+| More filling | circulating filling | 710 → 830 mL (model quantity) | the volume intervention's +120 |
+
+Heart rate is deliberately not an experiment: across the model's range output
+never falls as the rate rises (§14), and a one-press "raise the rate" would
+teach "faster is more".
+
+Each experiment names the figures it is about, and includes the one that moves
+the other way — weaker contraction lowers stroke volume and output **and
+raises the filling pressure**; the read-out shows all three on its face.
+
+The four inputs, the start state and the interventions are behind 「詳しく
+調整」, and carry on from the condition on screen.
+
+The side-by-side comparison is offered only once the condition differs from
+its start, and the two hearts are now spread across the line of sight rather
+than along world x: along x one sat nearer the camera, so an unchanged
+condition was drawn as two hearts of different size.
+
 ### Screen, 2026-09-25 — one input after an intervention, and what "before" is
 
 Not a model revision: the solver, its inputs and their ranges are unchanged.

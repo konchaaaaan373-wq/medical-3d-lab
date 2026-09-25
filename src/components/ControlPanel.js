@@ -277,6 +277,15 @@ export function createControlPanel({
       compareButton.element.classList.toggle('is-on', enabled);
       compareButton.element.setAttribute('aria-pressed', String(enabled));
     },
+    /**
+     * Whether there is anything to compare. A scene that says there is not —
+     * nothing has changed from its starting point — gets a disabled button
+     * rather than two identical hearts side by side.
+     */
+    setComparisonAvailable(available) {
+      if (!compareButton) return;
+      compareButton.element.disabled = !available;
+    },
     update(progress, playing) {
       // Do not fight the user while they are dragging the handle.
       if (document.activeElement !== slider) slider.value = String(Math.round(progress * 1000));

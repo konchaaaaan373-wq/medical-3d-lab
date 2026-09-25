@@ -50,7 +50,7 @@ async function sceneWithSession(session) {
   };
 }
 
-test('console: the four inputs are always named, one editor moves the chosen one, and choosing one changes nothing', async () => {
+test('console: behind 「詳しく調整」 the four inputs are named, one editor moves the chosen one, and choosing one changes nothing', async () => {
   await withDocument(async () => {
     const session = new ExperimentSession();
     const { CardiacOutputScene, controls } = await sceneWithSession(session);
@@ -66,13 +66,17 @@ test('console: the four inputs are always named, one editor moves the chosen one
       copy: CardiacOutputScene.meta.modelControls,
     });
 
-    // The four are on screen from the start, not behind a disclosure, and
-    // there is exactly one slider — the editor's.
+    // Exactly one slider — the editor's.
     const tabs = findByClass(console_.element, 'model-editor-tab');
     assert.deepEqual(tabs.map((tab) => tab.dataset.input), CONTROLS_ORDER);
     const [advanced] = findByClass(console_.element, 'model-controls-advanced');
-    assert.equal(findByClass(advanced, 'model-editor-tab').length, 0, 'the inputs are not behind the disclosure');
-    assert.equal(findByClass(advanced, 'model-choice-group').length, 2, 'the start state and the intervention are');
+    assert.match(text(findByClass(advanced, 'model-controls-advanced-toggle')[0]), /詳しく調整/);
+    assert.equal(findByClass(advanced, 'model-editor-tab').length, 4, 'the four inputs are behind 「詳しく調整」');
+    // …and the start state and the intervention one press further in.
+    const [startGroup] = findByClass(advanced, 'model-controls-group');
+    assert.equal(startGroup.dataset.group, 'start');
+    assert.equal(findByClass(startGroup, 'model-choice-group').length, 2, 'the start state and the intervention');
+    assert.equal(findByClass(startGroup, 'model-editor-tab').length, 0);
     const sliders = findByClass(console_.element, 'slider');
     assert.equal(sliders.length, 1, 'one slider, for the chosen input');
     const [slider] = sliders;
@@ -200,12 +204,12 @@ test('read-out: every row reads start → now with a signed change from the firs
     // The first row names what the figures are read against and what was
     // done, and is updated in place.
     const first = panel.element.children[0];
-    assert.match(text(first), /比較元：収縮力低下/);
+    assert.match(text(first), /開始時（収縮力低下）と比べて/);
     assert.match(text(first), /収縮力 ↑/);
 
     session.selectIntervention('none');
     panel.update(metrics());
-    assert.match(text(panel.element.children[0]), /開始時のまま/);
+    assert.doesNotMatch(text(panel.element.children[0]), /と比べて/, 'back at the start, the first row names the start alone');
     assert.equal(text(findByClass(row('心拍出量'), 'metric-delta')[0]), '±0');
   });
 });
@@ -247,11 +251,15 @@ test('toolbar: the tools a scene names go behind "More"; the experiment stays in
     for (const id of ['zoomIn', 'zoomOut', 'frame', 'eye', 'reel', 'camera']) {
       assert.ok(inMenu.has(id), `${id} is behind More`);
     }
+    // The comparison, the plots and the lessons are there for a reader who
+    // looks for them — not beside the experiment's one button at the same
+    // weight (owner's review, 2026-09-25).
+    for (const id of ['compare', 'data', 'learn']) {
+      assert.ok(inMenu.has(id), `${id} is behind More`);
+    }
     const [row] = findByClass(panel, 'button-row');
     const inRow = new Set([...controlsOf(row)].filter((id) => !inMenu.has(id)));
-    for (const id of ['compare', 'data', 'learn', 'more']) {
-      assert.ok(inRow.has(id), `${id} stays in view`);
-    }
+    assert.ok(inRow.has('more'), 'and More itself is in view');
 
     // Every button still exists exactly once — moved, not dropped or doubled.
     const all = findByClass(panel, 'btn').map((button) => button.dataset.control);
@@ -260,5 +268,58 @@ test('toolbar: the tools a scene names go behind "More"; the experiment stays in
     // A scene that declares nothing gets the row it always had.
     const plain = build({ ...CardiacOutputScene.meta, console: undefined });
     assert.equal(findByClass(plain, 'console-more').length, 0);
+  });
+});
+
+test('console: the experiment leads — a question, one press, the way back, and the others one press away', async () => {
+  await withDocument(async () => {
+    const session = new ExperimentSession();
+    const { CardiacOutputScene } = await sceneWithSession(session);
+    const scene = { session, experimentId: 'weaker-contraction', _applyState() {} };
+    const controls = () => CardiacOutputScene.prototype.getModelControls.call(scene);
+    const calls = [];
+    const console_ = createModelControls({
+      controls: controls(),
+      onChange: (id, value) => {
+        calls.push([id, value]);
+        CardiacOutputScene.prototype.setModelControl.call(scene, id, value);
+        console_.sync(controls());
+      },
+      onReset: () => {
+        session.reset();
+        console_.sync(controls());
+      },
+      copy: CardiacOutputScene.meta.modelControls,
+    });
+    const [card] = findByClass(console_.element, 'model-experiment-question');
+    assert.match(text(card), /心臓の収縮を弱めると、どう変わる？/);
+    const [act] = findByClass(console_.element, 'model-experiment-act');
+    const [undo] = findByClass(console_.element, 'model-experiment-undo');
+    assert.match(text(act), /収縮を弱める/);
+    assert.equal(undo.disabled, true, 'nothing to undo at the start');
+    // The experiment is not behind any disclosure.
+    const [advanced] = findByClass(console_.element, 'model-controls-advanced');
+    assert.equal(findByClass(advanced, 'model-experiment-act').length, 0);
+
+    act.dispatchEvent({ type: 'click' });
+    assert.deepEqual(calls, [['contractilityEesMmHgPerMl', 1.2]], 'the press is one input, through the same path');
+    assert.equal(act.getAttribute('aria-pressed'), 'true');
+    assert.equal(act.disabled, true);
+    assert.equal(undo.disabled, false);
+    // The detail editor reads the same condition — no second state.
+    const [slider] = findByClass(console_.element, 'slider');
+    findByClass(console_.element, 'model-editor-tab')[2].dispatchEvent({ type: 'click' });
+    assert.equal(slider.value, '1.2');
+
+    undo.dispatchEvent({ type: 'click' });
+    assert.equal(session.moved, false);
+    assert.equal(act.disabled, false);
+
+    // Another experiment: offered by its question, and pressing it starts it.
+    const others = findByClass(console_.element, 'model-experiment-other');
+    assert.equal(others.find((node) => node.dataset.value === 'weaker-contraction').hidden, true, 'the current one is not offered again');
+    others.find((node) => node.dataset.value === 'higher-resistance').dispatchEvent({ type: 'click' });
+    assert.match(text(card), /血管抵抗を上げると/);
+    assert.match(text(act), /血管抵抗を上げる/);
   });
 });

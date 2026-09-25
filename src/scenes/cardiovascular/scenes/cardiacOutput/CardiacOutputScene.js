@@ -34,6 +34,8 @@ import {
   CONSOLE_LAYOUT,
   CONTROLS,
   CONTROL_EDITOR,
+  EXPERIMENTS,
+  EXPERIMENT_COPY,
   LEARNING_LABEL,
   LEARNING_MODULES,
   REEL_LABEL,
@@ -55,6 +57,19 @@ import { disposeObject } from '../../../../utils/dispose.js';
 
 /** Where the hero shot looks from — into the cut wedge. */
 const VIEW_DIRECTION = new THREE.Vector3(0.34, 0.2, 0.92).normalize();
+
+/**
+ * The direction the two hearts are spread along while comparing: the screen's
+ * horizontal, as seen from `VIEW_DIRECTION` — not world x.
+ *
+ * They used to be spread along world x. The camera looks at the scene from
+ * the side and above, so along x one heart sat nearer the camera than the
+ * other and was drawn larger and lower: at the start of an experiment, with
+ * every figure ±0, "before" and "now" looked like two different hearts
+ * (owner's recording, 24 s). Spread across the line of sight instead, both
+ * are at the same depth, and what differs between them is the condition.
+ */
+const COMPARISON_AXIS = new THREE.Vector3(VIEW_DIRECTION.z, 0, -VIEW_DIRECTION.x).normalize();
 
 /** How far apart the two hearts sit while comparing. */
 const COMPARISON_OFFSET = 7.4;
@@ -156,6 +171,8 @@ export class CardiacOutputScene {
     this.comparing = false;
 
     this.session = new ExperimentSession({ presetId: PRESET_IDS.REFERENCE });
+    /** Which experiment the console offers; presentation only — see `experiment`. */
+    this.experimentId = EXPERIMENTS[0].id;
 
     /**
      * Muscle volume, computed once from the reference condition and never again.
@@ -369,10 +386,37 @@ export class CardiacOutputScene {
    * exactly the values being restored. `tests/cardiac-output-scene.test.js`
    * holds that ordering.
    */
+  /** The experiment the page offers first, or the one the reader chose since. */
+  get experiment() {
+    return EXPERIMENTS.find((entry) => entry.id === this.experimentId) ?? EXPERIMENTS[0];
+  }
+
   getModelControls() {
     const input = this.session.input;
     const start = this.session.baseline.input;
+    // Looked up rather than read through the getter, so the list can be built
+    // from a bare session (the console's DOM tests do).
+    const experiment = EXPERIMENTS.find((entry) => entry.id === this.experimentId) ?? EXPERIMENTS[0];
     return [
+      {
+        // The first thing on the console: one question, one press, one way
+        // back. The press moves one input through the same path as the
+        // editor, so the experiment and "adjust in detail" are one condition
+        // seen two ways — there is no second state to keep in step.
+        //
+        // First in the list: choosing another experiment starts it from the
+        // reference heart, so a restore replays it before everything else.
+        id: 'experiment',
+        kind: 'experiment',
+        label: 'Experiment',
+        labelJa: '実験',
+        value: experiment.id,
+        experiment,
+        applied: input[experiment.control] === experiment.to,
+        moved: this.session.moved,
+        options: EXPERIMENTS,
+        copy: EXPERIMENT_COPY,
+      },
       {
         // Secondary, behind 「開始状態・介入」: choosing one starts a new
         // experiment. First in the list because a restore replays the list in
@@ -380,6 +424,7 @@ export class CardiacOutputScene {
         id: 'preset',
         kind: 'choice',
         advanced: true,
+        group: 'start',
         label: 'Start state',
         labelJa: '開始状態',
         caption: 'Start state — choosing one starts a new experiment',
@@ -400,6 +445,7 @@ export class CardiacOutputScene {
         id: 'intervention',
         kind: 'choice',
         advanced: true,
+        group: 'start',
         label: 'Intervention',
         labelJa: '介入',
         caption: 'Try an intervention',
@@ -428,6 +474,8 @@ export class CardiacOutputScene {
           // condition, not a reference range.
           start: start[control.id],
           editor: true,
+          // Behind 「詳しく調整」: the experiment is what the page offers first.
+          advanced: true,
           ...words,
           format: (value) => `${formatControl(control.id, value)}${control.unit}`,
         };
@@ -440,7 +488,14 @@ export class CardiacOutputScene {
    * @param {number|string} value
    */
   setModelControl(id, value) {
-    if (id === 'preset') {
+    if (id === 'experiment') {
+      // Another experiment starts from the reference heart — a new
+      // experiment, not this one continued. The same one again is nothing.
+      const next = EXPERIMENTS.find((entry) => entry.id === value);
+      if (!next || next.id === this.experimentId) return;
+      this.experimentId = next.id;
+      this.session.selectPreset(PRESET_IDS.REFERENCE);
+    } else if (id === 'preset') {
       this.session.selectPreset(String(value));
     } else if (id === 'intervention') {
       // 「なし」 means this experiment's starting condition, from anywhere —
@@ -641,12 +696,14 @@ export class CardiacOutputScene {
       if (adjusted) return ja ? `${pick(adjusted)}適用後を調整：` : `Adjusted after ${pick(adjusted)}: `;
       return '';
     };
+    const fromEn = fromOption?.short ?? fromOption?.label;
+    const fromJa = fromOption?.shortJa ?? fromOption?.labelJa;
     rows.push({
       id: 'changed',
-      label: `Compared with: ${fromOption?.short ?? fromOption?.label} at the start`,
-      labelJa: `比較元：${fromOption?.shortJa ?? fromOption?.labelJa}（開始時）`,
-      value: atStart ? 'unchanged from the start' : `${origin(false)}${change.value}`,
-      valueJa: atStart ? '開始時のまま' : `${origin(true)}${change.valueJa}`,
+      label: atStart ? `At the start (${fromEn})` : `Compared with the start (${fromEn})`,
+      labelJa: atStart ? `開始時（${fromJa}）` : `開始時（${fromJa}）と比べて`,
+      value: atStart ? '' : `${origin(false)}${change.value}`,
+      valueJa: atStart ? '' : `${origin(true)}${change.valueJa}`,
       unit: '',
       emphasis: true,
       compact: true,
@@ -780,6 +837,24 @@ export class CardiacOutputScene {
         unit: 'dyn·s·cm⁻⁵',
       }
     );
+    // What this experiment is about goes first and on the face of the panel;
+    // the rest is one press away under 「他の指標」. Presentation only: every
+    // row is computed either way, and the one that moves the *other* way is in
+    // the experiment's own list (see EXPERIMENTS).
+    //
+    // Before anything has moved, the rows carry their start value and ±0 but
+    // say they are quiet: the panel keeps the room for them — so nothing moves
+    // when they fill in — without repeating "start → now ±0" on every figure.
+    const experiment = EXPERIMENTS.find((entry) => entry.id === this.experimentId) ?? EXPERIMENTS[0];
+    const watch = experiment.watch;
+    for (const row of rows) {
+      if (row.id === 'changed' || row.id === 'unsolved') continue;
+      row.emphasis = watch.includes(row.id);
+      row.compact = watch.includes(row.id);
+      if (atStart && !this.comparing) row.quiet = true;
+    }
+    const rank = (row) => (row.id === 'unsolved' ? -2 : row.id === 'changed' ? -1 : watch.includes(row.id) ? watch.indexOf(row.id) : watch.length);
+    rows.sort((a, b) => rank(a) - rank(b));
     return rows;
   }
 
@@ -827,6 +902,16 @@ export class CardiacOutputScene {
    *
    * @param {boolean} enabled
    */
+  /**
+   * Whether "before" and "now" differ. Two identical conditions side by side
+   * teach nothing and invite reading a difference into the picture that the
+   * figures do not have, so the shell offers the comparison only when this is
+   * true.
+   */
+  canCompare() {
+    return this.session.moved;
+  }
+
   setComparison(enabled) {
     this.comparing = enabled;
     if (enabled && !this.reference) {
@@ -837,10 +922,10 @@ export class CardiacOutputScene {
     if (this.reference) {
       this.reference.setState(this.session.baseline.metrics, this.session.baseline.cycle);
       this.reference.visible = enabled;
-      this.reference.position.x = enabled ? -COMPARISON_OFFSET : 0;
+      this.reference.position.copy(COMPARISON_AXIS).multiplyScalar(enabled ? -COMPARISON_OFFSET : 0);
       if (enabled) this.reference.setPhase(this.phase);
     }
-    this.primary.position.x = enabled ? COMPARISON_OFFSET : 0;
+    this.primary.position.copy(COMPARISON_AXIS).multiplyScalar(enabled ? COMPARISON_OFFSET : 0);
     // The circuit is about one condition, and two conditions cannot share it
     // without implying they are connected to each other.
     this.circuit.object.visible = !enabled;
@@ -863,9 +948,11 @@ export class CardiacOutputScene {
    * into the safe band; it is not a branch in the shell.
    */
   getSubjectBounds() {
-    const spread = this.comparing ? COMPARISON_OFFSET : 0;
-    const min = new THREE.Vector3(-7.8 - spread, -7.1, -3.8);
-    const max = new THREE.Vector3(7.1 + spread, 4.4, 3.8);
+    // The two hearts lie along COMPARISON_AXIS, which has x and z parts.
+    const spreadX = this.comparing ? COMPARISON_OFFSET * Math.abs(COMPARISON_AXIS.x) : 0;
+    const spreadZ = this.comparing ? COMPARISON_OFFSET * Math.abs(COMPARISON_AXIS.z) : 0;
+    const min = new THREE.Vector3(-7.8 - spreadX, -7.1, -3.8 - spreadZ);
+    const max = new THREE.Vector3(7.1 + spreadX, 4.4, 3.8 + spreadZ);
     const corners = [];
     for (const x of [min.x, max.x]) {
       for (const y of [min.y, max.y]) {
@@ -899,8 +986,8 @@ export class CardiacOutputScene {
       return: this.circuit?.anchors.return.clone() ?? new THREE.Vector3(-1, -5.3, -3),
       node: this.circuit?.anchors.node.clone() ?? new THREE.Vector3(6.4, -0.2, -2.95),
       // Above each heart's base, where the two sit while comparing.
-      comparisonBefore: new THREE.Vector3(-COMPARISON_OFFSET, ANATOMY.baseY + 1.6, 0),
-      comparisonNow: new THREE.Vector3(COMPARISON_OFFSET, ANATOMY.baseY + 1.6, 0),
+      comparisonBefore: COMPARISON_AXIS.clone().multiplyScalar(-COMPARISON_OFFSET).setY(ANATOMY.baseY + 1.6),
+      comparisonNow: COMPARISON_AXIS.clone().multiplyScalar(COMPARISON_OFFSET).setY(ANATOMY.baseY + 1.6),
     };
     return [...ANNOTATIONS, ...COMPARISON_ANNOTATIONS].map((annotation) => ({
       ...annotation,

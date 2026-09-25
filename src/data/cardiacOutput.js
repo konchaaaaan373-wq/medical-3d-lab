@@ -154,6 +154,72 @@ export const CONTROLS = [
 ];
 
 /**
+ * The experiments a reader can run without designing one.
+ *
+ * Each is one question, one press and one way back: it moves exactly one of
+ * the four inputs, from the reference heart's starting value to `to`, and
+ * holds the other three. Nothing here is a new model state — the press goes
+ * through `setModelControl` like a slider — and every `to` is a value the
+ * scene already uses and the model already verifies:
+ *
+ * - contractility 2.74 → 1.2 mmHg/mL: the reduced-contractility preset's own
+ *   elastance (`PRESET_OVERRIDES`), so the two paths agree;
+ * - resistance 1.1 → 1.6: the step the resistance lesson and the reel take;
+ * - filling 710 → 830: the volume intervention's +120.
+ *
+ * `watch` is what the read-out puts first while this experiment is chosen —
+ * the figures it is about, plus the one that moves the *other* way, which a
+ * shorter list would hide (weaker contraction lowers output and raises the
+ * filling pressure). The rest stay one press away under 「他の指標」.
+ *
+ * Heart rate is not offered as an experiment: across the model's range output
+ * never falls as the rate rises (§14 of the model card), and a one-press
+ * experiment would teach "faster is more".
+ */
+export const EXPERIMENTS = [
+  {
+    id: 'weaker-contraction',
+    control: 'contractilityEesMmHgPerMl',
+    to: 1.2,
+    question: 'Weaken the heart’s contraction — what changes?',
+    questionJa: '心臓の収縮を弱めると、どう変わる？',
+    action: 'Weaken contraction',
+    actionJa: '収縮を弱める',
+    watch: ['sv', 'co', 'lvedp'],
+  },
+  {
+    id: 'higher-resistance',
+    control: 'systemicResistanceMmHgSPerMl',
+    to: 1.6,
+    question: 'Raise the systemic resistance — what changes?',
+    questionJa: '血管抵抗を上げると、どう変わる？',
+    action: 'Raise resistance',
+    actionJa: '血管抵抗を上げる',
+    watch: ['map', 'sv', 'co'],
+  },
+  {
+    id: 'more-filling',
+    control: 'fillingVolumeMl',
+    to: 830,
+    question: 'More circulating filling (a model quantity, not a fluid volume) — what changes?',
+    questionJa: '循環充満量（モデル内の量）を増やすと、どう変わる？',
+    action: 'Increase filling',
+    actionJa: '充満量を増やす',
+    watch: ['sv', 'co', 'lvedp'],
+  },
+];
+
+/** The words around the experiment: the way back and the way to the others. */
+export const EXPERIMENT_COPY = {
+  undo: 'Undo',
+  undoJa: '元に戻す',
+  others: 'Try another',
+  othersJa: 'ほかの条件を試す',
+  othersNote: 'Choosing one starts it from the reference heart.',
+  othersNoteJa: '選ぶと、基準の心臓から始まります。',
+};
+
+/**
  * How each of the four inputs is moved in the editor: the words on the two
  * buttons, and how far one press goes.
  *
@@ -209,14 +275,22 @@ export const MODEL_CONTROLS = {
   resetLabelJa: '全体を戻す',
   hideChoiceEffects: true,
   editor: EDITOR_COPY,
-  // The four inputs are the experiment and are always on screen (the editor
-  // below). What is behind one press is the two things that *start* or *change
-  // the whole* experiment: the starting state and an intervention.
+  // Everything past the experiment: the four inputs, the start state and
+  // an intervention. It carries on from the condition on screen — opening
+  // it changes nothing.
   advanced: {
-    label: 'Start state · intervention',
-    labelJa: '開始状態・介入',
-    note: 'Choosing a start state begins a new experiment and replaces your changes. An intervention is applied to the start state.',
-    noteJa: '開始状態を選ぶと新しい実験になり、調整は置き換わります。介入は開始状態に対してかかります。',
+    label: 'Adjust in detail',
+    labelJa: '詳しく調整',
+  },
+  // Inside it, one more press: starting from another state, or applying an
+  // intervention, replaces the condition rather than adjusting it.
+  groups: {
+    start: {
+      label: 'Start state · intervention',
+      labelJa: '開始状態・介入',
+      note: 'Choosing a start state begins a new experiment and replaces your changes. An intervention is applied to the start state.',
+      noteJa: '開始状態を選ぶと新しい実験になり、調整は置き換わります。介入は開始状態に対してかかります。',
+    },
   },
 };
 
@@ -230,7 +304,10 @@ export const MODEL_CONTROLS = {
  * the same weight.
  */
 export const CONSOLE_LAYOUT = {
-  overflow: ['zoom', 'inspection', 'reel', 'capture'],
+  // The comparison, the plots and the lessons are there for a reader who
+  // wants them, one press away — not beside the experiment's one button at
+  // the same weight (owner's review, 2026-09-25).
+  overflow: ['compare', 'data', 'learn', 'zoom', 'inspection', 'reel', 'capture'],
 };
 
 export const COMPARISON_LABEL = {
