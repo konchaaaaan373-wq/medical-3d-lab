@@ -17,6 +17,7 @@ import {
   distanceScaleForAspect,
   dollyAboutNdc,
   fitPoseToSafeArea,
+  insetsAboveFloor,
   framePose,
   orbitLimitsForSubject,
   shiftIntoBand,
@@ -322,6 +323,14 @@ export async function createApp({ stage, ui, onRetryModel = null }) {
   };
 
   /**
+   * The experiment layout asks for a fit even when the panels leave less than
+   * the fit's floor — see `insetsAboveFloor`. Every other scene keeps the
+   * fit's own answer, which is to leave the pose unfitted.
+   */
+  const fittableInsets = (insets) =>
+    insets && meta.layout === 'experiment' ? insetsAboveFloor(insets) : insets;
+
+  /**
    * The width at which this product is one column — the same number the
    * stylesheet lays the phone out at, so the framing and the layout cannot
    * come to disagree about what a phone is.
@@ -343,7 +352,7 @@ export async function createApp({ stage, ui, onRetryModel = null }) {
     // Every other scene keeps the framing it has: this is opt-in on a capability
     // the scene either offers or does not.
     const bounds = scene.getSubjectBounds?.();
-    const insets = bounds ? safeAreaInsets() : null;
+    const insets = bounds ? fittableInsets(safeAreaInsets()) : null;
     return insets ? fitPoseToSafeArea(framed, {
       bounds,
       aspect: viewer.camera.aspect,
@@ -2028,9 +2037,10 @@ export async function createApp({ stage, ui, onRetryModel = null }) {
       consoleElement.style.height = '';
     }
     requestAnimationFrame(() => {
-      const insets = safeAreaInsets();
-      if (!insets || JSON.stringify(insets) === bandsBeforeToggle) return;
-      bandsBeforeToggle = JSON.stringify(insets);
+      const measured = safeAreaInsets();
+      if (!measured || JSON.stringify(measured) === bandsBeforeToggle) return;
+      bandsBeforeToggle = JSON.stringify(measured);
+      const insets = fittableInsets(measured);
       if (!readerOwnsCamera) {
         setShot(shotSource);
         view.active = true;

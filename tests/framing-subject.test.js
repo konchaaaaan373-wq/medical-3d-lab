@@ -253,3 +253,31 @@ test('limits: the floor clears the framing the same subject asks for', () => {
   // range the buttons offer, applied to that framing.
   assert.ok(limits.minDistance < wanted * 0.5, 'the zoom buttons can reach their own end of the range');
 });
+
+test('a band under the fit floor is widened to it, not answered with the unfitted close-up', async () => {
+  const { insetsAboveFloor, fitPoseToSafeArea } = await import('../src/app/framing.js');
+  // Measured on an iPhone in Safari: the read-out covered the top 40% and the
+  // console the bottom 48%, leaving 12% — under the fit's floor, so the fit
+  // returned the authored pose and the heart was drawn at twice its size
+  // behind both panels.
+  const measured = { top: 0.405, bottom: 0.473, left: 0, right: 0 };
+  const widened = insetsAboveFloor(measured);
+  const band = 1 - widened.top - widened.bottom;
+  assert.ok(band >= 0.2, `the band reaches the floor (${band.toFixed(3)})`);
+  assert.ok(Math.abs(widened.top / widened.bottom - measured.top / measured.bottom) < 1e-9,
+    'taken back from each side in proportion, so the band stays where the free space is');
+  assert.deepEqual(insetsAboveFloor({ top: 0.1, bottom: 0.3, left: 0.2, right: 0 }),
+    { top: 0.1, bottom: 0.3, left: 0.2, right: 0 }, 'a band above the floor is untouched');
+
+  // And the fit then actually fits, where before it handed the pose back.
+  const THREE = await import('three');
+  const pose = { position: new THREE.Vector3(0, 0, 30), target: new THREE.Vector3(0, 0, 0) };
+  const corners = [];
+  for (const x of [-7, 7]) for (const y of [-5, 5]) for (const z of [-3, 3]) corners.push(new THREE.Vector3(x, y, z));
+  const bounds = { centre: new THREE.Vector3(), corners };
+  const options = { bounds, aspect: 390 / 664, fovDegrees: 42, coverage: 1.1 };
+  const before = fitPoseToSafeArea(pose, { ...options, insets: measured });
+  assert.equal(before.position.z, 30, 'under the floor the fit leaves the close-up alone');
+  const after = fitPoseToSafeArea(pose, { ...options, insets: widened });
+  assert.ok(after.position.distanceTo(after.target) > 30, 'widened, it backs the camera off to fit');
+});

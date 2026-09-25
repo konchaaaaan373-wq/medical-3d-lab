@@ -602,6 +602,85 @@
   #ui[data-layout='experiment'] .title-card .title-ja {
     font-size: 16px;
   }
+
+  /*
+   * A phone's console, measured on an iPhone in Safari (390×664 of page):
+   * the console is capped at 40% of the height and the read-out takes the top
+   * 40%, which left the heart 80 px — under the framing's floor, where the
+   * camera fell back to the authored close-up and the heart sat behind both.
+   * Two lines come back here: each caption stands above its row, so the
+   * intervention row fits on one line instead of wrapping to two, and the
+   * four inputs' toggle shares the toolbar's line as it does on a desktop.
+   */
+  #ui[data-layout='experiment'] .model-control.is-choice.has-caption {
+    display: flex;
+    flex-direction: column;
+    align-items: stretch;
+    gap: 3px;
+  }
+
+  #ui[data-layout='experiment'] .model-choice-caption {
+    font-size: 12px;
+  }
+
+  #ui[data-layout='experiment'] .model-choice-group {
+    flex-wrap: nowrap;
+    gap: 6px;
+  }
+
+  #ui[data-layout='experiment'] .model-choice-button {
+    padding: 0 11px;
+  }
+
+  #ui[data-layout='experiment'] .model-choice-label {
+    font-size: 13px;
+  }
+
+  #ui[data-layout='experiment'] .console {
+    display: grid;
+    grid-template-columns: auto minmax(0, 1fr);
+    align-items: center;
+    overflow-y: auto;
+  }
+
+  #ui[data-layout='experiment'] .console > * {
+    grid-column: 1 / -1;
+  }
+
+  #ui[data-layout='experiment'] .console > .model-controls.is-primary,
+  #ui[data-layout='experiment'] .console > .controls {
+    display: contents;
+  }
+
+  #ui[data-layout='experiment'] .console .model-controls-head,
+  #ui[data-layout='experiment'] .console .model-control-list,
+  #ui[data-layout='experiment'] .console .controls > .disclaimer {
+    grid-column: 1 / -1;
+  }
+
+  #ui[data-layout='experiment'] .console .model-controls-advanced {
+    grid-column: 1;
+  }
+
+  #ui[data-layout='experiment'] .console .model-controls-advanced[open] {
+    grid-column: 1 / -1;
+  }
+
+  #ui[data-layout='experiment'] .console .model-controls-advanced > summary {
+    min-height: 44px;
+    padding: 0 12px;
+  }
+
+  #ui[data-layout='experiment'] .console .controls > .button-row {
+    grid-column: 2;
+    justify-content: flex-end;
+    flex-wrap: nowrap;
+    margin: 0;
+  }
+
+  #ui[data-layout='experiment'] .console .controls > .button-row > .button-gap {
+    display: none;
+  }
 }
 
 /*

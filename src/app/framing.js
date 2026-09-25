@@ -153,6 +153,40 @@ export function framePose(pose, aspect, view = 'data', fovDegrees = 42, bottomIn
  * @param {{left?: number, right?: number, top?: number, bottom?: number}} [options.insets]
  * @param {number} [options.coverage]
  */
+/**
+ * The band the panels leave, stretched back to the fit's floor when it is under it.
+ *
+ * `fitPoseToSafeArea` answers a band narrower than a fifth of the frame with the
+ * pose it was given, unfitted — "leave it alone" rather than guess. That is the
+ * right answer for the fit and the wrong one for a scene whose authored pose is
+ * a close-up: measured on an iPhone in Safari (390×664 of page), the read-out
+ * across the top and the console along the bottom left `cardiac-output` 12% of
+ * the height, and the fallback put the camera at the authored distance, 30,
+ * where the fitted one is 62 — the heart and its loop at twice the size, behind
+ * both panels.
+ *
+ * So a caller that would rather have *a* fit may ask for the band to be widened
+ * to just above the floor. The space is taken back from each side in proportion
+ * to how much it covers, so the band's centre stays where the free space is,
+ * and nothing changes for a band already above the floor.
+ *
+ * @param {{top?:number,bottom?:number,left?:number,right?:number}} insets
+ * @param {number} [floor] the smallest band, as a fraction of the frame
+ */
+export function insetsAboveFloor(insets = {}, floor = 0.21) {
+  const relax = (a, b) => {
+    const first = clamp01(a);
+    const second = clamp01(b);
+    const covered = first + second;
+    if (1 - covered >= floor || covered <= 0) return [first, second];
+    const keep = (1 - floor) / covered;
+    return [first * keep, second * keep];
+  };
+  const [top, bottom] = relax(insets.top, insets.bottom);
+  const [left, right] = relax(insets.left, insets.right);
+  return { ...insets, top, bottom, left, right };
+}
+
 export function fitPoseToSafeArea(pose, { bounds, aspect, fovDegrees, insets = {}, coverage = 0.88 }) {
   const unchanged = { position: pose.position.clone(), target: pose.target.clone() };
   if (!bounds?.centre || !bounds.corners?.length || !(coverage > 0)) return unchanged;

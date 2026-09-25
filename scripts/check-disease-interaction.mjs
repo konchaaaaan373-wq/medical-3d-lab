@@ -263,6 +263,55 @@ for (const slug of SLUGS) {
       await choices.first().click();
       await page.waitForTimeout(900);
     }
+
+    // On a phone, in the space Safari actually leaves a page (390×664 on an
+    // iPhone 13 with its toolbars; 375×553 on an SE). Found on the device, not
+    // here: the read-out and the console left the heart under the framing's
+    // floor, the camera fell back to the authored close-up, and the heart was
+    // drawn at twice its size behind both panels. 844 px tall — the only phone
+    // height this check used to open — never reaches the floor.
+    const desktopSize = page.viewportSize();
+    // 375×553 is reported and not enforced: there the read-out and the console
+    // leave 41 px, and a heart that fits the widened band still runs under
+    // both. That is a lack of room, not a framing fault — see F-212.
+    for (const [width, height, enforced] of [[390, 664, true], [375, 553, false]]) {
+      await page.setViewportSize({ width, height });
+      await page.waitForTimeout(1500);
+      const framing = await page.evaluate(() => {
+        const { viewer, scene } = window.__app ?? {};
+        if (!viewer || !scene?.root) return null;
+        const probe = viewer.camera.position.clone();
+        let top = Infinity;
+        let bottom = -Infinity;
+        scene.root.updateWorldMatrix(true, true);
+        scene.root.traverse((object) => {
+          const position = object.geometry?.attributes?.position;
+          if (!position || object.isPoints || !object.visible) return;
+          for (let i = 0; i < position.count; i += 13) {
+            probe.fromBufferAttribute(position, i).applyMatrix4(object.matrixWorld).project(viewer.camera);
+            if (Math.abs(probe.z) > 1) continue;
+            const y = ((1 - probe.y) / 2) * innerHeight;
+            top = Math.min(top, y);
+            bottom = Math.max(bottom, y);
+          }
+        });
+        const rail = document.querySelector('.metrics')?.getBoundingClientRect();
+        const console_ = document.querySelector('.console')?.getBoundingClientRect();
+        return { top, bottom, band: [rail?.bottom ?? 0, console_?.top ?? innerHeight] };
+      });
+      if (!framing) continue;
+      const centre = (framing.top + framing.bottom) / 2;
+      const [bandTop, bandBottom] = framing.band;
+      const height_ = framing.bottom - framing.top;
+      if (centre < bandTop || centre > bandBottom || height_ > (bandBottom - bandTop) * 1.5) {
+        (enforced ? (line) => problems.push(line) : (line) => console.log(`  ${slug}: ${line} [reported, not enforced — F-212]`))(
+          `experiment layout ${width}x${height}: the model (${Math.round(framing.top)}..${Math.round(framing.bottom)}) ` +
+            `is not framed into the band between the read-out and the console (${Math.round(bandTop)}..${Math.round(bandBottom)})`
+        );
+      }
+    }
+    if (desktopSize) await page.setViewportSize(desktopSize);
+    await page.waitForTimeout(900);
   }
 
   // --- the read-out on a phone ------------------------------------------
