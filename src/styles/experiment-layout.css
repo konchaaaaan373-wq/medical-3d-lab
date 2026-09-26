@@ -1640,3 +1640,13 @@
     letter-spacing: -0.03em;
   }
 }
+
+/* Under 360 px even a whole row does not hold both tabs' values at the ends
+   of their ranges (320 px: "収縮 4.00↑ 心拍 110↑" cut). The values wrap to a
+   second line rather than being cut. */
+@media (max-width: 359px) {
+  #ui[data-layout='experiment'] .pad-switch-summary {
+    white-space: normal;
+    overflow: visible;
+  }
+}
