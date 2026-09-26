@@ -769,7 +769,9 @@ html[data-route='locked'] .shell-header .site-menu-panel {
 
   .shell-header.has-site-menu .shell-brand {
     flex: 0 1 auto;
-    min-width: 0;
+    /* The way home stays a thumb's width even when only the mark is left
+       (under 380 px): measured at 320 and 375 it was 41 px wide. */
+    min-width: 44px;
     gap: 7px;
   }
 

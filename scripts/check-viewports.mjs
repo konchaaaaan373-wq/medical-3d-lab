@@ -896,6 +896,148 @@ const SEEN_SOURCE = `(node) => {
   return { seen: true };
 }`;
 
+/**
+ * The site menu, opened and measured on every surface.
+ *
+ * Every screen's header ends in the same menu (`src/components/SiteMenu.js`),
+ * and the three ways it failed when it was built were all geometry, which is
+ * why a unit test never saw them: on the landing page at 390 px the panel
+ * opened 30 px off the left edge (the header sits inside the page's margins),
+ * the organ viewport caption painted straight across it (a later sibling with
+ * stacking of its own), and on the 3D header it hung from the button and
+ * covered the organ's layer row beneath it. So: open it, and ask the page.
+ *
+ * - it is inside the viewport,
+ * - it starts below the whole header, not inside it,
+ * - nothing else is painted over it (sampled with `elementFromPoint`),
+ * - focus went into it, and Escape brings focus back to the button.
+ *
+ * @returns {Promise<string[]>} problems, empty when the menu is sound
+ */
+async function checkSiteMenu(page) {
+  const problems = [];
+  const trigger = page.locator('.site-menu-trigger').first();
+  if (!(await trigger.count()) || !(await trigger.isVisible())) {
+    return ['no site menu button in the header'];
+  }
+  await trigger.click();
+  const opened = await page
+    .waitForFunction(() => document.querySelector('.site-menu-panel:not([hidden])'), null, { timeout: 3000 })
+    .then(() => true, () => false);
+  if (!opened) return ['the site menu button did not open the menu'];
+
+  const measured = await page.evaluate(() => {
+    const panel = document.querySelector('.site-menu-panel:not([hidden])');
+    const host = panel.closest('.has-site-menu');
+    const box = panel.getBoundingClientRect();
+    const hostBox = host?.getBoundingClientRect() ?? null;
+    // A grid, not a handful of points, and with every element made hittable
+    // for the length of the probe. The first version sampled four points and
+    // asked `elementFromPoint`, which skips `pointer-events: none` — and the
+    // landing hero's caption and gesture hint, painted straight across the
+    // open menu, are exactly that. A mutation that brought the overlap back
+    // stayed green until both were fixed.
+    //
+    // And with `inert` lifted for the same moment. The open menu makes the rest
+    // of the page inert, and inert content is skipped by hit testing — so the
+    // hero caption (z-index 4, over the panel's 3) was invisible to this probe
+    // even with pointer events forced on. The probe was blind to exactly the
+    // content it exists to find.
+    const probe = document.createElement('style');
+    probe.textContent = '* { pointer-events: auto !important; }';
+    document.head.append(probe);
+    const inert = [...document.querySelectorAll('[inert]')];
+    for (const node of inert) node.inert = false;
+    const step = 24;
+    // Inset by the corner radius: a point in the rounded-off corner is outside
+    // the panel's shape, and the page behind it is not painted *over* it.
+    const inset = Math.max(step / 2, (Number.parseFloat(getComputedStyle(panel).borderTopLeftRadius) || 0) + 2);
+    const covered = new Map();
+    try {
+      for (let y = box.top + inset; y < Math.min(box.bottom - inset, innerHeight); y += step) {
+        for (let x = box.left + inset; x < Math.min(box.right - inset, innerWidth); x += step) {
+          if (x < 0 || y < 0) continue;
+          const hit = document.elementFromPoint(x, y);
+          if (!hit || panel.contains(hit)) continue;
+          const name = `${hit.tagName.toLowerCase()}${hit.className ? `.${String(hit.className).split(' ')[0]}` : ''}`;
+          // Which stacking context put it there, because "a span is over the
+          // menu" is not something anyone can act on.
+          let layer = '';
+          for (let node = hit; node && node !== document.body; node = node.parentElement) {
+            const style = getComputedStyle(node);
+            if (style.zIndex !== 'auto') {
+              layer = ` in ${node.tagName.toLowerCase()}.${String(node.className).split(' ')[0]}` +
+                ` (z-index ${style.zIndex}, ${style.position})`;
+              break;
+            }
+          }
+          if (!covered.has(name)) covered.set(name, `(${Math.round(x)}, ${Math.round(y)}) is ${name}${layer}`);
+        }
+      }
+    } finally {
+      probe.remove();
+      for (const node of inert) node.inert = true;
+    }
+    return {
+      box: { left: box.left, right: box.right, top: box.top, bottom: box.bottom },
+      hostBottom: hostBox?.bottom ?? null,
+      viewport: { width: innerWidth, height: innerHeight },
+      covered: [...covered.values()],
+      focusInside: panel.contains(document.activeElement),
+    };
+  });
+  const { box, viewport } = measured;
+  if (box.left < -1 || box.right > viewport.width + 1 || box.top < -1 || box.bottom > viewport.height + 1) {
+    problems.push(
+      `the site menu is not inside the viewport (${Math.round(box.left)}…${Math.round(box.right)} × ` +
+        `${Math.round(box.top)}…${Math.round(box.bottom)} of ${viewport.width}×${viewport.height})`,
+    );
+  }
+  if (measured.hostBottom !== null && box.top < measured.hostBottom - 1) {
+    problems.push(
+      `the site menu opens over its own header (top ${Math.round(box.top)}, header ends at ${Math.round(measured.hostBottom)})`,
+    );
+  }
+  if (measured.covered.length) {
+    problems.push(`something is painted over the open site menu: ${measured.covered.join('; ')}`);
+  }
+  if (!measured.focusInside) problems.push('opening the site menu did not move focus into it');
+
+  await page.keyboard.press('Escape');
+  // Five seconds, not two: once in a full-matrix run the 768 px scene reported
+  // the menu still open after 2 s, and four targeted runs of the same cell did
+  // not reproduce it — the software-GL render loop can hold the main thread
+  // that long under load. What this asks is whether Escape closes the menu,
+  // not how fast a starved runner delivers the key; if it recurs, the message
+  // below names what held focus and what else was open.
+  const closed = await page
+    .waitForFunction(() => !document.querySelector('.site-menu-panel:not([hidden])'), null, { timeout: 5000 })
+    .then(() => true, () => false);
+  if (!closed) {
+    // Say what had the key instead: another modal (the parts sheet has its own
+    // capture-phase Escape) or focus that had left the menu.
+    const state = await page.evaluate(() => {
+      const active = document.activeElement;
+      const modals = [...document.querySelectorAll('[aria-modal="true"]')]
+        .filter((node) => !node.classList.contains('site-menu-panel') && node.getClientRects().length)
+        .map((node) => node.className || node.tagName.toLowerCase());
+      return { active: active ? `${active.tagName.toLowerCase()}.${String(active.className).split(' ')[0]}` : 'none', modals };
+    });
+    problems.push(
+      `Escape did not close the site menu (focus on ${state.active}` +
+        `${state.modals.length ? `; also open: ${state.modals.join(', ')}` : ''})`,
+    );
+    // Closed by its own button, so the rest of this surface is measured as a
+    // reader would leave it.
+    await page.locator('.site-menu-close').first().click().catch(() => {});
+  }
+  else {
+    const focusBack = await page.evaluate(() => document.activeElement?.classList.contains('site-menu-trigger'));
+    if (!focusBack) problems.push('closing the site menu did not give focus back to its button');
+  }
+  return problems;
+}
+
 async function hideUiRoundTrip(page, { measureStillness = false } = {}) {
   const toggle = page.locator('#ui [data-control="hideUi"]');
   if ((await toggle.count()) !== 1) return { control: false };
@@ -2050,6 +2192,10 @@ try {
             elements: measured.belowIntent,
           });
         }
+
+        // Last of the interactions, because it moves focus and opens a modal:
+        // everything above has already measured the page as a reader finds it.
+        for (const problem of await checkSiteMenu(page)) problems.push(`${where}: ${problem}`);
 
         if (surface.needsRenderer && !measured.hasCanvas) {
           // Not a failure: a headless browser may have no GPU, and the product
