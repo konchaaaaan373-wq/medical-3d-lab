@@ -228,12 +228,16 @@ for (const slug of SLUGS) {
   if (await page.locator("#ui[data-layout='experiment']").count()) {
     const viewport = page.viewportSize();
     const outside = await page.evaluate(({ width, height }) => {
+      // Only one pad is shown at a time; the other is display:none and has no
+      // box. Skip undisplayed nodes, but insist that one pad is actually shown,
+      // or an empty selection would pass.
       const nodes = [
         ...document.querySelectorAll('.pad-area'),
         ...document.querySelectorAll('.pad-step'),
         ...document.querySelectorAll('.model-control-undo'),
         ...document.querySelectorAll(".metrics .metric.is-key"),
-      ];
+      ].filter((node) => node.getClientRects().length > 0);
+      if (!nodes.some((node) => node.classList.contains('pad-area'))) return ['no pad is displayed'];
       return nodes
         .map((node) => ({ node, rect: node.getBoundingClientRect() }))
         .filter(({ rect }) => !(rect.width > 0 && rect.top >= 0 && rect.bottom <= height && rect.left >= 0 && rect.right <= width))
