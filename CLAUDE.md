@@ -152,7 +152,8 @@ CLAUDE.md が禁じる「中身のない網羅」の、インフラ版です。
   空でなくなるとき）です。それ以外は出す
 
 ルーティングはハッシュ 1 本です。`#/<slug>` が 1 シーン、`#/organs`
-（別名 `#/explore`）が全身の Organ Explorer。ルートは `src/catalog/scenes.js`
+（別名 `#/explore`）が全身の Organ Explorer、`#/pathology` が病態モデルの一覧
+（機序シーンのパンくず「病態モデル ›」の戻り先。載るのは公開ゲートが開けたものだけ）。ルートは `src/catalog/scenes.js`
 から生成されるので、**シーンを増やしても routing に手を入れません**。
 
 ---

@@ -227,6 +227,40 @@ for (const slug of SLUGS) {
   // touched the page.
   if (await page.locator("#ui[data-layout='experiment']").count()) {
     const viewport = page.viewportSize();
+    // The console as cards (owner, 2026-09-26): both closed at first, so the
+    // first screen is the heart and its numbers. Closed means closed — no pad
+    // drawn — and the two headings and the headline figures in view. Then the
+    // conditions card is opened the way a reader opens it, and everything
+    // below is measured with it open.
+    const cardHead = (id) => page.locator(`details.console-card[data-card="${id}"] > summary`);
+    const cardIsOpen = (id) => page.locator(`details.console-card[data-card="${id}"]`).evaluate((node) => node.open);
+    const openCard = async (id) => {
+      if (!(await cardIsOpen(id))) await cardHead(id).click();
+      await page.waitForTimeout(500);
+    };
+    const hasCards = (await page.locator('details.console-card').count()) > 0;
+    if (hasCards) {
+      const closed = await page.evaluate(({ width, height }) => {
+        const found = [];
+        if (document.querySelector('details.console-card[open]')) found.push('a card is open before the reader opened one');
+        if ([...document.querySelectorAll('.pad-area')].some((node) => node.getClientRects().length > 0)) found.push('a pad is drawn while its card is closed');
+        const heads = [...document.querySelectorAll('details.console-card > summary')];
+        if (heads.length !== 2) found.push(`${heads.length} card headings, expected 2`);
+        for (const node of [...heads, ...document.querySelectorAll('.metrics .metric.is-key')]) {
+          const rect = node.getBoundingClientRect();
+          if (!(rect.width > 0 && rect.top >= 0 && rect.bottom <= height && rect.left >= 0 && rect.right <= width)) {
+            found.push(`“${node.textContent.trim().replace(/\s+/g, ' ').slice(0, 40)}” is not inside the first viewport`);
+          }
+          if (node.tagName === 'SUMMARY' && rect.height < 44) found.push(`card heading under 44 px (${Math.round(rect.height)})`);
+        }
+        return found;
+      }, viewport);
+      for (const line of closed) problems.push(`experiment layout, cards closed: ${line}`);
+      // One open at a time: opening "how it is shown" closes the conditions.
+      await openCard('view');
+      await openCard('conditions');
+      if (await cardIsOpen('view')) problems.push('experiment layout: opening one card left the other open');
+    }
     const outside = await page.evaluate(({ width, height }) => {
       // Only one pad is shown at a time; the other is display:none and has no
       // box. Skip undisplayed nodes, but insist that one pad is actually shown,
@@ -468,6 +502,23 @@ for (const slug of SLUGS) {
       await page.waitForTimeout(1500);
       const where = `${width}x${height}`;
 
+      // The screen a reader arrives at: both cards closed.
+      if (hasCards) {
+        if (await cardIsOpen('conditions')) await cardHead('conditions').click();
+        await page.waitForTimeout(1500);
+        const result = await covered();
+        if (result) {
+          if (result.hits.length) {
+            const text = `experiment layout ${where} with the cards closed: the model (${result.box.join(',')}) is covered by ${result.hits.join(', ')}`;
+            if (enforced) problems.push(text);
+            else console.log(`  ${slug}: ${text} [reported, not enforced — F-212]`);
+          }
+          console.log(`  ${slug}: ${where} with the cards closed: model drawn ${result.height}px tall, ventricle ${result.heart}px`);
+        }
+        await openCard('conditions');
+        await page.waitForTimeout(1000);
+      }
+
       const rest = await boxes();
       await step('heart', 'x', 'down').click();
       await page.waitForTimeout(400);
@@ -699,7 +750,8 @@ for (const slug of SLUGS) {
   const reset = (await consoleReset.count()) ? consoleReset : page.locator('.model-control-reset');
   if (!(await reset.count())) problems.push('no reset control');
   else {
-    await reset.first().click();
+    if (await consoleReset.count()) await reset.first().click();
+    else await pressConsoleControl(page, '.model-control-reset');
     // Long enough for a scene with a clock to wash out. COPD's trapped gas
     // leaves over several breaths, which is the physiology and not a failure
     // to reset: what has to be true is that it *does* leave.
@@ -761,7 +813,7 @@ for (const slug of SLUGS) {
     const firstStep = page.locator('.pad-step[data-direction="down"]').first();
     const madeChange = (await compareButton.first().isDisabled()) && (await firstStep.count());
     if (madeChange) {
-      await firstStep.click();
+      await pressConsoleControl(page, '.pad-step[data-direction="down"]');
       await page.waitForTimeout(1200);
     }
     await pressConsoleControl(page, 'button[data-control="compare"]');
@@ -798,7 +850,7 @@ for (const slug of SLUGS) {
     await pressConsoleControl(page, 'button[data-control="compare"]');
     await page.waitForTimeout(900);
     if (madeChange) {
-      await page.locator('.model-control-undo').click();
+      await pressConsoleControl(page, '.model-control-undo');
       await page.waitForTimeout(900);
     }
   }
@@ -958,7 +1010,7 @@ for (const slug of SLUGS) {
     if (await close.isVisible().catch(() => false)) await close.click();
     await page.waitForTimeout(1200);
     const reset = page.locator('.model-control-reset');
-    if (await reset.count()) await reset.first().click();
+    if (await reset.count()) await pressConsoleControl(page, '.model-control-reset');
     await page.waitForTimeout(1500);
     const back = await state();
     if (back.controls !== before.controls) {

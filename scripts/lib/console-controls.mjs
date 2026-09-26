@@ -16,6 +16,20 @@
  */
 export async function pressConsoleControl(page, selector) {
   const target = page.locator(selector).first();
+  // A console laid out as cards (the experiment layout) keeps its controls in
+  // a closed <details> until the reader opens it: open the one that holds this.
+  if (!(await target.isVisible().catch(() => false))) {
+    const card = await target
+      .evaluate((node) => {
+        const holder = node.closest('details.console-card');
+        return holder && !holder.open ? holder.dataset.card : null;
+      })
+      .catch(() => null);
+    if (card) {
+      await page.locator(`details.console-card[data-card="${card}"] > summary`).click();
+      await page.waitForTimeout(300);
+    }
+  }
   if (!(await target.isVisible().catch(() => false))) {
     const more = page.locator('button[data-control="more"]');
     if ((await more.count()) && (await more.first().isVisible().catch(() => false))) {

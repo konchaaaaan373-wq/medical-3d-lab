@@ -105,7 +105,7 @@ test('read-out: every row reads start → now with a signed change from the firs
   });
 });
 
-test('toolbar: the tools a scene names go behind "More"; the experiment stays in view', async () => {
+test('toolbar: the view tools are in the row (the view card), and only lesson, reel and image are behind "More"', async () => {
   await withDocument(async () => {
     const { createControlPanel } = await import('../src/components/ControlPanel.js');
     const { CardiacOutputScene } = await import(
@@ -139,14 +139,14 @@ test('toolbar: the tools a scene names go behind "More"; the experiment stays in
     const [menu] = findByClass(panel, 'console-more-menu');
     assert.ok(menu, 'the scene declares an overflow, so there is a menu');
     const inMenu = controlsOf(menu);
-    for (const id of ['zoomIn', 'zoomOut', 'frame', 'eye', 'reel', 'camera']) {
+    for (const id of ['learn', 'reel', 'camera']) {
       assert.ok(inMenu.has(id), `${id} is behind More`);
     }
-    // The comparison, the plots and the lessons are there for a reader who
-    // looks for them — not beside the experiment's one button at the same
-    // weight (owner's review, 2026-09-25).
-    for (const id of ['compare', 'data', 'learn']) {
-      assert.ok(inMenu.has(id), `${id} is behind More`);
+    // The ways of looking — the comparison, the plots, the camera, the
+    // display options — are what the view card is for (owner, 2026-09-26):
+    // one press to open the card, not two.
+    for (const id of ['compare', 'data', 'zoomIn', 'zoomOut', 'frame', 'eye']) {
+      assert.ok(!inMenu.has(id), `${id} is in the row, not behind More`);
     }
     const [row] = findByClass(panel, 'button-row');
     const inRow = new Set([...controlsOf(row)].filter((id) => !inMenu.has(id)));

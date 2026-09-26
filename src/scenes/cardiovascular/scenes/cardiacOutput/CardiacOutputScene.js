@@ -168,6 +168,14 @@ export class CardiacOutputScene {
     this.phase = 0;
     this.cardiacPhaseDriven = false;
     this.comparing = false;
+    /**
+     * How fast the beat is *shown*, 0 (held) to 1 (real time). Presentation
+     * only: the solved beat, the heart rate and every number are unchanged;
+     * only the clock the animation reads is scaled. A phase driven from
+     * outside (the reel) ignores it.
+     */
+    this.presentationBeatRate = 1;
+    this._presentationClock = 0;
 
     this.session = new ExperimentSession({ presetId: PRESET_IDS.REFERENCE });
 
@@ -308,7 +316,11 @@ export class CardiacOutputScene {
     this._applyOutlineShape();
   }
 
-  update(dt, elapsed) {
+  update(realDt, realElapsed) {
+    const rate = this.cardiacPhaseDriven ? 1 : this.presentationBeatRate;
+    const dt = realDt * rate;
+    this._presentationClock += dt;
+    const elapsed = this.cardiacPhaseDriven ? realElapsed : this._presentationClock;
     if (!this.cardiacPhaseDriven) {
       this.phase = advanceCardiacPhase(this.phase, dt, this.state.heartRatePerMin);
     }
@@ -883,6 +895,18 @@ export class CardiacOutputScene {
   /** @returns {number} 0..1 */
   getCardiacPhase() {
     return this.phase;
+  }
+
+  /**
+   * How fast the beat is shown (see the constructor). Clamped to 0..1: the
+   * view may slow the beat down or hold it, never run it faster than the rate
+   * the model solved.
+   *
+   * @param {number} rate
+   */
+  setPresentationBeatRate(rate) {
+    const value = Number(rate);
+    this.presentationBeatRate = Number.isFinite(value) ? Math.min(1, Math.max(0, value)) : 1;
   }
 
   /** @param {boolean} driven */

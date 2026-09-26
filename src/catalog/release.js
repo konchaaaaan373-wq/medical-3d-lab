@@ -1443,7 +1443,7 @@ export const CRAWLABLE_SCENES = SCENES.filter(
  * prototype the beta is holding back. It stays reachable to a developer through
  * the unlock below.
  */
-const RELEASED_ROUTE_KINDS = new Set(['landing', 'explorer', 'trust', 'legal']);
+const RELEASED_ROUTE_KINDS = new Set(['landing', 'explorer', 'pathology', 'trust', 'legal']);
 
 /**
  * @param {{kind:string, sceneId?:string}} route a `resolveRoute` result

@@ -48,6 +48,8 @@ const ROUTE_ELEMENT_STATE = Object.freeze({
   landing: 'landing',
   explorer: 'explorer',
   lab: 'explorer',
+  // A list of models, like the explorer, and on the explorer's ground.
+  pathology: 'explorer',
   trust: 'trust',
   legal: 'legal',
 });
@@ -57,6 +59,7 @@ const TELEMETRY_SURFACE = Object.freeze({
   landing: 'landing',
   explorer: 'explorer',
   lab: 'lab',
+  pathology: 'explorer',
   trust: 'trust',
   legal: 'landing',
   locked: 'landing',
@@ -164,6 +167,9 @@ export async function mountDocumentSurface({
     const { createTrust } = await import('./Trust.js');
     surface = await createTrust({ ui, accountButton, focusId: route.focusId ?? null });
     trustOpened = true;
+  } else if (kind === 'pathology') {
+    const { createPathologyIndex } = await import('./PathologyIndex.js');
+    surface = createPathologyIndex({ ui, accountButton });
   } else if (kind === 'legal') {
     const { createLegal } = await import('./Legal.js');
     surface = createLegal({ ui, docId: route.docId, accountButton });
