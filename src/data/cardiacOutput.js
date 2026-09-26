@@ -266,19 +266,53 @@ export const MODEL_CONTROLS = {
 };
 
 /**
- * Which console buttons are the experiment and which are the rest.
+ * The console as two cards the reader opens: one that changes the condition
+ * (the model's inputs) and one that changes how it is seen (the animation's
+ * speed, the comparison, the camera, the plots). Both start closed, so the
+ * first screen is the heart and its numbers (owner's review, 2026-09-26).
  *
- * Kept in view: the comparison with where this state started, the loop and
- * waveform, and the lessons — the three things that are about the question.
- * Behind "More": the camera, the display options, the reel and the image
- * export, which serve other purposes and were competing with the choices at
- * the same weight.
+ * Keeping "change the model" and "change the view" in different cards is the
+ * point: a reader should not have to work out whether a button moved the
+ * physiology or only the picture.
+ *
+ * `overflow` is what stays behind "More" inside the view card — the lessons,
+ * the reel and the image export.
  */
 export const CONSOLE_LAYOUT = {
-  // The comparison, the plots and the lessons are there for a reader who
-  // wants them, one press away — not beside the experiment's one button at
-  // the same weight (owner's review, 2026-09-25).
-  overflow: ['compare', 'data', 'learn', 'zoom', 'inspection', 'reel', 'capture'],
+  overflow: ['learn', 'reel', 'capture'],
+  cards: {
+    conditions: {
+      title: 'Change the conditions',
+      titleJa: '条件を変える',
+      // Closed and nothing moved: what is inside. The changed state is built
+      // from the controls themselves (App.js).
+      summary: 'Contractility, rate, filling, resistance',
+      summaryJa: '収縮力・心拍数・充満量・抵抗',
+      changedPrefix: 'Changed:',
+      changedPrefixJa: '変更中：',
+    },
+    view: {
+      title: 'How it is shown',
+      titleJa: '見え方',
+      summary: 'Beat speed, comparison, camera, plots',
+      summaryJa: '拍動の速さ・比較・視点・グラフ',
+    },
+  },
+  /**
+   * How fast the beat is shown. Presentation only — the heart rate, the
+   * solved beat and every number stay as they are (`setPresentationBeatRate`).
+   */
+  beatRates: {
+    label: 'Beat shown at',
+    labelJa: '拍動の表示',
+    note: 'Display only; the heart rate and results do not change.',
+    noteJa: '表示だけの速さです。心拍数と計算結果は変わりません。',
+    options: [
+      { id: 'normal', rate: 1, label: 'Normal', labelJa: '通常' },
+      { id: 'slow', rate: 0.25, label: '¼ speed', labelJa: '1/4の速さ' },
+      { id: 'hold', rate: 0, label: 'Hold', labelJa: '止める' },
+    ],
+  },
 };
 
 export const COMPARISON_LABEL = {

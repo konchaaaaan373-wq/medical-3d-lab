@@ -33,6 +33,7 @@ import { inLanguage, onLanguageChange } from '../utils/language.js';
 import { prefersReducedMotion } from '../utils/motion.js';
 import { markScrollable, publishHeight } from '../utils/scrollHint.js';
 import { createTitleCard } from '../components/TitleCard.js';
+import { createBeatRateControl, createConsoleCard, createConsoleCards } from '../components/ConsoleCards.js';
 import { createLegend } from '../components/Legend.js';
 import { createStageReadout, stageIndexFor } from '../components/StageReadout.js';
 import { createControlPanel } from '../components/ControlPanel.js';
@@ -1184,8 +1185,12 @@ export async function createApp({ stage, ui, onRetryModel = null }) {
       })
     : null;
 
+  /** The experiment layout's two console cards, once they are built (below). */
+  let consoleCards = null;
+
   /** Everything that reads back off the model after it is re-solved. */
   function refreshModelReadouts() {
+    refreshConsoleCards();
     // A scene may say when a comparison has something to show (cardiac output:
     // only once the condition differs from where it started). With nothing to
     // compare the button is disabled, and a comparison already open closes.
@@ -1311,11 +1316,70 @@ export async function createApp({ stage, ui, onRetryModel = null }) {
     markScrollable(inspectionPanel.element);
   }
 
-  const consoleElement = el('div', { class: 'panel console' }, [
+  /**
+   * The experiment layout's console as two cards the reader opens: the
+   * conditions (the model's inputs) and how they are shown (the beat's speed,
+   * the comparison, the camera, the plots). Both start closed. The same nodes
+   * with the same listeners are moved into them — nothing is rebuilt — and
+   * what is left of the control panel is the notice, which stays in view.
+   */
+  const cardCopy = meta.console?.cards;
+  consoleCards = cardCopy && controlsInConsole && modelControls
+    ? (() => {
+        const beatRate = meta.console.beatRates && scene.setPresentationBeatRate
+          ? createBeatRateControl({
+              copy: meta.console.beatRates,
+              onChange: (rate) => {
+                scene.setPresentationBeatRate(rate);
+                refreshConsoleCards();
+              },
+            })
+          : null;
+        const conditions = createConsoleCard({ id: 'conditions', copy: cardCopy.conditions, body: [modelControls.element] });
+        const shown = createConsoleCard({
+          id: 'view',
+          copy: cardCopy.view,
+          body: [beatRate?.element, controlPanel.element.querySelector('.button-row')],
+        });
+        return { ...createConsoleCards([conditions, shown]), conditions, shown, beatRate };
+      })()
+    : null;
+
+  /** The closed cards' second line: what is inside, or what is changed. */
+  function refreshConsoleCards() {
+    if (!consoleCards) return;
+    const { conditions: copy } = cardCopy;
+    const moved = (scene.getModelControls?.() ?? [])
+      .filter((control) => control.pad && Number.isFinite(control.start) && Math.abs(control.value - control.start) > 1e-9)
+      .map((control) => ({
+        en: `${control.short ?? control.label}${control.value > control.start ? '↑' : '↓'}`,
+        ja: `${control.shortJa ?? control.labelJa}${control.value > control.start ? '↑' : '↓'}`,
+      }));
+    if (moved.length) {
+      consoleCards.conditions.setState(
+        `${copy.changedPrefix} ${moved.map((entry) => entry.en).join(', ')}`,
+        `${copy.changedPrefixJa}${moved.map((entry) => entry.ja).join('・')}`
+      );
+    } else {
+      consoleCards.conditions.setState(null, null);
+    }
+    const rateOption = meta.console.beatRates?.options.find((option) => option.id === consoleCards.beatRate?.value);
+    const states = [
+      rateOption && rateOption.rate !== 1 ? { en: rateOption.label, ja: rateOption.labelJa } : null,
+      comparing ? { en: meta.comparison?.label ?? 'Comparing', ja: meta.comparison?.labelJa ?? '比較中' } : null,
+    ].filter(Boolean);
+    if (states.length) {
+      consoleCards.shown.setState(states.map((entry) => entry.en).join(', '), states.map((entry) => entry.ja).join('・'));
+    } else {
+      consoleCards.shown.setState(null, null);
+    }
+  }
+
+  const consoleElement = el('div', { class: `panel console${consoleCards ? ' has-cards' : ''}` }, [
     stageReadout.element,
     causalStory?.element,
     learningPanel?.element,
-    controlsInConsole ? modelControls?.element : null,
+    consoleCards ? consoleCards.element : controlsInConsole ? modelControls?.element : null,
     controlPanel.element,
   ]);
   // The experiment layout keeps its secondary tools in one place, "More". The

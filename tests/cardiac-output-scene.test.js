@@ -989,3 +989,42 @@ test('the framing box depends on the screen’s shape only, never on an input; p
     assert.equal(top(), tall, `${id} moved the framing box`);
   }
 });
+
+test('the beat can be shown slower or held, and nothing the model says changes', async () => {
+  const scene = await buildScene();
+  const before = JSON.stringify(scene.getMetrics());
+  const rate = scene.state.heartRatePerMin;
+
+  scene.setCardiacPhase(0.1);
+  scene.update(0.2, 1);
+  const moved = scene.getCardiacPhase() - 0.1;
+  assert.ok(moved > 0, 'at the normal rate the beat advances');
+
+  scene.setPresentationBeatRate(0.25);
+  scene.setCardiacPhase(0.1);
+  scene.update(0.2, 1.2);
+  assert.ok(Math.abs(scene.getCardiacPhase() - 0.1 - moved / 4) < 1e-9, 'a quarter of the speed is a quarter of the advance');
+
+  scene.setPresentationBeatRate(0);
+  scene.setCardiacPhase(0.1);
+  scene.update(0.2, 1.4);
+  assert.equal(scene.getCardiacPhase(), 0.1, 'held is held');
+
+  // Presentation only: the rate, the solved beat and every figure stay put.
+  assert.equal(scene.state.heartRatePerMin, rate);
+  assert.equal(JSON.stringify(scene.getMetrics()), before);
+
+  // Never faster than the model's own rate, and nonsense is the normal rate.
+  scene.setPresentationBeatRate(4);
+  assert.equal(scene.presentationBeatRate, 1);
+  scene.setPresentationBeatRate('fast');
+  assert.equal(scene.presentationBeatRate, 1);
+
+  // A phase driven from outside (the reel) is not slowed by the view.
+  scene.setPresentationBeatRate(0);
+  scene.setCardiacPhaseDriven(true);
+  scene.setCardiacPhase(0.3);
+  scene.update(0.2, 1.6);
+  assert.equal(scene.getCardiacPhase(), 0.3);
+  scene.setCardiacPhaseDriven(false);
+});

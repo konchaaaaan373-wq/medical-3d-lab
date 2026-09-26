@@ -39,6 +39,40 @@
   margin-top: 2px;
 }
 
+/* "病態モデル › 心拍出量" on one line, not a card: where the reader is, and the
+   way back. The model is the subject, so the corner stays light. */
+#ui[data-layout='experiment'] .title-card.has-trail {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  column-gap: 6px;
+  padding: 4px 2px;
+  border: 0;
+  background: none;
+  box-shadow: none;
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+}
+
+#ui[data-layout='experiment'] .title-card.has-trail .title-trail {
+  margin: 0;
+  font-size: 14px;
+}
+
+#ui[data-layout='experiment'] .title-card.has-trail .title,
+#ui[data-layout='experiment'] .title-card.has-trail .title-ja {
+  margin: 0;
+  font-size: 20px;
+  font-weight: 700;
+  line-height: 1.3;
+  color: var(--ink);
+  white-space: nowrap;
+}
+
+#ui[data-layout='experiment'] .title-card.has-trail > .title-trust-fold {
+  flex-basis: 100%;
+}
+
 #ui[data-layout='experiment'] .title-trust-summary {
   list-style: none;
   cursor: pointer;
@@ -1042,6 +1076,23 @@
     flex-basis: 100%;
   }
 
+  /* One row on a phone: the trail and the title at the left, "根拠と限界" at
+     the right. */
+  #ui[data-layout='experiment'] .title-card.has-trail {
+    justify-content: flex-start;
+    padding: 0 2px;
+  }
+
+  #ui[data-layout='experiment'] .title-card.has-trail .title,
+  #ui[data-layout='experiment'] .title-card.has-trail .title-ja {
+    font-size: 17px;
+  }
+
+  #ui[data-layout='experiment'] .title-card.has-trail > .title-trust-fold {
+    flex-basis: auto;
+    margin: 0 0 0 auto;
+  }
+
   /* The read-out stands directly on the console: what moved is read right
      above the chip that moved it, and the heart has the top of the screen. */
   #ui[data-layout='experiment'] .rail {
@@ -1191,7 +1242,7 @@
      heart's band — never the other way round
      (docs/pathology-interaction-principles.md). */
   #ui[data-layout='experiment'] .model-control.is-pad {
-    --pad-h: clamp(88px, calc(100dvh - 580px), 170px);
+    --pad-h: clamp(88px, calc(100dvh - 650px), 150px);
   }
 
   #ui[data-layout='experiment'] .model-control-undo-long {
@@ -1292,5 +1343,313 @@
 
   #ui[data-layout='experiment'] .metrics.has-compact .metric:not(.is-qualitative) .metric-reference {
     display: none;
+  }
+}
+
+/* ---------- the console as two cards (App.js, ConsoleCards.js) ----------
+   "条件を変える" and "見え方", both closed at first: the first screen is the
+   heart and its numbers. One panel with two rows, not two cards inside a
+   card — the rows are separated by a hairline, and an open row's contents
+   hang under its own heading. One row open at a time. */
+#ui#ui[data-layout='experiment'] .console.has-cards {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 6px;
+}
+
+#ui[data-layout='experiment'] .console-cards {
+  display: flex;
+  flex-direction: column;
+}
+
+#ui[data-layout='experiment'] .console-card + .console-card {
+  border-top: 1px solid rgba(167, 182, 206, 0.16);
+}
+
+#ui[data-layout='experiment'] .console-card-head {
+  list-style: none;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-height: 52px;
+  padding: 6px 2px;
+  cursor: pointer;
+  border-radius: 8px;
+}
+
+#ui[data-layout='experiment'] .console-card-head::-webkit-details-marker {
+  display: none;
+}
+
+#ui[data-layout='experiment'] .console-card-head:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+#ui[data-layout='experiment'] .console-card-text {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+#ui[data-layout='experiment'] .console-card-title {
+  font-size: 15px;
+  font-weight: 650;
+  color: var(--ink);
+  line-height: 1.3;
+}
+
+#ui[data-layout='experiment'] .console-card-summary {
+  font-size: 12px;
+  color: var(--ink-dim);
+  line-height: 1.35;
+}
+
+/* The closed line: what the card holds, or — once there is one — its state
+   ("変更中：収縮力↑", "1/4の速さ"). An open card needs neither. */
+#ui[data-layout='experiment'] .console-card-summary-state,
+#ui[data-layout='experiment'] .console-card[data-state] .console-card-summary-default,
+#ui[data-layout='experiment'] .console-card[open] .console-card-summary {
+  display: none;
+}
+
+#ui[data-layout='experiment'] .console-card[data-state] .console-card-summary-state {
+  display: inline;
+}
+
+/* Beside the read-out (desktop), the read-out's first line already names the
+   changed inputs, so the conditions card keeps saying what it holds rather
+   than saying the same thing a second time. On a phone the read-out is only
+   numbers, and the card is where the changed state is said. */
+@media (min-width: 601px) {
+  #ui[data-layout='experiment'] .console-card[data-card='conditions'][data-state] .console-card-summary-default {
+    display: inline;
+  }
+
+  #ui[data-layout='experiment'] .console-card[data-card='conditions'][data-state] .console-card-summary-state {
+    display: none;
+  }
+}
+
+/* A plain chevron: down when closed, up when open. */
+#ui[data-layout='experiment'] .console-card-chevron {
+  flex: 0 0 auto;
+  width: 9px;
+  height: 9px;
+  margin: 0 8px 4px 0;
+  border-right: 1.5px solid var(--ink-dim);
+  border-bottom: 1.5px solid var(--ink-dim);
+  transform: rotate(45deg);
+  transition: transform 160ms ease;
+}
+
+#ui[data-layout='experiment'] .console-card[open] .console-card-chevron {
+  margin-bottom: -4px;
+  transform: rotate(-135deg);
+}
+
+#ui[data-layout='experiment'] .console-card-head:hover .console-card-title {
+  color: var(--accent-hover, var(--accent));
+}
+
+#ui[data-layout='experiment'] .console-card-body {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 2px 0 12px;
+}
+
+/* The actions no longer share their line with "More" (it is in the view
+   card now). */
+#ui[data-layout='experiment'] .console.has-cards .model-control-actions {
+  padding-right: 0;
+}
+
+/* The view card: the beat's speed, then the view tools in one wrapping row. */
+#ui[data-layout='experiment'] .console-card-body > .button-row {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-start;
+  gap: 6px;
+}
+
+#ui[data-layout='experiment'] .beat-rate {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+#ui[data-layout='experiment'] .beat-rate-label {
+  font-size: 12px;
+  color: var(--ink-dim);
+}
+
+#ui[data-layout='experiment'] .beat-rate-options {
+  display: flex;
+  gap: 6px;
+}
+
+#ui[data-layout='experiment'] .beat-rate-option {
+  flex: 1 1 0;
+  min-height: 44px;
+  padding: 0 10px;
+  border-radius: 10px;
+  border: 1px solid rgba(167, 182, 206, 0.24);
+  background: rgba(255, 255, 255, 0.03);
+  color: var(--ink);
+  font-size: 13px;
+  cursor: pointer;
+}
+
+#ui[data-layout='experiment'] .beat-rate-option[aria-pressed='true'] {
+  border-color: var(--accent-border);
+  background: var(--accent-soft);
+  color: var(--ink);
+  font-weight: 600;
+}
+
+#ui[data-layout='experiment'] .beat-rate-note {
+  margin: 0;
+  font-size: 12px;
+  color: var(--ink-faint);
+}
+
+/* On a phone the heart's band is what an open card costs. So while one card
+   is open, its heading drops the second line, and the other card folds into a
+   small button on the same line — still one tap away, but no longer a row of
+   its own. Closed, both keep their two lines. */
+@media (max-width: 600px) {
+  #ui[data-layout='experiment'] .console-cards {
+    position: relative;
+  }
+
+  /* The open heading row: its name at the left, the other card's button,
+     then the chevron at the right edge (a 48 px close target). */
+  #ui[data-layout='experiment'] .console-cards:has(> .console-card[open]) > .console-card[open] > .console-card-head {
+    min-height: 44px;
+    padding-right: 0;
+  }
+
+  #ui[data-layout='experiment'] .console-cards:has(> .console-card[open]) > .console-card[open] .console-card-chevron {
+    margin-right: 17px;
+  }
+
+  #ui[data-layout='experiment'] .console-cards:has(> .console-card[open]) > .console-card {
+    border-top: 0;
+  }
+
+  #ui[data-layout='experiment'] .console-cards:has(> .console-card[open]) .console-card-summary {
+    display: none;
+  }
+
+  #ui[data-layout='experiment'] .console-cards:has(> .console-card[open]) > .console-card:not([open]) {
+    position: absolute;
+    top: 0;
+    right: 52px;
+    border-top: 0;
+  }
+
+  #ui[data-layout='experiment'] .console-cards:has(> .console-card[open]) > .console-card:not([open]) > .console-card-head {
+    min-height: 44px;
+    padding: 0 12px;
+    border: 1px solid rgba(167, 182, 206, 0.3);
+    border-radius: 10px;
+  }
+
+  #ui[data-layout='experiment'] .console-cards:has(> .console-card[open]) > .console-card:not([open]) .console-card-title {
+    font-size: 13px;
+    font-weight: 600;
+  }
+
+  #ui[data-layout='experiment'] .console-cards:has(> .console-card[open]) > .console-card:not([open]) .console-card-chevron {
+    display: none;
+  }
+
+  #ui[data-layout='experiment'] .console-card-body {
+    padding-bottom: 6px;
+  }
+}
+
+/* …and the conditions card's own heading row is where its pad switcher
+   stands while it is open: the heading's name stays for assistive technology
+   (visually hidden), the chevron and the view card's button stay on the
+   right, and the switcher takes the rest of the line. Measured at 390×664:
+   the row the heading had cost the ventricle 77 → 49 px. */
+@media (min-width: 360px) and (max-width: 600px) {
+  #ui[data-layout='experiment'] .console-card[data-card='conditions'][open] .console-card-body,
+  #ui[data-layout='experiment'] .console-card[data-card='conditions'][open] .model-controls,
+  #ui[data-layout='experiment'] .console-card[data-card='conditions'][open] .model-control-list,
+  #ui[data-layout='experiment'] .console-card[data-card='conditions'][open] .pad-set {
+    position: static;
+  }
+
+  #ui[data-layout='experiment'] .console-card[data-card='conditions'][open] > .console-card-head .console-card-text {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip: rect(0 0 0 0);
+    clip-path: inset(50%);
+    white-space: nowrap;
+  }
+
+  /* The heading row is the close target: its right 48 px, with the chevron. */
+  #ui#ui[data-layout='experiment'] .console-card[data-card='conditions'][open] > .console-card-head {
+    justify-content: flex-end;
+    padding-right: 0;
+  }
+
+  #ui[data-layout='experiment'] .console-card[data-card='conditions'][open] .console-card-chevron {
+    margin-right: 17px;
+  }
+
+  #ui[data-layout='experiment'] .console-card[data-card='conditions'][open] .pad-switcher {
+    position: absolute;
+    z-index: 1;
+    top: 0;
+    left: 0;
+    right: 48px;
+    margin: 0;
+  }
+
+  /* While the conditions are open the view card steps out of this row
+     entirely — two tabs, a close target and a third button do not fit a
+     phone's line without clipping the tabs' values. Closing the card brings
+     it back. */
+  #ui[data-layout='experiment'] .console-cards:has(> .console-card[data-card='conditions'][open]) > .console-card[data-card='view'] {
+    display: none;
+  }
+}
+
+/* In the heading row the two tabs share the line with the close target, so
+   their values get the room the padding and the gap had: at 375 px a
+   three-digit rate ("心拍 100↑") was cut to "心拍 1…". */
+@media (min-width: 360px) and (max-width: 600px) {
+  #ui[data-layout='experiment'] .console-card[data-card='conditions'][open] .pad-switcher {
+    gap: 4px;
+  }
+
+  #ui[data-layout='experiment'] .console-card[data-card='conditions'][open] .pad-switch {
+    padding: 3px 5px;
+  }
+
+  #ui[data-layout='experiment'] .console-card[data-card='conditions'][open] .pad-switch-summary {
+    letter-spacing: -0.03em;
+  }
+}
+
+/* Under 360 px even a whole row does not hold both tabs' values at the ends
+   of their ranges (320 px: "収縮 4.00↑ 心拍 110↑" cut). The values wrap to a
+   second line rather than being cut — and the second line is always
+   reserved, so a value that grows a digit never moves the controls under
+   the reader's finger (verify:disease measures them before and after). */
+@media (max-width: 359px) {
+  #ui[data-layout='experiment'] .pad-switch-summary {
+    white-space: normal;
+    overflow: visible;
+    height: 32px;
   }
 }

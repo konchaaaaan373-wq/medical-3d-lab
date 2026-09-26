@@ -293,6 +293,43 @@ supports is refusing to publish the reduction.
 
 **Catalog status:** `alpha`
 
+### Screen, 2026-09-26 — where the reader is, and a console that starts closed
+
+Not a model revision: the solver, its inputs, their ranges and the pads are
+unchanged.
+
+- **Breadcrumb.** The corner reads 「病態モデル › 心拍出量」. 「病態モデル」 is a
+  link to `#/pathology`, a list of the scenes the catalogue puts in that
+  category (`src/catalog/pathologyModels.js`: a mechanism level other than
+  `none`, or a disease). Which of them are listed is the release gate's
+  decision; the list does not publish anything.
+- **Two cards, closed at first.** 「条件を変える」 holds the pads, the one-axis
+  controls, undo, 「開始時に戻す」 and 「開始状態・介入」. 「見え方」 holds the
+  beat's display speed, the comparison, the plots, the camera and the display
+  options, with the lesson, the reel and the image export behind 「その他」.
+  Changing the model and changing the view are in different cards so that a
+  reader does not have to work out which a button did. One card is open at a
+  time. Closed, each says what it holds; the conditions card says which inputs
+  have moved from the start (「変更中：収縮力↓・心拍数↑」). The headline figures
+  and the notice stay in view with both closed.
+- **Beat display speed** (通常・1/4の速さ・止める) is presentation only
+  (`setPresentationBeatRate`): the heart rate, the solved beat and every figure
+  are unchanged, and the card says so. It can only slow or hold the beat, never
+  run it faster than the model's rate. **It can mislead** in one way: at 1/4
+  speed the heart visibly beats slower than the 70 /min the pad shows — the
+  note under the buttons is the only thing that says why.
+- **Phone.** An open card must not cost the heart a row: with the conditions
+  open, the pad switcher stands in the card's own heading row (the heading's
+  name stays for assistive technology) beside a 44 px close target, and the
+  view card's heading steps out until the conditions are closed. With the view
+  card open, its heading drops its second line and the conditions become a
+  small button on the same row. The pad on a phone is at most 150 px tall (was
+  170). Measured sizes are in F-213.
+
+Not yet known: whether first-time readers find the conditions behind a closed
+card (the heading is the only cue), and how the open card behaves on a real
+phone (F-212).
+
 ### Screen, 2026-09-25 (3) — two pads for four inputs (a prototype)
 
 Not a model revision: the solver, its inputs and their ranges are unchanged.
