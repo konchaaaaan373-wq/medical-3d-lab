@@ -506,7 +506,7 @@ for (const slug of SLUGS) {
     const desktopSize = page.viewportSize();
     for (const [width, height, enforced] of [
       [1440, 900, true], [1280, 720, true], [1024, 768, true],
-      [430, 932, true], [390, 844, true], [390, 664, true], [375, 667, true], [375, 553, false],
+      [430, 932, true], [390, 844, true], [390, 664, true], [375, 667, true], [375, 553, false], [320, 568, false],
     ]) {
       await page.setViewportSize({ width, height });
       await page.waitForTimeout(1500);
@@ -576,6 +576,26 @@ for (const slug of SLUGS) {
           problems.push(`experiment layout ${where}: the ventricle is drawn ${result.heart}px tall while the pad is in use (floor ${floor}px)`);
         }
       }
+      // The switcher's values at both ends of every range: the tabs share a
+      // phone's line with the close target, and a value cut to "心拍 1…" is a
+      // value the reader cannot read (owner, 2026-09-26: no clipped values).
+      for (const key of ['End', 'Home']) {
+        for (const padId of ['heart', 'circulation']) {
+          await showPad(padId);
+          for (const axis of ['x', 'y']) {
+            await pad(padId).locator(`.pad-range-${axis}`).focus();
+            await page.keyboard.press(key);
+            await page.waitForTimeout(120);
+          }
+        }
+        const clipped = await page.evaluate(() =>
+          [...document.querySelectorAll('.pad-switch-summary, .pad-switch-name')]
+            .filter((node) => node.checkVisibility() && node.scrollWidth > node.clientWidth + 1)
+            .map((node) => node.textContent.trim())
+        );
+        for (const line of clipped) problems.push(`experiment layout ${where}: the switcher cuts “${line}” (every range at its ${key === 'End' ? 'maximum' : 'minimum'})`);
+      }
+      await showPad('heart');
       await choose('reference');
       await page.waitForTimeout(600);
     }

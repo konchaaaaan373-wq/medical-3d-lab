@@ -27,7 +27,14 @@ const dual = (en, ja) => [
  * @param {{id: string, copy: {title: string, titleJa: string, summary?: string, summaryJa?: string}, body: (Node|null|undefined)[]}} options
  */
 export function createConsoleCard({ id, copy, body }) {
-  const summaryLine = el('span', { class: 'console-card-summary' }, dual(copy.summary, copy.summaryJa));
+  // Two parts: what the card holds (always true), and what state it is in
+  // (only when there is one). Which of them shows where is the stylesheet's:
+  // a layout whose read-out already names the changed inputs keeps the first.
+  const stateLine = el('span', { class: 'console-card-summary-state' });
+  const summaryLine = el('span', { class: 'console-card-summary' }, [
+    el('span', { class: 'console-card-summary-default' }, dual(copy.summary, copy.summaryJa)),
+    stateLine,
+  ]);
   const element = el('details', { class: 'console-card', dataset: { card: id } }, [
     el('summary', { class: 'console-card-head' }, [
       el('span', { class: 'console-card-text' }, [
@@ -40,9 +47,15 @@ export function createConsoleCard({ id, copy, body }) {
   ]);
   return {
     element,
-    /** Replace the closed line. Same words in both states, only the state changes. */
-    setSummary(en, ja) {
-      summaryLine.replaceChildren(...dual(en, ja));
+    /** The card's current state for its closed line, or nothing (`null`). */
+    setState(en, ja) {
+      if (en == null && ja == null) {
+        stateLine.replaceChildren();
+        delete element.dataset.state;
+        return;
+      }
+      stateLine.replaceChildren(...dual(en, ja));
+      element.dataset.state = '';
     },
     get open() {
       return element.open;

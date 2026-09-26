@@ -1348,7 +1348,7 @@ export async function createApp({ stage, ui, onRetryModel = null }) {
   /** The closed cards' second line: what is inside, or what is changed. */
   function refreshConsoleCards() {
     if (!consoleCards) return;
-    const { conditions: copy, view: viewCopy } = cardCopy;
+    const { conditions: copy } = cardCopy;
     const moved = (scene.getModelControls?.() ?? [])
       .filter((control) => control.pad && Number.isFinite(control.start) && Math.abs(control.value - control.start) > 1e-9)
       .map((control) => ({
@@ -1356,22 +1356,23 @@ export async function createApp({ stage, ui, onRetryModel = null }) {
         ja: `${control.shortJa ?? control.labelJa}${control.value > control.start ? '↑' : '↓'}`,
       }));
     if (moved.length) {
-      consoleCards.conditions.setSummary(
+      consoleCards.conditions.setState(
         `${copy.changedPrefix} ${moved.map((entry) => entry.en).join(', ')}`,
         `${copy.changedPrefixJa}${moved.map((entry) => entry.ja).join('・')}`
       );
     } else {
-      consoleCards.conditions.setSummary(copy.summary, copy.summaryJa);
+      consoleCards.conditions.setState(null, null);
     }
     const rateOption = meta.console.beatRates?.options.find((option) => option.id === consoleCards.beatRate?.value);
     const states = [
       rateOption && rateOption.rate !== 1 ? { en: rateOption.label, ja: rateOption.labelJa } : null,
       comparing ? { en: meta.comparison?.label ?? 'Comparing', ja: meta.comparison?.labelJa ?? '比較中' } : null,
     ].filter(Boolean);
-    consoleCards.shown.setSummary(
-      states.length ? states.map((entry) => entry.en).join(', ') : viewCopy.summary,
-      states.length ? states.map((entry) => entry.ja).join('・') : viewCopy.summaryJa
-    );
+    if (states.length) {
+      consoleCards.shown.setState(states.map((entry) => entry.en).join(', '), states.map((entry) => entry.ja).join('・'));
+    } else {
+      consoleCards.shown.setState(null, null);
+    }
   }
 
   const consoleElement = el('div', { class: `panel console${consoleCards ? ' has-cards' : ''}` }, [

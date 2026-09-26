@@ -83,7 +83,7 @@ function card(scene) {
   return el('a', { class: 'explorer-scene', href: sceneRoute(scene), dataset: { scene: scene.id } }, [
     el('span', { class: 'explorer-scene-kicker' }, [
       status?.badge
-        ? el('span', { class: `status-badge is-${scene.status}`, title: status.note }, [
+        ? el('span', { class: `status-badge is-${scene.status}`, title: inLanguage(status.note, status.noteJa ?? status.note) }, [
             el('span', { class: 'lang-en', text: status.label }),
             el('span', { class: 'lang-ja', text: status.labelJa }),
           ])

@@ -1408,6 +1408,32 @@
   line-height: 1.35;
 }
 
+/* The closed line: what the card holds, or — once there is one — its state
+   ("変更中：収縮力↑", "1/4の速さ"). An open card needs neither. */
+#ui[data-layout='experiment'] .console-card-summary-state,
+#ui[data-layout='experiment'] .console-card[data-state] .console-card-summary-default,
+#ui[data-layout='experiment'] .console-card[open] .console-card-summary {
+  display: none;
+}
+
+#ui[data-layout='experiment'] .console-card[data-state] .console-card-summary-state {
+  display: inline;
+}
+
+/* Beside the read-out (desktop), the read-out's first line already names the
+   changed inputs, so the conditions card keeps saying what it holds rather
+   than saying the same thing a second time. On a phone the read-out is only
+   numbers, and the card is where the changed state is said. */
+@media (min-width: 601px) {
+  #ui[data-layout='experiment'] .console-card[data-card='conditions'][data-state] .console-card-summary-default {
+    display: inline;
+  }
+
+  #ui[data-layout='experiment'] .console-card[data-card='conditions'][data-state] .console-card-summary-state {
+    display: none;
+  }
+}
+
 /* A plain chevron: down when closed, up when open. */
 #ui[data-layout='experiment'] .console-card-chevron {
   flex: 0 0 auto;
@@ -1500,9 +1526,19 @@
     position: relative;
   }
 
+  /* The open heading row: its name at the left, the other card's button,
+     then the chevron at the right edge (a 48 px close target). */
   #ui[data-layout='experiment'] .console-cards:has(> .console-card[open]) > .console-card[open] > .console-card-head {
     min-height: 44px;
-    padding-right: 120px;
+    padding-right: 0;
+  }
+
+  #ui[data-layout='experiment'] .console-cards:has(> .console-card[open]) > .console-card[open] .console-card-chevron {
+    margin-right: 17px;
+  }
+
+  #ui[data-layout='experiment'] .console-cards:has(> .console-card[open]) > .console-card {
+    border-top: 0;
   }
 
   #ui[data-layout='experiment'] .console-cards:has(> .console-card[open]) .console-card-summary {
@@ -1512,7 +1548,7 @@
   #ui[data-layout='experiment'] .console-cards:has(> .console-card[open]) > .console-card:not([open]) {
     position: absolute;
     top: 0;
-    right: 36px;
+    right: 52px;
     border-top: 0;
   }
 
@@ -1542,7 +1578,7 @@
    (visually hidden), the chevron and the view card's button stay on the
    right, and the switcher takes the rest of the line. Measured at 390×664:
    the row the heading had cost the ventricle 77 → 49 px. */
-@media (max-width: 600px) {
+@media (min-width: 360px) and (max-width: 600px) {
   #ui[data-layout='experiment'] .console-card[data-card='conditions'][open] .console-card-body,
   #ui[data-layout='experiment'] .console-card[data-card='conditions'][open] .model-controls,
   #ui[data-layout='experiment'] .console-card[data-card='conditions'][open] .model-control-list,
@@ -1585,5 +1621,22 @@
      it back. */
   #ui[data-layout='experiment'] .console-cards:has(> .console-card[data-card='conditions'][open]) > .console-card[data-card='view'] {
     display: none;
+  }
+}
+
+/* In the heading row the two tabs share the line with the close target, so
+   their values get the room the padding and the gap had: at 375 px a
+   three-digit rate ("心拍 100↑") was cut to "心拍 1…". */
+@media (min-width: 360px) and (max-width: 600px) {
+  #ui[data-layout='experiment'] .console-card[data-card='conditions'][open] .pad-switcher {
+    gap: 4px;
+  }
+
+  #ui[data-layout='experiment'] .console-card[data-card='conditions'][open] .pad-switch {
+    padding: 3px 5px;
+  }
+
+  #ui[data-layout='experiment'] .console-card[data-card='conditions'][open] .pad-switch-summary {
+    letter-spacing: -0.03em;
   }
 }
