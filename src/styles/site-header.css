@@ -750,6 +750,25 @@ html[data-route='locked'] .shell-header .site-menu-panel {
 
 }
 
+@media (max-width: 360px) {
+  /* Four organs have to fit on the narrowest phone without scrolling: at
+     320 px `verify:ui` found the liver scrolled out of the row (189 px of
+     chips in 165). The arrow goes first — the framed mark is still the
+     control, and its accessible name still says where it goes — and the
+     gaps tighten. */
+  .global-scene-nav.has-site-menu {
+    column-gap: 4px;
+  }
+
+  .global-scene-nav.has-site-menu .global-nav-brand-back {
+    display: none;
+  }
+
+  .global-scene-nav.has-site-menu .global-nav-strip {
+    padding-left: 4px;
+  }
+}
+
 @media (max-width: 620px) {
   /* The reading header: one row — mark and name, the one destination, the
      menu — where it used to be two, with a bare ○ for the account button.
