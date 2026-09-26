@@ -1,16 +1,20 @@
 import { el } from '../utils/dom.js';
 import { inLanguage } from '../utils/language.js';
 import { EXPLORER_ROUTE, LAB_ROUTE, LANDING_ROUTE, organById } from '../catalog/index.js';
-import { PUBLIC_MANIFEST } from '../catalog/publicManifest.js';
+import { MODEL_INFO_ROUTE, PUBLIC_MANIFEST } from '../catalog/publicManifest.js';
 import { activeUsesForSceneEntry } from '../access/sceneUses.js';
 import { readSceneLibrary, toggleSceneFavorite } from '../app/sceneLibrary.js';
 import { resolveRoute } from '../app/router.js';
+import { registerHeaderDock } from '../app/headerDock.js';
+import { organLayerNavigation } from '../app/modelNavigation.js';
 import {
   compactSceneLabel,
   navigationKindGroups,
   navigationUseLabel,
   scenesByOrganForNavigation,
 } from '../app/sceneNavigationModel.js';
+import { createSiteHeaderMenu } from './SiteMenu.js';
+import { brandMark } from './ShellHeader.js';
 
 /**
  * The hash this document is actually showing.
@@ -25,15 +29,36 @@ import {
 const currentHash = () => (typeof window === 'undefined' ? '' : (window.location?.hash ?? ''));
 
 /**
- * Fixed product-shell navigation for a 3D scene.
+ * The header on a 3D model.
+ *
+ * ## Its structure, left to right
+ *
+ * | zone | what | why there |
+ * | --- | --- | --- |
+ * | who | `← M/3 Medical 3D Lab ホーム` | the way home; the same mark as every other screen |
+ * | where | organs, then the layers of the current organ | switching models is the product's main loop |
+ * | you | language, account | in the row when it is wide, in the menu when it is not |
+ * | menu | ☰ | everything else the site has, in layers |
+ *
+ * The same zones, in the same order, as `ShellHeader` on the reading surfaces.
+ * Only the middle changes between them, because only the middle is about the
+ * screen you are on.
+ *
+ * ## Organ, then layer
+ *
+ * The row used to carry one chip per published model, named by its organ —
+ * until the heart had two, when both fell back to their titles and the row
+ * read `脳 / 触れて学ぶ心臓の解剖 / 心拍出量 / 肺 / 肝臓`: organs and models on
+ * one level, and on a phone the lungs and liver off the end of it. Now the row
+ * is organs, always one short word each, and the organ you are on opens a
+ * second level beside it (below it, on a phone) naming its layers:
+ * `解剖 · 機序 心拍出量`. `organLayerNavigation` owns that shape.
  *
  * `groups` is already projected by `sceneRegistry`, so this component never
- * widens the release boundary. The visible hierarchy mirrors the catalogue:
- * body system → organ → anatomy/physiology or disease/pathophysiology → model.
- * Patient explanation is shown only when the same versioned review gate used by
- * the product permits it.
+ * widens the release boundary; the rows come from `PUBLIC_MANIFEST`, which can
+ * only hold what the release opened.
  */
-export function createSceneSwitcher({ groups, currentId, showLab = true }) {
+export function createSceneSwitcher({ groups, currentId, showLab = true, models = PUBLIC_MANIFEST?.models ?? [] }) {
   const scenes = groups.flatMap((group) => group.scenes);
   if (!scenes.length) return null;
   const hasChoices = scenes.length > 1;
@@ -54,71 +79,143 @@ export function createSceneSwitcher({ groups, currentId, showLab = true }) {
       el('span', { class: 'lang-ja', text: ja ?? en }),
     ]);
 
-  const menuId = 'scene-navigation-panel';
-  let open = false;
-  const inertBefore = new Map();
-  const FOCUSABLE =
-    'summary,a[href],button:not([disabled]),input:not([disabled]),select:not([disabled]),' +
-    'textarea:not([disabled]),[tabindex]:not([tabindex="-1"])';
+  // --------------------------------------------------------------- where
 
-  const trigger = el(
-    'button',
-    {
-      class: 'global-nav-trigger',
-      type: 'button',
-      'aria-expanded': 'false',
-      'aria-controls': menuId,
-      'aria-label': 'Models / モデル',
-      title: 'Models / モデル',
-    },
-    [
-      bilingual('Models', 'モデル', 'global-nav-trigger-label'),
-      el('span', { class: 'global-nav-trigger-chevron', 'aria-hidden': 'true', text: '⌄' }),
-    ]
+  const navigation = organLayerNavigation(models, currentScene.id);
+  const onPublishedModel = Boolean(navigation.currentModel);
+
+  /**
+   * The organs, as one press each.
+   *
+   * The organ chip is the organ, not a model: it goes to the organ's first
+   * layer, which is its anatomy. So it says `aria-current="page"` only when
+   * the organ has one model and this is it; when the organ has several, the
+   * layer row names the page and the organ says `true` — "you are inside this
+   * one" — which is what that value is for.
+   */
+  const organStrip = onPublishedModel && navigation.organs.length > 1
+    ? el(
+        'div',
+        {
+          class: 'global-nav-strip',
+          role: 'group',
+          'aria-label': inLanguage('Organs', '臓器'),
+        },
+        navigation.organs.map((organ) => {
+          const here = organ.current;
+          const single = organ.models.length === 1;
+          return el(
+            'a',
+            {
+              class: `global-nav-strip-link${here ? ' is-current' : ''}`,
+              href: organ.route,
+              'data-organ': organ.organId,
+              ...(here ? { 'aria-current': single ? 'page' : 'true' } : {}),
+            },
+            [
+              el('span', { class: 'lang-en', text: organ.name.en }),
+              el('span', { class: 'lang-ja', text: organ.name.ja }),
+            ]
+          );
+        })
+      )
+    : null;
+
+  /**
+   * The layers of the organ on screen — only when there is a choice.
+   *
+   * One model, one layer, nothing to switch between: a lone chip reading 解剖
+   * would be a control with no job, and the title card already says what the
+   * model is. Two or more, and this is where the reader chooses between the
+   * anatomy and what sits on it.
+   */
+  const layerModels = navigation.currentOrgan?.models ?? [];
+  const layerRow = onPublishedModel && layerModels.length > 1
+    ? el(
+        'div',
+        {
+          class: 'global-nav-layers',
+          role: 'group',
+          'aria-label': inLanguage(
+            `${navigation.currentOrgan.name.en} models`,
+            `${navigation.currentOrgan.name.ja}のモデル`
+          ),
+        },
+        layerModels.map((model) =>
+          el(
+            'a',
+            {
+              class: `global-nav-layer-link is-${model.layer}${model.current ? ' is-current' : ''}`,
+              href: model.route,
+              ...(model.current ? { 'aria-current': 'page' } : {}),
+            },
+            [
+              model.showKind ? bilingual(model.kind.en, model.kind.ja, 'global-nav-layer-kind') : null,
+              bilingual(model.name.en, model.name.ja, 'global-nav-layer-name'),
+            ]
+          )
+        )
+      )
+    : null;
+
+  // Where the strip cannot mark anything — a prototype under the preview unlock
+  // — a breadcrumb says where the reader is instead.
+  const organEn = currentOrgan?.label ?? currentGroup.label;
+  const organJa = currentOrgan?.labelJa ?? currentGroup.labelJa;
+  const sceneEn = currentShort.en && currentShort.en !== organEn ? currentShort.en : '';
+  const sceneJa = currentShort.ja && currentShort.ja !== organJa ? currentShort.ja : '';
+  const breadcrumb = (parts, lang) => {
+    const visible = parts.filter(Boolean);
+    const children = [];
+    visible.forEach((part, index) => {
+      if (index) children.push(el('span', { class: 'global-nav-current-separator', 'aria-hidden': 'true', text: '›' }));
+      children.push(el('span', { class: 'global-nav-current-part', text: part }));
+    });
+    return el('span', { class: `global-nav-current-label lang-${lang}` }, children);
+  };
+  const currentLocation = organStrip
+    ?? el('div', { class: 'global-nav-current', 'aria-label': 'Current model / 現在のモデル' }, [
+      breadcrumb([currentGroup.label, organEn, sceneEn], 'en'),
+      breadcrumb([currentGroup.labelJa, organJa, sceneJa], 'ja'),
+    ]);
+
+  /**
+   * Whether the row already reaches every model this document can open.
+   *
+   * In the beta it does, and then a model list in the menu is the "second door
+   * onto the same room" the old `モデル ⌄` drawer was — beside a row of the
+   * same organs under the same names. Under the preview unlock `scenes` is the
+   * whole catalogue and this is false, so the menu carries it.
+   */
+  const reachableByRow = new Set(
+    organStrip || layerRow
+      ? navigation.organs.flatMap((organ) => organ.models.map((model) => model.sceneId))
+      : []
   );
+  const rowIsTheCatalogue = reachableByRow.size > 0 && scenes.every((scene) => reachableByRow.has(scene.id));
+
+  // --------------------------------------------------------- the catalogue
 
   const favoriteButton = el('button', {
     class: 'global-nav-favorite',
     type: 'button',
     'aria-pressed': 'false',
-  });
-
-  const backdrop = el('div', {
-    class: 'global-nav-backdrop',
-    hidden: '',
-    'aria-hidden': 'true',
-  });
-
-  const closeButton = el('button', {
-    class: 'global-nav-close',
-    type: 'button',
-    'aria-label': 'Close models / モデルを閉じる',
-    title: 'Close / 閉じる',
-    text: '×',
+    // Toggling a favourite changes the list in this menu; closing on it would
+    // hide the change it just made.
+    'data-menu-keep-open': '',
   });
 
   const favoriteList = el('div', { class: 'global-nav-favorite-list' });
   const favoriteSection = el('section', { class: 'global-nav-favorites', hidden: '' }, [
-    el('h2', { class: 'global-nav-favorites-title' }, [bilingual('Favorites', 'お気に入り')]),
+    el('h3', { class: 'global-nav-favorites-title' }, [bilingual('Favorites', 'お気に入り')]),
     favoriteList,
   ]);
 
   /**
    * How many reachable models can be listed flat before the list stops being a
-   * shortcut and becomes a second catalogue.
-   *
-   * The system accordion below opens one body system at a time, which is the
-   * right shape for a fourteen-system catalogue and the wrong one for the beta:
-   * with the brain and the heart open, standing on either model put the other
-   * inside a closed `<details>` with nothing to say it was there. Measured at
-   * 390px, reaching the other published model took three taps, and the middle
-   * one — open the other body system — was invisible (F-111).
-   *
-   * So while the drawer reaches few enough models to show at once, it shows
-   * them at the top. Past this count the accordion is the better shape and this
-   * section takes itself away rather than growing into a duplicate of the list
-   * below it. A preview build, which reaches every declared scene, is over the
-   * line by an order of magnitude and never sees it.
+   * shortcut and becomes a second catalogue (F-111). Past it the accordion is
+   * the better shape and this section takes itself away. A preview build is
+   * over the line by an order of magnitude and never sees it.
    */
   const FLAT_MODEL_LIST_MAX = 16;
 
@@ -144,22 +241,21 @@ export function createSceneSwitcher({ groups, currentId, showLab = true }) {
     );
   };
 
-  // Every model the drawer can reach, flat, above the accordion. `scenes` is
-  // already projected by `sceneRegistry`, so this widens nothing: in a
-  // production build it is exactly the published set.
+  // Every model the menu can reach, flat, above the accordion. `scenes` is
+  // already projected by `sceneRegistry`, so this widens nothing.
   const flatModels = scenes.length > 1 && scenes.length <= FLAT_MODEL_LIST_MAX ? scenes : [];
   const modelSection = el(
     'section',
     { class: 'global-nav-models', ...(flatModels.length ? {} : { hidden: '' }) },
     [
-      el('h2', { class: 'global-nav-models-title' }, [bilingual('Models', 'モデル')]),
+      el('h3', { class: 'global-nav-models-title' }, [bilingual('All models', 'すべてのモデル')]),
       el('div', { class: 'global-nav-model-list' }, flatModels.map((scene) => sceneLink(scene))),
     ]
   );
 
   const kindGroup = (kind) =>
     el('div', { class: `global-nav-kind-group is-${kind.id}` }, [
-      el('h4', { class: 'global-nav-kind-heading' }, [bilingual(kind.label, kind.labelJa)]),
+      el('h5', { class: 'global-nav-kind-heading' }, [bilingual(kind.label, kind.labelJa)]),
       ...kind.scenes.map((scene) => sceneLink(scene)),
     ]);
 
@@ -168,11 +264,13 @@ export function createSceneSwitcher({ groups, currentId, showLab = true }) {
       'section',
       { class: `global-nav-organ${organ.id === currentScene.organ ? ' is-current' : ''}` },
       [
-        el('h3', { class: 'global-nav-organ-name' }, [bilingual(organ.label, organ.labelJa)]),
+        el('h4', { class: 'global-nav-organ-name' }, [bilingual(organ.label, organ.labelJa)]),
         el('div', { class: 'global-nav-scenes' }, navigationKindGroups(organ).map(kindGroup)),
       ]
     );
 
+  // The menu's own section heading is an h2, so the accordion's systems are the
+  // level below it, then organs, then kinds.
   const systemDetails = [];
   const systemSection = (group) => {
     const organs = scenesByOrganForNavigation(group.scenes, organById);
@@ -185,7 +283,7 @@ export function createSceneSwitcher({ groups, currentId, showLab = true }) {
         el('span', {
           class: 'global-nav-system-heading',
           role: 'heading',
-          'aria-level': '2',
+          'aria-level': '3',
         }, [bilingual(group.label, group.labelJa)]),
         el('span', { class: 'global-nav-system-chevron', 'aria-hidden': 'true', text: '⌄' }),
       ]),
@@ -195,25 +293,16 @@ export function createSceneSwitcher({ groups, currentId, showLab = true }) {
     return details;
   };
 
-  // Inside the scrollable region, not beside it. `.global-nav-panel` is a
-  // column flex box with `overflow: hidden` and `.global-nav-list` is its only
-  // scrolling child, so a sibling section is simply clipped once it outgrows
-  // the drawer: measured at 390px with the list at its own limit, seven of the
-  // sixteen rows fell past the panel's bottom edge with no way to reach them.
-  // First in the list keeps it at the top of the drawer, which is what F-111
-  // asks for, and it scrolls with everything else.
   const list = el('div', { class: 'global-nav-list' }, [modelSection, ...groups.map(systemSection)]);
 
-  // Shelf navigation is useful, but it must not outrank choosing a model. Keep
-  // it as compact footer navigation. The public beta never exposes Lab here.
+  // The index this scene lives under, and the other one. Reached only with the
+  // preview unlock: in the beta `#/organs` is the landing page and the lab is
+  // closed, so neither is a destination and the catalogue is not rendered.
   //
-  // The first link is not just "go to the index" — it names the tab this
-  // scene already lives under. `isLab` (a scene's own status, not a guess at
-  // the URL) is the same split the labels above use to say "Lab index" or
-  // "Model index" in the first place, so a scene route already declares
-  // itself part of one of the two: `aria-current="page"` on this link is
-  // that declaration read back to assistive tech, not a new claim about it.
-  // The secondary link goes to the *other* tab, so it is never current.
+  // The first link names the tab this scene already lives under: `isLab` (the
+  // scene's own status, not a guess at the URL) is the split that decides
+  // "Lab index" or "Model index", so `aria-current="page"` on it is that
+  // declaration read back to assistive tech.
   const primaryFooterHref = isLab ? LAB_ROUTE : EXPLORER_ROUTE;
   const primaryFooterLink = el(
     'a',
@@ -239,21 +328,13 @@ export function createSceneSwitcher({ groups, currentId, showLab = true }) {
   /**
    * Keep the footer's tab claim honest.
    *
-   * `resolveRoute` — not a string check on the hash — is what confirms this
-   * document is still a scene page before the footer link claims to be the
-   * current tab; `#/organs` and its `#/explore` alias resolve to the same
-   * `'explorer'` kind, so a check written against `kind` never has to know
-   * about the alias by name. Re-run on `hashchange` rather than once at
-   * mount: this component outlives a hash change that does not reload the
-   * document (`#/brain-anatomy?structure=1` to `?structure=2` is the same
-   * route on purpose — see `sameRoute` in `router.js`), so a stale
-   * `aria-current` left over from mount would otherwise survive it.
-   *
-   * This marks the *tab* the page belongs under, at a different granularity
-   * from the scene row inside the model list, which marks the page itself
-   * (`sceneLink` above). The two live in different landmarks — the footer is
-   * its own `<nav aria-label="Model lists">` — so a reader asking "what is
-   * current here" gets one answer per region, not two in one.
+   * `resolveRoute` — not a string check on the hash — confirms this document is
+   * still a scene page before the footer link claims to be the current tab;
+   * `#/organs` and its `#/explore` alias resolve to the same kind. Re-run on
+   * `hashchange` rather than once at mount: this component outlives a hash
+   * change that does not reload the document (`?structure=1` to
+   * `?structure=2` is the same route on purpose — see `sameRoute`), so a stale
+   * `aria-current` would otherwise survive it.
    */
   function updateFooterCurrent() {
     const onScenePage = resolveRoute(currentHash()).kind === 'scene';
@@ -263,51 +344,49 @@ export function createSceneSwitcher({ groups, currentId, showLab = true }) {
   updateFooterCurrent();
   // Guarded on the method, not only on `window` existing: `beta-release.test.js`
   // walks every surface's rendered links against a `window` stubbed down to
-  // just `matchMedia`, and a component that assumes the rest of the browser
-  // API comes with it is a component that cannot be checked that way.
+  // just `matchMedia`.
   if (typeof window !== 'undefined' && typeof window.addEventListener === 'function') {
     window.addEventListener('hashchange', updateFooterCurrent);
   }
 
-  const panel = el(
-    'div',
-    {
-      id: menuId,
-      class: 'global-nav-panel',
-      hidden: '',
-      role: 'dialog',
-      'aria-modal': 'true',
-      'aria-label': 'Organs and models / 臓器・モデル',
-    },
-    [
-      el('div', { class: 'global-nav-panel-head' }, [
-        el('div', { class: 'global-nav-panel-heading' }, [
-          el('div', { class: 'global-nav-panel-title' }, [bilingual('Organs & models', '臓器・モデル')]),
+  const catalogue = rowIsTheCatalogue
+    ? null
+    : [
+        el('div', { class: 'global-nav-catalogue-head' }, [
           el('p', { class: 'global-nav-panel-intro' }, [bilingual(
             'Choose a body system, then an organ and model.',
             '身体の系統を選び、臓器・モデルへ進みます。'
           )]),
+          favoriteButton,
         ]),
-        favoriteButton,
-        closeButton,
-      ]),
-      favoriteSection,
-      list,
-      footer,
-    ]
-  );
+        favoriteSection,
+        list,
+        footer,
+      ];
 
-  // The brand is the way home, so it has to look like one. A wordmark in the
-  // top-left corner reads as the page's title; an arrow and the word "Home /
-  // ホーム" are what make it an offer. The accessible name leads with where it
-  // goes rather than with what the product is called, for the same reason.
+  // --------------------------------------------------------------- the menu
+
+  // The pages a scene's row does not carry. The publication record is always
+  // open; its gated neighbours ride with the catalogue's footer above, which is
+  // only rendered where the preview unlock makes them destinations.
+  const header = createSiteHeaderMenu({
+    id: 'scene-navigation-panel',
+    models: catalogue,
+    pages: [{ href: MODEL_INFO_ROUTE, en: 'Publication & review', ja: '公開とレビュー' }],
+  });
+  const { menu } = header;
+
+  // ---------------------------------------------------------------- who
+
+  // The brand is the way home, so it has to look like one: the arrow and the
+  // word are what make a wordmark an offer. The mark is the product's one mark
+  // — the same `M/3` every reading surface wears — so arriving on a model does
+  // not look like arriving in a different product.
   const brand = el(
     'a',
     {
       class: 'global-nav-brand',
       href: LANDING_ROUTE,
-      // The brand itself is a proper noun and stays as it is in both; what
-      // follows it is a word, and a word belongs in the language on screen.
       // The destination leads: what a screen reader announces first should be
       // where the link goes, not what the product is called.
       title: inLanguage('Home — Medical 3D Lab', 'トップへ戻る — Medical 3D Lab'),
@@ -315,7 +394,7 @@ export function createSceneSwitcher({ groups, currentId, showLab = true }) {
     },
     [
       el('span', { class: 'global-nav-brand-back', 'aria-hidden': 'true', text: '←' }),
-      el('span', { class: 'global-nav-brand-mark', 'aria-hidden': 'true', text: '3D' }),
+      brandMark('global-nav-brand-mark'),
       el('span', { class: 'global-nav-brand-name' }, [
         el('span', { class: 'global-nav-brand-full', text: 'Medical 3D Lab' }),
         el('span', { class: 'global-nav-brand-compact', text: 'Medical 3D' }),
@@ -324,145 +403,26 @@ export function createSceneSwitcher({ groups, currentId, showLab = true }) {
     ]
   );
 
-  const organEn = currentOrgan?.label ?? currentGroup.label;
-  const organJa = currentOrgan?.labelJa ?? currentGroup.labelJa;
-  const sceneEn = currentShort.en && currentShort.en !== organEn ? currentShort.en : '';
-  const sceneJa = currentShort.ja && currentShort.ja !== organJa ? currentShort.ja : '';
-  const breadcrumb = (parts, lang) => {
-    const visible = parts.filter(Boolean);
-    const children = [];
-    visible.forEach((part, index) => {
-      if (index) children.push(el('span', { class: 'global-nav-current-separator', 'aria-hidden': 'true', text: '›' }));
-      children.push(el('span', { class: 'global-nav-current-part', text: part }));
-    });
-    return el('span', { class: `global-nav-current-label lang-${lang}` }, children);
-  };
-  /**
-   * The published models, as one press each, inside the viewer.
-   *
-   * ## Why this replaces the breadcrumb
-   *
-   * What stood here was `神経 › 脳 › 解剖`: correct, and an answer to a question
-   * nobody was asking. The question a reader actually has on a 3D model is
-   * *"how do I see the heart?"*, and the only answer was a `モデル ⌄` button in
-   * the far corner that opens a sheet — a control a first-time visitor has no
-   * reason to press, because nothing about it says it holds the other models.
-   *
-   * A row of organ names, with the one you are looking at marked, answers both
-   * questions at once: where am I, and how do I go somewhere else. It is the
-   * same set and the same wording as the chips on the landing page, so the
-   * gesture a reader learned before they opened anything still works.
-   *
-   * Switching models is the product's main loop. It should not require leaving
-   * the model, and it should not require finding a menu.
-   *
-   * The set comes from `PUBLIC_MANIFEST`, so it can only ever offer what the
-   * release has opened — the strip cannot become a row of links to pages that
-   * say "in development". When the current scene is not one of them (a
-   * prototype under the preview unlock), there is nothing to mark and the
-   * breadcrumb stands in.
-   */
-  const publishedModels = PUBLIC_MANIFEST?.models ?? [];
-  const onPublishedModel = publishedModels.some((model) => model.sceneId === currentScene.id);
-
-  /**
-   * What to call each model on the strip.
-   *
-   * The organ's name, because that is the word a reader came with — "the
-   * heart", not "Heart anatomy (adult, structural)". It is only safe while one
-   * model per organ is open, so the ambiguity is measured rather than assumed:
-   * the moment two open models share an organ, both fall back to their own
-   * titles and the strip stops offering two chips that read the same.
-   */
-  const organChipCount = new Map();
-  for (const model of publishedModels) {
-    organChipCount.set(model.organId, (organChipCount.get(model.organId) ?? 0) + 1);
-  }
-  const chipLabel = (model) =>
-    organChipCount.get(model.organId) === 1
-      ? { en: model.organLabel, ja: model.organLabelJa }
-      : { en: model.titleEn, ja: model.titleJa };
-
-  const organStrip = onPublishedModel && publishedModels.length > 1
-    ? el(
-        'div',
-        {
-          class: 'global-nav-strip',
-          role: 'group',
-          'aria-label': inLanguage('Published models', '公開中のモデル'),
-        },
-        publishedModels.map((model) => {
-          const here = model.sceneId === currentScene.id;
-          const label = chipLabel(model);
-          return el(
-            'a',
-            {
-              class: `global-nav-strip-link${here ? ' is-current' : ''}`,
-              href: model.route,
-              ...(here ? { 'aria-current': 'page' } : {}),
-            },
-            [
-              el('span', { class: 'lang-en', text: label.en }),
-              el('span', { class: 'lang-ja', text: label.ja }),
-            ]
-          );
-        })
-      )
-    : null;
-
-  const currentLocation = organStrip
-    ?? el('div', { class: 'global-nav-current', 'aria-label': 'Current model / 現在のモデル' }, [
-      breadcrumb([currentGroup.label, organEn, sceneEn], 'en'),
-      breadcrumb([currentGroup.labelJa, organJa, sceneJa], 'ja'),
-    ]);
-
-  /**
-   * When the strip is the whole catalogue, the drawer beside it is a second
-   * door onto the same room.
-   *
-   * With the beta's published set on screen as chips, `モデル ⌄` opened a sheet
-   * listing the same models under the same names — and it sat immediately to
-   * the right of them, so the header offered "models" twice with two different
-   * gestures and no way to tell what the second one added. It added nothing.
-   *
-   * The condition is measured, not assumed: the drawer stands down only when
-   * every scene it could list is already a chip, and only while the strip is
-   * short enough to read at a glance. Under the preview unlock `scenes` is the
-   * whole seventy-model catalogue and this is false on its first term, so the
-   * drawer — its accordion, its favourites, its index links — is untouched
-   * there. `tests/scene-switcher.test.js` fixes both directions, because the
-   * failure mode this class of change already caused once (`is-single`, F-111)
-   * was a 3D scene left with no navigation control on it at all.
-   */
-  const STRIP_STANDS_ALONE_MAX = 6;
-  const stripIsTheCatalogue =
-    Boolean(organStrip) &&
-    publishedModels.length === scenes.length &&
-    publishedModels.length <= STRIP_STANDS_ALONE_MAX;
-
   const element = el(
     'nav',
     {
-      // `is-single` narrows the header when there is nothing to choose between.
-      // It used to hide the drawer's trigger as well, which in the public beta
-      // — one open model — left a 3D scene with no navigation control on it at
-      // all, and the shelf links inside the drawer unreachable. The class is a
-      // layout hint; it is not a reason to take the way out away.
       class:
-        `global-scene-nav${isLab ? ' is-lab' : ' is-public'}${hasChoices ? '' : ' is-single'}` +
-        (stripIsTheCatalogue ? ' has-model-strip' : ''),
-      // Names the landmark, rather than repeating the brand: a screen reader
-      // reading a list of landmarks needs to hear what this one is.
+        `global-scene-nav has-site-menu${isLab ? ' is-lab' : ' is-public'}${hasChoices ? '' : ' is-single'}` +
+        (organStrip ? ' has-model-strip' : '') +
+        (layerRow ? ' has-layer-row' : ''),
+      // Names the landmark, rather than repeating the brand.
       'aria-label': inLanguage('Site navigation', 'サイトナビゲーション'),
     },
-    stripIsTheCatalogue
-      ? [brand, currentLocation]
-      : [brand, currentLocation, trigger, backdrop, panel]
+    [brand, currentLocation, layerRow, header.utilities, menu.trigger, menu.backdrop, menu.panel]
   );
+  // A header with a second row is taller on a phone, and the panels below it
+  // start where it ends — `#ui` reads the class to reserve the room.
+  ui?.classList.toggle('has-layer-row', Boolean(layerRow));
+
+  registerHeaderDock(element, { dock: header.dock });
 
   // One body system is open at a time on every viewport. This keeps a fourteen-
-  // system catalogue scannable on desktop and prevents scroll fatigue on a
-  // phone. The current system starts open so opening Models never loses place.
+  // system catalogue scannable, and the current system starts open.
   for (const details of systemDetails) {
     details.addEventListener('toggle', () => {
       if (!details.open) return;
@@ -501,95 +461,28 @@ export function createSceneSwitcher({ groups, currentId, showLab = true }) {
     favoriteSection.hidden = saved.length === 0;
   }
 
-  function setBackgroundInert(enabled) {
-    const parent = element.parentElement;
-    if (!parent) return;
-    if (enabled) {
-      for (const sibling of parent.children) {
-        if (sibling === element || !sibling || typeof sibling !== 'object') continue;
-        if (!inertBefore.has(sibling)) inertBefore.set(sibling, Boolean(sibling.inert));
-        sibling.inert = true;
-      }
-      return;
-    }
-    for (const [node, was] of inertBefore) node.inert = was;
-    inertBefore.clear();
-  }
-
-  function focusableInPanel() {
-    return [...(panel.querySelectorAll?.(FOCUSABLE) ?? [])].filter(
-      (node) => !node.hidden && !node.disabled && node.offsetParent !== null
-    );
-  }
-
-  function trapPanelTab(event) {
-    if (event.key !== 'Tab' || !open) return;
-    const stops = focusableInPanel();
-    if (!stops.length) return;
-    const first = stops[0];
-    const last = stops[stops.length - 1];
-    const active = document.activeElement;
-    if (event.shiftKey && (active === first || !panel.contains(active))) {
-      event.preventDefault();
-      last.focus();
-    } else if (!event.shiftKey && (active === last || !panel.contains(active))) {
-      event.preventDefault();
-      first.focus();
-    }
-  }
-
-  function setOpen(next, { restoreFocus = false } = {}) {
-    if (open === next) return;
-    open = next;
-    element.classList.toggle('is-open', open);
-    panel.hidden = !open;
-    backdrop.hidden = !open;
-    trigger.setAttribute('aria-expanded', String(open));
-    setBackgroundInert(open);
-    if (open) {
-      const currentSystem = systemDetails.find((details) => details.classList.contains('is-current'));
-      if (currentSystem && !systemDetails.some((details) => details.open)) currentSystem.open = true;
-      closeButton.focus?.();
-      requestAnimationFrame(() => {
-        panel.querySelector('.global-nav-scene.is-current')?.scrollIntoView?.({ block: 'nearest' });
-      });
-    } else if (restoreFocus && trigger.isConnected) {
-      trigger.focus?.();
-    }
-  }
-
   favoriteButton.addEventListener('click', () => {
     renderLibrary(toggleSceneFavorite(currentScene.id));
   });
-  trigger.addEventListener('click', () => setOpen(!open));
-  closeButton.addEventListener('click', () => setOpen(false, { restoreFocus: true }));
-  backdrop.addEventListener('click', () => setOpen(false, { restoreFocus: true }));
 
-  panel.addEventListener('click', (event) => {
-    if (event.target.closest('a')) setOpen(false);
+  // Opening the menu opens the body system you are in, and shows your row.
+  menu.onToggle((open) => {
+    if (!open) return;
+    const currentSystem = systemDetails.find((details) => details.classList.contains('is-current'));
+    if (currentSystem && !systemDetails.some((details) => details.open)) currentSystem.open = true;
+    requestAnimationFrame(() => {
+      menu.panel.querySelector('.global-nav-scene.is-current')?.scrollIntoView?.({ block: 'nearest' });
+    });
   });
-  panel.addEventListener('keydown', trapPanelTab);
 
   // Native navigation controls own their keyboard events rather than leaking to
   // the model's global Space/Escape/letter shortcuts.
   element.addEventListener('keydown', (event) => {
-    if (event.key === 'Escape' && open) {
+    if (event.key === 'Escape' && menu.isOpen) {
       event.preventDefault();
-      setOpen(false, { restoreFocus: true });
+      menu.close({ restoreFocus: true });
     }
     event.stopPropagation();
-  });
-
-  document.addEventListener('keydown', (event) => {
-    if (event.key === 'Escape' && open) {
-      event.preventDefault();
-      event.stopPropagation();
-      setOpen(false, { restoreFocus: true });
-    }
-  });
-
-  document.addEventListener('pointerdown', (event) => {
-    if (open && !element.contains(event.target)) setOpen(false, { restoreFocus: true });
   });
 
   renderLibrary();
@@ -597,13 +490,10 @@ export function createSceneSwitcher({ groups, currentId, showLab = true }) {
   /**
    * Open the strip showing where you are.
    *
-   * The row can be wider than the header, and the current model is not always
-   * first in it — standing on the liver with the row starting at the brain
-   * means the one chip that answers "which model is this" is off-screen at the
-   * moment the reader most needs it.
-   *
-   * `scrollLeft` rather than `scrollIntoView`: the latter is free to scroll
-   * every scrollable ancestor, and the nearest one here is the page.
+   * The row can be wider than the header on a narrow phone, and the current
+   * organ is not always first in it. `scrollLeft` rather than `scrollIntoView`:
+   * the latter is free to scroll every scrollable ancestor, and the nearest one
+   * here is the page.
    */
   function centreCurrentChip() {
     if (!organStrip) return;
@@ -616,5 +506,11 @@ export function createSceneSwitcher({ groups, currentId, showLab = true }) {
     requestAnimationFrame(centreCurrentChip);
   }
 
-  return { element, close: () => setOpen(false) };
+  return {
+    element,
+    menu,
+    /** Put a site control (language, account, feedback) in this header. */
+    dock: header.dock,
+    close: () => menu.close(),
+  };
 }

@@ -24,6 +24,7 @@
  */
 import { EXPLORER_ROUTE, SCENES, sceneRoute } from './index.js';
 import { modelCardForScene } from './clinicalReview.js';
+import { MECHANISM_LEVEL, modelProfileForScene } from './modelProfiles.js';
 import { RELEASE_CHANNEL, RELEASED_SCENES } from './release.js';
 import { organById } from './taxonomy.js';
 
@@ -64,6 +65,43 @@ function revisionOf(models) {
 }
 
 /**
+ * The product's layers, as a reader sees them in navigation.
+ *
+ * CLAUDE.md defines the product as two layers — anatomy, and what sits on it —
+ * and the beta publishes a mechanism scene beside the anatomy of the same
+ * organ. A header that listed `脳 / 触れて学ぶ心臓の解剖 / 心拍出量 / 肺 / 肝臓`
+ * in one row put organs and models on the same level, because nothing told it
+ * which was which. This does: organ first, then the layer within it.
+ *
+ * `mechanism` and `pathology` are separate on purpose. A scene that explains
+ * how a normal organ works (cardiac output) is not a disease model, and calling
+ * it 病態 would be the navigation making a claim the model profile does not.
+ */
+export const MODEL_LAYERS = Object.freeze({
+  anatomy: Object.freeze({ id: 'anatomy', en: 'Anatomy', ja: '解剖' }),
+  mechanism: Object.freeze({ id: 'mechanism', en: 'Mechanism', ja: '機序' }),
+  pathology: Object.freeze({ id: 'pathology', en: 'Disease', ja: '病態' }),
+});
+
+/**
+ * Which layer a scene belongs to, read from what it claims.
+ *
+ * A disease scene is pathology. Otherwise the model profile's mechanism level
+ * decides: `none` is the anatomy claim, and anything above it explains a
+ * mechanism. A scene with no profile falls to anatomy — the lowest claim, which
+ * is the direction the provenance contract says an unclear case goes. The
+ * release gate refuses to open such a scene anyway.
+ *
+ * @param {object} scene
+ * @returns {'anatomy'|'mechanism'|'pathology'}
+ */
+export function layerOfScene(scene) {
+  if (scene?.disease) return 'pathology';
+  const level = modelProfileForScene(scene)?.mechanismLevel;
+  return !level || level === MECHANISM_LEVEL.NONE ? 'anatomy' : 'mechanism';
+}
+
+/**
  * @typedef {object} PublicModel
  * @property {string} sceneId       catalogue id, stable, appears in the URL
  * @property {string} organId       the organ it is filed under
@@ -71,6 +109,8 @@ function revisionOf(models) {
  * @property {string} organLabelJa  the organ's Japanese name, from the taxonomy
  * @property {string} titleJa       the model's Japanese name
  * @property {string} titleEn       the model's English name
+ * @property {'anatomy'|'mechanism'|'pathology'} layer  which product layer it
+ *   belongs to — see `MODEL_LAYERS`
  * @property {string} route         where a link must actually go: `#/<slug>`
  * @property {string|null} posterPath  build-relative link-preview image
  * @property {'link-preview-card'} posterKind  what that image actually is
@@ -97,6 +137,7 @@ const rowFor = (scene) => {
     organLabelJa: organ?.labelJa ?? scene.organ,
     titleJa: scene.titleJa,
     titleEn: scene.titleEn,
+    layer: layerOfScene(scene),
     route: sceneRoute(scene),
     posterPath: posterPathFor(scene),
     posterKind: 'link-preview-card',

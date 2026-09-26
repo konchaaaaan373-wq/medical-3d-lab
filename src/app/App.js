@@ -1293,15 +1293,23 @@ export async function createApp({ stage, ui, onRetryModel = null }) {
         // around a panel whose body already does, or the body's rows end up
         // straddling the rail's clip edge.
         anatomyPanel.element,
-        el('div', { class: 'rail-buttons' }, [languageToggle.element, uiToggle]),
+        el('div', { class: 'rail-buttons' }, [uiToggle]),
       ]
     : [
         inspectionPanel.element,
         anatomyInfo?.element,
         legend.element,
         metricsPanel?.element,
-        el('div', { class: 'rail-buttons' }, [languageToggle.element, uiToggle]),
+        el('div', { class: 'rail-buttons' }, [uiToggle]),
       ]);
+  // The language switch belongs to the site, not to this model: it goes where
+  // it is on every other screen — the header row when it is wide, the site menu
+  // when it is not. The rail keeps the one control that *is* this scene's:
+  // taking its panels off the model. Without a header (a scene mounted without
+  // navigation) it stays in the rail, where it was.
+  if (!sceneSwitcher?.dock('language', languageToggle.element)) {
+    rail.querySelector('.rail-buttons')?.prepend(languageToggle.element);
+  }
   if (anatomyPanel) {
     rail.classList.add('is-anatomy');
     railElement = rail;
@@ -1322,7 +1330,9 @@ export async function createApp({ stage, ui, onRetryModel = null }) {
   // language switch, "hide controls" and feedback sat in their own row under
   // the read-out, and on a phone that row stood exactly where the heart goes:
   // measured at 390×664 it left the heart a 32 px band. Moved, not copied —
-  // the same nodes with the same listeners, so nothing else changes.
+  // the same nodes with the same listeners, so nothing else changes. (Language
+  // and feedback have since moved to the site header, so what travels is the
+  // one scene-local control left in the row.)
   if (meta.layout === 'experiment') {
     const railButtons = rail.querySelector('.rail-buttons');
     const menu = consoleElement.querySelector('.console-more-menu');

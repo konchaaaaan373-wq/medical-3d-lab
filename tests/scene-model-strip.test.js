@@ -8,7 +8,16 @@ import { FakeElement, findByClass, installFakeDocument } from './helpers/fake-do
 globalThis.requestAnimationFrame ??= (fn) => { fn(0); return 0; };
 
 /**
- * Switching models from inside the model.
+ * Switching models from inside the model: organ, then layer.
+ *
+ * ## Why two levels (2026-09-26)
+ *
+ * The row below used to be one chip per published model, named by its organ
+ * until two models shared an organ — then both fell back to their titles, and
+ * with the heart's anatomy and its cardiac-output scene open the row read
+ * `脳 / 触れて学ぶ心臓の解剖 / 心拍出量 / 肺 / 肝臓`: organs, a title and a
+ * topic on one level, and at 390 px the lungs and liver past its end. Now the
+ * row is organs, and the organ on screen names its layers in a second group.
  *
  * ## What stood here
  *
@@ -67,49 +76,122 @@ const strip = (element) => findByClass(element, 'global-nav-strip')[0] ?? null;
 const chips = (element) => findByClass(element, 'global-nav-strip-link');
 const wayHome = (element) => findByClass(element, 'global-nav-brand')[0] ?? null;
 
-test('a published model shows every other published model as one press', () => {
+const layerRow = (element) => findByClass(element, 'global-nav-layers')[0] ?? null;
+const layerLinks = (element) => findByClass(element, 'global-nav-layer-link');
+const menuTrigger = (element) => findByClass(element, 'site-menu-trigger')[0] ?? null;
+
+/** Organs in manifest order, each with its models — what the row should show. */
+const organsOf = (models) => {
+  const organs = new Map();
+  for (const model of models) {
+    if (!organs.has(model.organId)) organs.set(model.organId, []);
+    organs.get(model.organId).push(model);
+  }
+  return organs;
+};
+
+test('the row is one chip per published organ, not one per model', () => {
   assert.ok(PUBLIC_MANIFEST.models.length > 1, 'this test needs a release with a choice in it');
   const current = PUBLIC_MANIFEST.models[0];
   const { element } = mount(publishedGroups(), current.sceneId);
 
-  assert.ok(strip(element), 'the scene header carries the model strip');
+  assert.ok(strip(element), 'the scene header carries the organ row');
+  const organs = organsOf(PUBLIC_MANIFEST.models);
   assert.deepEqual(
-    chips(element).map((chip) => chip.getAttribute('href')),
-    PUBLIC_MANIFEST.models.map((model) => model.route),
-    'one chip per published model, and nothing the release has not opened'
+    chips(element).map((chip) => chip.getAttribute('data-organ')),
+    [...organs.keys()],
+    'one chip per organ the release opened, in manifest order'
   );
+  // Each organ opens at its anatomy — the first layer — when it has one.
+  for (const chip of chips(element)) {
+    const models = organs.get(chip.getAttribute('data-organ'));
+    const entry = models.find((model) => model.layer === 'anatomy') ?? models[0];
+    assert.equal(chip.getAttribute('href'), entry.route, `${chip.getAttribute('data-organ')} opens at its first layer`);
+  }
 });
 
-test('every chip is readable in both languages', () => {
+test('every chip is named by its organ, in both languages', () => {
   const { element } = mount(publishedGroups(), PUBLIC_MANIFEST.models[0].sceneId);
+  const organs = organsOf(PUBLIC_MANIFEST.models);
   for (const chip of chips(element)) {
+    const [model] = organs.get(chip.getAttribute('data-organ'));
     const en = findByClass(chip, 'lang-en')[0];
     const ja = findByClass(chip, 'lang-ja')[0];
-    assert.ok(en?.textContent?.trim(), `${chip.getAttribute('href')}: no English label`);
-    assert.ok(ja?.textContent?.trim(), `${chip.getAttribute('href')}: no Japanese label`);
+    assert.equal(en?.textContent, model.organLabel, `${chip.getAttribute('href')}: English is the organ's name`);
+    assert.equal(ja?.textContent, model.organLabelJa, `${chip.getAttribute('href')}: Japanese is the organ's name`);
   }
 });
 
-test('the model on screen is the marked one, whichever it is', () => {
+test('the model on screen is the one page marked, whichever it is', () => {
   for (const model of PUBLIC_MANIFEST.models) {
     const { element } = mount(publishedGroups(), model.sceneId);
-    const marked = chips(element).filter((chip) => chip.getAttribute('aria-current') === 'page');
-    assert.deepEqual(
-      marked.map((chip) => chip.getAttribute('href')),
-      [model.route],
-      `${model.sceneId}: exactly one chip says "you are here"`
+    const pageMarks = [...chips(element), ...layerLinks(element)].filter(
+      (link) => link.getAttribute('aria-current') === 'page'
     );
-    assert.equal(marked[0].classList.contains('is-current'), true, 'and it is visibly marked too');
-    // The breadcrumb it replaced must not also be there: two answers to "where
-    // am I" in one header is the state this replaced, not an improvement on it.
+    assert.deepEqual(
+      pageMarks.map((link) => link.getAttribute('href')),
+      [model.route],
+      `${model.sceneId}: exactly one control says "this page"`
+    );
+    assert.equal(pageMarks[0].classList.contains('is-current'), true, 'and it is visibly marked too');
+
+    // The organ it belongs to is marked as the place you are in.
+    const organChip = chips(element).find((chip) => chip.getAttribute('data-organ') === model.organId);
+    assert.equal(organChip.classList.contains('is-current'), true, `${model.sceneId}: its organ is marked`);
+    assert.ok(
+      ['page', 'true'].includes(organChip.getAttribute('aria-current')),
+      `${model.sceneId}: the organ says where you are to assistive tech too`
+    );
+    // The breadcrumb it replaced must not also be there.
     assert.deepEqual(findByClass(element, 'global-nav-current'), []);
   }
+});
+
+test('an organ with more than one model names its layers; one with a single model does not', () => {
+  const organs = organsOf(PUBLIC_MANIFEST.models);
+  assert.ok(
+    [...organs.values()].some((models) => models.length > 1),
+    'this test needs an organ with two published models (the heart: anatomy and cardiac output)'
+  );
+  for (const model of PUBLIC_MANIFEST.models) {
+    const siblings = organs.get(model.organId);
+    const { element } = mount(publishedGroups(), model.sceneId);
+    if (siblings.length === 1) {
+      // A lone 解剖 chip would be a control with no job.
+      assert.equal(layerRow(element), null, `${model.sceneId}: nothing to choose, no layer row`);
+      continue;
+    }
+    assert.ok(layerRow(element), `${model.sceneId}: the organ's layers are offered`);
+    assert.deepEqual(
+      layerLinks(element).map((link) => link.getAttribute('href')).sort(),
+      siblings.map((sibling) => sibling.route).sort(),
+      `${model.sceneId}: one link per model of this organ, and no other organ's`
+    );
+    // Anatomy first: it is the layer everything else sits on.
+    assert.equal(layerLinks(element)[0].classList.contains('is-anatomy'), true, 'anatomy leads');
+  }
+});
+
+test('a layer that is not anatomy says which layer it is', () => {
+  const mechanism = PUBLIC_MANIFEST.models.find((model) => model.layer === 'mechanism');
+  assert.ok(mechanism, 'this test needs a published mechanism scene');
+  const { element } = mount(publishedGroups(), mechanism.sceneId);
+  const link = layerLinks(element).find((candidate) => candidate.getAttribute('href') === mechanism.route);
+  const [kind] = findByClass(link, 'global-nav-layer-kind');
+  assert.ok(kind, 'the mechanism link carries its layer');
+  assert.equal(findByClass(kind, 'lang-ja')[0].textContent, '機序');
+  assert.equal(findByClass(findByClass(link, 'global-nav-layer-name')[0], 'lang-ja')[0].textContent, mechanism.titleJa);
+
+  // The anatomy link *is* the layer, so it does not say it twice.
+  const anatomy = layerLinks(element).find((candidate) => candidate.classList.contains('is-anatomy'));
+  assert.deepEqual(findByClass(anatomy, 'global-nav-layer-kind'), []);
+  assert.equal(findByClass(anatomy, 'lang-ja').at(-1).textContent, '解剖');
 });
 
 test('a scene the release has not opened keeps the breadcrumb instead', () => {
   // Reached only through the preview unlock. There is nothing on the strip to
   // mark, and a strip with no current chip would claim the reader is on one of
-  // four models when they are on a fifth.
+  // the published organs when they are somewhere else.
   const groups = [
     ...publishedGroups(),
     group('respiratory', '呼吸器', [
@@ -121,17 +203,17 @@ test('a scene the release has not opened keeps the breadcrumb instead', () => {
   assert.ok(findByClass(element, 'global-nav-current')[0], 'the breadcrumb stands in');
 });
 
-test('the drawer stands down only when the strip already reaches everything', () => {
-  // The beta: every scene this document can reach is a chip, so `モデル ⌄`
-  // beside the chips opens a sheet listing the same models under the same
-  // names. That is the duplicate entrance, not a second feature.
+test('the menu carries the catalogue only when the row does not already reach everything', () => {
+  // The beta: every scene this document can reach is on the row, so a model
+  // list in the menu would be the old `モデル ⌄` drawer again — a second door
+  // onto the same room. The menu is still there; the catalogue is not.
   const { element: beta } = mount(publishedGroups(), PUBLIC_MANIFEST.models[0].sceneId);
-  assert.deepEqual(findByClass(beta, 'global-nav-trigger'), [], 'no second door onto the same room');
-  assert.deepEqual(findByClass(beta, 'global-nav-panel'), []);
+  assert.ok(menuTrigger(beta), 'the site menu is always there');
+  assert.deepEqual(findByClass(beta, 'global-nav-list'), [], 'no second door onto the same room');
   assert.ok(wayHome(beta), 'and the way home is still on screen');
 
-  // The preview unlock: the catalogue is far larger than the strip, so the
-  // drawer is the only way to most of it and must be untouched.
+  // The preview unlock: the catalogue is far larger than the row, so the menu
+  // is the only way to most of it and must carry it.
   const withPrototypes = [
     ...publishedGroups(),
     group('respiratory', '呼吸器', [
@@ -141,11 +223,7 @@ test('the drawer stands down only when the strip already reaches everything', ()
   ];
   const { element: unlocked } = mount(withPrototypes, PUBLIC_MANIFEST.models[0].sceneId);
   assert.ok(strip(unlocked), 'the strip still says where you are');
-  assert.ok(
-    findByClass(unlocked, 'global-nav-trigger')[0],
-    'and the drawer still reaches what the strip does not'
-  );
-  assert.ok(findByClass(unlocked, 'global-nav-panel')[0]);
+  assert.ok(findByClass(unlocked, 'global-nav-list')[0], 'and the menu reaches what the row does not');
 });
 
 test('every scene keeps a way out, whichever branch it takes', () => {
@@ -168,10 +246,11 @@ test('every scene keeps a way out, whichever branch it takes', () => {
     const home = wayHome(element);
     assert.ok(home, `${current}: no way home`);
     assert.equal(home.getAttribute('href'), '#/');
+    assert.ok(menuTrigger(element), `${current}: no site menu`);
     const reachable = [
       ...findByClass(element, 'global-nav-strip-link'),
-      ...findByClass(element, 'global-nav-trigger'),
+      ...findByClass(element, 'global-nav-scene'),
     ];
-    assert.ok(reachable.length > 0, `${current}: no way to another model`);
+    assert.ok(reachable.length > 0 || groups.flatMap((g) => g.scenes).length === 1, `${current}: no way to another model`);
   }
 });

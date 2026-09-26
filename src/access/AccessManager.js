@@ -1,4 +1,4 @@
-import { el } from '../utils/dom.js';
+import { el, focusBack } from '../utils/dom.js';
 import {
   authConfigured,
   authenticatedFetch,
@@ -565,7 +565,9 @@ export function createAccessManager({ ui }) {
     state.accountEdit = null;
     render();
     requestAnimationFrame(() => {
-      if (focusTarget?.isConnected) focusTarget.focus();
+      // `focusBack`, because the account button may be inside the site menu,
+      // which closed when this dialog opened.
+      if (focusTarget?.isConnected) focusBack(focusTarget);
     });
   }
 

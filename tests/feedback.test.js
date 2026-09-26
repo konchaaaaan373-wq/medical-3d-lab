@@ -150,7 +150,10 @@ test('feedback: the panel is keyboard-dismissable and announces itself', () => {
   assert.match(source, /'aria-modal': 'true'/);
   assert.match(source, /role: 'dialog'/);
   assert.match(source, /event\.key === 'Escape'/);
-  assert.match(source, /trigger\.focus\(\)/, 'closing must return focus to what opened it');
+  // Through `focusBack`, which is `trigger.focus()` unless the trigger sits in
+  // a site menu that has since closed — then the menu's own button.
+  // `tests/site-menu.test.js` holds what it does.
+  assert.match(source, /focusBack\(trigger\)/, 'closing must return focus to what opened it');
 });
 
 test('consent: refusing is offered as plainly as accepting', () => {

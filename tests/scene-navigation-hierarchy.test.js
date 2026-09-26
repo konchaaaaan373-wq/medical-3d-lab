@@ -48,6 +48,17 @@ test('navigation hides patient explanation while a production scene lacks curren
   );
 });
 
+test('a mechanism scene is labelled with the word the header uses for its layer', () => {
+  // The organ row calls cardiac output 機序; the catalogue in the menu used to
+  // call the same model 解剖・生理, and one model under two names reads as two.
+  const cardiacOutput = scene('cardiac-output');
+  assert.deepEqual(navigationUseLabel(cardiacOutput, activeUsesForSceneEntry(cardiacOutput)), {
+    en: 'Mechanism model',
+    ja: '機序モデル',
+  });
+  assert.deepEqual(navigationUseLabel(scene('brain-anatomy'), []), { en: 'Anatomy model', ja: '解剖モデル' });
+});
+
 test('patient explanation remains the first visible product use when it is enabled', () => {
   const label = navigationUseLabel(
     { disease: 'example' },
@@ -79,8 +90,11 @@ test('system accordions expose the missing top level to heading navigation', () 
   );
   assert.match(
     source,
-    /class:\s*'global-nav-system-heading'[\s\S]*?role:\s*'heading'[\s\S]*?'aria-level':\s*'2'/,
-    'the interactive summary keeps system-level heading semantics above h3 organs and h4 kinds'
+    /class:\s*'global-nav-system-heading'[\s\S]*?role:\s*'heading'[\s\S]*?'aria-level':\s*'3'/,
+    // One level down from where it was: the catalogue is now a section of the
+    // site menu, whose section headings are the h2s. Menu section (h2) →
+    // body system (3) → organ (h4) → kind (h5), with no level skipped.
+    'the interactive summary keeps system-level heading semantics under the menu section and above h4 organs and h5 kinds'
   );
 });
 

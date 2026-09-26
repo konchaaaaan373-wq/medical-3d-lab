@@ -59,23 +59,24 @@ const oneModel = (options) => mountSwitcher({
   showLab: false,
 }, options);
 
-test('scene exits: one open model still gets a drawer', () => {
+test('scene exits: one open model still gets the site menu', () => {
   const { element } = oneModel();
-  const [trigger] = findByClass(element, 'global-nav-trigger');
+  const [trigger] = findByClass(element, 'site-menu-trigger');
 
-  // The trigger used to be hidden whenever the scene list held a single entry.
-  // That is exactly the public beta, so a 3D scene shipped with no navigation
-  // control on it at all — and the shelf links inside the drawer, which are
-  // the routes to every other page, went with it.
-  assert.ok(trigger, 'the drawer has a trigger');
+  // The model drawer's trigger used to be hidden whenever the scene list held a
+  // single entry. That is exactly the public beta, so a 3D scene shipped with
+  // no navigation control on it at all — and the links inside the drawer,
+  // which are the routes to every other page, went with it. The site menu is
+  // on every header, whatever the scene count.
+  assert.ok(trigger, 'the menu has a trigger');
   assert.equal(trigger.hidden, false, 'and it is not hidden away');
   assert.ok(element.classList.contains('is-single'), 'the header still knows it is one model');
 });
 
-test('scene exits: and that drawer opens', () => {
+test('scene exits: and that menu opens, and reaches the pages a scene has no row for', () => {
   const { element } = oneModel();
-  const [trigger] = findByClass(element, 'global-nav-trigger');
-  const [panel] = findByClass(element, 'global-nav-panel');
+  const [trigger] = findByClass(element, 'site-menu-trigger');
+  const [panel] = findByClass(element, 'site-menu-panel');
 
   // Hiding the trigger was only half of it: `setOpen` refused to open at all
   // with one model, so restoring the button without this would have produced a
@@ -84,6 +85,10 @@ test('scene exits: and that drawer opens', () => {
   trigger.click();
   assert.equal(panel.hidden, false, 'and it opens');
   assert.equal(trigger.getAttribute('aria-expanded'), 'true');
+
+  const hrefs = findByClass(panel, 'site-menu-link').map((link) => link.getAttribute('href'));
+  assert.ok(hrefs.includes('#/trust'), 'the publication record is one press away from a model');
+  assert.ok(hrefs.includes('#/terms'), 'and so are the terms, which a model had no route to at all');
 });
 
 test('scene exits: the way home is a labelled control, not just the wordmark', () => {

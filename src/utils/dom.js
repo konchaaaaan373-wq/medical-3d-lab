@@ -131,3 +131,33 @@ export const ICONS = {
     '<g fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round"><circle cx="10.3" cy="10.3" r="6.4"/><path d="M15.2 15.2 20.6 20.6"/><path d="M7.4 10.3h5.8"/></g>'
   ),
 };
+
+/**
+ * Give focus back to a control — or, when that control sits inside a menu that
+ * has since closed, to the button that opens the menu.
+ *
+ * The account and feedback dialogs remember the control that opened them and
+ * focus it again on close. Opened from the site menu, that control is inside a
+ * panel the menu hid on the way out, and `focus()` on a hidden element does
+ * nothing: focus falls to `<body>` and a keyboard reader is sent back to the
+ * top of the document. The menu's own trigger is where they were.
+ *
+ * @param {HTMLElement|null|undefined} node
+ */
+export function focusBack(node) {
+  if (!node || node.isConnected === false) return;
+  let insideHidden = false;
+  let container = null;
+  for (let at = node; at; at = at.parentElement) {
+    if (at.hidden) insideHidden = true;
+    if (!container && at.id && at.getAttribute?.('role') === 'dialog') container = at;
+  }
+  if (insideHidden && container) {
+    const opener = globalThis.document?.querySelector?.(`[aria-controls="${container.id}"]`);
+    if (opener) {
+      opener.focus?.();
+      return;
+    }
+  }
+  node.focus?.();
+}

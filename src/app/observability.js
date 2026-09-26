@@ -11,6 +11,7 @@
  * product carries on without it.
  */
 import { onAppEvent } from './appEvents.js';
+import { headerDockIn } from './headerDock.js';
 import { createConsentSettings } from '../components/ConsentBanner.js';
 import { createFeedbackPanel } from '../components/FeedbackPanel.js';
 import { installTelemetry } from '../telemetry/install.js';
@@ -26,12 +27,16 @@ const env = (key, fallback = '') => {
 /**
  * Where the feedback button goes.
  *
- * A scene already has a button rail; a shell surface does not, and gets a
- * floating trigger instead. Anything else would either hide the button or
- * cover the model with it.
+ * A scene puts it in the site menu (falling back to its button rail if the
+ * scene has no header); a shell surface gets a floating trigger instead.
+ * Anything else would either hide the button or cover the model with it.
  */
 function mountTrigger(ui, trigger, placement) {
-  const rail = placement === 'rail' ? ui.querySelector('.rail-buttons') : null;
+  // In the site menu, beside the terms and the support page: feedback is about
+  // the whole product, and on a 3D model it used to stand in the scene's own
+  // button row, between "hide the panels" and the language switch.
+  if (placement === 'menu' && headerDockIn(ui)?.dock('feedback', trigger)) return;
+  const rail = placement === 'rail' || placement === 'menu' ? ui.querySelector('.rail-buttons') : null;
   if (rail) {
     rail.append(trigger);
     return;
@@ -93,7 +98,7 @@ export function bridgeAppEvents(telemetry, { sceneId, deviceClass, surface }) {
  * @param {HTMLElement} options.ui
  * @param {'landing'|'explorer'|'lab'|'trust'|'scene'|'fallback'} options.surface
  * @param {string|null} [options.sceneId]
- * @param {'rail'|'floating'} [options.placement]
+ * @param {'menu'|'rail'|'floating'} [options.placement]
  * @param {boolean} [options.askConsent] a failed scene is not the moment to ask
  */
 export function installObservability({

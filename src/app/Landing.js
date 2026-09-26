@@ -91,6 +91,7 @@ export function createLanding({
       current: 'home',
       accountButton,
       languageToggle: languageToggle.element,
+      models,
     }),
 
     el('section', {
@@ -274,6 +275,7 @@ export function createPublicModelsExplorer({
       current: 'models',
       accountButton,
       languageToggle: languageToggle.element,
+      models,
     }),
     el('header', {
       class: 'explorer-header public-models-header',

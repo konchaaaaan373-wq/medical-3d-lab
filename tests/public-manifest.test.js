@@ -41,6 +41,7 @@ test('public manifest: the row shape is the contract, and it is fixed', () => {
   assert.ok(PUBLIC_MODELS.length > 0, 'a manifest with no models means the product is closed');
   for (const model of PUBLIC_MODELS) {
     assert.deepEqual(Object.keys(model).sort(), [
+      'layer',
       'modelCard',
       'modelInfoRoute',
       'organId',
