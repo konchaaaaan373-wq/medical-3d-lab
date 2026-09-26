@@ -43,6 +43,7 @@ Last updated: 2026-09-06（現在地の数値は §3 参照）
 | クロール可能なページ・OGP・sitemap | [`discoverability.md`](discoverability.md) |
 | 規約・プライバシー・特商法表記・販売可否の判定 | [`../src/data/legal.js`](../src/data/legal.js) と [`access-and-billing.md`](access-and-billing.md) |
 | キーボード・フォーカス・コントラスト・ズーム | [`accessibility.md`](accessibility.md) |
+| 病態モデルの操作原則と入力契約（全病態共通） | [`pathology-interaction-principles.md`](pathology-interaction-principles.md) |
 | 疾患候補の臓器別トリアージ（検討プール） | [`disease-candidates.md`](disease-candidates.md) |
 | 解剖・アートレビューの記録（実測と残課題） | [`anatomy-review.md`](anatomy-review.md) |
 | 臓器別の精密正確性モデル仕様（目標 A レベル・固定する解剖関係） | [`anatomy-specs.md`](anatomy-specs.md) |

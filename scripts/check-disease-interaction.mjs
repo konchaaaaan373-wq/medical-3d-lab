@@ -228,15 +228,20 @@ for (const slug of SLUGS) {
   if (await page.locator("#ui[data-layout='experiment']").count()) {
     const viewport = page.viewportSize();
     const outside = await page.evaluate(({ width, height }) => {
+      // Only one pad is shown at a time; the other is display:none and has no
+      // box. Skip undisplayed nodes, but insist that one pad is actually shown,
+      // or an empty selection would pass.
       const nodes = [
-        ...document.querySelectorAll('.model-editor-tab'),
-        ...document.querySelectorAll('.model-editor-step'),
+        ...document.querySelectorAll('.pad-area'),
+        ...document.querySelectorAll('.pad-step'),
+        ...document.querySelectorAll('.model-control-undo'),
         ...document.querySelectorAll(".metrics .metric.is-key"),
-      ];
+      ].filter((node) => node.getClientRects().length > 0);
+      if (!nodes.some((node) => node.classList.contains('pad-area'))) return ['no pad is displayed'];
       return nodes
         .map((node) => ({ node, rect: node.getBoundingClientRect() }))
         .filter(({ rect }) => !(rect.width > 0 && rect.top >= 0 && rect.bottom <= height && rect.left >= 0 && rect.right <= width))
-        .map(({ node }) => node.textContent.trim().replace(/\s+/g, ' ').slice(0, 40));
+        .map(({ node }) => (node.textContent.trim() || node.className).replace(/\s+/g, ' ').slice(0, 40));
     }, viewport);
     for (const label of outside) problems.push(`experiment layout: “${label}” is not inside the first viewport`);
 
@@ -246,129 +251,192 @@ for (const slug of SLUGS) {
       before && after ? Math.hypot(...before.split(',').map((value, i) => Number(value) - Number(after.split(',')[i]))) : 0;
     const inputs = () => page.evaluate(() => ({ ...window.__app.scene.session.input }));
     const origin = () => page.evaluate(() => window.__app.scene.session.origin);
-    const tab = (id) => page.locator(`.model-editor-tab[data-input="${id}"]`);
-    const up = page.locator('.model-editor-step[data-direction="up"]');
-    const resetAll = page.locator('.model-editor-values .model-control-reset');
-    const resetOne = page.locator('.model-editor-reset');
-    const menu = page.locator('.model-controls-advanced > summary');
+    const movedKeys = (a, b) => Object.keys(a).filter((id) => a[id] !== b[id]).sort();
+    const pad = (id) => page.locator(`.is-pad[data-pad="${id}"]`);
+    // One pad is drawn at a time; the switcher chooses which.
+    const showPad = async (id) => {
+      await page.locator(`.pad-switch[data-pad="${id}"]`).click();
+      await page.waitForTimeout(150);
+    };
+    const step = (padId, axis, direction) => pad(padId).locator(`.pad-step[data-axis="${axis}"][data-direction="${direction}"]`);
+    const undo = page.locator('.model-control-undo');
+    const resetAll = page.locator('.model-control-actions .model-control-reset');
+    const menu = page.locator('.model-control-actions .model-controls-advanced > summary');
+    const isOpen = (summary) => summary.evaluate((node) => node.parentElement.open);
     const closeMenu = async () => {
-      if (await menu.evaluate((node) => node.parentElement.open)) await menu.click();
+      if (await isOpen(menu)) await menu.click();
     };
     const choose = async (value) => {
-      if (!(await menu.evaluate((node) => node.parentElement.open))) await menu.click();
+      if (!(await isOpen(menu))) await menu.click();
       await page.locator(`.model-controls-advanced button.model-choice-button[data-value="${value}"]`).click();
       await closeMenu();
     };
-
-    // A parameter change is not a reframe: pressing "+" moved the camera once
-    // (L-111's family). Compared with a tolerance, and why: with no input at
-    // all the camera still creeps about 0.002 world units a second — the
-    // shell's easing converging. A reframe moves whole units.
-    {
-      const before = await camera();
-      await up.click();
-      await tab('heartRatePerMin').click();
-      await page.waitForTimeout(1500);
-      const after = await camera();
-      if (cameraMoved(before, after) > 0.05) problems.push(`experiment layout: changing an input or choosing another one moved the camera (${before} -> ${after})`);
-      await resetAll.click();
-      await tab('fillingVolumeMl').click();
-      await page.waitForTimeout(600);
-    }
-
-    // The state contract, driven through the screen (owner's review of the
-    // phone recordings, 2026-09-25):
-    // choosing an input changes nothing; two inputs moved and one put back
-    // leaves the other; after dobutamine, moving one input keeps the drug's
-    // other values; "reset all" goes back to *this* experiment's start.
-    {
-      const start = await inputs();
-      await up.click();
-      await tab('heartRatePerMin').click();
-      await up.click();
-      const two = await inputs();
-      for (const id of ['systemicResistanceMmHgSPerMl', 'contractilityEesMmHgPerMl', 'heartRatePerMin', 'fillingVolumeMl']) {
-        const before = await inputs();
-        await tab(id).click();
-        if (JSON.stringify(await inputs()) !== JSON.stringify(before)) problems.push(`experiment layout: choosing ${id} changed a value`);
-      }
-      await tab('fillingVolumeMl').click();
-      await resetOne.click();
-      const afterOne = await inputs();
-      if (afterOne.fillingVolumeMl !== start.fillingVolumeMl || afterOne.heartRatePerMin !== two.heartRatePerMin) {
-        problems.push(`experiment layout: 「この項目を戻す」 moved more than its input (${JSON.stringify(afterOne)})`);
-      }
-      await resetAll.click();
-
-      await choose('reduced-contractility');
-      const reducedStart = await inputs();
-      await choose('dobutamine');
-      const onDrug = await inputs();
-      await tab('fillingVolumeMl').click();
-      await up.click();
-      const adjusted = await inputs();
-      const expected = { ...onDrug, fillingVolumeMl: adjusted.fillingVolumeMl };
-      if (JSON.stringify(adjusted) !== JSON.stringify(expected) || adjusted.fillingVolumeMl === onDrug.fillingVolumeMl) {
-        problems.push(`experiment layout: after dobutamine, one input moved others (${JSON.stringify(onDrug)} -> ${JSON.stringify(adjusted)})`);
-      }
-      if ((await origin()) !== 'dobutamine') problems.push('experiment layout: the condition adjusted after dobutamine no longer says where it came from');
-      await resetAll.click();
-      if (JSON.stringify(await inputs()) !== JSON.stringify(reducedStart)) problems.push('experiment layout: 「全体を戻す」 did not return to this experiment\'s start');
-      await choose('reference');
-      await page.waitForTimeout(900);
-    }
-
-    // Nothing the reader is touching may move. The first change used to add a
-    // row above the sliders and grow the read-out, and the slider under the
-    // finger slid down (phone recordings, 14:09 at 30.0 s → 30.5 s). The
-    // editor's box is measured before any input, after the first press, after
-    // a drag and after more presses; its top may not move by more than 1 px.
-    // A drag is also checked to be one drag: the value follows the pointer to
-    // the end, the page does not scroll, and the slider keeps focus.
-    const editorBox = () =>
+    /** Drag a pad's point by (dx, dy) px, grabbed `grab` px off its centre. */
+    const dragPad = async (padId, dx, dy, { grab = [0, 0], releaseOutside = false } = {}) => {
+      const thumb = await pad(padId).locator('.pad-thumb').boundingBox();
+      const x = thumb.x + thumb.width / 2 + grab[0];
+      const y = thumb.y + thumb.height / 2 + grab[1];
+      await page.mouse.move(x, y);
+      await page.mouse.down();
+      await page.mouse.move(x + dx / 2, y + dy / 2, { steps: 4 });
+      if (releaseOutside) await page.mouse.move(x + dx * 4, y + dy * 4, { steps: 4 });
+      await page.mouse.move(x + dx, y + dy, { steps: 4 });
+      if (releaseOutside) await page.mouse.move(x + dx * 4, y + dy * 4, { steps: 2 });
+      await page.mouse.up();
+      await page.waitForTimeout(200);
+    };
+    const boxes = () =>
       page.evaluate(() =>
-        ['.model-editor-slider', '.model-editor-step[data-direction="up"]', '.model-editor-tabs'].map((selector) => {
+        ['.is-pad[data-pad="heart"] .pad-area', '.pad-switcher', '.is-pad[data-pad="heart"] .pad-range-x', '.model-control-undo', '.metrics', '.console'].map((selector) => {
           const rect = document.querySelector(selector).getBoundingClientRect();
-          return [Math.round(rect.top), Math.round(rect.height)];
+          return [Math.round(rect.top), Math.round(rect.left), Math.round(rect.height)];
         })
       );
-    const dragAcross = async () => {
-      const box = await page.locator('.model-editor-slider').boundingBox();
-      const y = box.y + box.height / 2;
-      await page.mouse.move(box.x + box.width * 0.45, y);
-      await page.mouse.down();
-      const seen = [];
-      for (const fraction of [0.55, 0.65, 0.75, 0.85]) {
-        await page.mouse.move(box.x + box.width * fraction, y, { steps: 4 });
-        seen.push((await inputs()).fillingVolumeMl);
-      }
-      await page.mouse.up();
-      return seen;
-    };
+    const sameBoxes = (label, before, after) =>
+      before.forEach((box, i) => {
+        if (box.some((value, k) => Math.abs(value - after[i][k]) > 1)) problems.push(`experiment layout: ${label} moved the controls (${JSON.stringify(box)} -> ${JSON.stringify(after[i])})`);
+      });
+    const compareDisabled = () => page.evaluate(() => document.querySelector('[data-control="compare"]')?.disabled ?? null);
 
-    // Covering: at every size and in each state a reader passes through. The
-    // heart may be drawn small; it may not be hidden (owner, 2026-09-25).
+    // The walk the brief names — one axis, two axes, the other pad, undo,
+    // back to the start — with, at every step, exactly which inputs moved.
+    {
+      const start = await inputs();
+      const restBoxes = await boxes();
+      const restCamera = await camera();
+      if ((await compareDisabled()) !== true) problems.push('pads: the comparison is offered with nothing to compare');
+
+      // One axis: contractility down, rate held.
+      await step('heart', 'x', 'down').click();
+      await page.waitForTimeout(900);
+      const one = await inputs();
+      if (JSON.stringify(movedKeys(start, one)) !== JSON.stringify(['contractilityEesMmHgPerMl'])) problems.push(`pads: one axis moved ${movedKeys(start, one).join(', ')}`);
+      sameBoxes('the first change', restBoxes, await boxes());
+      if (cameraMoved(restCamera, await camera()) > 0.05) problems.push('pads: a change of input moved the camera');
+      if ((await compareDisabled()) !== false) problems.push('pads: after a change the comparison is still not offered');
+
+      // One axis by keyboard, on the range: the rate alone.
+      await pad('heart').locator('.pad-range-y').focus();
+      await page.keyboard.press('ArrowUp');
+      await page.waitForTimeout(400);
+      const keyed = await inputs();
+      if (JSON.stringify(movedKeys(one, keyed)) !== JSON.stringify(['heartRatePerMin'])) problems.push(`pads: the rate range moved ${movedKeys(one, keyed).join(', ')}`);
+
+      // A grab that does not move changes nothing, wherever it is grabbed.
+      await dragPad('heart', 0, 0, { grab: [9, -9] });
+      if (movedKeys(keyed, await inputs()).length) problems.push('pads: grabbing the point off-centre jumped the values');
+
+      // Two axes: a diagonal drag moves both heart inputs and nothing else.
+      await dragPad('heart', 30, -30, { grab: [6, 6] });
+      const two = await inputs();
+      if (JSON.stringify(movedKeys(keyed, two)) !== JSON.stringify(['contractilityEesMmHgPerMl', 'heartRatePerMin'])) problems.push(`pads: a diagonal drag moved ${movedKeys(keyed, two).join(', ')}`);
+      if (!(two.contractilityEesMmHgPerMl > keyed.contractilityEesMmHgPerMl && two.heartRatePerMin > keyed.heartRatePerMin)) problems.push('pads: right and up did not mean stronger and faster');
+      if (await pad('heart').locator('.pad-area.is-dragging').count()) problems.push('pads: the surface still says it is being dragged after release');
+
+      // Out of the surface and released there: the drag ends, the values stay.
+      await dragPad('heart', -20, 0, { releaseOutside: true });
+      const outsideRelease = await inputs();
+      if (await pad('heart').locator('.pad-area.is-dragging').count()) problems.push('pads: a release outside the surface left the drag running');
+      await page.mouse.move(5, 5);
+      await page.waitForTimeout(300);
+      if (movedKeys(outsideRelease, await inputs()).length) problems.push('pads: moving after a release outside the surface still changed the values');
+
+      // Switching pads changes nothing but which pad is drawn: no input, no
+      // undo step, no camera.
+      const beforeSwitch = { input: await inputs(), camera: await camera(), canUndo: !(await undo.isDisabled()) };
+      await showPad('circulation');
+      if (movedKeys(beforeSwitch.input, await inputs()).length) problems.push('pads: switching pads changed an input');
+      if (cameraMoved(beforeSwitch.camera, await camera()) > 0.05) problems.push('pads: switching pads moved the camera');
+      if (beforeSwitch.canUndo !== !(await undo.isDisabled())) problems.push('pads: switching pads changed what undo can do');
+      // The heart's tab carries its values and which way they moved.
+      const heartTab = await page.locator('.pad-switch[data-pad="heart"]').innerText();
+      if (!/↑|↓/.test(heartTab)) problems.push(`pads: the heart's switcher does not say which inputs moved (${heartTab.replace(/\s+/g, ' ')})`);
+
+      // The other pad: filling alone; the heart's inputs held.
+      await step('circulation', 'x', 'up').click();
+      await page.waitForTimeout(600);
+      const other = await inputs();
+      if (JSON.stringify(movedKeys(outsideRelease, other)) !== JSON.stringify(['fillingVolumeMl'])) problems.push(`pads: the other pad moved ${movedKeys(outsideRelease, other).join(', ')}`);
+
+      // Undo: the press, then the whole release-outside drag, one step each.
+      await undo.click();
+      await page.waitForTimeout(500);
+      if (JSON.stringify(await inputs()) !== JSON.stringify(outsideRelease)) problems.push('pads: undo did not take back exactly the last press');
+      await undo.click();
+      await page.waitForTimeout(500);
+      if (JSON.stringify(await inputs()) !== JSON.stringify(two)) problems.push('pads: undo did not take back the whole drag in one step');
+      await showPad('heart');
+
+      // Back to the start.
+      await resetAll.click();
+      await page.waitForTimeout(800);
+      if (JSON.stringify(await inputs()) !== JSON.stringify(start)) problems.push('pads: 「開始時に戻す」 did not return to the start');
+      if ((await compareDisabled()) !== true) problems.push('pads: back at the start, the comparison is still offered');
+      if (!(await undo.isDisabled())) problems.push('pads: after 「開始時に戻す」 there is still something to undo');
+
+      // After dobutamine, one axis keeps the drug's other values.
+      await choose('dobutamine');
+      await page.waitForTimeout(600);
+      const onDrug = await inputs();
+      await showPad('circulation');
+      await step('circulation', 'x', 'up').click();
+      await page.waitForTimeout(600);
+      const adjusted = await inputs();
+      await showPad('heart');
+      if (JSON.stringify(movedKeys(onDrug, adjusted)) !== JSON.stringify(['fillingVolumeMl'])) problems.push(`pads: after dobutamine one axis moved ${movedKeys(onDrug, adjusted).join(', ')}`);
+      if ((await origin()) !== 'dobutamine') problems.push('pads: the condition adjusted after dobutamine no longer says where it came from');
+      await choose('reference');
+      await page.waitForTimeout(800);
+    }
+
+    // Covering and stability at every size. The heart may be drawn small; it
+    // may not be hidden (owner, 2026-09-25) — and "model drawn" is logged so
+    // a heart that is merely uncovered but too small to read is visible here.
     const covered = () =>
       page.evaluate(() => {
         const { viewer, scene } = window.__app ?? {};
         if (!viewer || !scene?.root) return null;
         const probe = viewer.camera.position.clone();
-        const box = [Infinity, Infinity, -Infinity, -Infinity];
-        scene.root.updateWorldMatrix(true, true);
-        scene.root.traverse((object) => {
-          const position = object.geometry?.attributes?.position;
-          if (!position || object.isPoints || !object.visible) return;
-          for (let i = 0; i < position.count; i += 9) {
-            probe.fromBufferAttribute(position, i).applyMatrix4(object.matrixWorld).project(viewer.camera);
-            if (Math.abs(probe.z) > 1) continue;
-            const x = ((probe.x + 1) / 2) * innerWidth;
-            const y = ((1 - probe.y) / 2) * innerHeight;
-            box[0] = Math.min(box[0], x);
-            box[1] = Math.min(box[1], y);
-            box[2] = Math.max(box[2], x);
-            box[3] = Math.max(box[3], y);
-          }
-        });
+        const measure = (root) => {
+          const box = [Infinity, Infinity, -Infinity, -Infinity];
+          root.updateWorldMatrix(true, true);
+          root.traverse((object) => {
+            const position = object.geometry?.attributes?.position;
+            if (!position || object.isPoints || !object.visible) return;
+            for (let i = 0; i < position.count; i += 9) {
+              probe.fromBufferAttribute(position, i).applyMatrix4(object.matrixWorld).project(viewer.camera);
+              if (Math.abs(probe.z) > 1) continue;
+              const x = ((probe.x + 1) / 2) * innerWidth;
+              const y = ((1 - probe.y) / 2) * innerHeight;
+              box[0] = Math.min(box[0], x);
+              box[1] = Math.min(box[1], y);
+              box[2] = Math.max(box[2], x);
+              box[3] = Math.max(box[3], y);
+            }
+          });
+          return box;
+        };
+        // What the scene promises to keep clear is its declared subject box
+        // (`getSubjectBounds`), not every vertex: on a portrait screen that box
+        // stops above the heart and the loop's arches may run under the title
+        // (the ventricle is what has to be read, not the loop's outline).
+        const declared = scene.getSubjectBounds?.();
+        const box = declared
+          ? (() => {
+              const b = [Infinity, Infinity, -Infinity, -Infinity];
+              for (const corner of declared.corners) {
+                probe.copy(corner).project(viewer.camera);
+                const x = ((probe.x + 1) / 2) * innerWidth;
+                const y = ((1 - probe.y) / 2) * innerHeight;
+                b[0] = Math.min(b[0], x);
+                b[1] = Math.min(b[1], y);
+                b[2] = Math.max(b[2], x);
+                b[3] = Math.max(b[3], y);
+              }
+              return b;
+            })()
+          : measure(scene.root);
+        const heart = scene.ventricle ? measure(scene.ventricle) : box;
         const hits = [];
         for (const [name, selector] of [
           ['read-out', '.metrics'],
@@ -382,16 +450,14 @@ for (const slug of SLUGS) {
           const dy = Math.min(box[3], rect.bottom) - Math.max(box[1], rect.top);
           if (dx > 4 && dy > 4) hits.push(`${name} ${Math.round(dy)}px`);
         }
-        // Everything in the console inside the console: a line that is too
-        // long for a narrow phone runs out of the panel rather than wrapping.
         const consoleRect = document.querySelector('.console')?.getBoundingClientRect();
-        const spill = [...document.querySelectorAll('.console .model-editor-panel *, .console .model-editor-tab, .console .button-row')]
+        const spill = [...document.querySelectorAll('.console .is-pad, .console .model-control-actions > *, .console .button-row')]
           .filter((node) => {
             const rect = node.getBoundingClientRect();
             return rect.width > 0 && consoleRect && (rect.right > consoleRect.right + 1 || rect.left < consoleRect.left - 1);
           })
           .map((node) => node.className || node.tagName);
-        return { box: box.map(Math.round), hits, spill: [...new Set(spill)].slice(0, 3), height: Math.round(box[3] - box[1]) };
+        return { box: box.map(Math.round), hits, spill: [...new Set(spill)].slice(0, 3), height: Math.round(box[3] - box[1]), heart: Math.round(heart[3] - heart[1]) };
       });
     const desktopSize = page.viewportSize();
     for (const [width, height, enforced] of [
@@ -402,38 +468,23 @@ for (const slug of SLUGS) {
       await page.waitForTimeout(1500);
       const where = `${width}x${height}`;
 
-      await tab('fillingVolumeMl').click();
-      const rest = await editorBox();
-      await up.click();
+      const rest = await boxes();
+      await step('heart', 'x', 'down').click();
       await page.waitForTimeout(400);
-      const first = await editorBox();
-      const seen = await dragAcross();
-      await page.waitForTimeout(400);
-      const dragged = await editorBox();
-      for (let i = 0; i < 3; i += 1) await up.click();
-      await page.waitForTimeout(400);
-      const more = await editorBox();
-      for (const [label, box] of [['the first input', first], ['a drag', dragged], ['more presses', more]]) {
-        box.forEach(([top, size], index) => {
-          if (Math.abs(top - rest[index][0]) > 1 || Math.abs(size - rest[index][1]) > 1) {
-            problems.push(`experiment layout ${where}: ${label} moved the editor (${JSON.stringify(rest[index])} -> ${JSON.stringify([top, size])})`);
-          }
-        });
-      }
-      if (!seen.every((value, i) => i === 0 || value > seen[i - 1])) problems.push(`experiment layout ${where}: a drag did not follow the pointer (${seen.join(' → ')})`);
-      const scrolled = await page.evaluate(() => document.scrollingElement.scrollTop);
-      if (scrolled !== 0) problems.push(`experiment layout ${where}: a drag scrolled the page (${scrolled}px)`);
+      sameBoxes(`${where} the first press`, rest, await boxes());
+      await dragPad('heart', 24, -24);
+      sameBoxes(`${where} a drag`, rest, await boxes());
 
-      // Hit areas, not glyphs: every control in the editor is at least 44 px.
+      // Hit areas, not glyphs: every control in the pads' console is 44 px.
       const small = await page.evaluate(() =>
-        [...document.querySelectorAll('.model-editor-tab, .model-editor-step, .model-editor-slider, .model-editor-reset, .model-editor-values .model-control-reset, .model-controls-advanced > summary')]
+        [...document.querySelectorAll('.pad-switch, .pad-step, .pad-range-x, .model-control-undo, .model-control-actions .model-control-reset, .model-control-actions .model-controls-advanced > summary')]
           .map((node) => ({ node, rect: node.getBoundingClientRect() }))
           .filter(({ rect }) => rect.width > 0 && (rect.height < 44 || rect.width < 44))
           .map(({ node, rect }) => `${node.className} ${Math.round(rect.width)}x${Math.round(rect.height)}`)
       );
       for (const line of small) problems.push(`experiment layout ${where}: under 44 px — ${line}`);
 
-      for (const moment of ['with an input moved', 'with the start menu open', 'after dobutamine']) {
+      for (const moment of ['after a drag', 'with the start menu open', 'after dobutamine']) {
         if (moment === 'with the start menu open') {
           await menu.click();
           await page.waitForTimeout(1500);
@@ -453,7 +504,16 @@ for (const slug of SLUGS) {
           if (enforced) problems.push(text);
           else console.log(`  ${slug}: ${text} [reported, not enforced — F-212]`);
         }
-        console.log(`  ${slug}: ${where} ${moment}: model drawn ${result.height}px tall`);
+        console.log(`  ${slug}: ${where} ${moment}: model drawn ${result.height}px tall, ventricle ${result.heart}px`);
+        // The ventricle has to be readable while the pad is in use, not merely
+        // uncovered (owner, 2026-09-26). Floors are this build's measured sizes
+        // on a preview build (whose build marker takes 34 px): a guard against
+        // shrinking it again, not a claim that they are enough. 375×553 does
+        // not fit yet and is reported only (F-212).
+        const floor = { '390x844': 125, '430x932': 150, '390x664': 75, '375x667': 75 }[where];
+        if (moment === 'after a drag' && floor && result.heart < floor) {
+          problems.push(`experiment layout ${where}: the ventricle is drawn ${result.heart}px tall while the pad is in use (floor ${floor}px)`);
+        }
       }
       await choose('reference');
       await page.waitForTimeout(600);
@@ -666,7 +726,7 @@ for (const slug of SLUGS) {
   // and from every unit test.
   const dataButton = page.locator('button[data-control="data"]');
   if (await dataButton.count()) {
-    await dataButton.first().click();
+    await pressConsoleControl(page, 'button[data-control="data"]');
     await page.waitForFunction(() => document.querySelector('#ui')?.dataset.view === 'data');
     await page.waitForTimeout(1400);
     await page.screenshot({ path: join(outDir, `${slug}-data-view.png`) });
@@ -695,15 +755,52 @@ for (const slug of SLUGS) {
 
   const compareButton = page.locator('button[data-control="compare"]');
   if (await compareButton.count()) {
-    await compareButton.first().click();
+    // A scene may offer the comparison only once there is something to
+    // compare (cardiac output: after the first change). Make that change
+    // through the scene's own first press, where it has one.
+    const firstStep = page.locator('.pad-step[data-direction="down"]').first();
+    const madeChange = (await compareButton.first().isDisabled()) && (await firstStep.count());
+    if (madeChange) {
+      await firstStep.click();
+      await page.waitForTimeout(1200);
+    }
+    await pressConsoleControl(page, 'button[data-control="compare"]');
     await page.waitForTimeout(2200);
     await page.screenshot({ path: join(outDir, `${slug}-compare.png`) });
     const referenced = await page.evaluate(() =>
       [...document.querySelectorAll('.metrics .metric-reference')].filter((node) => node.textContent.trim()).length
     );
     if (!referenced) problems.push('comparison is on and no row shows what it is compared against');
-    await compareButton.first().click();
+    // The two hearts at the same depth: the same condition drawn twice would
+    // otherwise be drawn at two sizes (owner's recording, 24 s). Measured as
+    // the projected height of each heart's outer wall.
+    const heights = await page.evaluate(() => {
+      const { viewer, scene } = window.__app ?? {};
+      if (!scene?.reference || !scene?.ventricle) return null;
+      const height = (object) => {
+        const box = [Infinity, -Infinity];
+        const probe = viewer.camera.position.clone();
+        object.updateWorldMatrix(true, true);
+        object.traverse((node) => {
+          const position = node.geometry?.attributes?.position;
+          if (!position || node.isPoints) return;
+          for (let i = 0; i < position.count; i += 7) {
+            probe.fromBufferAttribute(position, i).applyMatrix4(node.matrixWorld).project(viewer.camera);
+            box[0] = Math.min(box[0], probe.y);
+            box[1] = Math.max(box[1], probe.y);
+          }
+        });
+        return ((box[1] - box[0]) / 2) * innerHeight;
+      };
+      return { before: height(scene.reference.chamber), now: height(scene.ventricle) };
+    });
+    if (heights) console.log(`  ${slug}: comparison hearts drawn ${Math.round(heights.before)}px / ${Math.round(heights.now)}px tall`);
+    await pressConsoleControl(page, 'button[data-control="compare"]');
     await page.waitForTimeout(900);
+    if (madeChange) {
+      await page.locator('.model-control-undo').click();
+      await page.waitForTimeout(900);
+    }
   }
 
   // --- the lesson, end to end ---------------------------------------------
@@ -721,7 +818,7 @@ for (const slug of SLUGS) {
   const learnButton = page.locator('button[data-control="learn"]');
   if (await learnButton.count()) {
     const before = await state();
-    await learnButton.first().click();
+    await pressConsoleControl(page, 'button[data-control="learn"]');
     await page.waitForSelector('.learn-body', { timeout: 5000 });
     await page.waitForTimeout(600);
 

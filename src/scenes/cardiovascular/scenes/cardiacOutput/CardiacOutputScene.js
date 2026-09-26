@@ -34,6 +34,7 @@ import {
   CONSOLE_LAYOUT,
   CONTROLS,
   CONTROL_EDITOR,
+  CONTROL_PADS,
   LEARNING_LABEL,
   LEARNING_MODULES,
   REEL_LABEL,
@@ -55,6 +56,19 @@ import { disposeObject } from '../../../../utils/dispose.js';
 
 /** Where the hero shot looks from — into the cut wedge. */
 const VIEW_DIRECTION = new THREE.Vector3(0.34, 0.2, 0.92).normalize();
+
+/**
+ * The direction the two hearts are spread along while comparing: the screen's
+ * horizontal, as seen from `VIEW_DIRECTION` — not world x.
+ *
+ * They used to be spread along world x. The camera looks at the scene from
+ * the side and above, so along x one heart sat nearer the camera than the
+ * other and was drawn larger and lower: at the start of an experiment, with
+ * every figure ±0, "before" and "now" looked like two different hearts
+ * (owner's recording, 24 s). Spread across the line of sight instead, both
+ * are at the same depth, and what differs between them is the condition.
+ */
+const COMPARISON_AXIS = new THREE.Vector3(VIEW_DIRECTION.z, 0, -VIEW_DIRECTION.x).normalize();
 
 /** How far apart the two hearts sit while comparing. */
 const COMPARISON_OFFSET = 7.4;
@@ -304,7 +318,13 @@ export class CardiacOutputScene {
     this.blood.update(elapsed);
     this.circuit.update(dt);
     if (this.comparing && this.reference) {
-      this.reference.setPhase(this.phase);
+      // Its own rate — see `setComparison`. A phase driven from outside (the
+      // reel) is one clock for both, because the sequence is a presentation of
+      // one beat, not a comparison of two rates.
+      this._referencePhase = this.cardiacPhaseDriven
+        ? this.phase
+        : advanceCardiacPhase(this._referencePhase ?? this.phase, dt, this.session.baseline.metrics.heartRatePerMin);
+      this.reference.setPhase(this._referencePhase);
       this.reference.update(elapsed);
     }
   }
@@ -390,13 +410,9 @@ export class CardiacOutputScene {
       {
         // After the preset and before the four inputs, which is also the order
         // a restore replays them in: the intervention is computed from the
-        // preset's starting condition, and the four values land last. Since a
-        // manual move keeps the intervention's values (see `setControl`), that
-        // replay arrives at the same condition either way.
-        //
-        // The row reports where the condition came from — the intervention
-        // applied or the one adjusted since — so a restore carries the label
-        // too, and 「なし」 is lit only when there is none.
+        // preset's starting condition, and the four values land last. A manual
+        // move keeps the intervention's values, so that replay arrives at the
+        // same condition, and the row reports where it came from.
         id: 'intervention',
         kind: 'choice',
         advanced: true,
@@ -407,40 +423,59 @@ export class CardiacOutputScene {
         value: this.session.origin,
         options: INTERVENTION_OPTIONS,
       },
-      // The experiment itself: the four inputs, always on screen, one of them
-      // open in the editor at a time. Each is still its own entry, so a
-      // restore and a lesson move them exactly as before.
+      // The four inputs, each its own entry — a restore and a lesson move them
+      // one at a time, as before — drawn as two pads of two axes each
+      // (`CONTROL_PADS`). A pad moves its two inputs as one change; each axis
+      // also has its own control that moves that input alone.
       ...CONTROLS.map((control) => {
         const domain = CONTROL_DOMAIN[control.id];
         const words = CONTROL_EDITOR[control.id];
+        const pad = CONTROL_PADS.find((entry) => entry.x === control.id || entry.y === control.id);
         return {
           id: control.id,
           label: control.label,
           labelJa: control.labelJa,
           short: control.short,
           shortJa: control.shortJa,
+          tinyJa: control.tinyJa,
+          unit: control.unitShort,
           min: domain.min,
           max: domain.max,
           step: domain.step,
           value: input[control.id],
-          // Where this experiment started, for the mark on the track and for
-          // 「この項目を戻す」. Not a normal value: the start state is a teaching
-          // condition, not a reference range.
+          // Where this experiment started: the hollow mark on the pad. Not a
+          // normal value — the start state is a teaching condition.
           start: start[control.id],
-          editor: true,
+          pad: pad ? { id: pad.id, axis: pad.x === control.id ? 'x' : 'y', label: pad.label, labelJa: pad.labelJa } : undefined,
           ...words,
-          format: (value) => `${formatControl(control.id, value)}${control.unit}`,
+          format: (value) => formatControl(control.id, value),
         };
       }),
+      {
+        // Undo: one of the reader's operations — a drag, a press — back. Not
+        // replayed by a restore (its value is nothing).
+        id: 'history',
+        kind: 'history',
+        label: 'Undo last change',
+        labelJa: '直前の操作を戻す',
+        shortJa: '1つ戻す',
+        value: null,
+        canUndo: this.session.canUndo,
+      },
     ];
   }
 
   /**
-   * @param {string} id `preset`, `intervention` or one of the four
-   * @param {number|string} value
+   * @param {string} id `preset`, `intervention`, `history`, one of the four,
+   *   or a pad's id with an object of its two inputs
+   * @param {number|string|Record<string, number>|null} value
+   * @param {{ op?: unknown }} [detail] the reader's operation, for undo
    */
-  setModelControl(id, value) {
-    if (id === 'preset') {
+  setModelControl(id, value, detail = {}) {
+    if (id === 'history') {
+      if (value === 'undo') this.session.undo();
+      else return;
+    } else if (id === 'preset') {
       this.session.selectPreset(String(value));
     } else if (id === 'intervention') {
       // 「なし」 means this experiment's starting condition, from anywhere —
@@ -451,8 +486,14 @@ export class CardiacOutputScene {
       // has to re-apply it (the four values that follow then land on top), so
       // it is re-applied here rather than ignored.
       else this.session.selectIntervention(String(value));
+    } else if (value && typeof value === 'object') {
+      // A pad: its two inputs, one change.
+      this.session.setControls(
+        Object.fromEntries(Object.entries(value).map(([key, entry]) => [key, Number(entry)])),
+        { op: detail.op }
+      );
     } else {
-      this.session.setControl(id, Number(value));
+      this.session.setControl(id, Number(value), { op: detail.op });
     }
     this._applyState();
   }
@@ -641,12 +682,22 @@ export class CardiacOutputScene {
       if (adjusted) return ja ? `${pick(adjusted)}適用後を調整：` : `Adjusted after ${pick(adjusted)}: `;
       return '';
     };
+    const fromEn = fromOption?.short ?? fromOption?.label;
+    const fromJa = fromOption?.shortJa ?? fromOption?.labelJa;
     rows.push({
       id: 'changed',
-      label: `Compared with: ${fromOption?.short ?? fromOption?.label} at the start`,
-      labelJa: `比較元：${fromOption?.shortJa ?? fromOption?.labelJa}（開始時）`,
-      value: atStart ? 'unchanged from the start' : `${origin(false)}${change.value}`,
-      valueJa: atStart ? '開始時のまま' : `${origin(true)}${change.valueJa}`,
+      // What the reader changed — inputs, not results. The figures under it
+      // are what the model computed from them.
+      label: atStart ? `At the start (${fromEn}) — nothing changed` : `You changed (from ${fromEn})`,
+      labelJa: atStart ? `開始時（${fromJa}）のまま` : `変えた入力（${fromJa}から）`,
+      value: atStart ? '' : `${origin(false)}${change.value}`,
+      valueJa: atStart ? '' : `${origin(true)}${change.valueJa}`,
+      // On a phone this row is only the strip's heading: which inputs moved
+      // and which way is on the pad switcher (an arrow on each moved value,
+      // none on a held one), and the values are on the axes. What the strip
+      // says is what its two lines are.
+      labelShortJa: '計算結果（下段は開始時との差）',
+      valueShortJa: '',
       unit: '',
       emphasis: true,
       compact: true,
@@ -780,6 +831,34 @@ export class CardiacOutputScene {
         unit: 'dyn·s·cm⁻⁵',
       }
     );
+    // The computed results on the face of the panel, always the same four in
+    // the same order — output, stroke volume, arterial pressure and the
+    // filling pressure that often moves the other way — so nothing is
+    // reshuffled while the reader is moving an input. The rest are one press
+    // away under 「他の指標」.
+    //
+    // Before anything has moved, the rows carry their start value and ±0 but
+    // say they are quiet: the panel keeps the room for them — so nothing moves
+    // when they fill in — without repeating "start → now ±0" on every figure.
+    const headline = ['co', 'sv', 'map', 'lvedp'];
+    // Short names for a phone's four narrow columns, where the full ones were
+    // cut and ran into the next column.
+    const short = { co: '心拍出量', sv: '1回拍出量', map: '平均動脈圧', lvedp: '左室充満圧' };
+    for (const row of rows) {
+      if (row.id === 'changed' || row.id === 'unsolved') continue;
+      row.emphasis = headline.includes(row.id);
+      row.compact = headline.includes(row.id);
+      if (short[row.id]) row.labelShortJa = short[row.id];
+      // The signed figure is a difference from the start of this experiment,
+      // and says so; it is never drawn as "start → change".
+      if (row.delta != null) {
+        row.deltaLabel = 'vs start';
+        row.deltaLabelJa = '開始時比';
+      }
+      if (atStart && !this.comparing) row.quiet = true;
+    }
+    const rank = (row) => (row.id === 'unsolved' ? -2 : row.id === 'changed' ? -1 : headline.includes(row.id) ? headline.indexOf(row.id) : headline.length);
+    rows.sort((a, b) => rank(a) - rank(b));
     return rows;
   }
 
@@ -820,13 +899,25 @@ export class CardiacOutputScene {
    * Side by side with the condition before the reader started moving things.
    *
    * Built on first use: it doubles the chamber geometry and most readers never
-   * turn it on. Both hearts are drawn from the same model and run on one phase,
-   * so they reach end-diastole together even when the rates differ — which is a
-   * synchronised *display* of two states and not a claim that they beat at the
-   * same rate. Neither heart's rate is changed to achieve it.
+   * turn it on. Both hearts are drawn from the same model. They start the
+   * comparison in step, and each then beats at **its own** rate: the "before"
+   * heart at the starting condition's rate, the current one at the current
+   * rate. They used to share one phase, which forced two different rates into
+   * step and hid exactly the difference a rate change makes (owner's brief,
+   * 2026-09-25). At equal rates they stay in step, as they should.
    *
    * @param {boolean} enabled
    */
+  /**
+   * Whether "before" and "now" differ. Two identical conditions side by side
+   * teach nothing and invite reading a difference into the picture that the
+   * figures do not have, so the shell offers the comparison only when this is
+   * true.
+   */
+  canCompare() {
+    return this.session.moved;
+  }
+
   setComparison(enabled) {
     this.comparing = enabled;
     if (enabled && !this.reference) {
@@ -837,10 +928,13 @@ export class CardiacOutputScene {
     if (this.reference) {
       this.reference.setState(this.session.baseline.metrics, this.session.baseline.cycle);
       this.reference.visible = enabled;
-      this.reference.position.x = enabled ? -COMPARISON_OFFSET : 0;
-      if (enabled) this.reference.setPhase(this.phase);
+      this.reference.position.copy(COMPARISON_AXIS).multiplyScalar(enabled ? -COMPARISON_OFFSET : 0);
+      if (enabled) {
+        this._referencePhase = this.phase;
+        this.reference.setPhase(this.phase);
+      }
     }
-    this.primary.position.x = enabled ? COMPARISON_OFFSET : 0;
+    this.primary.position.copy(COMPARISON_AXIS).multiplyScalar(enabled ? COMPARISON_OFFSET : 0);
     // The circuit is about one condition, and two conditions cannot share it
     // without implying they are connected to each other.
     this.circuit.object.visible = !enabled;
@@ -863,9 +957,21 @@ export class CardiacOutputScene {
    * into the safe band; it is not a branch in the shell.
    */
   getSubjectBounds() {
-    const spread = this.comparing ? COMPARISON_OFFSET : 0;
-    const min = new THREE.Vector3(-7.8 - spread, -7.1, -3.8);
-    const max = new THREE.Vector3(7.1 + spread, 4.4, 3.8);
+    // The two hearts lie along COMPARISON_AXIS, which has x and z parts.
+    const spreadX = this.comparing ? COMPARISON_OFFSET * Math.abs(COMPARISON_AXIS.x) : 0;
+    const spreadZ = this.comparing ? COMPARISON_OFFSET * Math.abs(COMPARISON_AXIS.z) : 0;
+    // On a portrait screen the box stops just above the heart (y 2.6, the
+    // ventricle's base is at 2.1) instead of at the top of the loop's arches
+    // (4.4). What has to be readable while operating is the ventricle, not the
+    // loop's outline (docs/pathology-interaction-principles.md, principle 3):
+    // measured at 390×664, the whole loop left the ventricle 70 px tall. The
+    // lower run of the loop — the reason the loop is framed at all — and the
+    // resistance zone (y ≈ 2.0) stay inside; only the arches' tops may run
+    // under the title. Fixed per aspect, never per input, so nothing refits
+    // when a value changes.
+    const portrait = !this.comparing && (this.viewer?.camera?.aspect ?? 1.6) < 0.85;
+    const min = new THREE.Vector3(-7.8 - spreadX, -7.1, -3.8 - spreadZ);
+    const max = new THREE.Vector3(7.1 + spreadX, portrait ? 2.6 : 4.4, 3.8 + spreadZ);
     const corners = [];
     for (const x of [min.x, max.x]) {
       for (const y of [min.y, max.y]) {
@@ -899,8 +1005,8 @@ export class CardiacOutputScene {
       return: this.circuit?.anchors.return.clone() ?? new THREE.Vector3(-1, -5.3, -3),
       node: this.circuit?.anchors.node.clone() ?? new THREE.Vector3(6.4, -0.2, -2.95),
       // Above each heart's base, where the two sit while comparing.
-      comparisonBefore: new THREE.Vector3(-COMPARISON_OFFSET, ANATOMY.baseY + 1.6, 0),
-      comparisonNow: new THREE.Vector3(COMPARISON_OFFSET, ANATOMY.baseY + 1.6, 0),
+      comparisonBefore: COMPARISON_AXIS.clone().multiplyScalar(-COMPARISON_OFFSET).setY(ANATOMY.baseY + 1.6),
+      comparisonNow: COMPARISON_AXIS.clone().multiplyScalar(COMPARISON_OFFSET).setY(ANATOMY.baseY + 1.6),
     };
     return [...ANNOTATIONS, ...COMPARISON_ANNOTATIONS].map((annotation) => ({
       ...annotation,

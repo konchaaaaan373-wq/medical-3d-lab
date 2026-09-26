@@ -1121,8 +1121,10 @@ export async function createApp({ stage, ui, onRetryModel = null }) {
   const modelControls = scene.getModelControls
     ? createModelControls({
         controls: scene.getModelControls(),
-        onChange: (id, value) => {
-          scene.setModelControl(id, value);
+        // `detail` carries the reader's operation (one drag, one press), so a
+        // scene with undo can take a whole drag back in one step.
+        onChange: (id, value, detail) => {
+          scene.setModelControl(id, value, detail);
           // A model may canonicalise an input or make options mutually
           // exclusive. Read the accepted state back immediately so the
           // controls can never display a combination the model does not have.
@@ -1184,6 +1186,14 @@ export async function createApp({ stage, ui, onRetryModel = null }) {
 
   /** Everything that reads back off the model after it is re-solved. */
   function refreshModelReadouts() {
+    // A scene may say when a comparison has something to show (cardiac output:
+    // only once the condition differs from where it started). With nothing to
+    // compare the button is disabled, and a comparison already open closes.
+    if (scene.canCompare) {
+      const available = scene.canCompare();
+      controlPanel?.setComparisonAvailable?.(available);
+      if (!available && comparing) setComparison(false);
+    }
     if (metricsPanel) metricsPanel.update(scene.getMetrics());
     if (chartPanels.length && scene.getCharts) {
       // One read of the model for every plot, so two charts cannot end up

@@ -293,6 +293,107 @@ supports is refusing to publish the reduction.
 
 **Catalog status:** `alpha`
 
+### Screen, 2026-09-25 (3) — two pads for four inputs (a prototype)
+
+Not a model revision: the solver, its inputs and their ranges are unchanged.
+The operating principles this follows are in
+[`docs/pathology-interaction-principles.md`](../pathology-interaction-principles.md);
+this section records what this model adopted and what is not yet known.
+
+**Adopted, as a hypothesis to test:** two XY pads, each moving two of the four
+independent inputs — **drawn one at a time**, chosen by a switcher that names
+both pads and carries the other pad's current values, with an arrow on each
+value that has moved from the start (2026-09-26). Side by side, the two pads
+truncated their own axis names in the 440 px desktop column and left a short
+phone's ventricle about 75 px tall; switching changes which pad is drawn and
+nothing else (no input, start, undo step or camera).
+
+| Pad | x: left → right | y: bottom → top |
+| --- | --- | --- |
+| 心臓 (heart) | contractility Ees: weaker → stronger | heart rate: slower → faster |
+| 血液・血管 (blood & vessels) | circulating filling: less → more | systemic resistance: lower → higher |
+
+This is not shown to be the best pairing for teaching; it groups the heart's
+own two inputs and the circulation's two. The pads are input surfaces, not
+maps: no region is coloured or named (no "normal", "failure", "shock"), and no
+corner is a goal.
+
+**One axis alone, on the axis itself:** each axis's two ends are its buttons,
+labelled with the word for that direction (「弱い／強い」「遅い／速い」
+「少ない／多い」「低い／高い」); its name and current value sit along it (x
+under the surface, y at the head of its column); and between the ends is its
+range. They move only their own input; the reader never has to drag the point
+perfectly straight. The ranges are ordinary, named range inputs — the keyboard
+path to all four inputs — and the pad surface is hidden from assistive
+technology. On the surface: the filled point is the current value, the ring is
+where the experiment started (a key says so), and faint lines project the
+point onto both axes.
+
+**The read-out:** each headline figure shows its current value and, labelled
+「開始時比」, its difference from the start of the experiment — never
+"start → difference". CO, SV, MAP and LVEDP are always shown together, in that
+order, so a rate change that raises CO while lowering SV (e.g. rate 70 → 98:
+CO 4.6 → 5.3 L/min, SV 65 → 54 mL) is read off the same line with the
+pressures beside it. No colour marks a change as better or worse.
+
+**Contract (held by tests):** one axis moves one input; a pad moves its two in
+one solve; the other pad and the untouched inputs are held; one drag or one
+press is one undo step (`ExperimentSession.setControls`, `undo`); a refused
+condition is not committed; 「開始時に戻す」 restores this experiment's start
+and clears the undo steps; after an intervention, a manual change keeps the
+intervention's other values. **Undo restores inputs only.** The model is a
+periodic steady state, so there is no clock or internal state to rewind —
+restoring the inputs restores the whole solved view — but it is not a replay
+of how the reader got there.
+
+**Pointer handling:** the point's position is the applied value; a grab keeps
+its offset (no jump); a tap that does not move changes nothing; one pointer
+owns a pad; a drag sends at most one change per frame and the last on
+release; cancel / lost capture / page hidden ends the drag at the last applied
+value and drops what was not sent.
+
+#### The four inputs
+
+| Input (key) | Short name | Definition and unit | Start (reference) | Range, step | Set by | Changed by presets / interventions | Drawn as |
+| --- | --- | --- | --- | --- | --- | --- | --- |
+| `fillingVolumeMl` | 充満量 | circulating filling, a **model quantity** (mL): stressed volume of the passive compartments plus the whole chamber volumes — not a blood volume, not venous return, not a fluid given | 710 | 540–980, 5 | reader (independent) | volume intervention +120 | nothing directly: EDV/ESV come from the solve and the cavity is drawn from them |
+| `systemicResistanceMmHgSPerMl` | 血管抵抗 | the model's **lumped** systemic resistance (mmHg·s/mL) — one component of afterload, not afterload | 1.1 | 0.7–1.8, 0.01 | reader | dobutamine ×0.85 | a narrowed, marked **arteriolar zone** on the circuit (calibre and band opacity, schematic); no valve or local lesion |
+| `contractilityEesMmHgPerMl` | 収縮力 | LV end-systolic elastance **Ees** (mmHg/mL), a model parameter of the time-varying elastance | 2.74 (reduced preset 1.2) | 0.8–4.0, 0.02 | reader | reduced-contractility preset; dobutamine ×1.5 | nothing directly: the stroke (ESV) comes from the solve |
+| `heartRatePerMin` | 心拍数 | heart rate (/min); systole and diastole scale together (a known limitation, §14) | 70 | 50–110, 1 | reader | none (dobutamine holds it) | the beat's speed (`advanceCardiacPhase`); stroke volume at the new rate is **read from the solve**, never assumed constant |
+
+All four are **independent inputs held fixed** unless the reader moves them:
+the model has no reflexes and no pharmacokinetics, so a change in one does not
+move another. That is a virtual experiment; it is not a claim that the four are
+independent in a living circulation.
+
+**Outputs drawn from the same solve:** the cavity at every phase from the
+solved volume trace (EDV at end-diastole, ESV at end-systole — the only phases
+named); the ejection window of the blood particles from the solved valve
+timings; the circuit's particle speed from computed CO and its arterial glow
+from computed MAP (both schematic). The blood particles, the wall's cut face and
+the valve leaflets are schematic; no regional wall motion, flow distribution or
+electrical activity is computed or drawn as if it were.
+
+**What the pads can reach, in three kinds** (no new normal range or diagnostic
+region is defined here):
+
+| Kind | What it is | Where it comes from |
+| --- | --- | --- |
+| Within the ranges the card describes | each input inside its declared range (§4), from one of the two start states, with one or a few inputs moved | the ranges were fixed by sweep so every point solves to a periodic beat (§4, §11); the reference is a calibration to textbook values, the reduced preset is illustrative (§9); directions are claimed, magnitudes are not (§13) |
+| Computable, **not medically reviewed** | combinations of several inputs toward their ends, including all 16 corners — e.g. MAP 203 mmHg with every input at its maximum, 33 mmHg with filling, resistance and contractility at their minimum and rate at 50 | all 16 corners solve (`status: valid`, checked 2026-09-25); that the model returns a number there is not a claim that the state is plausible, and the controls already span more than a resting adult moves (§10) |
+| Not accepted | a value outside an input's declared range; a solve that is refused or does not settle | refused, not clamped (§4); the pads send only in-range values, and a refused condition is not committed — the last condition that solved stays on screen with the unsolved notice |
+
+**Not yet verified:**
+- on a real phone (iPhone Safari, Android Chrome): only headless Chromium
+  emulation so far;
+- with first-time users: the task list is in F-212 and has not been run;
+- whether the pairing (heart / blood & vessels) helps more than a single-axis
+  layout with the same model, start and read-out — not compared;
+- that the left ventricle is readable while operating on a short phone (see
+  F-212 for the measured sizes; at 375×553 it is not yet, and what gives way
+  there is an open decision);
+- clinical review of the ranges' corners.
+
 ### Screen, 2026-09-25 — one input after an intervention, and what "before" is
 
 Not a model revision: the solver, its inputs and their ranges are unchanged.
