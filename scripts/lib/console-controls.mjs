@@ -26,8 +26,20 @@ export async function pressConsoleControl(page, selector) {
       })
       .catch(() => null);
     if (card) {
-      await page.locator(`details.console-card[data-card="${card}"] > summary`).click();
-      await page.waitForTimeout(300);
+      // Pressed at the chevron (the right of the heading), as a reader does.
+      // On a phone an open card can hide the other's heading until it is
+      // closed, so close whichever is open first.
+      const press = async (head) => {
+        const box = await head.boundingBox();
+        await head.click({ position: { x: box.width - 20, y: box.height / 2 } });
+        await page.waitForTimeout(300);
+      };
+      const head = page.locator(`details.console-card[data-card="${card}"] > summary`);
+      if (!(await head.isVisible().catch(() => false))) {
+        const open = page.locator('details.console-card[open] > summary');
+        if (await open.count()) await press(open.first());
+      }
+      await press(head);
     }
   }
   if (!(await target.isVisible().catch(() => false))) {

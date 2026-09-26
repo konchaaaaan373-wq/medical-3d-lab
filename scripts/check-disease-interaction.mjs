@@ -234,8 +234,15 @@ for (const slug of SLUGS) {
     // below is measured with it open.
     const cardHead = (id) => page.locator(`details.console-card[data-card="${id}"] > summary`);
     const cardIsOpen = (id) => page.locator(`details.console-card[data-card="${id}"]`).evaluate((node) => node.open);
+    // Pressed where a reader presses it: at the chevron, on the right. On a
+    // phone the open conditions card lends the rest of its heading row to the
+    // pad switcher, so the middle of the row is a tab, not the heading.
+    const pressCardHead = async (id) => {
+      const box = await cardHead(id).boundingBox();
+      await cardHead(id).click({ position: { x: box.width - 20, y: box.height / 2 } });
+    };
     const openCard = async (id) => {
-      if (!(await cardIsOpen(id))) await cardHead(id).click();
+      if (!(await cardIsOpen(id))) await pressCardHead(id);
       await page.waitForTimeout(500);
     };
     const hasCards = (await page.locator('details.console-card').count()) > 0;
@@ -507,7 +514,7 @@ for (const slug of SLUGS) {
 
       // The screen a reader arrives at: both cards closed.
       if (hasCards) {
-        if (await cardIsOpen('conditions')) await cardHead('conditions').click();
+        if (await cardIsOpen('conditions')) await pressCardHead('conditions');
         await page.waitForTimeout(1500);
         const result = await covered();
         if (result) {
