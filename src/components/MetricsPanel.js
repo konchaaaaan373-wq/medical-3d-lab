@@ -93,6 +93,8 @@ export function createMetricsPanel({ moreLabel } = {}) {
           const bilingual = metric.valueJa != null;
           const value = el('span', { class: `metric-value${bilingual ? ' lang-en' : ''}` });
           const valueJa = bilingual ? el('span', { class: 'metric-value lang-ja' }) : null;
+          // A shorter wording of a qualitative value for a narrow screen.
+          const valueShortJa = metric.valueShortJa != null ? el('span', { class: 'metric-value lang-ja metric-value-short' }) : null;
           // Filled in only while comparing, so the row does not reserve space
           // for a value that is usually absent.
           const reference = el('span', { class: 'metric-reference' });
@@ -102,6 +104,15 @@ export function createMetricsPanel({ moreLabel } = {}) {
           // scene to the precision of the value beside it. Empty when there is
           // nothing to compare, so a row does not carry a "±0" nobody asked for.
           const delta = el('span', { class: 'metric-delta' });
+          // What the signed figure is a difference *from*, said beside it — a
+          // scene that names it ("from the start") keeps the difference from
+          // being read as a second value or as the value before.
+          const deltaLabel = metric.deltaLabel || metric.deltaLabelJa
+            ? el('span', { class: 'metric-delta-label' }, [
+                el('span', { class: 'lang-en', text: metric.deltaLabel ?? '' }),
+                el('span', { class: 'lang-ja', text: metric.deltaLabelJa ?? '' }),
+              ])
+            : null;
           // A qualitative row carries words, and `.metric-figure` holds numbers
           // on one line — right for "1.24", wrong for 「超皮質性感覚失語」, which
           // could only widen the panel until it left the side of a phone. The
@@ -112,19 +123,25 @@ export function createMetricsPanel({ moreLabel } = {}) {
           // in place rather than keeping the name it was first built with.
           const labelEn = el('span', { class: 'lang-en', text: metric.label });
           const labelJa = el('span', { class: 'lang-ja', text: metric.labelJa });
+          // A shorter name for a narrow column, where the full one would be
+          // cut or run into the next; the stylesheet decides where it is used.
+          const labelShortJa = metric.labelShortJa
+            ? el('span', { class: 'lang-ja metric-label-short', text: metric.labelShortJa })
+            : null;
           const node = el('div', {
             class: `metric${metric.emphasis ? ' is-key' : ''}${bilingual ? ' is-qualitative' : ''}`,
           }, [
-            el('span', { class: 'metric-label' }, [labelEn, labelJa]),
-            el('span', { class: 'metric-figure' }, [reference, value, valueJa, unit, change, delta]),
+            el('span', { class: 'metric-label' }, [labelEn, labelJa, labelShortJa]),
+            el('span', { class: 'metric-figure' }, [reference, value, valueJa, valueShortJa, unit, change, deltaLabel, delta]),
           ]);
-          row = { value, valueJa, reference, unit, change, delta, labelEn, labelJa, node };
+          row = { value, valueJa, valueShortJa, reference, unit, change, delta, labelEn, labelJa, node };
           rows.set(metric.id, row);
         }
         if (row.labelEn.textContent !== metric.label) row.labelEn.textContent = metric.label;
         if (row.labelJa.textContent !== metric.labelJa) row.labelJa.textContent = metric.labelJa;
         row.value.textContent = String(metric.value);
         if (row.valueJa) row.valueJa.textContent = String(metric.valueJa);
+        if (row.valueShortJa) row.valueShortJa.textContent = String(metric.valueShortJa ?? '');
         row.unit.textContent = metric.unit;
         row.reference.textContent = metric.reference == null ? '' : `${metric.reference} →`;
         row.delta.textContent = metric.delta == null ? '' : String(metric.delta);

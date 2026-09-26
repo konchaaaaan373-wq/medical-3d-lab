@@ -106,6 +106,8 @@ export const CONTROLS = [
     // volumes plus the *whole* volume of the three chambers, which is a sum
     // over two different zero-pressure references. See MODEL_SCOPE.
     id: 'fillingVolumeMl',
+    // The pad switcher's word for it, where two values share a narrow tab.
+    tinyJa: '充満',
     unitShort: 'mL',
     // A name short enough for a read-out row. The full label belongs on the
     // control, where there is a line to spend on it.
@@ -120,6 +122,8 @@ export const CONTROLS = [
     // pressure it is measured across is this model's systemic venous pressure,
     // which is not a central venous pressure.
     id: 'systemicResistanceMmHgSPerMl',
+    // The pad switcher's word for it, where two values share a narrow tab.
+    tinyJa: '抵抗',
     unitShort: 'mmHg·s/mL',
     // A name short enough for a read-out row. The full label belongs on the
     // control, where there is a line to spend on it.
@@ -131,6 +135,8 @@ export const CONTROLS = [
   },
   {
     id: 'contractilityEesMmHgPerMl',
+    // The pad switcher's word for it, where two values share a narrow tab.
+    tinyJa: '収縮',
     unitShort: 'mmHg/mL',
     // A name short enough for a read-out row. The full label belongs on the
     // control, where there is a line to spend on it.
@@ -146,6 +152,8 @@ export const CONTROLS = [
     // "faster is more" home, and nothing in the declared range contradicts
     // them (see §14 of the card).
     id: 'heartRatePerMin',
+    // The pad switcher's word for it, where two values share a narrow tab.
+    tinyJa: '心拍',
     unitShort: '/min',
     // A name short enough for a read-out row. The full label belongs on the
     // control, where there is a line to spend on it.

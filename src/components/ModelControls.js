@@ -56,12 +56,61 @@ export function createModelControls({ controls, onChange, onReset, copy = {} }) 
   const padViews = new Map();
   for (const [id, axes] of pads) {
     if (!axes.x || !axes.y) continue;
-    const view = createXYPad({ id, words: axes.x.pad, copy: copy.pads ?? {}, x: axes.x, y: axes.y, onChange });
-    // Drawn where the first of its two inputs is listed.
-    view.first = controls.find((control) => control.pad?.id === id).id;
+    const view = createXYPad({ id, words: axes.x.pad, copy: copy.pads ?? {}, x: axes.x, y: axes.y, onChange, onSync: () => refreshSwitcher() });
     padViews.set(id, view);
     rows.set(axes.x.id, { setValue: (value, definition) => view.setValue('x', value, definition) });
     rows.set(axes.y.id, { setValue: (value, definition) => view.setValue('y', value, definition) });
+  }
+
+  // The pads as one set, with a switcher that stands for each pad. Where
+  // there is room the stylesheet shows every pad and hides the switcher; on a
+  // phone it shows one pad at a time — the switcher then carries the other
+  // pad's current values and whether they have moved. Switching changes which
+  // pad is drawn and nothing else: no input, no start, no undo step, no camera.
+  const switches = new Map();
+  let padSet = null;
+  function refreshSwitcher() {
+    for (const [id, parts] of switches) {
+      const view = padViews.get(id);
+      parts.summary.textContent = view.summary;
+      parts.button.classList.toggle('is-moved', view.moved);
+    }
+  }
+  if (padViews.size) {
+    const selectPad = (id) => {
+      padSet.dataset.active = id;
+      for (const [key, parts] of switches) {
+        parts.button.setAttribute('aria-selected', String(key === id));
+        parts.button.tabIndex = key === id ? 0 : -1;
+      }
+    };
+    // The heart's pad first, in the switcher and in the page: what the reader
+    // meets first is the heart itself.
+    const ordered = [...padViews].sort(([a], [b]) => (a === 'heart' ? -1 : b === 'heart' ? 1 : 0));
+    const switcher = el('div', { class: 'pad-switcher', role: 'tablist', 'aria-label': 'パッド / Pads' }, ordered.map(([id, view]) => {
+      const words = pads.get(id).x.pad ?? {};
+      const summary = el('span', { class: 'pad-switch-summary' });
+      const button = el('button', {
+        class: 'pad-switch',
+        type: 'button',
+        role: 'tab',
+        dataset: { pad: id },
+        on: { click: () => selectPad(id) },
+      }, [
+        el('span', { class: 'pad-switch-name' }, [
+          el('span', { class: 'lang-en', text: words.label ?? id }),
+          el('span', { class: 'lang-ja', text: words.labelJa ?? id }),
+          el('span', { class: 'pad-switch-mark', 'aria-hidden': 'true', text: '●' }),
+        ]),
+        summary,
+      ]);
+      switches.set(id, { button, summary });
+      view.element.setAttribute('role', 'group');
+      return button;
+    }));
+    padSet = el('div', { class: 'pad-set' }, [switcher, ...ordered.map(([, view]) => view.element)]);
+    selectPad(padViews.has('heart') ? 'heart' : [...padViews.keys()][0]);
+    refreshSwitcher();
   }
 
   let historyActions = null;
@@ -72,8 +121,9 @@ export function createModelControls({ controls, onChange, onReset, copy = {} }) 
     // The inputs a scene hands to the editor are drawn once, together, where
     // the first of them is listed.
     if (control.pad && padViews.has(control.pad.id)) {
-      const pad = padViews.get(control.pad.id);
-      return pad.first === control.id ? pad.element : null;
+      // The whole set is drawn where the first pad's first input is listed.
+      const first = controls.find((entry) => entry.pad && padViews.has(entry.pad.id));
+      return first === control ? padSet : null;
     }
     if (control.kind === 'history') {
       // Undo: one of the reader's operations back, through the same path.
@@ -393,7 +443,7 @@ function snap(value, control) {
  *
  * @param {{ id: string, words: {label?:string,labelJa?:string}, copy: object, x: object, y: object, onChange: Function }} options
  */
-function createXYPad({ id, words, copy, x, y, onChange }) {
+function createXYPad({ id, words, copy, x, y, onChange, onSync }) {
   const axes = { x: { ...x }, y: { ...y } };
   const withUnit = (axis, value) => `${formatterFor({ ...axes[axis], unit: '' })(value)}${axes[axis].unit ? ` ${axes[axis].unit}` : ''}`;
   const fraction = (axis, value) => {
@@ -404,26 +454,35 @@ function createXYPad({ id, words, copy, x, y, onChange }) {
   // --- the surface -------------------------------------------------------
   const thumb = el('span', { class: 'pad-thumb' });
   const startMark = el('span', { class: 'pad-start', title: `${copy.startJa ?? '開始時'}` });
-  const readX = el('span', { class: 'pad-read pad-read-x' });
-  const readY = el('span', { class: 'pad-read pad-read-y' });
-  const endWords = (axis) => [
-    el('span', { class: `pad-end pad-end-${axis}-low` }, [
-      el('span', { class: 'lang-en', text: axes[axis].low ?? '' }),
-      el('span', { class: 'lang-ja', text: axes[axis].lowJa ?? '' }),
+  // Faint lines from the point to each axis, so the point reads against the
+  // axis names beside the surface rather than floating in it.
+  const guideX = el('span', { class: 'pad-guide pad-guide-x' });
+  const guideY = el('span', { class: 'pad-guide pad-guide-y' });
+  const legend = el('span', { class: 'pad-legend' }, [
+    el('span', { class: 'pad-legend-now' }, [
+      el('span', { class: 'lang-en', text: copy.now ?? 'now' }),
+      el('span', { class: 'lang-ja', text: copy.nowJa ?? '現在' }),
     ]),
-    el('span', { class: `pad-end pad-end-${axis}-high` }, [
-      el('span', { class: 'lang-en', text: axes[axis].high ?? '' }),
-      el('span', { class: 'lang-ja', text: axes[axis].highJa ?? '' }),
+    el('span', { class: 'pad-legend-start' }, [
+      el('span', { class: 'lang-en', text: copy.start ?? 'start' }),
+      el('span', { class: 'lang-ja', text: copy.startJa ?? '開始時' }),
     ]),
-  ];
-  const area = el('div', { class: 'pad-area', 'aria-hidden': 'true' }, [
-    ...endWords('x'),
-    ...endWords('y'),
-    readY,
-    readX,
-    startMark,
-    thumb,
   ]);
+  const area = el('div', { class: 'pad-area', 'aria-hidden': 'true' }, [guideX, guideY, startMark, thumb]);
+
+  // Each axis's name and value, on that axis: x under the surface, y beside
+  // it, turned to run along it.
+  const axisLabel = (axis) => {
+    const value = el('span', { class: 'pad-axis-value' });
+    const label = el('span', { class: `pad-axis-label pad-axis-label-${axis}`, 'aria-hidden': 'true' }, [
+      el('span', { class: 'lang-en', text: axes[axis].short ?? axes[axis].label }),
+      el('span', { class: 'lang-ja', text: axes[axis].shortJa ?? axes[axis].labelJa }),
+      value,
+    ]);
+    return { label, value };
+  };
+  const labelX = axisLabel('x');
+  const labelY = axisLabel('y');
 
   /** @type {{ pointerId: number, op: string, dx: number, dy: number, pending: object|null, frame: number, sent: object }|null} */
   let drag = null;
@@ -433,10 +492,8 @@ function createXYPad({ id, words, copy, x, y, onChange }) {
     area.style.setProperty('--py', String(fraction('y', axes.y.value)));
     area.style.setProperty('--sx', String(fraction('x', axes.x.start ?? axes.x.value)));
     area.style.setProperty('--sy', String(fraction('y', axes.y.start ?? axes.y.value)));
-    // Name and value only: the unit and the definition are in the range's
-    // name and value text and in the surface's title, where there is room.
-    readX.textContent = `${axes.x.shortJa ?? axes.x.labelJa} ${formatterFor({ ...axes.x, unit: '' })(axes.x.value)}`;
-    readY.textContent = `${axes.y.shortJa ?? axes.y.labelJa} ${formatterFor({ ...axes.y, unit: '' })(axes.y.value)}`;
+    labelX.value.textContent = withUnit('x', axes.x.value);
+    labelY.value.textContent = withUnit('y', axes.y.value);
     area.title = `${axes.y.labelJa}: ${withUnit('y', axes.y.value)}\n${axes.x.labelJa}: ${withUnit('x', axes.x.value)}`;
     area.classList.toggle('is-moved', axes.x.value !== axes.x.start || axes.y.value !== axes.y.start);
   };
@@ -556,15 +613,26 @@ function createXYPad({ id, words, copy, x, y, onChange }) {
       const value = snap(axes[axis].value + direction * nudge, axes[axis]);
       if (value !== axes[axis].value) onChange(control.id, value, { op: nextOperation() });
     };
-    const button = (direction) =>
-      el('button', {
+    // The two ends of the axis are its buttons: each is the word for that
+    // direction (「弱い」「強い」), where the axis ends, and a press moves this
+    // input one step that way and nothing else.
+    const button = (direction) => {
+      const up = direction > 0;
+      const mark = axis === 'x' ? (up ? '›' : '‹') : up ? '▴' : '▾';
+      const word = el('span', { class: 'pad-step-word' }, [
+        el('span', { class: 'lang-en', text: (up ? control.high : control.low) ?? '' }),
+        el('span', { class: 'lang-ja', text: (up ? control.highJa : control.lowJa) ?? '' }),
+      ]);
+      const sign = el('span', { class: 'pad-step-mark', 'aria-hidden': 'true', text: mark });
+      return el('button', {
         class: 'pad-step',
         type: 'button',
-        dataset: { axis, direction: direction > 0 ? 'up' : 'down' },
-        'aria-label': `${control.shortJa ?? control.labelJa}を${direction > 0 ? control.increaseJa ?? '増やす' : control.decreaseJa ?? '減らす'}`,
-        title: `${direction > 0 ? control.increaseJa ?? '増やす' : control.decreaseJa ?? '減らす'}`,
+        dataset: { axis, direction: up ? 'up' : 'down' },
+        'aria-label': `${control.shortJa ?? control.labelJa}を${up ? control.increaseJa ?? '増やす' : control.decreaseJa ?? '減らす'}`,
+        title: `${control.shortJa ?? control.labelJa}を${up ? control.increaseJa ?? '増やす' : control.decreaseJa ?? '減らす'}`,
         on: { click: () => step(direction) },
-      }, [el('span', { 'aria-hidden': 'true', text: direction > 0 ? '+' : '−' })]);
+      }, axis === 'x' && !up ? [sign, word] : [word, sign]);
+    };
     const down = button(-1);
     const up = button(1);
     return { range, down, up };
@@ -594,19 +662,42 @@ function createXYPad({ id, words, copy, x, y, onChange }) {
     'aria-label': `${words?.labelJa ?? ''}: ${axes.x.shortJa ?? axes.x.labelJa}・${axes.y.shortJa ?? axes.y.labelJa}`,
     dataset: { control: `pad-${id}`, pad: id },
   }, [
-    el('span', { class: 'pad-name' }, [
-      el('span', { class: 'lang-en', text: words?.label ?? '' }),
-      el('span', { class: 'lang-ja', text: words?.labelJa ?? '' }),
+    // First line: the pad's name, the y axis's name and value (it heads the
+    // column the y axis runs down), and the key to the two marks.
+    el('div', { class: 'pad-head' }, [
+      el('span', { class: 'pad-name' }, [
+        el('span', { class: 'lang-en', text: words?.label ?? '' }),
+        el('span', { class: 'lang-ja', text: words?.labelJa ?? '' }),
+      ]),
+      labelY.label,
+      legend,
     ]),
-    el('div', { class: 'pad-body' }, [
-      el('div', { class: 'pad-y' }, [ay.up, el('span', { class: 'pad-y-track' }, [ay.range]), ay.down]),
-      area,
-    ]),
-    el('div', { class: 'pad-x' }, [ax.down, ax.range, ax.up]),
+    // The y axis: its faster/higher end at the top, its slower/lower end at
+    // the bottom, the range between — one column beside the surface.
+    el('div', { class: 'pad-y' }, [ay.up, el('span', { class: 'pad-y-track' }, [ay.range]), ay.down]),
+    area,
+    // The x axis: its ends, and between them its name and value over the
+    // range — one row under the surface.
+    el('div', { class: 'pad-x' }, [ax.down, el('span', { class: 'pad-x-track' }, [labelX.label, ax.range]), ax.up]),
   ]);
 
   return {
     element,
+    /** Whether either input differs from where this experiment started. */
+    get moved() {
+      return axes.x.value !== axes.x.start || axes.y.value !== axes.y.start;
+    },
+    /** "name value · name value", for the switcher that stands for this pad. */
+    get summary() {
+      // A moved input carries its direction from the start; one without an
+      // arrow is held where the experiment started.
+      const part = (axis) => {
+        const { value, start } = axes[axis];
+        const arrow = start == null || value === start ? '' : value > start ? '↑' : '↓';
+        return `${axes[axis].tinyJa ?? axes[axis].shortJa ?? axes[axis].labelJa} ${formatterFor({ ...axes[axis], unit: '' })(value)}${arrow}`;
+      };
+      return `${part('x')} ${part('y')}`;
+    },
     /** The model's accepted value and start for one axis. */
     setValue(axis, value, definition) {
       const next = Number(value);
@@ -617,6 +708,7 @@ function createXYPad({ id, words, copy, x, y, onChange }) {
       axes[axis].value = next;
       if (definition?.start != null) axes[axis].start = Number(definition.start);
       sync();
+      onSync?.();
     },
   };
 }

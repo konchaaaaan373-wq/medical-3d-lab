@@ -191,12 +191,16 @@ test('console: two pads on the face of the console, each a named group with a ra
   await withDocument(async () => {
     const { console_ } = await padConsole();
     const pads = findByClass(console_.element, 'is-pad');
-    assert.deepEqual(pads.map((pad) => pad.dataset.pad), ['circulation', 'heart']);
+    assert.deepEqual(pads.map((pad) => pad.dataset.pad), ['heart', 'circulation'], 'the heart first');
     for (const pad of pads) {
       assert.equal(pad.getAttribute('role'), 'group');
       assert.match(pad.getAttribute('aria-label'), /・/, 'named for both of its inputs');
       assert.equal(findByClass(pad, 'pad-range').length, 2, 'one range per axis');
       assert.equal(findByClass(pad, 'pad-step').length, 4, 'two buttons per axis');
+      // Each axis's name is on that axis, and its ends are named.
+      assert.equal(findByClass(pad, 'pad-axis-label-x').length, 1);
+      assert.equal(findByClass(pad, 'pad-axis-label-y').length, 1);
+      assert.ok(findByClass(pad, 'pad-step-word').every((word) => text(word).trim().length > 0), 'every end has its word');
       assert.equal(findByClass(pad, 'pad-area')[0].getAttribute('aria-hidden'), 'true', 'the surface is for a pointer; the ranges carry it for everyone else');
     }
     const [advanced] = findByClass(console_.element, 'model-controls-advanced');
@@ -295,5 +299,32 @@ test('console: a drag keeps the grab offset, ignores a second finger, is one und
       globalThis.requestAnimationFrame = previous.raf;
       globalThis.cancelAnimationFrame = previous.caf;
     }
+  });
+});
+
+test('console: the switcher draws one pad or the other and changes nothing else; it carries the other pad’s values', async () => {
+  await withDocument(async () => {
+    const { session, console_, calls } = await padConsole();
+    const [set] = findByClass(console_.element, 'pad-set');
+    const tabs = findByClass(set, 'pad-switch');
+    assert.deepEqual(tabs.map((tab) => tab.dataset.pad), ['heart', 'circulation']);
+    assert.equal(set.dataset.active, 'heart', 'the heart first');
+    assert.equal(tabs[0].getAttribute('aria-selected'), 'true');
+
+    // Change something, then switch: nothing but which pad is drawn moves.
+    const [heart] = findByClass(set, 'is-pad').filter((pad) => pad.dataset.pad === 'heart');
+    findByClass(heart, 'pad-step').find((node) => node.dataset.axis === 'x' && node.dataset.direction === 'down').dispatchEvent({ type: 'click' });
+    const before = { input: { ...session.input }, canUndo: session.canUndo, calls: calls.length };
+    tabs[1].dispatchEvent({ type: 'click' });
+    assert.equal(set.dataset.active, 'circulation');
+    assert.deepEqual({ ...session.input }, before.input, 'no input moves');
+    assert.equal(session.canUndo, before.canUndo, 'no undo step is added or taken');
+    assert.equal(calls.length, before.calls, 'nothing is sent to the model');
+
+    // The heart's tab now says what the heart pad holds, and that it moved.
+    assert.match(text(tabs[0]), /収縮 2\.58↓/, "the moved input carries its direction");
+    assert.match(text(tabs[0]), /心拍 70(?!↑|↓)/, "the held one carries none");
+    assert.equal(tabs[0].classList.contains('is-moved'), true);
+    assert.equal(tabs[1].classList.contains('is-moved'), false);
   });
 });

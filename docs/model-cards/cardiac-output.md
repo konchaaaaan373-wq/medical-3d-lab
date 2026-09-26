@@ -301,7 +301,12 @@ The operating principles this follows are in
 this section records what this model adopted and what is not yet known.
 
 **Adopted, as a hypothesis to test:** two XY pads, each moving two of the four
-independent inputs.
+independent inputs — **drawn one at a time**, chosen by a switcher that names
+both pads and carries the other pad's current values, with an arrow on each
+value that has moved from the start (2026-09-26). Side by side, the two pads
+truncated their own axis names in the 440 px desktop column and left a short
+phone's ventricle about 75 px tall; switching changes which pad is drawn and
+nothing else (no input, start, undo step or camera).
 
 | Pad | x: left → right | y: bottom → top |
 | --- | --- | --- |
@@ -313,11 +318,23 @@ own two inputs and the circulation's two. The pads are input surfaces, not
 maps: no region is coloured or named (no "normal", "failure", "shock"), and no
 corner is a goal.
 
-**One axis alone:** every axis also has a range (turned upright for y) and a
-button at each end. They move only their own input; the reader never has to
-drag the point perfectly straight. The ranges are ordinary, named range inputs
-— the keyboard path to all four inputs — and the pad surface is hidden from
-assistive technology.
+**One axis alone, on the axis itself:** each axis's two ends are its buttons,
+labelled with the word for that direction (「弱い／強い」「遅い／速い」
+「少ない／多い」「低い／高い」); its name and current value sit along it (x
+under the surface, y at the head of its column); and between the ends is its
+range. They move only their own input; the reader never has to drag the point
+perfectly straight. The ranges are ordinary, named range inputs — the keyboard
+path to all four inputs — and the pad surface is hidden from assistive
+technology. On the surface: the filled point is the current value, the ring is
+where the experiment started (a key says so), and faint lines project the
+point onto both axes.
+
+**The read-out:** each headline figure shows its current value and, labelled
+「開始時比」, its difference from the start of the experiment — never
+"start → difference". CO, SV, MAP and LVEDP are always shown together, in that
+order, so a rate change that raises CO while lowering SV (e.g. rate 70 → 98:
+CO 4.6 → 5.3 L/min, SV 65 → 54 mL) is read off the same line with the
+pressures beside it. No colour marks a change as better or worse.
 
 **Contract (held by tests):** one axis moves one input; a pad moves its two in
 one solve; the other pad and the untouched inputs are held; one drag or one
@@ -357,12 +374,14 @@ from computed MAP (both schematic). The blood particles, the wall's cut face and
 the valve leaflets are schematic; no regional wall motion, flow distribution or
 electrical activity is computed or drawn as if it were.
 
-**Combinations checked (numerics only):** all 16 corner combinations of the
-four ranges solve (`status: valid`). Some are physiologically extreme — e.g.
-MAP 203 mmHg with every input at its maximum, 33 mmHg with filling,
-resistance and contractility at their minimum and rate at 50. **That the model
-returns a number there is not a claim that the state is plausible**, and no
-clinical review has looked at the corners.
+**What the pads can reach, in three kinds** (no new normal range or diagnostic
+region is defined here):
+
+| Kind | What it is | Where it comes from |
+| --- | --- | --- |
+| Within the ranges the card describes | each input inside its declared range (§4), from one of the two start states, with one or a few inputs moved | the ranges were fixed by sweep so every point solves to a periodic beat (§4, §11); the reference is a calibration to textbook values, the reduced preset is illustrative (§9); directions are claimed, magnitudes are not (§13) |
+| Computable, **not medically reviewed** | combinations of several inputs toward their ends, including all 16 corners — e.g. MAP 203 mmHg with every input at its maximum, 33 mmHg with filling, resistance and contractility at their minimum and rate at 50 | all 16 corners solve (`status: valid`, checked 2026-09-25); that the model returns a number there is not a claim that the state is plausible, and the controls already span more than a resting adult moves (§10) |
+| Not accepted | a value outside an input's declared range; a solve that is refused or does not settle | refused, not clamped (§4); the pads send only in-range values, and a refused condition is not committed — the last condition that solved stays on screen with the unsolved notice |
 
 **Not yet verified:**
 - on a real phone (iPhone Safari, Android Chrome): only headless Chromium
@@ -370,10 +389,9 @@ clinical review has looked at the corners.
 - with first-time users: the task list is in F-212 and has not been run;
 - whether the pairing (heart / blood & vessels) helps more than a single-axis
   layout with the same model, start and read-out — not compared;
-- that the left ventricle is readable while operating on a short phone: at
-  390×664 the ventricle is drawn about 75 px tall on a preview build (production
-  has 34 px more for it), and at 375×553 about 35 px — there the two pads and a
-  readable heart do not yet fit together;
+- that the left ventricle is readable while operating on a short phone (see
+  F-212 for the measured sizes; at 375×553 it is not yet, and what gives way
+  there is an open decision);
 - clinical review of the ranges' corners.
 
 ### Screen, 2026-09-25 — one input after an intervention, and what "before" is

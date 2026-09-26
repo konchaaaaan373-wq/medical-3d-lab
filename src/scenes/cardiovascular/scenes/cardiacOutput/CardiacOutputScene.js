@@ -437,6 +437,7 @@ export class CardiacOutputScene {
           labelJa: control.labelJa,
           short: control.short,
           shortJa: control.shortJa,
+          tinyJa: control.tinyJa,
           unit: control.unitShort,
           min: domain.min,
           max: domain.max,
@@ -691,6 +692,12 @@ export class CardiacOutputScene {
       labelJa: atStart ? `開始時（${fromJa}）のまま` : `変えた入力（${fromJa}から）`,
       value: atStart ? '' : `${origin(false)}${change.value}`,
       valueJa: atStart ? '' : `${origin(true)}${change.valueJa}`,
+      // On a phone this row is only the strip's heading: which inputs moved
+      // and which way is on the pad switcher (an arrow on each moved value,
+      // none on a held one), and the values are on the axes. What the strip
+      // says is what its two lines are.
+      labelShortJa: '計算結果（下段は開始時との差）',
+      valueShortJa: '',
       unit: '',
       emphasis: true,
       compact: true,
@@ -834,10 +841,20 @@ export class CardiacOutputScene {
     // say they are quiet: the panel keeps the room for them — so nothing moves
     // when they fill in — without repeating "start → now ±0" on every figure.
     const headline = ['co', 'sv', 'map', 'lvedp'];
+    // Short names for a phone's four narrow columns, where the full ones were
+    // cut and ran into the next column.
+    const short = { co: '心拍出量', sv: '1回拍出量', map: '平均動脈圧', lvedp: '左室充満圧' };
     for (const row of rows) {
       if (row.id === 'changed' || row.id === 'unsolved') continue;
       row.emphasis = headline.includes(row.id);
       row.compact = headline.includes(row.id);
+      if (short[row.id]) row.labelShortJa = short[row.id];
+      // The signed figure is a difference from the start of this experiment,
+      // and says so; it is never drawn as "start → change".
+      if (row.delta != null) {
+        row.deltaLabel = 'vs start';
+        row.deltaLabelJa = '開始時比';
+      }
       if (atStart && !this.comparing) row.quiet = true;
     }
     const rank = (row) => (row.id === 'unsolved' ? -2 : row.id === 'changed' ? -1 : headline.includes(row.id) ? headline.indexOf(row.id) : headline.length);

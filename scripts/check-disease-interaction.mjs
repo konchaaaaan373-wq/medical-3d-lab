@@ -249,6 +249,11 @@ for (const slug of SLUGS) {
     const origin = () => page.evaluate(() => window.__app.scene.session.origin);
     const movedKeys = (a, b) => Object.keys(a).filter((id) => a[id] !== b[id]).sort();
     const pad = (id) => page.locator(`.is-pad[data-pad="${id}"]`);
+    // One pad is drawn at a time; the switcher chooses which.
+    const showPad = async (id) => {
+      await page.locator(`.pad-switch[data-pad="${id}"]`).click();
+      await page.waitForTimeout(150);
+    };
     const step = (padId, axis, direction) => pad(padId).locator(`.pad-step[data-axis="${axis}"][data-direction="${direction}"]`);
     const undo = page.locator('.model-control-undo');
     const resetAll = page.locator('.model-control-actions .model-control-reset');
@@ -278,7 +283,7 @@ for (const slug of SLUGS) {
     };
     const boxes = () =>
       page.evaluate(() =>
-        ['.is-pad[data-pad="heart"] .pad-area', '.is-pad[data-pad="circulation"] .pad-area', '.pad-range-x', '.model-control-undo', '.metrics', '.console'].map((selector) => {
+        ['.is-pad[data-pad="heart"] .pad-area', '.pad-switcher', '.is-pad[data-pad="heart"] .pad-range-x', '.model-control-undo', '.metrics', '.console'].map((selector) => {
           const rect = document.querySelector(selector).getBoundingClientRect();
           return [Math.round(rect.top), Math.round(rect.left), Math.round(rect.height)];
         })
@@ -332,6 +337,17 @@ for (const slug of SLUGS) {
       await page.waitForTimeout(300);
       if (movedKeys(outsideRelease, await inputs()).length) problems.push('pads: moving after a release outside the surface still changed the values');
 
+      // Switching pads changes nothing but which pad is drawn: no input, no
+      // undo step, no camera.
+      const beforeSwitch = { input: await inputs(), camera: await camera(), canUndo: !(await undo.isDisabled()) };
+      await showPad('circulation');
+      if (movedKeys(beforeSwitch.input, await inputs()).length) problems.push('pads: switching pads changed an input');
+      if (cameraMoved(beforeSwitch.camera, await camera()) > 0.05) problems.push('pads: switching pads moved the camera');
+      if (beforeSwitch.canUndo !== !(await undo.isDisabled())) problems.push('pads: switching pads changed what undo can do');
+      // The heart's tab carries its values and which way they moved.
+      const heartTab = await page.locator('.pad-switch[data-pad="heart"]').innerText();
+      if (!/↑|↓/.test(heartTab)) problems.push(`pads: the heart's switcher does not say which inputs moved (${heartTab.replace(/\s+/g, ' ')})`);
+
       // The other pad: filling alone; the heart's inputs held.
       await step('circulation', 'x', 'up').click();
       await page.waitForTimeout(600);
@@ -345,6 +361,7 @@ for (const slug of SLUGS) {
       await undo.click();
       await page.waitForTimeout(500);
       if (JSON.stringify(await inputs()) !== JSON.stringify(two)) problems.push('pads: undo did not take back the whole drag in one step');
+      await showPad('heart');
 
       // Back to the start.
       await resetAll.click();
@@ -357,9 +374,11 @@ for (const slug of SLUGS) {
       await choose('dobutamine');
       await page.waitForTimeout(600);
       const onDrug = await inputs();
+      await showPad('circulation');
       await step('circulation', 'x', 'up').click();
       await page.waitForTimeout(600);
       const adjusted = await inputs();
+      await showPad('heart');
       if (JSON.stringify(movedKeys(onDrug, adjusted)) !== JSON.stringify(['fillingVolumeMl'])) problems.push(`pads: after dobutamine one axis moved ${movedKeys(onDrug, adjusted).join(', ')}`);
       if ((await origin()) !== 'dobutamine') problems.push('pads: the condition adjusted after dobutamine no longer says where it came from');
       await choose('reference');
@@ -435,7 +454,7 @@ for (const slug of SLUGS) {
 
       // Hit areas, not glyphs: every control in the pads' console is 44 px.
       const small = await page.evaluate(() =>
-        [...document.querySelectorAll('.pad-step, .pad-range-x, .model-control-undo, .model-control-actions .model-control-reset, .model-control-actions .model-controls-advanced > summary')]
+        [...document.querySelectorAll('.pad-switch, .pad-step, .pad-range-x, .model-control-undo, .model-control-actions .model-control-reset, .model-control-actions .model-controls-advanced > summary')]
           .map((node) => ({ node, rect: node.getBoundingClientRect() }))
           .filter(({ rect }) => rect.width > 0 && (rect.height < 44 || rect.width < 44))
           .map(({ node, rect }) => `${node.className} ${Math.round(rect.width)}x${Math.round(rect.height)}`)
