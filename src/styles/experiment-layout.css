@@ -1536,3 +1536,54 @@
     padding-bottom: 6px;
   }
 }
+
+/* …and the conditions card's own heading row is where its pad switcher
+   stands while it is open: the heading's name stays for assistive technology
+   (visually hidden), the chevron and the view card's button stay on the
+   right, and the switcher takes the rest of the line. Measured at 390×664:
+   the row the heading had cost the ventricle 77 → 49 px. */
+@media (max-width: 600px) {
+  #ui[data-layout='experiment'] .console-card[data-card='conditions'][open] .console-card-body,
+  #ui[data-layout='experiment'] .console-card[data-card='conditions'][open] .model-controls,
+  #ui[data-layout='experiment'] .console-card[data-card='conditions'][open] .model-control-list,
+  #ui[data-layout='experiment'] .console-card[data-card='conditions'][open] .pad-set {
+    position: static;
+  }
+
+  #ui[data-layout='experiment'] .console-card[data-card='conditions'][open] > .console-card-head .console-card-text {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip: rect(0 0 0 0);
+    clip-path: inset(50%);
+    white-space: nowrap;
+  }
+
+  /* The heading row is the close target: its right 48 px, with the chevron. */
+  #ui#ui[data-layout='experiment'] .console-card[data-card='conditions'][open] > .console-card-head {
+    justify-content: flex-end;
+    padding-right: 0;
+  }
+
+  #ui[data-layout='experiment'] .console-card[data-card='conditions'][open] .console-card-chevron {
+    margin-right: 17px;
+  }
+
+  #ui[data-layout='experiment'] .console-card[data-card='conditions'][open] .pad-switcher {
+    position: absolute;
+    z-index: 1;
+    top: 0;
+    left: 0;
+    right: 48px;
+    margin: 0;
+  }
+
+  /* While the conditions are open the view card steps out of this row
+     entirely — two tabs, a close target and a third button do not fit a
+     phone's line without clipping the tabs' values. Closing the card brings
+     it back. */
+  #ui[data-layout='experiment'] .console-cards:has(> .console-card[data-card='conditions'][open]) > .console-card[data-card='view'] {
+    display: none;
+  }
+}

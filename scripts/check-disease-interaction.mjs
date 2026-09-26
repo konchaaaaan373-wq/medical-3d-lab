@@ -243,7 +243,10 @@ for (const slug of SLUGS) {
       const closed = await page.evaluate(({ width, height }) => {
         const found = [];
         if (document.querySelector('details.console-card[open]')) found.push('a card is open before the reader opened one');
-        if ([...document.querySelectorAll('.pad-area')].some((node) => node.getClientRects().length > 0)) found.push('a pad is drawn while its card is closed');
+        // `checkVisibility`, not client rects: a closed <details> keeps its
+        // contents' boxes (content-visibility), so rects say "drawn" for a pad
+        // nobody can see (docs/verification-lessons.md L-122).
+        if ([...document.querySelectorAll('.pad-area')].some((node) => node.checkVisibility())) found.push('a pad is drawn while its card is closed');
         const heads = [...document.querySelectorAll('details.console-card > summary')];
         if (heads.length !== 2) found.push(`${heads.length} card headings, expected 2`);
         for (const node of [...heads, ...document.querySelectorAll('.metrics .metric.is-key')]) {

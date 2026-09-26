@@ -318,10 +318,13 @@ unchanged.
   run it faster than the model's rate. **It can mislead** in one way: at 1/4
   speed the heart visibly beats slower than the 70 /min the pad shows — the
   note under the buttons is the only thing that says why.
-- **Phone.** With a card open, its heading loses its second line and the other
-  card becomes a small button on the same line, so an open card costs the
-  heart's band one 44 px row rather than two. The pad on a phone is at most
-  150 px tall (was 170). Measured sizes are in F-212.
+- **Phone.** An open card must not cost the heart a row: with the conditions
+  open, the pad switcher stands in the card's own heading row (the heading's
+  name stays for assistive technology) beside a 44 px close target, and the
+  view card's heading steps out until the conditions are closed. With the view
+  card open, its heading drops its second line and the conditions become a
+  small button on the same row. The pad on a phone is at most 150 px tall (was
+  170). Measured sizes are in F-213.
 
 Not yet known: whether first-time readers find the conditions behind a closed
 card (the heading is the only cue), and how the open card behaves on a real
