@@ -9,7 +9,6 @@
   box-shadow: 0 8px 24px rgba(0, 0, 0, 0.24);
 }
 
-
 .global-nav-brand-compact {
   display: none;
 }
@@ -32,60 +31,6 @@
   color: var(--ink-dim);
 }
 
-/* A visible model control on every visual path. Do not rely on a hamburger
- * whose label is clipped away; the user asked for a model chooser, so say so. */
-.global-nav-trigger {
-  width: auto;
-  min-width: 76px;
-  min-height: 44px;
-  padding: 0 11px;
-  gap: 7px;
-}
-
-.global-nav-trigger-label {
-  position: static;
-  width: auto;
-  height: auto;
-  overflow: visible;
-  clip-path: none;
-  white-space: nowrap;
-  font-size: 12px;
-  font-weight: 700;
-}
-
-.global-nav-trigger-chevron {
-  flex: none;
-  font-size: 16px;
-  line-height: 1;
-  transform: translateY(-1px);
-  transition: transform 140ms ease;
-}
-
-.global-scene-nav.is-open .global-nav-trigger-chevron {
-  transform: translateY(1px) rotate(180deg);
-}
-
-/* Drawer = fixed head + one scrolling model list + quiet footer. */
-.global-nav-panel {
-  display: flex;
-  flex-direction: column;
-  overflow: hidden;
-  color-scheme: dark;
-  scrollbar-color: rgba(145, 171, 204, 0.42) transparent;
-}
-
-.global-nav-panel-head {
-  flex: none;
-  margin-bottom: 6px;
-  padding-bottom: 7px;
-  border-bottom: 1px solid color-mix(in srgb, var(--border) 72%, transparent);
-}
-
-.global-nav-panel-title {
-  font-size: 15px;
-  letter-spacing: -0.01em;
-}
-
 .global-nav-list {
   flex: 1 1 auto;
   min-height: 0;
@@ -97,18 +42,15 @@
   scrollbar-color: rgba(145, 171, 204, 0.42) transparent;
 }
 
-.global-nav-list::-webkit-scrollbar,
-.global-nav-panel::-webkit-scrollbar {
+.global-nav-list::-webkit-scrollbar {
   width: 9px;
 }
 
-.global-nav-list::-webkit-scrollbar-track,
-.global-nav-panel::-webkit-scrollbar-track {
+.global-nav-list::-webkit-scrollbar-track {
   background: transparent;
 }
 
-.global-nav-list::-webkit-scrollbar-thumb,
-.global-nav-panel::-webkit-scrollbar-thumb {
+.global-nav-list::-webkit-scrollbar-thumb {
   border: 2px solid transparent;
   border-radius: 999px;
   background: rgba(145, 171, 204, 0.38);
@@ -169,18 +111,6 @@
 .global-nav-scene-name .lang-ja {
   font-size: 14px;
   color: inherit;
-}
-
-.global-nav-scene-kind {
-  flex: 0 0 auto;
-  width: 74px;
-  color: var(--ink-faint);
-  font-size: 10px;
-  line-height: 1.25;
-}
-
-.global-nav-scene-kind .lang-ja {
-  font-size: 10px;
 }
 
 .global-nav-current-check {
@@ -459,32 +389,14 @@
     font-size: 12px;
   }
 
-  .global-nav-trigger,
   .global-nav-favorite,
-  .global-nav-close,
   .global-nav-scene {
     min-height: 44px;
-  }
-
-  .global-nav-trigger {
-    min-width: 70px;
-    padding: 0 9px;
   }
 
   .global-nav-favorite {
     width: 44px;
     height: 44px;
-  }
-
-  .global-nav-close {
-    width: 44px;
-    height: 44px;
-  }
-
-  .global-nav-panel {
-    top: max(62px, calc(env(safe-area-inset-top) + 55px));
-    bottom: max(8px, env(safe-area-inset-bottom));
-    padding: 10px 10px 8px;
   }
 
   .global-nav-organ {
@@ -517,17 +429,6 @@
   }
 }
 
-@media (max-width: 520px) {
-  .global-nav-scene-kind {
-    width: 62px;
-    font-size: 9.5px;
-  }
-
-  .global-nav-scene-kind .lang-ja {
-    font-size: 9.5px;
-  }
-}
-
 @media (max-width: 390px) {
   .global-nav-brand-name {
     font-size: 10.5px;
@@ -535,11 +436,6 @@
 
   .global-nav-current-label {
     font-size: 11.5px;
-  }
-
-  .global-nav-trigger {
-    min-width: 68px;
-    padding-inline: 8px;
   }
 }
 
@@ -551,26 +447,9 @@
 }
 
 @media (max-height: 460px) and (min-aspect-ratio: 8 / 5) {
-  .global-nav-trigger,
   .global-nav-favorite,
-  .global-nav-close,
   .global-nav-scene {
     min-height: 44px;
-  }
-
-  .global-nav-close {
-    width: 44px;
-    height: 44px;
-  }
-
-  .global-nav-panel {
-    max-height: calc(100vh - 80px);
-    padding: 8px 10px 7px;
-  }
-
-  .global-nav-panel-head {
-    margin-bottom: 3px;
-    padding-bottom: 4px;
   }
 
   .global-nav-organ {
@@ -603,13 +482,6 @@
     grid-template-columns: repeat(2, minmax(120px, 1fr));
   }
 }
-
-@media (prefers-reduced-motion: reduce) {
-  .global-nav-trigger-chevron {
-    transition: none;
-  }
-}
-
 
 /* UX audit pass: model-first opening composition and flatter chooser. */
 #ui[data-anatomy-shell='calm'] .title-card {
@@ -659,14 +531,6 @@
   line-height: 1.3;
   font-weight: 650;
 }
-.global-nav-panel-head .global-nav-favorite {
-  flex: none;
-  width: 44px;
-  height: 44px;
-  margin-left: auto;
-}
-.global-nav-panel-head .global-nav-close { margin-left: 2px; }
-.global-nav-scene-kind { display: none; }
 
 #ui[data-anatomy-shell='calm'] .usage-recording-settings {
   display: block;

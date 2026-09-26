@@ -89,16 +89,8 @@
     },
     "navigation.css": {
       ".global-nav-brand-mark": 10,
-      ".global-nav-current-system": 9,
-      ".global-nav-separator": 9,
-      ".global-nav-trigger": 11.5,
-      ".global-nav-explorer-copy": 11.5,
-      ".global-nav-explorer-copy .lang-ja": 10.5,
-      ".global-nav-system-name": 10,
-      ".global-nav-system-name .lang-ja": 9.5,
       ".global-nav-scene-name": 10.5,
-      ".global-nav-scene-name .lang-ja": 9,
-      ".global-nav-current-scene": 11
+      ".global-nav-scene-name .lang-ja": 9
     },
     "patient-fullscreen.css": {
       ".patient-guide-fullscreen": 9.5
@@ -112,8 +104,6 @@
       ".access-plan-price.is-unavailable": 9.5
     },
     "product-shell-b6.css": {
-      ".global-nav-scene-kind": 9.5,
-      ".global-nav-scene-kind .lang-ja": 9.5,
       ".global-nav-footer-link": 11.5,
       "#ui[data-anatomy-shell='calm'] .usage-recording-state": 11,
       "#ui[data-anatomy-shell='calm'] .usage-recording-privacy": 11.5,

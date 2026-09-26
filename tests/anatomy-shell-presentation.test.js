@@ -132,7 +132,11 @@ test('anatomy shell CSS cannot affect a scene until the adapter opts in', () => 
     }
   }
   assert.match(css, /console > \.stage-readout/);
-  assert.match(css, /global-nav-current-scene/);
+  // `global-nav-current-scene` used to be asserted here. No code had rendered
+  // that class since the breadcrumb was rebuilt, so the rule it pinned hid
+  // nothing and this line measured the rule's text (L-122). The rule is gone;
+  // `tests/header-css-reachability.test.js` now refuses a header rule for a
+  // class nobody renders.
   assert.match(css, /\.anatomy-panel/);
 });
 

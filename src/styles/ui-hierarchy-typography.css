@@ -70,8 +70,6 @@ html[lang='ja'] .inspection-section-label {
 .landing-section-kicker,
 .landing-demo-kicker,
 .global-nav-brand-name,
-.global-nav-trigger-label,
-.global-nav-panel-title,
 .global-nav-system-heading,
 .global-nav-organ-name,
 .global-nav-kind-heading {
@@ -115,32 +113,9 @@ html[lang='ja'] #ui .button-row .btn,
   line-height: 1.35;
 }
 
-/* ========================================================================== 
+/* ==========================================================================
    Model chooser: system → organ → kind → model / use
    ========================================================================== */
-
-.global-nav-panel {
-  max-height: min(78vh, 760px);
-}
-
-.global-nav-panel-head {
-  align-items: flex-start;
-  gap: 10px;
-  padding-bottom: 10px;
-}
-
-.global-nav-panel-heading {
-  flex: 1 1 auto;
-  min-width: 0;
-}
-
-.global-nav-panel-title {
-  display: block;
-  color: var(--ink);
-  font-size: 15px;
-  line-height: 1.25;
-  letter-spacing: -0.01em;
-}
 
 .global-nav-panel-intro {
   max-width: 720px;
@@ -335,10 +310,6 @@ html[lang='ja'] .global-nav-current-label {
 }
 
 @media (max-width: 720px) {
-  .global-nav-panel {
-    width: min(92vw, 410px);
-  }
-
   .global-nav-panel-intro {
     font-size: 12px;
   }
@@ -410,15 +381,6 @@ html[lang='ja'] .global-nav-current-label {
   }
 
   .global-nav-current-separator {
-    font-size: 12px;
-  }
-
-  .global-nav-trigger {
-    min-width: 64px;
-    padding-inline: 8px;
-  }
-
-  .global-nav-trigger-label {
     font-size: 12px;
   }
 }
