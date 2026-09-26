@@ -960,8 +960,18 @@ export class CardiacOutputScene {
     // The two hearts lie along COMPARISON_AXIS, which has x and z parts.
     const spreadX = this.comparing ? COMPARISON_OFFSET * Math.abs(COMPARISON_AXIS.x) : 0;
     const spreadZ = this.comparing ? COMPARISON_OFFSET * Math.abs(COMPARISON_AXIS.z) : 0;
+    // On a portrait screen the box stops just above the heart (y 2.6, the
+    // ventricle's base is at 2.1) instead of at the top of the loop's arches
+    // (4.4). What has to be readable while operating is the ventricle, not the
+    // loop's outline (docs/pathology-interaction-principles.md, principle 3):
+    // measured at 390×664, the whole loop left the ventricle 70 px tall. The
+    // lower run of the loop — the reason the loop is framed at all — and the
+    // resistance zone (y ≈ 2.0) stay inside; only the arches' tops may run
+    // under the title. Fixed per aspect, never per input, so nothing refits
+    // when a value changes.
+    const portrait = !this.comparing && (this.viewer?.camera?.aspect ?? 1.6) < 0.85;
     const min = new THREE.Vector3(-7.8 - spreadX, -7.1, -3.8 - spreadZ);
-    const max = new THREE.Vector3(7.1 + spreadX, 4.4, 3.8 + spreadZ);
+    const max = new THREE.Vector3(7.1 + spreadX, portrait ? 2.6 : 4.4, 3.8 + spreadZ);
     const corners = [];
     for (const x of [min.x, max.x]) {
       for (const y of [min.y, max.y]) {

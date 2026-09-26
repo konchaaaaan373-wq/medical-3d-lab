@@ -838,6 +838,33 @@
   border-top: 1px solid var(--border);
 }
 
+/* "More" holds the comparison, the plots and the lessons too, so it is tall.
+   It opens as a sheet above the console, never taller than the room there,
+   and scrolls; the capture choices open inside it rather than beside it,
+   where a scroll box would clip them (L-116). Opened below the console on a
+   desktop it ran past the bottom of the window once the console grew
+   (verify:disease could not press 「学ぶ」). */
+#ui[data-layout='experiment'] .console-more-menu {
+  position: fixed;
+  top: auto;
+  bottom: calc(100dvh - var(--console-top, 480px) + 8px);
+  max-height: calc(var(--console-top, 480px) - 76px);
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
+
+#ui[data-layout='experiment'] .console-more-menu .capture-menu {
+  position: static;
+  margin-top: 4px;
+}
+
+@media (max-width: 600px) {
+  #ui[data-layout='experiment'] .console-more-menu {
+    left: max(14px, env(safe-area-inset-left));
+    right: max(14px, env(safe-area-inset-right));
+  }
+}
+
 #ui[data-layout='experiment'] .console .button-row .btn {
   white-space: nowrap;
 }
@@ -967,19 +994,12 @@
     --pad-h: clamp(90px, calc(100vh - 630px), 180px);
   }
 
-  /* "More" now holds the comparison, the plots and the lessons as well, and
-     the console stands near the top of the column: opened upward it ran under
-     the site navigation and its first items could not be pressed. It opens
-     downward here, into the column's free space. */
   #ui[data-layout='experiment'] .console-more-menu {
-    bottom: auto;
-    top: calc(100% + 8px);
+    left: auto;
+    right: var(--experiment-edge);
+    width: 280px;
   }
 
-  #ui[data-layout='experiment'] .console-more-menu .capture-menu {
-    bottom: auto;
-    top: 0;
-  }
 }
 
 /* ---------- phone: the heart on top, the figures on the controls ---------- */
@@ -1207,20 +1227,6 @@
      run under the site navigation. It may scroll; so the capture choices
      open inside it rather than beside it, where a scroll box would clip them
      (L-116). */
-  #ui[data-layout='experiment'] .console-more-menu {
-    position: fixed;
-    left: max(14px, env(safe-area-inset-left));
-    right: max(14px, env(safe-area-inset-right));
-    bottom: calc(100dvh - var(--console-top, 480px) + 8px);
-    max-height: calc(var(--console-top, 480px) - 76px);
-    overflow-y: auto;
-    overscroll-behavior: contain;
-  }
-
-  #ui[data-layout='experiment'] .console-more-menu .capture-menu {
-    position: static;
-    margin-top: 4px;
-  }
 
   /* In a menu an icon alone says nothing: the words the phone toolbar drops
      come back here, in the reader's language (as `.btn.primary` does). */

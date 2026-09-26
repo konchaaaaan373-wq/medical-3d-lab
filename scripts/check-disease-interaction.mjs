@@ -412,7 +412,26 @@ for (const slug of SLUGS) {
           });
           return box;
         };
-        const box = measure(scene.root);
+        // What the scene promises to keep clear is its declared subject box
+        // (`getSubjectBounds`), not every vertex: on a portrait screen that box
+        // stops above the heart and the loop's arches may run under the title
+        // (the ventricle is what has to be read, not the loop's outline).
+        const declared = scene.getSubjectBounds?.();
+        const box = declared
+          ? (() => {
+              const b = [Infinity, Infinity, -Infinity, -Infinity];
+              for (const corner of declared.corners) {
+                probe.copy(corner).project(viewer.camera);
+                const x = ((probe.x + 1) / 2) * innerWidth;
+                const y = ((1 - probe.y) / 2) * innerHeight;
+                b[0] = Math.min(b[0], x);
+                b[1] = Math.min(b[1], y);
+                b[2] = Math.max(b[2], x);
+                b[3] = Math.max(b[3], y);
+              }
+              return b;
+            })()
+          : measure(scene.root);
         const heart = scene.ventricle ? measure(scene.ventricle) : box;
         const hits = [];
         for (const [name, selector] of [
@@ -482,6 +501,15 @@ for (const slug of SLUGS) {
           else console.log(`  ${slug}: ${text} [reported, not enforced — F-212]`);
         }
         console.log(`  ${slug}: ${where} ${moment}: model drawn ${result.height}px tall, ventricle ${result.heart}px`);
+        // The ventricle has to be readable while the pad is in use, not merely
+        // uncovered (owner, 2026-09-26). Floors are this build's measured sizes
+        // on a preview build (whose build marker takes 34 px): a guard against
+        // shrinking it again, not a claim that they are enough. 375×553 does
+        // not fit yet and is reported only (F-212).
+        const floor = { '390x844': 125, '430x932': 150, '390x664': 75, '375x667': 75 }[where];
+        if (moment === 'after a drag' && floor && result.heart < floor) {
+          problems.push(`experiment layout ${where}: the ventricle is drawn ${result.heart}px tall while the pad is in use (floor ${floor}px)`);
+        }
       }
       await choose('reference');
       await page.waitForTimeout(600);

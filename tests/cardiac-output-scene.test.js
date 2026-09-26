@@ -975,3 +975,17 @@ test('side by side, each heart beats at its own rate: a rate difference is not s
   scene.update(0.2, 0.4);
   assert.ok(Math.abs(scene.phase - scene._referencePhase) < 1e-9);
 });
+
+test('the framing box depends on the screen’s shape only, never on an input; portrait stops just above the heart', async () => {
+  const scene = await buildScene();
+  const top = () => Math.max(...scene.getSubjectBounds().corners.map((corner) => corner.y));
+  const wide = top();
+  scene.viewer.camera.aspect = 0.55;
+  const tall = top();
+  assert.ok(tall < wide, 'a portrait screen frames less of the loop above the heart');
+  // Every input to its end: the box does not move, so nothing refits.
+  for (const [id, value] of [['fillingVolumeMl', 980], ['heartRatePerMin', 110], ['contractilityEesMmHgPerMl', 0.8], ['systemicResistanceMmHgSPerMl', 1.8]]) {
+    scene.setModelControl(id, value);
+    assert.equal(top(), tall, `${id} moved the framing box`);
+  }
+});
