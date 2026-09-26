@@ -14,6 +14,23 @@ Not yet tagged. Gate 0 and most of Gate 1 are complete; the remaining blockers
 are branch protection on `main`, and the parts of device testing that need a
 person: Safari, Firefox, touch and a screen reader.
 
+### One header on every screen, and the models by organ, then layer
+
+- **The same header everywhere.** The front page, the publication record, the
+  legal pages and every 3D model now share one structure: the Medical 3D Lab
+  mark (the way home), the navigation that screen needs, language and sign-in,
+  and a menu (☰) at the end. The 3D models used to wear a different mark and
+  put the language switch and feedback under the parts list.
+- **Organs first, then layers.** Inside a model the row is the organs that are
+  open — brain, heart, lungs, liver — and, for an organ with more than one
+  model, a second row naming its layers: the heart's anatomy, and cardiac
+  output as a *mechanism*. It used to mix organ names with a full model title
+  in one row, and on a phone the lungs and the liver fell off its end.
+- **The menu holds the rest, in layers.** Models (organ, then layer) where the
+  row does not already show them; the publication record; language and account
+  when the screen is too narrow to show them in the row; feedback, the terms,
+  privacy and support — which a 3D model had no route to at all.
+
 ### A disease sequence can now be taken away as a video file
 
 - **The 15-second sequence saves as a video.** On every scene that has one —
