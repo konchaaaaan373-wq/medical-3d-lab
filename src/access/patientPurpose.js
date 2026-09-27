@@ -92,5 +92,13 @@ export function patientExplanationAvailable(scene, { unlocked = safeUnlocked() }
  * @param {{unlocked?: boolean, scenes?: ReadonlyArray<object>}} [options]
  */
 export function patientExplanationScenes({ unlocked = safeUnlocked(), scenes = SCENES } = {}) {
+  // Fixed for a build and an unlock state, and asked by the header, the landing
+  // page and the index on the same render: the catalogue is walked once.
+  if (scenes === SCENES) {
+    const key = unlocked ? 'unlocked' : 'released';
+    return (memo[key] ??= Object.freeze(SCENES.filter((scene) => patientExplanationAvailable(scene, { unlocked }))));
+  }
   return scenes.filter((scene) => patientExplanationAvailable(scene, { unlocked }));
 }
+
+const memo = {};

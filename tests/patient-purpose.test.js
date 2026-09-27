@@ -55,6 +55,16 @@ test('the address carries the purpose, and education is the address everybody al
     hashWithPurpose('#/brain-anatomy?structure=hippocampus&purpose=patient', PURPOSE.EDUCATION),
     '#/brain-anatomy?structure=hippocampus'
   );
+  // Kept as written, not re-encoded: a switch must not rewrite the rest of a
+  // shared link.
+  assert.equal(
+    hashWithPurpose('#/heart-anatomy?structure=left%20atrium&flag', PURPOSE.PATIENT),
+    '#/heart-anatomy?structure=left%20atrium&flag&purpose=patient'
+  );
+  assert.equal(
+    hashWithPurpose('#/heart-anatomy?purpose=patient&structure=a/b', PURPOSE.EDUCATION),
+    '#/heart-anatomy?structure=a/b'
+  );
 });
 
 test('a patient request the model cannot answer opens education, and says it refused', () => {

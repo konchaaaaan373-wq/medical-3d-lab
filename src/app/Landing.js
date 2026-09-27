@@ -217,7 +217,8 @@ function purposeEntrances(patientScenes) {
   // In the beta the education entrance *is* this page's organ chooser; a link
   // from the home page to the home page would reload what is on screen, so it
   // points at the chooser instead.
-  if (routes.education === LANDING_ROUTE) routes.education = '#content';
+  const educationIsHere = routes.education === LANDING_ROUTE;
+  if (educationIsHere) routes.education = '#content';
   const lead = {
     education: dual(
       'Anatomy, mechanism and disease, with the numbers and the model behind them.',
@@ -231,7 +232,25 @@ function purposeEntrances(patientScenes) {
   return el('section', { class: 'landing-purposes', 'aria-labelledby': 'landing-purposes-title' }, [
     el('h2', { class: 'landing-purposes-title', id: 'landing-purposes-title' }, dual('Choose by purpose', '目的から選ぶ')),
     el('div', { class: 'landing-purpose-list' }, PURPOSES.map((purpose) =>
-      el('a', { class: `landing-purpose is-${purpose.id}`, href: routes[purpose.id] }, [
+      el('a', {
+        class: `landing-purpose is-${purpose.id}`,
+        href: routes[purpose.id],
+        // `#content` in the address would read as a route on reload (`resolveRoute`
+        // takes any bare hash for a scene slug), so the in-page jump happens
+        // without writing it — the way `skipLink` does.
+        ...(educationIsHere && purpose.id === 'education'
+          ? {
+              on: {
+                click: (event) => {
+                  event.preventDefault();
+                  const target = document.getElementById('content');
+                  target?.scrollIntoView?.({ block: 'start' });
+                  target?.focus?.({ preventScroll: true });
+                },
+              },
+            }
+          : {}),
+      }, [
         el('span', { class: 'landing-purpose-name' }, dual(purpose.en, purpose.ja)),
         el('span', { class: 'landing-purpose-explore' }, dual(purpose.explore.en, purpose.explore.ja)),
         el('span', { class: 'landing-purpose-lead' }, lead[purpose.id]),

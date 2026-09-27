@@ -48,7 +48,7 @@ import { join } from 'node:path';
 import { chromiumExecutable } from './lib/browser.mjs';
 import { serveDist } from './lib/serve-dist.mjs';
 import { stubPaidSurfaces } from './lib/stub-paid-surfaces.mjs';
-import { waitForCameraToSettle } from './lib/camera.mjs';
+import { waitForFramingToSettle } from './lib/camera.mjs';
 
 import { patientExplanationScenes } from '../src/access/patientPurpose.js';
 
@@ -218,7 +218,12 @@ async function drivePreview(viewport) {
 
   // 3. The switch, from the keyboard: medical education, the same model and
   //    the same viewpoint.
-  await waitForCameraToSettle(page).catch(() => {});
+  // Before the reader takes the camera: the explanation's framing has
+  // arrived. Reported rather than swallowed, like the one after the switch.
+  expect(
+    await waitForFramingToSettle(page).then(() => true, () => false),
+    `${tag}: the explanation's framing did not settle`
+  );
   // A viewpoint of the reader's own — closer and higher than any framing the
   // scene or the explanation declares. Without it this measured nothing: the
   // explanation's first step frames the model exactly as the scene does, so a
@@ -251,9 +256,12 @@ async function drivePreview(viewport) {
   await page.keyboard.press('Enter');
   expect(await waitForPurpose(page, 'education'), `${tag}: the switch did not change the purpose`);
   // State, not time: the camera stops moving before it is measured, so a
-  // reset that tweens back to the scene's framing has arrived by then.
-  await page.waitForTimeout(200);
-  await waitForCameraToSettle(page, { stillMs: 500 }).catch(() => {});
+  // reset that tweens back to the scene's framing — or the re-fit that follows
+  // the console coming back, 320 ms later — has arrived by then. The model's
+  // idle turn resumes here, so it is the framing that settles, not the camera
+  // (L-128); one that never settles is reported, not measured mid-flight.
+  const settled = await waitForFramingToSettle(page, { stillMs: 600 }).then(() => true, () => false);
+  expect(settled, `${tag}: the camera did not settle after the switch, so the viewpoint could not be measured`);
   state = await readState(page);
   expect(!/purpose=/.test(state.hash), `${tag}: medical education kept a purpose in the address (${state.hash})`);
   expect(!state.guideOpen, `${tag}: the patient explanation stayed open in medical education`);
@@ -307,6 +315,30 @@ async function drivePreview(viewport) {
   }
   expect(/purpose=patient/.test(state.hash), `${tag}: patient explanation is not in the address (${state.hash})`);
 
+  // 4b. Education's data view comes back after a visit to patient explanation.
+  await page.focus('.global-nav-purpose-option[data-purpose="education"]');
+  await page.keyboard.press('Enter');
+  await waitForPurpose(page, 'education');
+  const hasData = await page.evaluate(() => {
+    if (!window.__app.setDataView) return false;
+    window.__app.setDataView(true);
+    return window.__app.isDataView();
+  });
+  if (hasData) {
+    await page.focus('.global-nav-purpose-option[data-purpose="patient"]');
+    await page.keyboard.press('Enter');
+    await waitForPurpose(page, 'patient');
+    expect(!(await page.evaluate(() => window.__app.isDataView())), `${tag}: data view stayed on in patient explanation`);
+    await page.focus('.global-nav-purpose-option[data-purpose="education"]');
+    await page.keyboard.press('Enter');
+    await waitForPurpose(page, 'education');
+    expect(await page.evaluate(() => window.__app.isDataView()), `${tag}: education's data view did not come back after patient explanation`);
+    await page.evaluate(() => window.__app.setDataView(false));
+    await page.focus('.global-nav-purpose-option[data-purpose="patient"]');
+    await page.keyboard.press('Enter');
+    await waitForPurpose(page, 'patient');
+  }
+
   // 5. Back, and reload.
   await page.goBack();
   expect(await waitForPurpose(page, 'education'), `${tag}: Back did not return to medical education`);
@@ -323,6 +355,40 @@ async function drivePreview(viewport) {
   expect(Boolean(state.notice), `${tag}: a model without patient explanation ignored the request silently`);
   expect(!/purpose=/.test(state.hash), `${tag}: the refused purpose stayed in the address (${state.hash})`);
   expect(state.pressed === null, `${tag}: a one-purpose model grew a purpose switch`);
+
+  // 6b. From that model, a link to another model's patient explanation. The
+  //     hash change is the next model's to answer: this one must not refuse it
+  //     with its own notice or strip `?purpose=` before the reload reads it.
+  await page.evaluate((slug) => {
+    // Step 6's own (correct) refusal is still on screen; dismissed first, so a
+    // notice seen below is one raised *by the hash change*.
+    document.querySelector('.purpose-notice-close')?.click();
+    // Registered after the page's own handlers, so it sees what they did to
+    // the page being left: a refusal notice there is this model answering the
+    // next model's address. Kept in sessionStorage, which survives the reload.
+    window.addEventListener('hashchange', () => {
+      const notice = document.querySelector('.purpose-notice');
+      try {
+        sessionStorage.setItem('purpose-check:left-notice', notice && !notice.hidden ? notice.innerText : '');
+        sessionStorage.setItem('purpose-check:left-hash', location.hash);
+      } catch { /* storage denied: the arrival check below still runs */ }
+    });
+    window.location.hash = `#/${slug}?purpose=patient`;
+  }, sceneSlug);
+  // The next document loads the model before it answers the address.
+  const arrived = await page
+    .waitForFunction(() => document.getElementById('ui')?.dataset.purpose === 'patient', null, { timeout: 90000 })
+    .then(() => true, () => false);
+  expect(
+    arrived,
+    `${tag}: a link from a one-purpose model to ${sceneSlug}?purpose=patient did not arrive in patient explanation (${(await readState(page).catch(() => ({}))).hash})`
+  );
+  const left = await page.evaluate(() => ({
+    notice: sessionStorage.getItem('purpose-check:left-notice'),
+    hash: sessionStorage.getItem('purpose-check:left-hash'),
+  }));
+  expect(!left.notice, `${tag}: the model being left refused the next model's patient link with its own notice ("${left.notice}")`);
+  expect(!left.hash || /purpose=patient/.test(left.hash), `${tag}: the model being left stripped ?purpose= from the next model's address (${left.hash})`);
 
   await context.close();
 

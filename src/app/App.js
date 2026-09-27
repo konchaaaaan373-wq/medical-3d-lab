@@ -817,6 +817,16 @@ export async function createApp({ stage, ui, onRetryModel = null }) {
 
   function resetMedicalState() {
     playback.reset();
+    resetControlsToStart();
+  }
+
+  /**
+   * The model's own controls back to where it opens, read back into the panel
+   * and the read-outs. One sequence for every reset — the console's, the
+   * control panel's and a purpose change's — so what a reset re-syncs is said
+   * once.
+   */
+  function resetControlsToStart() {
     if (!scene.resetModelControls) return;
     scene.resetModelControls();
     modelControls?.sync(scene.getModelControls?.() ?? []);
@@ -1134,11 +1144,7 @@ export async function createApp({ stage, ui, onRetryModel = null }) {
           modelControls.sync(scene.getModelControls());
           refreshModelReadouts();
         },
-        onReset: () => {
-          scene.resetModelControls();
-          modelControls.sync(scene.getModelControls());
-          refreshModelReadouts();
-        },
+        onReset: () => resetControlsToStart(),
         copy: meta.modelControls,
       })
     : null;
@@ -2327,11 +2333,7 @@ export async function createApp({ stage, ui, onRetryModel = null }) {
       const before = JSON.stringify((scene.getModelControls?.() ?? []).map(({ id, value }) => [id, value]));
       const wasComparing = comparing;
       if (comparing) setComparison(false);
-      if (scene.resetModelControls) {
-        scene.resetModelControls();
-        modelControls?.sync(scene.getModelControls?.() ?? []);
-        refreshModelReadouts();
-      }
+      resetControlsToStart();
       const after = JSON.stringify((scene.getModelControls?.() ?? []).map(({ id, value }) => [id, value]));
       return wasComparing || before !== after;
     },
@@ -2362,9 +2364,15 @@ export async function createApp({ stage, ui, onRetryModel = null }) {
        * the explanation closes because they changed purpose.
        */
       release: () => {
+        if (sequenceOwnsCamera()) return;
         storyFocus = null;
         applyLabelFocus();
         view.active = false;
+        // What `applyGuideFraming` would reset besides the pose: the story
+        // orbit offset and the zoom limits the explanation's framing set, so
+        // the reader's next wheel or pinch has the scene's normal range.
+        storyView.orbit.identity();
+        syncZoomLimits();
       },
       framings: () => Object.keys(scene.getGuideFramings?.() ?? {}),
     },

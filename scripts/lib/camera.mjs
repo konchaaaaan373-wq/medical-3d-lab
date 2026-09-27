@@ -47,3 +47,48 @@ export async function waitForCameraToSettle(page, { stillMs = 700, tolerance = 1
     { polling: 'raf', timeout }
   );
 }
+
+/**
+ * Wait for the **framing** to stop moving — distance, elevation and target —
+ * while the model may go on turning.
+ *
+ * A scene at rest can be auto-rotating: the camera orbits the target forever,
+ * so `waitForCameraToSettle` never returns and a check that swallowed its
+ * timeout measured a camera in flight (L-128). An orbit changes only the
+ * azimuth; a re-frame or a tween changes the distance, the height or the
+ * target. So those three are what settle, and the heading is left alone.
+ *
+ * @param {import('playwright').Page} page
+ * @param {{ stillMs?: number, tolerance?: number, timeout?: number }} [options]
+ */
+export async function waitForFramingToSettle(page, { stillMs = 700, tolerance = 1e-3, timeout = 20000 } = {}) {
+  await page.evaluate(() => {
+    window.__framingSettle = null;
+  });
+  await page.waitForFunction(
+    ({ stillMs, tolerance }) => {
+      const viewer = window.__app?.viewer;
+      if (!viewer) return true;
+      const p = viewer.camera.position;
+      const t = viewer.controls.target;
+      const dx = p.x - t.x;
+      const dy = p.y - t.y;
+      const dz = p.z - t.z;
+      const distance = Math.hypot(dx, dy, dz);
+      const now = [distance, dy / distance, t.x, t.y, t.z];
+      const time = performance.now();
+      const state = (window.__framingSettle ??= { last: null, since: time, frames: 0 });
+      const moved = !state.last || now.some((value, i) => Math.abs(value - state.last[i]) > tolerance);
+      if (moved) {
+        state.since = time;
+        state.frames = 0;
+      } else {
+        state.frames += 1;
+      }
+      state.last = now;
+      return state.frames >= 2 && time - state.since >= stillMs;
+    },
+    { stillMs, tolerance },
+    { polling: 'raf', timeout }
+  );
+}

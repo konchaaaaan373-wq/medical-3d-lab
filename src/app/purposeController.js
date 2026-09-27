@@ -4,6 +4,7 @@ import { sceneById } from '../catalog/index.js';
 import { PATIENT_ROUTE } from '../catalog/index.js';
 import { patientExplanationAvailable } from '../access/patientPurpose.js';
 import { PURPOSE, hashWithPurpose, purposeById, requestedPurpose, resolvePurpose } from './purpose.js';
+import { sameRoute } from './router.js';
 
 /**
  * Puts a model into the purpose its address asks for, and keeps it there.
@@ -65,6 +66,17 @@ export async function installPurpose({ app, ui, sceneId, modes, win = window }) 
   const notice = createNotice(ui);
 
   const readHash = () => win.location.hash ?? '';
+  /**
+   * Whether the address still names *this* model.
+   *
+   * A hash change to another model is a departure, and `departure.js` reloads
+   * the document for it. Acting on it here first would handle the next model's
+   * `?purpose=` as this one's — refusing it with this model's notice and
+   * stripping it from the address before the next document can read it, or
+   * resetting and opening an explanation on the model being left.
+   */
+  const shownHash = readHash();
+  const stillHere = () => sameRoute(readHash(), shownHash);
   /** Correct the address without a history entry, and without `hashchange`. */
   const replaceHash = (hash) => {
     try {
@@ -78,7 +90,7 @@ export async function installPurpose({ app, ui, sceneId, modes, win = window }) 
     // A model with one purpose. It still answers a link that asked for the
     // other one — by saying it cannot, rather than by ignoring it.
     const refuse = () => {
-      if (requestedPurpose(readHash()) !== PURPOSE.PATIENT) return;
+      if (!stillHere() || requestedPurpose(readHash()) !== PURPOSE.PATIENT) return;
       notice.show(
         'This model has no patient explanation. It is open for medical education.',
         'このモデルには患者説明がありません。医学教育の表示で開いています。'
@@ -87,6 +99,10 @@ export async function installPurpose({ app, ui, sceneId, modes, win = window }) 
     };
     refuse();
     win.addEventListener('hashchange', refuse);
+    // The header decides whether to draw the switch from the same gate, but a
+    // scene whose console could not take the explanation has no patient mode:
+    // a switch that always refuses itself is taken off.
+    app.header?.element?.querySelector?.('.global-nav-purpose')?.setAttribute('hidden', '');
     return { purpose: () => PURPOSE.EDUCATION, available: false };
   }
 
@@ -104,7 +120,17 @@ export async function installPurpose({ app, ui, sceneId, modes, win = window }) 
     entitled: patient.entitled(),
   });
   ui.querySelector('.console')?.prepend(bar.element);
-  patient.onEntitlement((entitled) => bar.setEntitled(entitled));
+  patient.onEntitlement((entitled) => {
+    bar.setEntitled(entitled);
+    // The grants can arrive after the page has opened in patient explanation
+    // (`main.js` does not wait for them). The reader who may open it gets it
+    // opened then, as they would have by pressing the switch — once, so a
+    // reader who closed it is not handed it again by a token refresh.
+    if (entitled && current === PURPOSE.PATIENT && !openedFor) {
+      openedFor = true;
+      void patient.open();
+    }
+  });
   // The explanation closed — by its ×, by the entitlement going, by a purpose
   // change. In patient explanation the way back into it is the bar.
   patient.onClose(() => {
@@ -112,6 +138,10 @@ export async function installPurpose({ app, ui, sceneId, modes, win = window }) 
   });
 
   let current = null;
+  /** Whether this visit to patient explanation has opened the explanation. */
+  let openedFor = false;
+  /** Education's data view, put back when the reader returns to education. */
+  let educationDataView = false;
 
   /**
    * @param {'patient'|'education'} next
@@ -128,7 +158,8 @@ export async function installPurpose({ app, ui, sceneId, modes, win = window }) 
       // What only education offers does not come along.
       modes.educationGuide?.close?.();
       modes.exitSceneModes?.();
-      if (app.isDataView?.()) app.setDataView?.(false);
+      educationDataView = Boolean(app.isDataView?.());
+      if (educationDataView) app.setDataView?.(false);
       const changed = app.resetModelControls?.() ?? false;
       if (changed && !initial) {
         notice.show(
@@ -138,13 +169,21 @@ export async function installPurpose({ app, ui, sceneId, modes, win = window }) 
       }
       // Opened for the reader who may; for anyone else the bar says what it
       // takes, and `open` shows them how.
-      if (patient.entitled()) void patient.open();
+      openedFor = patient.entitled();
+      if (openedFor) void patient.open();
     } else if (previous === PURPOSE.PATIENT) {
+      openedFor = false;
       patient.close({ keepView: true });
+      // The explanation's own close restores the data view *it* found, which
+      // was off — this purpose had already turned it off. Education's own
+      // setting is this purpose's to give back.
+      if (educationDataView) app.setDataView?.(true);
+      educationDataView = false;
     }
   }
 
   function applyFromHash({ initial = false } = {}) {
+    if (!stillHere()) return;
     const { purpose, refused } = resolvePurpose({
       requested: requestedPurpose(readHash()),
       patientAvailable: available,

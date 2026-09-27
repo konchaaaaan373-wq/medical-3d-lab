@@ -98,11 +98,14 @@ export function requestedPurpose(hash = '') {
  */
 export function hashWithPurpose(hash, purpose) {
   const [route, query] = split(hash);
-  const params = new URLSearchParams(query);
-  if (purpose === DEFAULT_PURPOSE || !purposeById(purpose)) params.delete(PURPOSE_PARAM);
-  else params.set(PURPOSE_PARAM, purpose);
-  const rest = params.toString();
-  return rest ? `${route}?${rest}` : route;
+  // Every other part kept **as written**: re-serialising through
+  // `URLSearchParams` would turn `left%20atrium` into `left+atrium` and a bare
+  // flag into `flag=`, and write the changed link into history.
+  const kept = query
+    .split('&')
+    .filter((part) => part && decodeURIComponent(part.split('=')[0].replace(/\+/g, ' ')) !== PURPOSE_PARAM);
+  if (purpose !== DEFAULT_PURPOSE && purposeById(purpose)) kept.push(`${PURPOSE_PARAM}=${purpose}`);
+  return kept.length ? `${route}?${kept.join('&')}` : route;
 }
 
 /**
