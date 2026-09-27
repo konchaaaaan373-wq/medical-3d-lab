@@ -86,7 +86,8 @@ test('scene exits: and that menu opens, and reaches the pages a scene has no row
   assert.equal(panel.hidden, false, 'and it opens');
   assert.equal(trigger.getAttribute('aria-expanded'), 'true');
 
-  const hrefs = findByClass(panel, 'site-menu-link').map((link) => link.getAttribute('href'));
+  const hrefs = [...findByClass(panel, 'site-menu-link'), ...findByClass(panel, 'site-menu-legal-link')]
+    .map((link) => link.getAttribute('href'));
   assert.ok(hrefs.includes('#/trust'), 'the publication record is one press away from a model');
   assert.ok(hrefs.includes('#/terms'), 'and so are the terms, which a model had no route to at all');
 });

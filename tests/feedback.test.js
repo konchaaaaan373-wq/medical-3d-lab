@@ -106,7 +106,10 @@ test('feedback: it is reachable from every product-shell surface', () => {
   const main = read('src/main.js');
   const surfaces = read('src/app/documentSurfaces.js');
 
-  assert.match(surfaces, /observe\(\{ ui, surface: TELEMETRY_SURFACE\[kind\] \}\)/);
+  assert.match(surfaces, /observe\(\{\s*ui,\s*surface: TELEMETRY_SURFACE\[kind\],/);
+  // In the site menu of the surface being mounted, like on a 3D model — not
+  // floating over the page on some screens and in the menu on others.
+  assert.match(surfaces, /placement: 'menu'/);
   for (const [kind, name] of [
     ['landing', 'landing'],
     ['explorer', 'explorer'],

@@ -463,7 +463,12 @@ export function dockUtilities({ bar, items, menu, query = UTILITIES_IN_ROW, wind
       }
       holding += 1;
       if (inRow) {
-        if (node.parentElement !== bar) bar.append(node);
+        // Appended every time, not only when it moves: the row's order is the
+        // order of `items`, not the order the controls happened to arrive in.
+        // A document header is handed the account button first and a 3D
+        // header the language switch first, and the row read ログイン・日本語
+        // on one screen and 日本語・ログイン on the next.
+        bar.append(node);
         row.hidden = true;
       } else {
         if (node.parentElement !== slot) slot.append(node);
@@ -504,46 +509,53 @@ export const UTILITIES_IN_ROW = '(min-width: 981px)';
  * publication record had no route to the terms at all.
  */
 export const SUPPORT_LINKS = Object.freeze([
-  Object.freeze({ href: '#/terms', en: 'Terms', ja: '利用規約' }),
-  Object.freeze({ href: '#/privacy', en: 'Privacy', ja: 'プライバシー' }),
-  Object.freeze({ href: '#/commerce', en: 'Commercial disclosure', ja: '特定商取引法に基づく表記' }),
   Object.freeze({ href: '#/support', en: 'Support', ja: 'サポート' }),
 ]);
 
+/** The legal pages, as a footer line at the bottom of the menu. */
+export const LEGAL_LINKS = Object.freeze([
+  Object.freeze({ href: '#/terms', en: 'Terms', ja: '利用規約' }),
+  Object.freeze({ href: '#/privacy', en: 'Privacy', ja: 'プライバシー' }),
+  Object.freeze({ href: '#/commerce', en: 'Commercial disclosure', ja: '特定商取引法に基づく表記' }),
+]);
+
 /**
- * Published models as the menu lists them: one row per organ, one link per
- * layer inside it.
+ * Published models as the menu lists them: one full-width link per model,
+ * grouped by organ, the organ named once at the head of its group.
+ *
+ * The first version put the organ's name in a column of its own and one chip
+ * per model beside it — so the name, the largest word in the row, was not a
+ * link and pressing 「脳」 did nothing, and four of the five chips read 解剖.
+ * Now the whole row is the link, and the organ's name is inside it. On a later
+ * row of the same organ the name is kept for a screen reader (the link has to
+ * say "heart, cardiac output", not just "cardiac output") and hidden from view,
+ * so the column reads as a grouped list rather than as a repeated word.
  *
  * @param {ReturnType<typeof import('../app/modelNavigation.js').organLayerNavigation>} navigation
  */
 export function organLayerList(navigation) {
-  return el(
-    'ul',
-    { class: 'site-menu-organs' },
-    navigation.organs.map((organ) =>
-      el('li', { class: `site-menu-organ${organ.current ? ' is-current' : ''}` }, [
-        dual(organ.name.en, organ.name.ja, 'site-menu-organ-name'),
+  const rows = navigation.organs.flatMap((organ) =>
+    organ.models.map((model, index) =>
+      el('li', { class: `site-menu-organ${organ.current ? ' is-current' : ''}${index ? ' is-continued' : ''}` }, [
         el(
-          'span',
-          { class: 'site-menu-organ-models' },
-          organ.models.map((model) =>
-            el(
-              'a',
-              {
-                class: `site-menu-model${model.current ? ' is-current' : ''}`,
-                href: model.route,
-                ...(model.current ? { 'aria-current': 'page' } : {}),
-              },
-              [
-                model.showKind ? dual(model.kind.en, model.kind.ja, 'site-menu-model-kind') : null,
-                dual(model.name.en, model.name.ja, 'site-menu-model-name'),
-              ]
-            )
-          )
+          'a',
+          {
+            class: `site-menu-model${model.current ? ' is-current' : ''}`,
+            href: model.route,
+            ...(model.current ? { 'aria-current': 'page' } : {}),
+          },
+          [
+            dual(organ.name.en, organ.name.ja, `site-menu-organ-name${index ? ' is-repeat' : ''}`),
+            el('span', { class: 'site-menu-model-label' }, [
+              model.showKind ? dual(model.kind.en, model.kind.ja, 'site-menu-model-kind') : null,
+              dual(model.name.en, model.name.ja, 'site-menu-model-name'),
+            ]),
+          ]
         ),
       ])
     )
   );
+  return el('ul', { class: 'site-menu-organs' }, rows);
 }
 
 /**
@@ -591,19 +603,33 @@ export function createSiteHeaderMenu({
   const menu = createSiteMenu({
     id,
     doc,
+    // In the order a reader wants them: where to go, then this site's own
+    // record, then their settings, then help — and the legal pages as a
+    // footer line, not as four rows competing with the models. The first
+    // version filed the legal pages, the support page and the feedback button
+    // under one heading, 「サポート・規約」, with 「サポート」 as a row inside it.
     sections: [
       models ? { id: 'models', title: { en: 'Models', ja: 'モデル' }, children: models } : null,
-      pageLinks.length ? { id: 'pages', title: { en: 'Pages', ja: 'ページ' }, children: pageLinks } : null,
+      pageLinks.length
+        ? { id: 'pages', title: { en: 'About the models', ja: 'モデルの情報' }, children: pageLinks }
+        : null,
       { id: 'settings', title: { en: 'Settings', ja: '設定' }, children: [language.row, account.row] },
       {
         id: 'support',
-        title: { en: 'Support & legal', ja: 'サポート・規約' },
+        title: { en: 'Help', ja: 'お問い合わせ' },
         children: [
           feedbackSlot,
+          ...SUPPORT_LINKS.map((link) => el('a', { class: 'site-menu-link', href: link.href }, [dual(link.en, link.ja)])),
+        ],
+      },
+      {
+        id: 'legal',
+        title: { en: 'Legal', ja: '規約' },
+        children: [
           el(
             'nav',
-            { class: 'site-menu-legal', 'aria-label': inLanguage('Legal and support', '規約・サポート') },
-            SUPPORT_LINKS.map((link) => el('a', { class: 'site-menu-link', href: link.href }, [dual(link.en, link.ja)]))
+            { class: 'site-menu-legal', 'aria-label': inLanguage('Legal', '規約') },
+            LEGAL_LINKS.map((link) => el('a', { class: 'site-menu-legal-link', href: link.href }, [dual(link.en, link.ja)]))
           ),
         ],
       },
@@ -611,9 +637,10 @@ export function createSiteHeaderMenu({
   });
 
   const utilities = el('div', { class: 'site-utilities', hidden: '' });
+  // Language, then account — in the row and in the menu alike, on every screen.
   const items = {
-    account: { node: null, row: account.row, slot: account.slot },
     language: { node: null, row: language.row, slot: language.slot },
+    account: { node: null, row: account.row, slot: account.slot },
   };
   // The language switch changes what the menu says; closing on it would hide
   // the only confirmation that it worked.
@@ -634,6 +661,9 @@ export function createSiteHeaderMenu({
       if (!node) return false;
       if (name === 'feedback') {
         node.classList?.remove?.('is-floating');
+        // In a list of places to go, a lone noun reads as a heading. The
+        // floating button's 「ご意見」 says what it is; here it says what it does.
+        node.replaceChildren?.(...dual('Send feedback', 'ご意見を送る').children);
         feedbackSlot.replaceChildren(node);
         feedbackSlot.hidden = false;
         menu.refresh();

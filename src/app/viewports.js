@@ -86,6 +86,11 @@ export const SURFACES = [
   { id: 'support', route: '#/support', label: 'Support' },
   { id: 'locked', route: '#/copd', label: 'To be updated', locked: true },
   { id: 'scene', route: '#/brain-anatomy', label: 'Scene', needsRenderer: true },
+  // An organ with more than one layer, so the header's second row — the
+  // organ's layers — is measured at every width. With only the brain here the
+  // matrix never saw it: its links shipped at 36–40 px, under the phone floor,
+  // with every run green.
+  { id: 'scene-layers', route: '#/heart-anatomy', label: 'Scene (organ with layers)', needsRenderer: true },
 ];
 
 /**

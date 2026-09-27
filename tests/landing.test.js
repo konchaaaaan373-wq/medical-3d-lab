@@ -949,13 +949,18 @@ test('language control: the document language follows the visible language', () 
     const changes = [];
     const toggle = createLanguageToggle((mode) => changes.push(mode));
 
+    // Both options are on the button; the one on screen is the marked one.
+    const current = () => findByClass(toggle.element, 'is-current').map((node) => node.textContent);
     toggle.init();
     assert.equal(document.documentElement.getAttribute('lang'), 'ja');
-    assert.equal(toggle.element.textContent, '日本語');
+    assert.deepEqual(findByClass(toggle.element, 'ui-toggle-option').map((node) => node.textContent), ['日本語', 'EN']);
+    assert.deepEqual(current(), ['日本語']);
+    assert.match(toggle.element.getAttribute('aria-label'), /Switch to English/, 'what it does, in the language it switches to');
 
     toggle.element.click();
     assert.equal(document.documentElement.getAttribute('lang'), 'en');
-    assert.equal(toggle.element.textContent, 'English');
+    assert.deepEqual(current(), ['EN']);
+    assert.match(toggle.element.getAttribute('aria-label'), /日本語に切り替え/);
     assert.deepEqual(changes, ['ja', 'en']);
   } finally {
     restoreDocument();

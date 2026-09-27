@@ -141,7 +141,16 @@ export function createSceneSwitcher({ groups, currentId, showLab = true, models 
             `${navigation.currentOrgan.name.ja}のモデル`
           ),
         },
-        layerModels.map((model) =>
+        [
+          // Whose layers these are, said in the row. Placed after the organs,
+          // a bare `›` pointed at whichever organ came last — 「肝臓 › 解剖
+          // 機序 心拍出量」 read as the liver's. Hidden from assistive tech,
+          // which has the group's own name for the same thing.
+          el('span', { class: 'global-nav-layers-owner', 'aria-hidden': 'true' }, [
+            el('span', { class: 'lang-en', text: navigation.currentOrgan.name.en }),
+            el('span', { class: 'lang-ja', text: navigation.currentOrgan.name.ja }),
+          ]),
+          ...layerModels.map((model) =>
           el(
             'a',
             {
@@ -154,7 +163,8 @@ export function createSceneSwitcher({ groups, currentId, showLab = true, models 
               bilingual(model.name.en, model.name.ja, 'global-nav-layer-name'),
             ]
           )
-        )
+          ),
+        ]
       )
     : null;
 

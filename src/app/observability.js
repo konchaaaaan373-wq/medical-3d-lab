@@ -31,11 +31,14 @@ const env = (key, fallback = '') => {
  * scene has no header); a shell surface gets a floating trigger instead.
  * Anything else would either hide the button or cover the model with it.
  */
-function mountTrigger(ui, trigger, placement) {
-  // In the site menu, beside the terms and the support page: feedback is about
-  // the whole product, and on a 3D model it used to stand in the scene's own
-  // button row, between "hide the panels" and the language switch.
-  if (placement === 'menu' && headerDockIn(ui)?.dock('feedback', trigger)) return;
+function mountTrigger(ui, trigger, placement, dockRoot = ui) {
+  // In the site menu, beside the support page: feedback is about the whole
+  // product. On a 3D model it used to stand in the scene's own button row,
+  // between "hide the panels" and the language switch; on every other screen
+  // it floated over the page's bottom corner. `dockRoot` is the surface whose
+  // header should take it — during a page swap the outgoing header is still
+  // in `#ui`, and the first one found there is the one about to be removed.
+  if (placement === 'menu' && headerDockIn(dockRoot)?.dock('feedback', trigger)) return;
   const rail = placement === 'rail' || placement === 'menu' ? ui.querySelector('.rail-buttons') : null;
   if (rail) {
     rail.append(trigger);
@@ -99,6 +102,8 @@ export function bridgeAppEvents(telemetry, { sceneId, deviceClass, surface }) {
  * @param {'landing'|'explorer'|'lab'|'trust'|'scene'|'fallback'} options.surface
  * @param {string|null} [options.sceneId]
  * @param {'menu'|'rail'|'floating'} [options.placement]
+ * @param {HTMLElement} [options.dockRoot] where to look for the header that takes
+ *   the feedback button, when it is not simply `ui`
  * @param {boolean} [options.askConsent] a failed scene is not the moment to ask
  */
 export function installObservability({
@@ -107,6 +112,7 @@ export function installObservability({
   sceneId = null,
   placement = 'floating',
   askConsent = true,
+  dockRoot = ui,
 }) {
   try {
     const { telemetry, reporter, deviceClass } = installTelemetry({ surface, sceneId });
@@ -136,7 +142,7 @@ export function installObservability({
           }
         : null,
     });
-    mountTrigger(ui, feedback.trigger, placement);
+    mountTrigger(ui, feedback.trigger, placement, dockRoot);
     const unbridge = bridgeAppEvents(telemetry, { sceneId, deviceClass, surface });
 
     return {

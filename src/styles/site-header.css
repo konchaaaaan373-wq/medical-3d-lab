@@ -137,23 +137,48 @@ html[data-route='locked'] .shell-header.has-site-menu {
 }
 
 /* ---- The layers of the organ on screen ------------------------------------
-   The second level. It follows the organ it belongs to, after a divider, and
-   is drawn quieter than the organs: smaller, and inside one frame, so it reads
-   as "the parts of the thing just chosen" rather than as more organs. */
+   The second level, drawn as the child of the first.
+
+   The first version drew it as a second framed group of chips beside the
+   organs, and marked "current" two ways: the organ with a frame only, the
+   layer filled. Seen cold, the header offered two sibling rows of buttons and
+   no reason to read one as inside the other — and the organ you were on looked
+   less selected than the lungs you were not on.
+
+   Now: one filled chip is always the organ you are in (level 1). Its layers
+   follow a `›`, as tabs — text with an underline for the one on screen — so
+   the second level is lighter than the first and visibly hangs off it. */
 .global-nav-layers {
   position: relative;
   z-index: 2;
   flex: 0 1 auto;
   min-width: 0;
   display: flex;
-  align-items: center;
+  align-items: stretch;
   gap: 2px;
-  padding: 3px;
-  border: 1px solid var(--border);
-  border-radius: 11px;
-  background: rgba(255, 255, 255, 0.025);
+  padding-left: 12px;
+  border-left: 1px solid var(--border);
   overflow-x: auto;
   scrollbar-width: none;
+}
+
+/* 「心臓 ›」: the parent, named, then its children. */
+.global-nav-layers-owner {
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding-right: 4px;
+  color: var(--ink-faint);
+  font-size: 12px;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.global-nav-layers-owner::after {
+  content: '›';
+  font-size: 16px;
+  line-height: 1;
 }
 
 .global-nav-layers::-webkit-scrollbar {
@@ -165,33 +190,36 @@ html[data-route='locked'] .shell-header.has-site-menu {
   display: inline-flex;
   align-items: center;
   gap: 6px;
-  min-height: 36px;
-  padding: 0 11px;
-  border: 1px solid transparent;
-  border-radius: 8px;
+  /* 44, not 36: this is the only way to the heart's cardiac-output model, and
+     at 36 it was the smallest target in the header. */
+  min-height: 44px;
+  padding: 2px 10px 0;
+  border: 0;
+  border-bottom: 2px solid transparent;
+  border-radius: 0;
   color: var(--ink-dim);
-  font-size: 12.5px;
-  font-weight: 650;
+  font-size: 13px;
+  font-weight: 600;
   line-height: 1;
   white-space: nowrap;
   text-decoration: none;
-  transition: color 120ms ease, background-color 120ms ease, border-color 120ms ease;
+  transition: color 120ms ease, border-color 120ms ease;
 }
 
 .global-nav-layer-link:hover {
   color: var(--ink);
-  background: rgba(255, 255, 255, 0.055);
+  border-bottom-color: color-mix(in srgb, var(--ink-dim) 45%, transparent);
 }
 
 .global-nav-layer-link:focus-visible {
   outline: 2px solid var(--accent);
-  outline-offset: 2px;
+  outline-offset: -2px;
+  border-radius: 6px;
 }
 
 .global-nav-layer-link.is-current {
   color: var(--ink);
-  background: var(--accent-soft);
-  border-color: var(--accent-border);
+  border-bottom-color: var(--accent);
 }
 
 /* The layer's name beside a model's own name — 機序 心拍出量 — quieter than
@@ -203,14 +231,7 @@ html[data-route='locked'] .shell-header.has-site-menu {
 }
 
 .global-nav-layer-link.is-current .global-nav-layer-kind {
-  color: color-mix(in srgb, var(--accent) 75%, var(--ink-dim));
-}
-
-/* The organ you are inside of, when the page itself is one of its layers:
-   still marked, with the frame alone, so the one filled chip on screen is the
-   page. */
-.global-nav-strip-link[aria-current='true'] {
-  background: none;
+  color: color-mix(in srgb, var(--accent) 70%, var(--ink-dim));
 }
 
 /* ---- The reader's controls, in the row ------------------------------------ */
@@ -254,6 +275,32 @@ html[data-route='locked'] .shell-header.has-site-menu {
   color: var(--ink);
 }
 
+/* ------------------------------------------------------ the language switch */
+
+/* Both options on the button, the current one marked by weight and colour
+   (not colour alone), the other one dimmed — so it reads as a switch between
+   two, not as a label for one. */
+.ui-toggle.is-language {
+  gap: 5px;
+}
+
+.ui-toggle-option {
+  opacity: 0.62;
+  font-weight: 500;
+}
+
+.ui-toggle-option.is-current {
+  opacity: 1;
+  font-weight: 700;
+  text-decoration: underline;
+  text-decoration-thickness: 1.5px;
+  text-underline-offset: 4px;
+}
+
+.ui-toggle-separator {
+  opacity: 0.45;
+}
+
 /* --------------------------------------------------------- the menu trigger */
 
 .site-menu-trigger {
@@ -267,7 +314,11 @@ html[data-route='locked'] .shell-header.has-site-menu {
   min-width: 44px;
   min-height: 44px;
   padding: 0 12px;
-  border: 1px solid var(--menu-rule);
+  /* A frame only when it is being aimed at or is open: at rest the menu is
+     one control among the header's, not the loudest thing in it. It used to
+     be the only framed control in the row, heavier than the organ you were
+     on. */
+  border: 1px solid transparent;
   border-radius: 10px;
   background: transparent;
   color: var(--menu-ink);
@@ -491,70 +542,100 @@ html[data-route='locked'] .shell-header .site-menu-panel {
   background: var(--menu-accent-soft);
 }
 
+.site-menu-section.is-legal .site-menu-section-title {
+  /* A footer line needs no heading on screen; it keeps one for a screen
+     reader's heading list. */
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
 .site-menu-legal {
-  display: grid;
-  gap: 0;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0 4px;
+  padding: 0 2px;
 }
 
-.site-menu-legal .site-menu-link {
-  min-height: 40px;
+.site-menu-legal-link {
+  display: inline-flex;
+  align-items: center;
+  min-height: 44px;
+  padding: 0 8px;
+  border-radius: 6px;
   color: var(--menu-muted);
-  font-size: 13px;
+  font-size: 12px;
+  text-decoration: none;
 }
 
-/* ---- models: organ, then its layers --------------------------------------- */
+.site-menu-legal-link:hover {
+  color: var(--menu-ink);
+  background: var(--menu-hover);
+}
 
+/* ---- models: organ, then its layers ---------------------------------------
+   One full-width link per model. The organ's name is the first column and is
+   printed once per organ; the second column is the layer (and the model's own
+   name when it is not simply the anatomy). */
 .site-menu-organs {
   margin: 0;
   padding: 0;
   list-style: none;
   display: grid;
-  gap: 2px;
+  gap: 0;
 }
 
-.site-menu-organ {
-  display: grid;
-  grid-template-columns: 4.5em minmax(0, 1fr);
-  align-items: center;
-  gap: 6px;
-  padding: 2px 0 2px 10px;
-}
-
-.site-menu-organ-name {
-  color: var(--menu-ink);
-  font-size: 14px;
-  font-weight: 650;
-}
-
-.site-menu-organ-models {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 4px;
+.site-menu-organ + .site-menu-organ:not(.is-continued) {
+  border-top: 1px solid color-mix(in srgb, var(--menu-rule) 60%, transparent);
 }
 
 .site-menu-model {
-  display: inline-flex;
+  display: grid;
+  grid-template-columns: 4.5em minmax(0, 1fr);
   align-items: center;
-  gap: 6px;
+  gap: 8px;
   min-height: 44px;
-  padding: 0 12px;
-  border: 1px solid var(--menu-rule);
-  border-radius: 9px;
+  padding: 0 10px;
+  border-radius: 8px;
   color: var(--menu-ink);
-  font-size: 13.5px;
-  line-height: 1;
+  font-size: 14px;
   text-decoration: none;
-  white-space: nowrap;
 }
 
 .site-menu-model:hover {
   background: var(--menu-hover);
-  border-color: color-mix(in srgb, var(--menu-accent) 40%, var(--menu-rule));
 }
 
 .site-menu-model[aria-current='page'] {
   background: var(--menu-accent-soft);
-  border-color: color-mix(in srgb, var(--menu-accent) 60%, transparent);
+  box-shadow: inset 3px 0 0 var(--menu-accent);
+}
+
+.site-menu-organ-name {
+  font-weight: 650;
+}
+
+/* Kept in the accessibility tree, taken off the screen: see `organLayerList`.
+   `opacity`, not `visibility: hidden` — the latter removes the name from the
+   tree as well, and the link would be announced as just "cardiac output". It
+   also keeps the column, so the layers line up under each other. */
+.site-menu-organ-name.is-repeat {
+  opacity: 0;
+}
+
+.site-menu-model-label {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 6px;
+  min-width: 0;
+  color: var(--menu-muted);
+}
+
+.site-menu-model[aria-current='page'] .site-menu-model-label {
+  color: var(--menu-ink);
 }
 
 .site-menu-model-kind {
@@ -725,17 +806,29 @@ html[data-route='locked'] .shell-header .site-menu-panel {
   .global-scene-nav.has-site-menu > .site-menu-trigger { grid-area: menu; margin-left: 0; }
   .global-scene-nav.has-site-menu > .site-utilities { display: none; }
 
+  /* On a phone the layers are a tab bar under the organs, the width of the
+     header: the `›` has nothing to point from across a row break, so the rule
+     between the rows and the tabs' underlines carry the relation instead. */
   .global-scene-nav.has-site-menu > .global-nav-layers {
     grid-area: layers;
     justify-self: stretch;
-    margin: 3px 0 2px;
-    padding: 2px;
+    margin: 3px -5px -3px -6px;
+    padding: 0 6px;
+    border-top: 1px solid var(--border);
+  }
+
+  .global-scene-nav.has-site-menu > .global-nav-layers {
+    border-left: 0;
+  }
+
+  .global-scene-nav.has-site-menu .global-nav-layers-owner {
+    display: none;
   }
 
   .global-nav-layer-link {
     flex: 1 1 0;
     justify-content: center;
-    min-height: 40px;
+    min-height: 44px;
   }
 
   /* The name of the product goes before the organs do: the mark is the

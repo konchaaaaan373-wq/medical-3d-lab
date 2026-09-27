@@ -1,7 +1,8 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 
-import { createSiteHeaderMenu, createSiteMenu, dockUtilities, menuSettingRow } from '../src/components/SiteMenu.js';
+import { createSiteHeaderMenu, createSiteMenu, dockUtilities, menuSettingRow, organLayerList } from '../src/components/SiteMenu.js';
+import { organLayerNavigation } from '../src/app/modelNavigation.js';
 import { createShellHeader } from '../src/components/ShellHeader.js';
 import { createSceneSwitcher } from '../src/components/SceneSwitcher.js';
 import { headerDockIn } from '../src/app/headerDock.js';
@@ -154,6 +155,26 @@ test('a header a page swap took down never takes the account button back', () =>
   });
 });
 
+test('language comes before account in the row, whichever arrived first', () => {
+  // A document header is handed the account button first; a 3D header gets
+  // the language switch first and the account button later, from the access
+  // layer. The row used to keep arrival order, so the two screens disagreed.
+  withDocument(() => {
+    for (const first of ['account', 'language']) {
+      const site = createSiteHeaderMenu({ id: 'm', windowRef: fakeMedia(true).windowRef });
+      const nodes = { account: button('account-trigger'), language: button('ui-toggle') };
+      const second = first === 'account' ? 'language' : 'account';
+      site.dock(first, nodes[first]);
+      site.dock(second, nodes[second]);
+      assert.deepEqual(
+        site.utilities.children.map((node) => node.className),
+        ['ui-toggle', 'account-trigger'],
+        `${first} docked first`
+      );
+    }
+  });
+});
+
 test('feedback docks in the support section, not floating over the page', () => {
   withDocument(() => {
     const site = createSiteHeaderMenu({ id: 'm', windowRef: fakeMedia(true).windowRef });
@@ -257,5 +278,37 @@ test('the 3D header in the beta: the menu offers none of the models the row alre
     const { row, menu } = hrefsOf(switcher.element);
     assert.deepEqual(row.filter((href) => menu.includes(href)), [], 'no destination is both in the row and the menu');
     assert.ok(menu.includes('#/trust'), 'the menu carries the page the row does not');
+  });
+});
+
+test('in the menu, every model is one whole-row link, and the organ name is inside it', () => {
+  // The first version put the organ name in a column beside chips: the
+  // largest word in the row was not a link, and four chips read 解剖.
+  withDocument(() => {
+    const list = organLayerList(organLayerNavigation(PUBLIC_MANIFEST.models));
+    const links = findByClass(list, 'site-menu-model');
+    assert.equal(links.length, PUBLIC_MANIFEST.models.length, 'one link per published model');
+    for (const name of findByClass(list, 'site-menu-organ-name')) {
+      let inLink = false;
+      for (let node = name; node; node = node.parentElement) if (node.tagName === 'A') inLink = true;
+      assert.ok(inLink, 'an organ name outside a link is a word that does nothing when pressed');
+    }
+    // Printed once per organ; repeated only for a screen reader.
+    const shown = findByClass(list, 'site-menu-organ-name').filter((node) => !node.classList.contains('is-repeat'));
+    assert.equal(shown.length, PUBLIC_MANIFEST.organs.length);
+  });
+});
+
+test('the feedback button says what it does once it is in the menu', () => {
+  withDocument(() => {
+    const site = createSiteHeaderMenu({ id: 'm', windowRef: fakeMedia(true).windowRef });
+    const feedback = button('feedback-trigger is-floating');
+    const noun = new FakeElement('span');
+    noun.className = 'lang-ja';
+    noun.textContent = 'ご意見';
+    feedback.append(noun);
+    site.dock('feedback', feedback);
+    const ja = findByClass(feedback, 'lang-ja').map((node) => node.textContent);
+    assert.deepEqual(ja, ['ご意見を送る']);
   });
 });
