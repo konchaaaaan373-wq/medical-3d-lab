@@ -24,6 +24,8 @@ import { createPublicModelsExplorer } from './Landing.js';
 import { RELEASED_SCENES, isSceneReleased } from '../catalog/release.js';
 import { betaUnlocked } from './releaseGate.js';
 import { activeUsesForScene, productBadgesForScene } from '../access/features.js';
+import { patientExplanationScenes } from '../access/patientPurpose.js';
+import { PATIENT_ROUTE } from '../catalog/index.js';
 import { readSceneLibrary, toggleSceneFavorite } from './sceneLibrary.js';
 import {
   emptyOrganMatchesExplorerFilters,
@@ -371,8 +373,14 @@ export function createExplorer({
     recentShelf,
   ]);
 
+  // A filter that can only ever answer "none" is not a filter. Patient
+  // explanation is offered as a use on a card only after a versioned clinical
+  // review, so while no listed model has one, the 患者説明 chip is left out —
+  // and patient explanation has its own entrance by question (`#/patient`).
+  const patientUseListed = scopedScenes.some((scene) => activeUsesForScene(scene).includes('patient'));
   const search = createExplorerSearchControls({
     scope,
+    modes: patientUseListed ? undefined : ['all', 'education', 'clinical-learning'],
     onChange: (filters) => {
       activeFilters = filters;
       applyFilters();
@@ -470,7 +478,14 @@ export function createExplorer({
         el('div', { class: 'explorer-use-lane-grid' }, [
           useLane('01', 'Patient explanation', '患者説明',
             'A calm visual story with plain language and only the controls needed for conversation. Shown on a model only after a versioned clinical review; models still under review carry no patient badge.',
-            '平易な言葉と必要最小限の操作で、患者さんとの会話に使える説明。版を固定した医学レビュー完了後にモデルごとに有効化し、レビュー未完了のモデルには患者説明バッジを表示しません。'),
+            '平易な言葉と必要最小限の操作で、患者さんとの会話に使える説明。版を固定した医学レビュー完了後にモデルごとに有効化し、レビュー未完了のモデルには患者説明バッジを表示しません。',
+            '',
+            // Its own entrance, by question — only when there is one to open.
+            patientExplanationScenes().length
+              ? el('a', { class: 'explorer-use-lane-link', href: PATIENT_ROUTE }, [
+                  bilingual('Find by question →', '知りたいことから選ぶ →'),
+                ])
+              : null),
           useLane('02', 'Medical education', '医学教育',
             'Mechanism, comparison, prediction and feedback from one internally consistent model.',
             '1つの整合したモデルで、機序・比較・予測・フィードバックまで学ぶ。'),
@@ -594,11 +609,12 @@ export function createExplorer({
     return caption;
   }
 
-  function useLane(number, titleEn, titleJa, noteEn, noteJa, className = '') {
+  function useLane(number, titleEn, titleJa, noteEn, noteJa, className = '', link = null) {
     return el('article', { class: `explorer-use-lane ${className}`.trim() }, [
       el('span', { class: 'explorer-use-lane-number', text: number }),
       bilingual(titleEn, titleJa, 'explorer-use-lane-title'),
       bilingual(noteEn, noteJa, 'explorer-use-lane-note'),
+      link,
     ]);
   }
 

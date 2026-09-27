@@ -34,7 +34,7 @@ export function createPathologyIndex({ ui, accountButton = null, scenes = null }
   const listed = pathologyModelScenes(scenes ?? (safeUnlocked() ? SCENES : published()));
 
   const element = el('main', { class: 'explorer is-public is-pathology' }, [
-    createShellHeader({ current: null, accountButton, languageToggle: languageToggle.element }),
+    createShellHeader({ current: 'education', accountButton, languageToggle: languageToggle.element }),
     el('header', { class: 'panel explorer-header' }, [
       el('h1', { class: 'title' }, [
         el('span', { class: 'lang-en', text: PATHOLOGY_CATEGORY.en }),
@@ -79,15 +79,19 @@ export function createPathologyIndex({ ui, accountButton = null, scenes = null }
   };
 }
 
+/**
+ * One model: what it is and what it asks first, then the way in. Its maturity
+ * and review state are still on every card — they are claims a reader is owed
+ * — but under the model rather than above its name: an alpha badge was the
+ * first thing this list said about the only model on it.
+ */
 function card(scene) {
+  const trust = [sceneStatusBadge(scene.status), scene.status === 'prototype' ? null : sceneReviewBadge(scene)].filter(Boolean);
   return el('a', { class: 'explorer-scene', href: sceneRoute(scene), dataset: { scene: scene.id } }, [
-    el('span', { class: 'explorer-scene-kicker' }, [
-      sceneStatusBadge(scene.status),
-      scene.status === 'prototype' ? null : sceneReviewBadge(scene),
-    ]),
     ...sceneCardText(scene),
     el('span', { class: 'explorer-scene-footer' }, [sceneOpenLabel()]),
-  ]);
+    trust.length ? el('span', { class: 'explorer-scene-trust pathology-card-trust' }, trust) : null,
+  ].filter(Boolean));
 }
 
 /** `node --test` has no `window`; the safe answer is "not unlocked". */

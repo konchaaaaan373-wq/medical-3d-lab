@@ -186,11 +186,18 @@ try {
       // `?entitled=0` says otherwise. The query string is not stripped, so it
       // survives the reload a hash navigation causes.
       const query = `?preview=1${lockedView ? '&entitled=0' : ''}`;
-      await page.goto(`${origin}/${query}${sceneRoute(scene)}`, { waitUntil: 'networkidle' });
+      // Patient explanation is a purpose of the model now, not a console button
+      // (`src/app/purpose.js`): the way in is the address, and its control is
+      // the purpose's own 「順を追って説明する」. The console's old button is
+      // hidden on a model that has the purpose, so pressing it measured nothing.
+      const route = mode === 'patient' ? `${sceneRoute(scene)}?purpose=patient` : sceneRoute(scene);
+      await page.goto(`${origin}/${query}${route}`, { waitUntil: 'networkidle' });
       await page.waitForFunction(() => !!document.querySelector('canvas'), null, { timeout: 30_000 }).catch(() => {});
       await page.waitForTimeout(2500);
 
-      const button = page.locator(`[data-paid-mode="${mode === 'education' ? 'education-guide' : mode}"]`).first();
+      const button = page
+        .locator(mode === 'patient' ? '.purpose-patient-open' : '[data-paid-mode="education-guide"]')
+        .first();
       const present = await button.count().then((count) => count > 0);
       if (!present) {
         problems.push(`${scene.id} · ${mode}: no control to open it, in a preview build`);
@@ -205,8 +212,10 @@ try {
       // grants — rather than "is there an element whose class contains lock".
       // The padlock is always in the DOM and merely `hidden` when entitled, so
       // asking whether it exists reported every entitled control as locked.
+      // (`needs-plan` on the purpose's control: it is the one primary action
+      // there, and `is-locked` dims a console button to look disabled.)
       const locked = await button.evaluate((node) =>
-        node.classList.contains('is-locked')
+        (node.classList.contains('is-locked') || node.classList.contains('needs-plan'))
           && !!node.querySelector('.feature-lock:not([hidden])'));
       if (lockedView && !locked) {
         problems.push(`${scene.id} · ${mode}: no lock on the control, with the entitlement withheld`);
@@ -215,7 +224,10 @@ try {
         problems.push(`${scene.id} · ${mode}: the control is locked, in an entitled preview`);
       }
 
-      await button.click({ timeout: 10_000 }).catch(() => {});
+      // Entitled, patient explanation has already opened on arrival and its
+      // control is behind the panel — there is nothing to press.
+      const alreadyOpen = !lockedView && (await page.locator('.patient-guide, .education-guide').first().isVisible().catch(() => false));
+      if (!alreadyOpen) await button.click({ timeout: 10_000 }).catch(() => {});
       await page.waitForTimeout(2500);
 
       // Entitled, the guide opens. Unentitled, the account surface does — and

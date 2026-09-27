@@ -28,9 +28,11 @@ const LAB_STATUS_OPTIONS = Object.freeze([
  * Prototype scenes cannot advertise professional products and are not part of
  * the public clinical-review shelf.
  *
- * @param {{scope?:'public'|'lab',onChange:(filters:{query:string,mode:string,status:string,review:string})=>void}} options
+ * @param {{scope?:'public'|'lab',onChange:(filters:{query:string,mode:string,status:string,review:string})=>void,modes?:string[]|null}} options
+ *   `modes`: which use chips to offer — a surface leaves out one no listed
+ *   model can answer
  */
-export function createExplorerSearchControls({ scope = 'public', onChange }) {
+export function createExplorerSearchControls({ scope = 'public', onChange, modes = null }) {
   const isLab = scope === 'lab';
   const filters = { query: '', mode: 'all', status: 'all', review: 'all' };
 
@@ -67,7 +69,7 @@ export function createExplorerSearchControls({ scope = 'public', onChange }) {
           ['patient', 'Patient', '患者説明'],
           ['education', 'Education', '医学教育'],
           ['clinical-learning', 'Clinical cases', '臨床ケース'],
-        ].map(([id, label, labelJa]) => {
+        ].filter(([id]) => !modes || modes.includes(id)).map(([id, label, labelJa]) => {
           const button = el(
             'button',
             {

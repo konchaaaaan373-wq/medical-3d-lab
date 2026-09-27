@@ -26,6 +26,8 @@ import { headerDockIn } from '../app/headerDock.js';
  */
 export function installAccess({ app, access, ui, sceneId }) {
   mountAccountButton(access, ui);
+  /** What the purpose controller drives; see `purposeController.js`. */
+  const modes = { patient: null, educationGuide: null, exitSceneModes: () => exitSceneModes(app) };
   // A preview build shows the authored modes so they can be looked at before
   // anyone is asked to sign them off; production asks the gated question. The
   // capability is compiled out of a production bundle — see
@@ -34,29 +36,26 @@ export function installAccess({ app, access, ui, sceneId }) {
   const coordinator = createModeCoordinator();
 
   if (features.patient) {
-    coordinator.register(
-      'patient',
-      installPatientGuide({
-        app,
-        access,
-        ui,
-        sceneId,
-        activate: () => coordinator.activate('patient'),
-      })
-    );
+    modes.patient = installPatientGuide({
+      app,
+      access,
+      ui,
+      sceneId,
+      activate: () => coordinator.activate('patient'),
+    });
+    coordinator.register('patient', modes.patient?.close);
   }
 
   if (features.education) {
-    coordinator.register(
-      'education-guide',
-      installEducationGuide({
-        app,
-        access,
-        ui,
-        sceneId,
-        activate: () => coordinator.activate('education-guide'),
-      })
-    );
+    const closeEducationGuide = installEducationGuide({
+      app,
+      access,
+      ui,
+      sceneId,
+      activate: () => coordinator.activate('education-guide'),
+    });
+    modes.educationGuide = closeEducationGuide ? { close: closeEducationGuide } : null;
+    coordinator.register('education-guide', closeEducationGuide);
     installEducationGate({
       app,
       access,
@@ -64,6 +63,7 @@ export function installAccess({ app, access, ui, sceneId }) {
       activateLesson: () => coordinator.activate('lesson'),
     });
   }
+  return modes;
 }
 
 async function loadPaidGuide(sceneId, type) {
@@ -157,23 +157,44 @@ function installPatientGuide({ app, access, ui, sceneId, activate }) {
     lock,
   ]);
   button.title = 'Patient explanation mode / 患者説明モード';
-  button.addEventListener('click', async () => {
+  button.addEventListener('click', () => {
+    if (open) return closeGuide();
+    void requestOpen();
+  });
+
+  /**
+   * Open the explanation if the reader may, or show them how they may.
+   *
+   * One path for the console's button and for the patient-explanation purpose,
+   * so the entitlement is asked in one place: without it, the purchase surface
+   * opens and the guide does not.
+   *
+   * @returns {Promise<boolean>} whether the explanation is now open
+   */
+  async function requestOpen() {
     if (!access.has(ENTITLEMENT.PATIENT)) {
       access.open(ENTITLEMENT.PATIENT);
-      return;
+      return false;
     }
-    if (open) return closeGuide();
+    if (open) return true;
     button.disabled = true;
     try {
       const panel = await ensureGuide();
-      if (!panel || !access.has(ENTITLEMENT.PATIENT)) return;
+      if (!panel || !access.has(ENTITLEMENT.PATIENT)) return false;
       openGuide();
+      return true;
     } catch {
       access.reportError?.('Paid patient content could not be loaded. Please try again.');
+      return false;
     } finally {
       button.disabled = false;
     }
-  });
+  }
+
+  /** Told when the explanation closes, whoever closed it. */
+  const closeListeners = new Set();
+  /** Told when the reader's entitlement changes. */
+  const grantListeners = new Set();
 
   async function ensureGuide() {
     if (guidePanel) return guidePanel;
@@ -244,6 +265,7 @@ function installPatientGuide({ app, access, ui, sceneId, activate }) {
       unlocked ? 'Patient explanation / 患者説明' : 'Patient explanation — locked / 患者説明 — ロック中'
     );
     if (!unlocked && open) closeGuide();
+    for (const listener of grantListeners) listener(unlocked);
   });
 
   function openGuide() {
@@ -288,9 +310,16 @@ function installPatientGuide({ app, access, ui, sceneId, activate }) {
     requestAnimationFrame(() => guidePanel.focus());
   }
 
-  function closeGuide() {
+  /**
+   * @param {{keepView?: boolean}} [options] `keepView` when the reader is not
+   *   leaving the explanation but changing purpose on the same model: the
+   *   model's state still goes back, and the viewpoint stays where it is.
+   */
+  function closeGuide({ keepView = false } = {}) {
     if (!open) return;
     open = false;
+    const camera = keepView ? app.viewer?.camera?.position?.toArray?.() : null;
+    const target = keepView ? app.viewer?.controls?.target?.toArray?.() : null;
     guidePanel?.setPresentation(false);
     ui.classList.remove('is-patient-guide', 'is-patient-presentation');
     button.classList.remove('is-on');
@@ -318,17 +347,36 @@ function installPatientGuide({ app, access, ui, sceneId, activate }) {
     }
     movedByGuide = false;
     // The explanation's camera goes back with it. The state it walked to stays;
-    // where it was looking from does not, because that was the explanation's.
-    app.guideView?.apply?.(null);
+    // where it was looking from does not, because that was the explanation's —
+    // unless the reader is only changing purpose, when the view is theirs.
+    if (camera && target) {
+      app.guideView?.release?.();
+      app.viewer.camera.position.fromArray(camera);
+      app.viewer.controls.target.fromArray(target);
+      app.viewer.controls.update?.();
+    } else {
+      app.guideView?.apply?.(null);
+    }
     // The detail comes back either way. Hiding the numbers is how the patient
     // view reads; it is not a change to the model, and the clinician gets the
     // read-out for whatever state they are now looking at.
     app.setDataView?.(previousDataView);
     previousDataView = false;
-    requestAnimationFrame(() => button.focus());
+    for (const listener of closeListeners) listener();
+    // Focus goes back to whatever opened it — the console's button when that
+    // is on screen, and otherwise the purpose's own control (which listens).
+    if (button.offsetParent !== null) requestAnimationFrame(() => button.focus());
   }
 
-  return closeGuide;
+  return {
+    button,
+    open: requestOpen,
+    close: closeGuide,
+    isOpen: () => open,
+    entitled: () => access.has(ENTITLEMENT.PATIENT),
+    onClose: (listener) => closeListeners.add(listener),
+    onEntitlement: (listener) => grantListeners.add(listener),
+  };
 }
 
 function installEducationGuide({ app, access, ui, sceneId, activate }) {

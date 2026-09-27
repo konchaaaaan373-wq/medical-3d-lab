@@ -71,7 +71,9 @@ test('paid content: authored guides are no longer imported into the browser acce
   assert.match(source, /\.netlify\/functions\/paid-content/);
   assert.match(
     source,
-    /const panel = await ensureGuide\(\);\s*if \(!panel \|\| !access\.has\(ENTITLEMENT\.PATIENT\)\) return;\s*openGuide\(\);/
+    // The patient guide answers whether it opened (`return false`), because the
+    // patient-explanation purpose asks; the re-check after loading is the same.
+    /const panel = await ensureGuide\(\);\s*if \(!panel \|\| !access\.has\(ENTITLEMENT\.PATIENT\)\) return(?: false)?;\s*openGuide\(\);/
   );
   assert.match(
     source,

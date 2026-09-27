@@ -5,9 +5,13 @@ import {
   heroOrgansForModels,
 } from '../data/landingHero.js';
 import { NECO_LINKS } from '../data/necoLinks.js';
+import { LANDING_ROUTE } from '../catalog/index.js';
 import { createLandingOrganHero } from './landingOrganHero.js';
 import { el, skipLink } from '../utils/dom.js';
-import { createShellHeader } from '../components/ShellHeader.js';
+import { createShellHeader, purposeDestinations } from '../components/ShellHeader.js';
+import { patientExplanationScenes } from '../access/patientPurpose.js';
+import { PURPOSES } from './purpose.js';
+import { betaUnlocked } from './releaseGate.js';
 
 const dual = (en, ja, className = '') => [
   el('span', { class: `${className} lang-en`.trim(), text: en }),
@@ -68,6 +72,7 @@ export function createLanding({
   onRendererFailure = () => {},
   manifest = PUBLIC_MANIFEST,
   heroCandidates = HERO_ORGANS,
+  patientScenes = safePatientScenes(),
 } = {}) {
   const models = [...(manifest?.models ?? [])];
   const heroModels = heroOrgansForModels(models, heroCandidates);
@@ -130,6 +135,8 @@ export function createLanding({
         : null,
     ]),
 
+    purposeEntrances(patientScenes),
+
     el('section', { class: 'landing-neco', 'aria-labelledby': 'landing-neco-title' }, [
       el('div', { class: 'landing-neco-heading' }, [
         operatorCredit('landing-neco-operator'),
@@ -188,6 +195,85 @@ export function createLanding({
       element.remove();
     },
   };
+}
+
+/**
+ * The two ways into the same models, named by what they are for.
+ *
+ * Only when there are two. Where no model offers patient explanation — the
+ * released product today — a chooser with one live option is a question with
+ * one answer, and the organ chooser above already *is* the education entrance.
+ * So nothing is drawn, rather than a 患者説明 door onto an empty list.
+ *
+ * Deliberately not a dialog in front of the model: the hero above stays the
+ * first thing on the page, and choosing a purpose is something a reader may do,
+ * not something they must do before they see anything.
+ *
+ * @param {ReadonlyArray<object>} patientScenes
+ */
+function purposeEntrances(patientScenes) {
+  if (!patientScenes.length) return null;
+  const routes = Object.fromEntries(purposeDestinations(safeUnlocked()).map((item) => [item.id, item.route]));
+  // In the beta the education entrance *is* this page's organ chooser; a link
+  // from the home page to the home page would reload what is on screen, so it
+  // points at the chooser instead.
+  const educationIsHere = routes.education === LANDING_ROUTE;
+  if (educationIsHere) routes.education = '#content';
+  const lead = {
+    education: dual(
+      'Anatomy, mechanism and disease, with the numbers and the model behind them.',
+      '解剖・機序・病態を、数値と根拠まで含めて。'
+    ),
+    patient: dual(
+      'A plain, step-by-step explanation of what happens — for the conversation in the clinic.',
+      '何が起きるのかを、平易な言葉で順に。診察室での説明に。'
+    ),
+  };
+  return el('section', { class: 'landing-purposes', 'aria-labelledby': 'landing-purposes-title' }, [
+    el('h2', { class: 'landing-purposes-title', id: 'landing-purposes-title' }, dual('Choose by purpose', '目的から選ぶ')),
+    el('div', { class: 'landing-purpose-list' }, PURPOSES.map((purpose) =>
+      el('a', {
+        class: `landing-purpose is-${purpose.id}`,
+        href: routes[purpose.id],
+        // `#content` in the address would read as a route on reload (`resolveRoute`
+        // takes any bare hash for a scene slug), so the in-page jump happens
+        // without writing it — the way `skipLink` does.
+        ...(educationIsHere && purpose.id === 'education'
+          ? {
+              on: {
+                click: (event) => {
+                  event.preventDefault();
+                  const target = document.getElementById('content');
+                  target?.scrollIntoView?.({ block: 'start' });
+                  target?.focus?.({ preventScroll: true });
+                },
+              },
+            }
+          : {}),
+      }, [
+        el('span', { class: 'landing-purpose-name' }, dual(purpose.en, purpose.ja)),
+        el('span', { class: 'landing-purpose-explore' }, dual(purpose.explore.en, purpose.explore.ja)),
+        el('span', { class: 'landing-purpose-lead' }, lead[purpose.id]),
+      ])
+    )),
+  ]);
+}
+
+/** `node --test` has no `window`; the safe answers are "not unlocked" and "none". */
+function safeUnlocked() {
+  try {
+    return betaUnlocked();
+  } catch {
+    return false;
+  }
+}
+
+function safePatientScenes() {
+  try {
+    return patientExplanationScenes();
+  } catch {
+    return [];
+  }
 }
 
 /**

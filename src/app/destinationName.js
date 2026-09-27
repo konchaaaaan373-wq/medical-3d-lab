@@ -39,6 +39,8 @@ const SURFACE_NAMES = {
   landing: { en: 'the home page', ja: 'ホーム' },
   explorer: { en: 'the model index', ja: 'モデル一覧' },
   lab: { en: 'the experimental models', ja: '実験モデル' },
+  pathology: { en: 'the disease models', ja: '病態モデル' },
+  patient: { en: 'patient explanation', ja: '患者説明' },
   trust: { en: 'the publication and review record', ja: '公開状態と医学レビュー' },
 };
 

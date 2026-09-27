@@ -1,0 +1,523 @@
+/* ==========================================================================
+   Purpose — patient explanation and medical education over one model
+   (`src/app/purpose.js`, `src/app/purposeController.js`).
+
+   What changes with the purpose is the header's location, the title card's
+   heading, which controls the console offers and where the guide sits. The
+   model, and the room it is given, does not: in both purposes a panel that
+   opens goes beside the model or under it, never over it.
+   ========================================================================== */
+
+/* ---------------------------------------------- scene header: the switch */
+
+.global-nav-purpose {
+  flex: none;
+  display: inline-flex;
+  align-items: stretch;
+  margin-left: auto;
+  padding: 3px;
+  gap: 2px;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.03);
+}
+
+/* The switch takes the far end; the reader's own controls follow it. */
+.global-scene-nav.has-purpose .site-utilities {
+  margin-left: 8px;
+}
+
+.global-nav-purpose-option {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 38px;
+  min-width: 44px;
+  padding: 0 12px;
+  border: 0;
+  border-radius: 7px;
+  background: transparent;
+  color: var(--ink-dim);
+  font: inherit;
+  font-size: 13px;
+  font-weight: 600;
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.global-nav-purpose-option:hover {
+  color: var(--ink);
+  background: rgba(255, 255, 255, 0.06);
+}
+
+/* On is filled, off is text: the two states differ in more than colour. */
+.global-nav-purpose-option[aria-pressed='true'] {
+  background: var(--accent);
+  color: #04121a;
+}
+
+.global-nav-purpose-option:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+/* ---------------------------------------------- scene header: the location */
+
+.global-nav-current[hidden],
+.global-nav-layers[hidden] {
+  display: none !important;
+}
+
+.global-nav-purpose-trail {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin-right: 6px;
+}
+
+/* The purpose is the root of the location, and the way back to its list. */
+.global-nav-purpose-root {
+  display: inline-flex;
+  align-items: center;
+  min-height: 44px;
+  padding: 0 4px;
+  border-radius: 6px;
+  color: var(--ink-dim);
+  font-size: 13px;
+  font-weight: 600;
+  text-decoration: underline;
+  text-decoration-color: color-mix(in srgb, var(--ink-dim) 45%, transparent);
+  text-underline-offset: 3px;
+  white-space: nowrap;
+}
+
+.global-nav-purpose-root:hover {
+  color: var(--ink);
+}
+
+.global-nav-current.is-patient {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+}
+
+.global-nav-question {
+  min-width: 0;
+  overflow: hidden;
+  color: var(--ink);
+  font-size: 13px;
+  font-weight: 600;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* --------------------------------------------------------- title card */
+
+.title-purpose {
+  display: none;
+}
+
+#ui[data-purpose='patient'] .title-purpose {
+  display: block;
+}
+
+/* In patient explanation the card leads with the question; the model's own
+   name stays, quieter, as what the explanation is shown on. */
+#ui[data-purpose='patient'] .title-card > .eyebrow,
+#ui[data-purpose='patient'] .title-card > .title-trail,
+#ui[data-purpose='patient'] .title-card > .subtitle,
+#ui[data-purpose='patient'] .title-card > .title-pairing {
+  display: none;
+}
+
+.title-question {
+  margin: 4px 0 6px;
+  color: var(--ink);
+  font-size: 20px;
+  font-weight: 700;
+  line-height: 1.35;
+}
+
+#ui[data-purpose='patient'] .title-card > .title,
+#ui[data-purpose='patient'] .title-card > .title-ja {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--ink-dim);
+}
+
+/* ------------------------------------------------ the patient console */
+
+.purpose-patient-bar {
+  display: none;
+}
+
+#ui[data-purpose='patient'] .purpose-patient-bar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 12px;
+}
+
+.purpose-patient-open {
+  min-height: 44px;
+  padding: 0 18px;
+  font-weight: 700;
+}
+
+.purpose-patient-open .feature-lock {
+  margin-left: 6px;
+}
+
+.purpose-patient-note {
+  flex: 1 1 220px;
+  margin: 0;
+  color: var(--ink-dim);
+  font-size: 12px;
+  line-height: 1.5;
+}
+
+.purpose-patient-note[hidden] {
+  display: none;
+}
+
+/* The console's own entrance to the explanation is the purpose now: the
+   header's switch says which way this model is being explained. */
+#ui[data-purpose] .button-row .patient-mode-button {
+  display: none;
+}
+
+/* What a conversation needs from the console: play, the view, zoom. The
+   rest — the data view, a comparison model, lessons, the teaching guide,
+   reels, export, resetting the model — is medical education's, and is one
+   press away in that purpose. */
+#ui[data-purpose='patient'] .button-row > :not(.camera-group):not([data-control='play']):not(.button-gap),
+#ui[data-purpose='patient'] .controls .data-only,
+#ui[data-purpose='patient'] .stage-summary,
+#ui[data-purpose='patient'] .stage-summary-ja,
+#ui[data-purpose='patient'] .stage-progress {
+  display: none !important;
+}
+
+/* The stage name stays as a label, not a headline: in this purpose the
+   explanation carries the words. */
+#ui[data-purpose='patient'] .stage-name,
+#ui[data-purpose='patient'] .stage-name-ja {
+  font-size: 15px;
+}
+
+/* ------------------------------ patient explanation: beside the model */
+
+/* The explanation keeps the header: its location — 患者説明 › the question —
+   and the switch back to medical education stay on screen while it is open.
+   (It used to hide the header and the title card for a "presentation" view;
+   the browser's full screen is still one press away in the panel.) */
+#ui[data-purpose='patient'].is-patient-guide.is-patient-presentation .global-scene-nav {
+  display: flex !important;
+  opacity: 1;
+  pointer-events: auto;
+}
+
+@media (max-width: 720px) {
+  #ui[data-purpose='patient'].is-patient-guide.is-patient-presentation .global-scene-nav {
+    display: grid !important;
+  }
+}
+
+/* With the explanation open, the explanation is the console. */
+#ui[data-purpose='patient'].is-patient-guide .purpose-patient-bar {
+  display: none;
+}
+
+@media (min-width: 901px) {
+  #ui[data-purpose='patient'].is-patient-guide.is-patient-presentation .console {
+    top: calc(max(78px, env(safe-area-inset-top) + 64px) + 4px);
+  }
+
+  #ui[data-purpose='patient'].is-patient-guide.is-patient-presentation .top-bar {
+    display: flex !important;
+    right: calc(min(420px, 36vw) + 32px);
+    pointer-events: auto;
+  }
+}
+
+@media (max-width: 720px) {
+  /* On a phone the header is one row — the mark, the switch, the menu — and
+     the location is the title card's (患者説明 › the question, or 病態モデル ›
+     the model), which already says it with a link back to the list. A second
+     header row for the switch was measured taking 52 px off the model at
+     375×667 and putting the title card over the heart. */
+  .global-scene-nav.has-site-menu.has-purpose {
+    grid-template-columns: auto minmax(0, 1fr) auto;
+    grid-template-areas:
+      'brand purpose menu'
+      'layers layers layers';
+  }
+
+  .global-scene-nav.has-site-menu.has-purpose > .global-nav-current,
+  .global-scene-nav.has-site-menu.has-purpose > .global-nav-strip {
+    display: none !important;
+  }
+
+  .global-scene-nav.has-site-menu.has-purpose > .global-nav-purpose {
+    grid-area: purpose;
+    justify-self: center;
+    display: flex;
+    margin: 0;
+  }
+
+  .global-nav-purpose-option {
+    min-height: 44px;
+    padding: 0 12px;
+  }
+
+  /* The question leads, the model's name goes: at this width the card has to
+     leave the model most of the frame. */
+  #ui[data-purpose='patient'] .title-question {
+    font-size: 16px;
+    margin: 2px 0 4px;
+  }
+
+  #ui[data-purpose='patient'] .title-card > .title,
+  #ui[data-purpose='patient'] .title-card > .title-ja {
+    display: none;
+  }
+}
+
+/* ------------------------------- medical education: the teaching guide */
+
+/* The teaching guide used to open inside the console and grow it up over the
+   model — at 1280×800 it covered the lower half of the heart it was asking
+   about. On a desktop it goes beside the model instead. */
+@media (min-width: 901px) {
+  #ui.is-education-guide .education-guide {
+    position: fixed;
+    z-index: 16;
+    top: calc(max(78px, env(safe-area-inset-top) + 64px) + 4px);
+    right: max(16px, env(safe-area-inset-right));
+    box-sizing: border-box;
+    width: min(400px, 34vw);
+    max-height: calc(100dvh - 110px);
+    margin: 0;
+    padding: 18px;
+    overflow: auto;
+    border: 1px solid rgba(158, 190, 204, 0.22);
+    border-radius: 14px;
+    background: rgba(7, 13, 20, 0.95);
+    box-shadow: -16px 0 40px rgba(0, 0, 0, 0.28);
+  }
+
+  /* The console keeps its controls — the guide asks the reader to predict,
+     then move the model — and makes room for the guide beside it. */
+  #ui.is-education-guide .console {
+    align-self: flex-start;
+    width: min(1000px, calc(100% - min(400px, 34vw) - 24px));
+  }
+}
+
+/* On a phone the guide is the lower part of the frame. The row of every
+   control goes while it is open (the guide moves the stage itself, and closing
+   it brings the row back), so the guide stays short enough to leave the model
+   the upper half. */
+@media (max-width: 900px) {
+  #ui.is-education-guide .console .button-row,
+  #ui.is-education-guide .console .stage-summary,
+  #ui.is-education-guide .console .stage-summary-ja {
+    display: none !important;
+  }
+
+  /* The clinical-use notice stays (`medical-caveat.test.js`); at this width
+     the console already shows its short form. */
+
+  #ui.is-education-guide .console {
+    max-height: 48dvh;
+    overflow: auto;
+  }
+}
+
+/* ------------------------------------------------------------ notice */
+
+.purpose-notice {
+  position: fixed;
+  z-index: 40;
+  left: 50%;
+  top: calc(max(78px, env(safe-area-inset-top) + 64px) + 8px);
+  transform: translateX(-50%);
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  box-sizing: border-box;
+  max-width: min(560px, calc(100vw - 32px));
+  padding: 8px 8px 8px 14px;
+  border: 1px solid color-mix(in srgb, var(--accent) 45%, var(--border));
+  border-radius: 10px;
+  background: rgba(7, 13, 20, 0.96);
+  color: var(--ink);
+  font-size: 13px;
+  line-height: 1.5;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.35);
+}
+
+.purpose-notice[hidden] {
+  display: none;
+}
+
+.purpose-notice-close {
+  flex: none;
+  width: 44px;
+  height: 44px;
+  border: 0;
+  border-radius: 8px;
+  background: transparent;
+  color: var(--ink-dim);
+  font: inherit;
+  font-size: 18px;
+  cursor: pointer;
+}
+
+.purpose-notice-close:focus-visible {
+  outline: 2px solid var(--accent);
+}
+
+/* ------------------------------------------------- reading surfaces */
+
+.shell-nav-link.is-purpose {
+  font-weight: 600;
+}
+
+.purpose-eyebrow {
+  margin: 0 0 6px;
+  color: var(--shell-accent, var(--accent));
+  font-weight: 700;
+}
+
+.purpose-access-note {
+  margin: 12px 0 0;
+  color: var(--shell-muted, var(--ink-dim));
+  font-size: 0.86rem;
+}
+
+.patient-question {
+  gap: 6px;
+}
+
+.patient-question-organ {
+  color: var(--shell-muted, var(--ink-dim));
+  font-size: 0.78rem;
+  font-weight: 600;
+}
+
+.explorer.is-patient-index .patient-question-title {
+  font-size: 18px;
+  line-height: 1.45;
+}
+
+.patient-question-model {
+  color: var(--shell-muted, var(--ink-dim));
+  font-size: 0.82rem;
+}
+
+/* Landing: the two ways in, under the model — never a gate in front of it. */
+.landing-purposes {
+  margin: 8px auto 0;
+  padding: 0 clamp(16px, 4vw, 46px);
+  max-width: 1200px;
+}
+
+.landing-purposes-title {
+  margin: 0 0 12px;
+  font-size: 1rem;
+}
+
+.landing-purpose-list {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  gap: 12px;
+}
+
+.landing-purpose {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-height: 44px;
+  padding: 16px 18px;
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  border-radius: 12px;
+  color: inherit;
+  text-decoration: none;
+}
+
+.landing-purpose:hover {
+  border-color: rgba(255, 255, 255, 0.32);
+}
+
+.landing-purpose-name {
+  font-size: 1.05rem;
+  font-weight: 700;
+}
+
+.landing-purpose-explore {
+  font-size: 0.86rem;
+  font-weight: 600;
+  opacity: 0.85;
+}
+
+.landing-purpose-lead {
+  font-size: 0.84rem;
+  opacity: 0.75;
+}
+
+/* ------------- phone: where you are, while the explanation is open */
+
+/* The explanation takes the lower half of a phone and the title card used to
+   go with the header, so nothing on screen said 患者説明 or led back to the
+   list of questions. One line of the title card stays: the purpose, as a link
+   back to its list, and the question. */
+@media (max-width: 900px) {
+  #ui[data-purpose='patient'].is-patient-guide.is-patient-presentation .top-bar {
+    display: flex !important;
+    opacity: 1;
+    pointer-events: auto;
+  }
+
+  #ui[data-purpose='patient'].is-patient-guide.is-patient-presentation .top-bar > :not(.top-left),
+  #ui[data-purpose='patient'].is-patient-guide.is-patient-presentation .top-left > :not(.title-card),
+  #ui[data-purpose='patient'].is-patient-guide.is-patient-presentation .title-card > :not(.title-purpose) {
+    display: none !important;
+  }
+
+  #ui[data-purpose='patient'].is-patient-guide.is-patient-presentation .top-left {
+    flex: 1 1 auto;
+    max-width: none;
+    overflow: visible;
+  }
+
+  #ui[data-purpose='patient'].is-patient-guide.is-patient-presentation .title-card {
+    padding: 0 10px;
+  }
+
+  #ui[data-purpose='patient'].is-patient-guide.is-patient-presentation .title-purpose {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    min-width: 0;
+  }
+
+  #ui[data-purpose='patient'].is-patient-guide.is-patient-presentation .title-purpose .title-trail {
+    flex: none;
+    margin: 0;
+  }
+
+  #ui[data-purpose='patient'] .title-purpose .title-trail-parent {
+    min-height: 44px;
+  }
+
+  #ui[data-purpose='patient'].is-patient-guide.is-patient-presentation .title-question {
+    min-width: 0;
+    margin: 0;
+    overflow: hidden;
+    font-size: 13px;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+}

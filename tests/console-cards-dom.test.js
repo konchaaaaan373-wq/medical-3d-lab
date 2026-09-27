@@ -53,7 +53,7 @@ test('a closed card says what it holds, and can say what changed', () =>
     const card = createConsoleCard({ id: 'conditions', copy: CONSOLE_LAYOUT.cards.conditions, body: [] });
     const [summary] = findByClass(card.element, 'console-card-summary');
     assert.match(words(summary), /収縮力・心拍数・充満量・抵抗/);
-    assert.match(words(findByClass(card.element, 'console-card-title')[0]), /条件を変える/);
+    assert.match(words(findByClass(card.element, 'console-card-title')[0]), /実際に操作する/);
     assert.equal(card.element.dataset.state, undefined, 'no state until something changes');
     card.setState('Changed: Contractility↓', '変更中：収縮力↓');
     assert.match(words(summary), /変更中：収縮力↓/);

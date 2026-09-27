@@ -14,6 +14,32 @@ Not yet tagged. Gate 0 and most of Gate 1 are complete; the remaining blockers
 are branch protection on `main`, and the parts of device testing that need a
 person: Safari, Firefox, touch and a screen reader.
 
+### Patient explanation and medical education, as two ways into one model
+
+- **Two purposes, named as uses.** A model that has a reviewed patient
+  explanation can be opened for 患者説明 (patient explanation) or 医学教育
+  (medical education). It is the same model and the same solved state; what
+  changes is the wording, the guide, what is shown first and which controls are
+  offered. The header says which purpose you are in — 「患者説明 › the question」
+  or 「医学教育 › system › organ › model」 — and switches between them without
+  reloading the model or moving your view. The purpose is in the address, so a
+  shared link, a reload and Back agree.
+- **Found by the question.** 患者説明 has its own list, `#/patient`, of the
+  questions each explanation answers. It lists only explanations that are
+  published and clinically reviewed; in this release there are none, so it says
+  so and no screen offers a way to it.
+- **Nothing from education leaks into an explanation.** Conditions changed in
+  medical education go back to where the model starts when you switch to
+  patient explanation, and a notice says that they did.
+- **Guides beside the model, not over it.** The teaching guide used to grow the
+  controls up over the heart it was asking about; on a desktop it now sits
+  beside the model.
+- **Cardiac output's two cards are named for what they do**: 「実際に操作する」
+  changes the model and its results, 「アニメーションと表示」 only changes how
+  it is shown.
+- The disease-model list shows a model's maturity and review state under the
+  model rather than above its name.
+
 ### One header on every screen, and the models by organ, then layer
 
 - **The same header everywhere.** The front page, the publication record, the

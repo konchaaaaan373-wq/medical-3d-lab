@@ -62,6 +62,7 @@ CLAUDE.md が禁じる「中身のない網羅」の、インフラ版です。
 | viewport × surface（overflow / 重なり / タッチ目標 / tab 巡回 / 属性の言語） | `npm run verify:ui` |
 | 解剖シーンの操作（選択・drag is not click・シート・拡大の支点） | `npm run verify:anatomy` |
 | 病態シーンの操作（baseline → disease → reset）と**動画書き出し**（同意画面 → 録画 → 書き出したファイルをブラウザに再生させて 1 フレーム撮る） | `npm run verify:disease` |
+| 患者説明／医学教育の目的（入口・ヘッダーの切替と現在地・直接 URL・再読み込み・戻る・キーボード・公開ゲート） | `npm run verify:purpose`（preview は `-- --dist dist-preview --preview`） |
 | hero のタッチとキーボード | `npm run verify:hero-input` |
 | ログイン周り | `npm run verify:auth` |
 | 静的サーバ（range・traversal ガード・mount） | `scripts/lib/serve-dist.mjs` |
@@ -154,7 +155,10 @@ CLAUDE.md が禁じる「中身のない網羅」の、インフラ版です。
 
 ルーティングはハッシュ 1 本です。`#/<slug>` が 1 シーン、`#/organs`
 （別名 `#/explore`）が全身の Organ Explorer、`#/pathology` が病態モデルの一覧
-（機序シーンのパンくず「病態モデル ›」の戻り先。載るのは公開ゲートが開けたものだけ）。ルートは `src/catalog/scenes.js`
+（機序シーンのパンくず「病態モデル ›」の戻り先。載るのは公開ゲートが開けたものだけ）、
+`#/patient` が患者説明の入口（知りたいことから選ぶ。載るのは公開・版固定の医学レビュー・
+説明文が揃ったモデルだけ）。同じモデルを患者説明で開くのは `#/<slug>?purpose=patient`
+（`src/app/purpose.js`。医学教育が既定で、パラメータ無し）。ルートは `src/catalog/scenes.js`
 から生成されるので、**シーンを増やしても routing に手を入れません**。
 
 ---

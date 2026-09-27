@@ -1,6 +1,7 @@
 import { el } from '../utils/dom.js';
 import { inLanguage } from '../utils/language.js';
-import { EXPLORER_ROUTE, LAB_ROUTE, LANDING_ROUTE, organById } from '../catalog/index.js';
+import { EXPLORER_ROUTE, LAB_ROUTE, LANDING_ROUTE, PATIENT_ROUTE, organById } from '../catalog/index.js';
+import { PURPOSE, PURPOSES, purposeById } from '../app/purpose.js';
 import { PUBLIC_MANIFEST } from '../catalog/publicManifest.js';
 import { activeUsesForSceneEntry } from '../access/sceneUses.js';
 import { readSceneLibrary, toggleSceneFavorite } from '../app/sceneLibrary.js';
@@ -58,7 +59,25 @@ const currentHash = () => (typeof window === 'undefined' ? '' : (window.location
  * widens the release boundary; the rows come from `PUBLIC_MANIFEST`, which can
  * only hold what the release opened.
  */
-export function createSceneSwitcher({ groups, currentId, showLab = true, models = PUBLIC_MANIFEST?.models ?? [] }) {
+/**
+ * @param {object} options
+ * @param {ReadonlyArray<object>} options.groups
+ * @param {string} options.currentId
+ * @param {boolean} [options.showLab]
+ * @param {ReadonlyArray<object>} [options.models]
+ * @param {{available: boolean, onChange?: (purpose: string) => void}} [options.purpose]
+ *   whether this model offers patient explanation beside medical education
+ *   (`src/access/patientPurpose.js`). Only then does the header carry a purpose
+ *   switch and say which purpose the location is in; a model with one purpose
+ *   keeps the header it had.
+ */
+export function createSceneSwitcher({
+  groups,
+  currentId,
+  showLab = true,
+  models = PUBLIC_MANIFEST?.models ?? [],
+  purpose = { available: false },
+}) {
   const scenes = groups.flatMap((group) => group.scenes);
   if (!scenes.length) return null;
   const hasChoices = scenes.length > 1;
@@ -188,6 +207,123 @@ export function createSceneSwitcher({ groups, currentId, showLab = true, models 
       breadcrumb([currentGroup.label, organEn, sceneEn], 'en'),
       breadcrumb([currentGroup.labelJa, organJa, sceneJa], 'ja'),
     ]);
+
+  // ------------------------------------------------------------ purpose
+
+  /**
+   * Which purpose the location is in, and the switch between the two.
+   *
+   * Only on a model that offers both (`purpose.available`). There, the
+   * location reads from the purpose down, the way the reader explores it:
+   *
+   * - 医学教育 › 循環器 › 心臓 › 心不全 — by system, organ and model; the root
+   *   goes back to the model index.
+   * - 患者説明 › <the question the explanation answers> — by question; the root
+   *   goes back to the list of questions (`#/patient`).
+   *
+   * The switch beside it is two buttons that say which is on, not two links:
+   * pressing one changes how *this* model is explained and keeps the model
+   * and the viewpoint (`?purpose=`, `src/app/purpose.js`). Going to the other
+   * list is what the root of the location is for.
+   */
+  const dualPurpose = Boolean(purpose?.available);
+  const purposeLabel = (id) => {
+    const entry = purposeById(id);
+    return [el('span', { class: 'lang-en', text: entry.en }), el('span', { class: 'lang-ja', text: entry.ja })];
+  };
+  const purposeRootLink = (id) =>
+    el(
+      'a',
+      {
+        class: `global-nav-purpose-root is-${id}`,
+        href: id === PURPOSE.PATIENT ? PATIENT_ROUTE : showLab ? EXPLORER_ROUTE : LANDING_ROUTE,
+      },
+      purposeLabel(id)
+    );
+  const separator = () => el('span', { class: 'global-nav-current-separator', 'aria-hidden': 'true', text: '›' });
+
+  // Education: the root goes before whatever the location already was. The
+  // organ strip is itself the education side's way of exploring, so it keeps
+  // its row; the breadcrumb gains the purpose it is in.
+  const educationRoot = dualPurpose && !organStrip
+    ? el('span', { class: 'global-nav-purpose-trail is-education' }, [purposeRootLink(PURPOSE.EDUCATION), separator()])
+    : null;
+  if (educationRoot) currentLocation.prepend(educationRoot);
+
+  const questionEn = el('span', { class: 'global-nav-current-part lang-en' });
+  const questionJa = el('span', { class: 'global-nav-current-part lang-ja' });
+  const patientLocation = dualPurpose
+    ? el(
+        'div',
+        {
+          class: 'global-nav-current is-patient',
+          'aria-label': inLanguage('Current explanation', '現在の説明'),
+          hidden: '',
+        },
+        [
+          purposeRootLink(PURPOSE.PATIENT),
+          separator(),
+          el('span', { class: 'global-nav-current-label global-nav-question', 'aria-current': 'page' }, [
+            questionEn,
+            questionJa,
+          ]),
+        ]
+      )
+    : null;
+
+  const purposeButtons = new Map();
+  const purposeSwitch = dualPurpose
+    ? el(
+        'div',
+        {
+          class: 'global-nav-purpose',
+          role: 'group',
+          'aria-label': inLanguage('Purpose', '目的'),
+        },
+        PURPOSES.map((entry) => {
+          const button = el(
+            'button',
+            {
+              class: `global-nav-purpose-option is-${entry.id}`,
+              type: 'button',
+              'aria-pressed': 'false',
+              dataset: { purpose: entry.id },
+              on: { click: () => purpose.onChange?.(entry.id) },
+            },
+            purposeLabel(entry.id)
+          );
+          purposeButtons.set(entry.id, button);
+          return button;
+        })
+      )
+    : null;
+
+  /**
+   * Show the location for `current`, and press its button.
+   *
+   * `question` is the patient explanation's own title, which arrives with the
+   * guide index after the header is built; until it does, the model's title
+   * stands in for it rather than an empty crumb.
+   *
+   * @param {{current: string, question?: {en?: string, ja?: string}|null}} state
+   */
+  function setPurpose({ current, question = null }) {
+    if (!dualPurpose) return;
+    const patient = current === PURPOSE.PATIENT;
+    for (const [id, button] of purposeButtons) {
+      const on = id === current;
+      button.setAttribute('aria-pressed', String(on));
+      button.classList.toggle('is-current', on);
+    }
+    questionEn.textContent = question?.en || currentScene.label || currentScene.titleEn || '';
+    questionJa.textContent = question?.ja || currentScene.labelJa || currentScene.titleJa || '';
+    patientLocation.hidden = !patient;
+    currentLocation.hidden = patient;
+    if (layerRow) layerRow.hidden = patient;
+    element.classList.toggle('is-purpose-patient', patient);
+    element.classList.toggle('is-purpose-education', !patient);
+    ui?.classList.toggle('has-layer-row', Boolean(layerRow) && !patient);
+  }
 
   /**
    * Whether the row already reaches every model this document can open.
@@ -409,15 +545,27 @@ export function createSceneSwitcher({ groups, currentId, showLab = true, models 
       class:
         `global-scene-nav has-site-menu${isLab ? ' is-lab' : ' is-public'}${hasChoices ? '' : ' is-single'}` +
         (organStrip ? ' has-model-strip' : '') +
-        (layerRow ? ' has-layer-row' : ''),
+        (layerRow ? ' has-layer-row' : '') +
+        (dualPurpose ? ' has-purpose' : ''),
       // Names the landmark, rather than repeating the brand.
       'aria-label': inLanguage('Site navigation', 'サイトナビゲーション'),
     },
-    [brand, currentLocation, layerRow, header.utilities, menu.trigger, menu.backdrop, menu.panel]
+    [
+      brand,
+      currentLocation,
+      patientLocation,
+      layerRow,
+      purposeSwitch,
+      header.utilities,
+      menu.trigger,
+      menu.backdrop,
+      menu.panel,
+    ]
   );
   // A header with a second row is taller on a phone, and the panels below it
   // start where it ends — `#ui` reads the class to reserve the room.
   ui?.classList.toggle('has-layer-row', Boolean(layerRow));
+  if (dualPurpose) setPurpose({ current: PURPOSE.EDUCATION });
 
   registerHeaderDock(element, { dock: header.dock });
 
@@ -511,6 +659,8 @@ export function createSceneSwitcher({ groups, currentId, showLab = true, models 
     menu,
     /** Put a site control (language, account, feedback) in this header. */
     dock: header.dock,
+    /** Say which purpose the location is in (a no-op on a one-purpose model). */
+    setPurpose,
     close: () => menu.close(),
   };
 }
