@@ -36,6 +36,8 @@ import { createTitleCard } from '../components/TitleCard.js';
 import { createConsoleCard, createConsoleCards } from '../components/ConsoleCards.js';
 import { createEffectChain } from '../components/EffectChain.js';
 import { createExplainerPlayer } from '../components/ExplainerPlayer.js';
+import { createSceneCallouts } from '../components/SceneCallouts.js';
+import { createSceneIntro } from '../components/SceneIntro.js';
 import { createLegend } from '../components/Legend.js';
 import { createStageReadout, stageIndexFor } from '../components/StageReadout.js';
 import { createControlPanel } from '../components/ControlPanel.js';
@@ -716,6 +718,45 @@ export async function createApp({ stage, ui, onRetryModel = null }) {
   }
   const stageReadout = createStageReadout({ meta, onSeek: (value) => seek(value) });
   const labels = createLabelLayer({ viewer, annotations: scene.getAnnotations() });
+
+  /**
+   * Tags beside the model (`SceneCallouts`). After a reader's change settles
+   * the scene's chain is said along the model — the cause where it acts, then
+   * the heart, then what left it, then the circulation — with each part
+   * pointed at while its tag is current, and the beat held at the moment a
+   * tag is about. Presentation only: the scene decides what to say from the
+   * solved beat; nothing here reads a value.
+   */
+  const callouts = scene.getCalloutSequence && scene.getCalloutAnchor
+    ? createSceneCallouts({
+        viewer,
+        getAnchor: (id) => scene.getCalloutAnchor(id),
+        getInsets: () => safeAreaInsets(),
+        onStep: (step) => {
+          scene.setHighlight?.(step?.highlight ?? []);
+          scene.setBeatHold?.(step?.hold ?? null);
+        },
+      })
+    : null;
+  if (callouts && scene.getCalloutFixed) callouts.setFixed(scene.getCalloutFixed());
+  /**
+   * How long an input has to rest before its chain is said. A drag sends a
+   * change per frame; saying the chain on each would restart it sixty times a
+   * second. Long enough to be past a drag's pauses, short enough that a press
+   * is answered while the reader is still looking.
+   */
+  const CALLOUT_SETTLE_MS = 550;
+  let calloutTimer = null;
+  /** The reader changed the model: say what it did, once it has settled. */
+  function explainChange() {
+    if (!callouts) return;
+    clearTimeout(calloutTimer);
+    calloutTimer = setTimeout(() => {
+      calloutTimer = null;
+      if (explainerPlayer?.state === 'playing' || explainerPlayer?.state === 'paused') return;
+      callouts.play(scene.getCalloutSequence());
+    }, CALLOUT_SETTLE_MS);
+  }
   const sceneInspectionViews = scene.getInspectionViews?.() ?? scene.getAnatomyViews?.();
   const hasAuthoredInspectionViews = Boolean(sceneInspectionViews?.length);
   const generatedInspectionViews = standardInspectionViews(SceneClass.cameraPose);
@@ -833,6 +874,9 @@ export async function createApp({ stage, ui, onRetryModel = null }) {
     scene.resetModelControls();
     modelControls?.sync(scene.getModelControls?.() ?? []);
     refreshModelReadouts();
+    // Back at the start there is no change to say.
+    clearTimeout(calloutTimer);
+    callouts?.clear();
   }
 
   const controlPanel = createControlPanel({
@@ -1142,6 +1186,7 @@ export async function createApp({ stage, ui, onRetryModel = null }) {
           // The reader took the model: the explanation stops where it is.
           explainerPlayer?.interrupt();
           scene.setModelControl(id, value, detail);
+          explainChange();
           // A model may canonicalise an input or make options mutually
           // exclusive. Read the accepted state back immediately so the
           // controls can never display a combination the model does not have.
@@ -1379,28 +1424,52 @@ export async function createApp({ stage, ui, onRetryModel = null }) {
           body: [modelControls.element, effectChain?.element, operateTools],
         });
         const explainer = scene.getExplainer?.();
+        /** The stage whose sentence is beside the model, and what it last said. */
+        let explainedStage = null;
+        let saidKey = null;
+        /** The stage's sentence, beside the part it is about (`SceneCallouts.say`). */
+        const sayStage = (stage) => {
+          explainedStage = stage;
+          if (!callouts || !stage.anchor) return;
+          const words = explainer.caption(stage.id);
+          const key = `${stage.id}|${words.text.en}|${words.text.ja}|${words.brief?.ja}`;
+          if (key === saidKey && callouts.count) return;
+          saidKey = key;
+          callouts.say({ id: `explainer-${stage.id}`, anchor: stage.anchor, title: words.heading, detail: words.text, brief: words.brief });
+        };
         const player = explainer
           ? createExplainerPlayer({
               explainer,
               onBegin: () => {
+                // The reader's own tags make way for the explanation's sentence.
+                clearTimeout(calloutTimer);
+                callouts?.clear();
                 explainer.begin();
                 if (comparing) setComparison(false, { byReader: false });
                 modelControls.sync(scene.getModelControls());
                 refreshModelReadouts();
               },
               onStage: (stage) => {
-                // The overlay first, without its own camera move: the stage's
+                // The start's lines follow the storyboard's cue (`onTick`);
+                // a stage that has none takes them away before its camera
+                // move, without a camera move of their own — the stage's
                 // framing is the one that has to win, and a comparison the
                 // explanation turned on is not one the reader used.
-                const wanted = Boolean(stage.compare) && (scene.canCompare?.() ?? true);
-                if (wanted !== comparing) setComparison(wanted, { byReader: false });
+                if (comparing && !explainer.compareAt?.(stage.at)) setComparison(false, { byReader: false });
                 // A closer look is a smaller box fitted into the same band.
                 scene.setFramingFocus?.(stage.framing);
                 applyGuideFraming(stage.framing);
+                sayStage(stage);
+              },
+              onTick: (t) => {
+                const wanted = Boolean(explainer.compareAt?.(t));
+                if (wanted !== comparing) setComparison(wanted, { byReader: false });
               },
               onFrame: () => {
                 modelControls.sync(scene.getModelControls());
                 refreshModelReadouts();
+                // The sentence quotes the solved beat: said again as it moves.
+                if (explainedStage) sayStage(explainedStage);
               },
               onStateChange: (state) => {
                 // Stopped, finished or interrupted: the whole assembly again,
@@ -1409,6 +1478,12 @@ export async function createApp({ stage, ui, onRetryModel = null }) {
                 if (state === 'interrupted' || state === 'ended') {
                   scene.setFramingFocus?.(null);
                   applyGuideFraming(null);
+                }
+                // Stopped by hand: the sentence is no longer about what is on
+                // screen. Finished: the last one stays until the reader moves.
+                if (state === 'interrupted' || state === 'idle') {
+                  explainedStage = null;
+                  callouts?.clear();
                 }
                 refreshConsoleCards();
               },
@@ -1508,6 +1583,61 @@ export async function createApp({ stage, ui, onRetryModel = null }) {
   // already carries the legend and the read-out, and stacking four panels
   // there pushes the console off a laptop screen.
   const titleCard = createTitleCard(meta);
+
+  /**
+   * The first-visit introduction (`SceneIntro`), for a scene that has one:
+   * what can be changed, where to look, and one change to try — which is made
+   * here as the reader's own operation (one undo takes it back), with the
+   * "before" drawn over the heart, so the first thing the reader sees is the
+   * change and what it did.
+   */
+  const introSpec = scene.getIntro?.();
+  const intro = introSpec
+    ? createSceneIntro({
+        copy: introSpec.copy,
+        storageKey: `m3l:intro-seen:${meta.id}`,
+        onTry: () => {
+          explainerPlayer?.interrupt();
+          const { id, value } = introSpec.tryIt;
+          scene.setModelControl(id, value, { op: `intro-${Date.now()}` });
+          modelControls?.sync(scene.getModelControls());
+          modelControls?.chooseInput?.(id);
+          refreshModelReadouts();
+          if (scene.canCompare?.() && !comparing) setComparison(true);
+          // Where the reader changes it themselves, on a screen with room to
+          // show it open beside the model.
+          if (consoleCards?.conditions && window.innerWidth > PHONE_WIDTH) consoleCards.conditions.open = true;
+          explainChange();
+        },
+        // Skipped: focus goes where the introduction can be found again.
+        // Tried: it stays with the page, where the change is happening.
+        onClose: (how) => {
+          if (how === 'skip') introReopen?.focus?.({ preventScroll: true });
+        },
+      })
+    : null;
+  const introReopen = intro
+    ? el('button', {
+        type: 'button',
+        class: 'scene-intro-reopen',
+        dataset: { control: 'intro-reopen' },
+        on: { click: () => intro.open() },
+      }, [
+        el('span', { class: 'scene-intro-reopen-label' }, [
+          el('span', { class: 'lang-en', text: introSpec.copy.reopen.en }),
+          el('span', { class: 'lang-ja', text: introSpec.copy.reopen.ja }),
+        ]),
+      ])
+    : null;
+  // Its name, in the language on screen, for when the words are hidden.
+  if (introReopen) {
+    onLanguageChange(() => introReopen.setAttribute('aria-label', inLanguage(introSpec.copy.reopen.en, introSpec.copy.reopen.ja)));
+  }
+  if (introReopen) {
+    const fold = titleCard.querySelector('.title-trust-fold');
+    if (fold) fold.before(introReopen);
+    else titleCard.append(introReopen);
+  }
   // A scene that folds its trust row into one line gets its scope panel inside
   // that line too — one place for "sources and limits", not two.
   const trustFold = titleCard.querySelector('.title-trust-fold');
@@ -1555,8 +1685,13 @@ export async function createApp({ stage, ui, onRetryModel = null }) {
     sceneSwitcher?.element,
     topBar,
     consoleElement,
-    labels.element
+    labels.element,
+    ...(callouts ? [callouts.element] : []),
+    ...(intro ? [intro.element] : [])
   );
+  // After everything it describes is on the page, and only for a reader who
+  // has not seen it.
+  intro?.openIfNew();
 
   /**
    * The structure a reader picked gets a label on the model, not only a card.
@@ -1764,6 +1899,7 @@ export async function createApp({ stage, ui, onRetryModel = null }) {
     playback.update(dt);
     explainerPlayer?.tick(dt);
     scene.update(dt, elapsed);
+    callouts?.update(dt);
     if (learning) {
       learningPanel.tick();
       metricsPanel?.highlight(learningPanel.watched);

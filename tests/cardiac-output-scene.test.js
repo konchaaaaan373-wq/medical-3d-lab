@@ -24,7 +24,7 @@ import {
 import { MODEL_PROFILES } from '../src/catalog/modelProfiles.js';
 import { INTERVENTION_IDS } from '../src/models/cardiacInterventions.js';
 import { CONTROLS, PRESET_OPTIONS } from '../src/data/cardiacOutput.js';
-import { EXPLAINER_DURATION } from '../src/scenes/cardiovascular/scenes/cardiacOutput/explainerStoryboard.js';
+import { EXPLAINER_DURATION, EXPLAINER_STAGES } from '../src/scenes/cardiovascular/scenes/cardiacOutput/explainerStoryboard.js';
 
 /**
  * The cardiac-output scene against the contract the App actually calls it with.
@@ -1004,15 +1004,22 @@ test('the framing box depends on the screen’s shape and the explanation’s fo
   }
   // A closer look is the explanation's choice, and only through the focus;
   // an unknown focus, or none, is the whole assembly again.
-  scene.setFramingFocus('cavity');
+  scene.setFramingFocus('heart');
   const cavity = box();
   assert.notEqual(cavity, portrait, 'the focus is a different box');
-  assert.ok(top() < tall, 'and a smaller one');
+  const width = () => {
+    const xs = scene.getSubjectBounds().corners.map((corner) => corner.x);
+    return Math.max(...xs) - Math.min(...xs);
+  };
+  const focused = width();
+  scene.setFramingFocus(null);
+  assert.ok(focused < width(), 'and a narrower one');
+  scene.setFramingFocus('heart');
   scene.setModelControl('contractilityEesMmHgPerMl', 2.4);
   assert.equal(box(), cavity, 'an input does not move the focused box either');
   scene.setFramingFocus('no-such-part');
   assert.equal(box(), portrait);
-  scene.setFramingFocus('cavity');
+  scene.setFramingFocus('heart');
   scene.setFramingFocus(null);
   assert.equal(box(), portrait);
 });
@@ -1039,4 +1046,78 @@ test('the explanation\'s state key sees every writer: an input, an undo, a reset
   assert.equal(explainer.driveAt(0, 'x'), false, 'the first stage is the untouched start');
   assert.equal(explainer.driveAt(EXPLAINER_DURATION, 'x'), true);
   assert.equal(explainer.driveAt(EXPLAINER_DURATION, 'x'), false);
+});
+
+test('a closer look never crops the heart: every focus box holds the whole chamber at its largest', async () => {
+  const scene = await buildScene();
+  // The largest the chamber gets: most filling, weakest contraction.
+  scene.setModelControl('fillingVolumeMl', CONTROL_DOMAIN.fillingVolumeMl.max);
+  scene.setModelControl('contractilityEesMmHgPerMl', CONTROL_DOMAIN.contractilityEesMmHgPerMl.min);
+  const chamber = new THREE.Box3();
+  // Across a whole beat, so the fullest moment is in it.
+  for (let phase = 0; phase < 1; phase += 0.05) {
+    scene.setCardiacPhase(phase);
+    scene.update(0);
+    scene.root.updateMatrixWorld(true);
+    chamber.union(new THREE.Box3().setFromObject(scene.ventricle));
+  }
+  const box = () => {
+    const bounds = scene.getSubjectBounds();
+    return new THREE.Box3().setFromPoints(bounds.corners);
+  };
+  for (const focus of [null, ...EXPLAINER_STAGES.map((stage) => stage.framing).filter((id) => id !== 'overview')]) {
+    scene.setFramingFocus(focus);
+    assert.ok(box().containsBox(chamber), `the "${focus ?? 'whole'}" box crops the heart`);
+  }
+});
+
+test('holding the beat stops the drawing at the end of the stroke, and the solved rate does not move', async () => {
+  const scene = await buildScene();
+  scene.setModelControl('contractilityEesMmHgPerMl', 1.4);
+  const rate = scene.state.heartRatePerMin;
+  const metrics = JSON.stringify(scene.getMetrics());
+  scene.setBeatHold('end-systole');
+  for (let i = 0; i < 200; i += 1) scene.update(1 / 60);
+  assert.equal(scene.holding, true);
+  assert.equal(scene.phase, scene.state.ejectionEndPhase, 'held where the stroke ends');
+  assert.equal(scene.state.heartRatePerMin, rate);
+  assert.equal(JSON.stringify(scene.getMetrics()), metrics, 'nothing the model says changes');
+  scene.setBeatHold(null);
+  scene.update(0.1);
+  assert.notEqual(scene.phase, scene.state.ejectionEndPhase, 'and it runs on when let go');
+});
+
+test('the blood that stays is drawn from the solved ESV, and the start is drawn beside it only once something moved', async () => {
+  const scene = await buildScene();
+  const extent = () => {
+    scene.root.updateMatrixWorld(true);
+    return new THREE.Box3().setFromObject(scene.residual).getSize(new THREE.Vector3());
+  };
+  scene.update(0);
+  assert.equal(scene.gauge.before.group.visible, false, 'nothing to compare yet');
+  assert.equal(scene.circuit.bolusLengths().before, null);
+  const small = extent();
+  scene.setModelControl('contractilityEesMmHgPerMl', 1.4);
+  const large = extent();
+  assert.ok(large.y > small.y && large.x > small.x, 'more left behind is a bigger body');
+  // The body is the end-systolic cavity: from its apex (one semi-length
+  // below the centre) up to just under the valve plane (1.6 above it).
+  const expected = scene.residualShape.cavitySemiLength;
+  assert.ok(large.y > expected && large.y < expected + 1.6, `${large.y} vs ES cavity ${expected}`);
+  // The start beside it, at the same moment, on one linear scale.
+  for (let i = 0; i < 30; i += 1) scene.update(1 / 30);
+  assert.equal(scene.gauge.before.group.visible, true);
+  const { now, before } = scene.gauge.readings;
+  assert.ok(Math.abs(now.residual / before.residual - scene.state.esvMl / scene.session.baseline.metrics.esvMl) < 1e-9);
+});
+
+test('pointing at a part changes nothing the model says', async () => {
+  const scene = await buildScene();
+  scene.setModelControl('systemicResistanceMmHgSPerMl', 1.5);
+  const metrics = JSON.stringify(scene.getMetrics());
+  const drawn = JSON.stringify(scene.circuit.presentationState());
+  scene.setHighlight(['bed', 'arterial', 'residual', 'ejection', 'myocardium']);
+  for (let i = 0; i < 20; i += 1) scene.update(1 / 30);
+  assert.equal(JSON.stringify(scene.getMetrics()), metrics);
+  assert.equal(JSON.stringify(scene.circuit.presentationState()), drawn, 'no calibre, speed or length moves with a pointer');
 });

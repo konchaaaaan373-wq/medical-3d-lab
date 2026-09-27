@@ -35,6 +35,7 @@ import './styles/patient-consultation.css';
 // A declared scene arrangement (`meta.layout = 'experiment'`). After the surface
 // sheets so its desktop layout wins, before the touch floor so that still does.
 import './styles/experiment-layout.css';
+import './styles/scene-explain.css';
 // Patient explanation and medical education as two purposes over one model:
 // the header's switch and location, the title card, the patient console, the
 // entrances (`src/app/purpose.js`). After the consultation sheet it adjusts.

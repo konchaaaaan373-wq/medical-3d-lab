@@ -57,7 +57,7 @@ export const ARTERIAL_PATH = smoothCurve([
 ]);
 
 /** Back from the systemic bed to the node standing for the right heart and lungs. Deoxygenated. */
-const VENOUS_PATH = smoothCurve([
+export const VENOUS_PATH = smoothCurve([
   [-7.3, -1.4, -3.2],
   // Low enough to clear the ventricle's apex *in projection*, which is lower
   // than clearing it in world y: the run sits three units behind the chamber,
@@ -144,9 +144,6 @@ const CIRCUIT_ANCHORS = {
 };
 
 /**
- * @param {{ compact?: boolean }} [options]
- */
-/**
  * How much of the arterial run one beat's blood fills, in path coordinates.
  *
  * Blood in a tube of fixed calibre occupies a length in proportion to its
@@ -228,21 +225,28 @@ export function buildCircuit({ compact = false } = {}) {
   // the aortic valve with each ejection, as long as the solved stroke volume
   // (`bolusLengthFor`). A presentation of a model output — the tube is not a
   // vessel — but its length is the stroke volume and nothing else.
-  const bolusTube = new TubeSurface(ARTERIAL_PATH, {
-    radius: () => 0,
+  const bolus = createBolus({
+    name: 'stroke-bolus',
+    radius: 0.26,
     steps: compact ? 72 : 110,
     radial: compact ? 10 : 14,
+    material: new THREE.MeshBasicMaterial({ color: PALETTE.flow, transparent: true, opacity: 0, depthWrite: false }),
+    peakOpacity: 0.7,
   });
-  const bolusMaterial = new THREE.MeshBasicMaterial({
-    color: PALETTE.flow,
-    transparent: true,
-    opacity: 0,
-    depthWrite: false,
+  // The start's stroke, at the same moment of the beat: a wider, see-through
+  // sheath in the "before" colour, as long as the starting stroke volume. The
+  // bright length inside it is now; the sheath is where it used to reach.
+  // Drawn only once something has moved, faint and in the cage's colour, so
+  // it cannot be read as more blood. (Not wireframe: the tube's collapsed
+  // vertices outside the bolus would draw as a line along the whole run.)
+  const beforeBolus = createBolus({
+    name: 'stroke-bolus-before',
+    radius: 0.42,
+    steps: compact ? 72 : 110,
+    radial: 12,
+    material: new THREE.MeshBasicMaterial({ color: PALETTE.before, transparent: true, opacity: 0, depthWrite: false, side: THREE.DoubleSide }),
+    peakOpacity: 0.3,
   });
-  const bolus = new THREE.Mesh(bolusTube.geometry, bolusMaterial);
-  bolus.name = 'stroke-bolus';
-  bolus.visible = false;
-  bolus.renderOrder = 2;
 
   // One node for the right ventricle, the pulmonary circulation and the left
   // atrium. It is drawn as a rounded block, not as chambers, because it stands
@@ -309,7 +313,8 @@ export function buildCircuit({ compact = false } = {}) {
     vein,
     back,
     bed,
-    bolus,
+    bolus.mesh,
+    beforeBolus.mesh,
     bedFlow.object,
     node,
     arterialFlow.object,
@@ -328,7 +333,17 @@ export function buildCircuit({ compact = false } = {}) {
   // rate change, the explanation's held frames) leave these as they were.
   let drawnCalibre = null;
   let drawnVenousCalibre = null;
-  let drawnBolus = null;
+  // Emphasis levels without the pointer on them, so a pointer can be added
+  // and taken away without losing what the solved state set.
+  let arterialBase = arterialMaterial.emissiveIntensity;
+  let bedBase = bedMaterial.emissiveIntensity;
+  const venousBase = venousMaterial.emissiveIntensity;
+  let highlight = { arterial: 0, bed: 0, venous: 0, ejection: 0 };
+  const paintHighlight = () => {
+    arterialMaterial.emissiveIntensity = arterialBase + highlight.arterial * 0.55;
+    bedMaterial.emissiveIntensity = bedBase + highlight.bed * 0.7;
+    venousMaterial.emissiveIntensity = venousBase + highlight.venous * 0.6;
+  };
 
   return {
     object,
@@ -372,8 +387,9 @@ export function buildCircuit({ compact = false } = {}) {
       venousFlow.setRate(particleSpeed);
       returnFlow.setRate(particleSpeed);
       bedFlow.setRate(particleSpeed);
-      arterialMaterial.emissiveIntensity = 0.06 + pressure * 0.26;
-      bedMaterial.emissiveIntensity = 0.08 + resistance * 0.3;
+      arterialBase = 0.06 + pressure * 0.26;
+      bedBase = 0.08 + resistance * 0.3;
+      paintHighlight();
 
       if (calibre !== drawnCalibre) {
         for (const tube of bedTubes) tube.refresh((u, base) => base * calibre);
@@ -394,7 +410,7 @@ export function buildCircuit({ compact = false } = {}) {
         bedRadius: BED_RADIUS * calibre,
         venousRadius: VENOUS_RADIUS * venousCalibre,
         bolusLength: bolusLengthFor(metrics.strokeVolumeMl),
-        arterialEmissive: arterialMaterial.emissiveIntensity,
+        arterialEmissive: arterialBase,
       };
     },
 
@@ -403,32 +419,29 @@ export function buildCircuit({ compact = false } = {}) {
      * 1 where it has faded into the arterial run. Called every frame.
      *
      * @param {number} travel 0..1, or a negative number when there is none
+     * @param {{ travel: number, strokeVolumeMl: number } | null} [before] the
+     *   start's stroke at the same moment of the beat, or null to draw none
      */
-    setBolus(travel) {
-      if (!(travel >= 0 && travel <= 1)) {
-        bolus.visible = false;
-        return;
-      }
-      const length = bolusLengthFor(strokeVolumeMl);
-      // The head leaves the valve and runs on past where the tail was; the
-      // whole length is on the run from a fifth of the way through.
-      const head = 0.02 + travel * (0.55 + length);
-      const edge = 0.015;
-      // Rebuilt only when the head has moved by a visible step (1/400 of the
-      // run, about a pixel at the scene's own framing) or the stroke volume changed: at a
-      // slow rate most frames would otherwise rewrite the same vertices.
-      const key = `${Math.round(head * 400)}|${length}`;
-      if (key !== drawnBolus) {
-        drawnBolus = key;
-        const at = Math.round(head * 400) / 400;
-        bolusTube.refresh((u) => {
-          if (u < at - length - edge || u > at + edge || u < 0.02) return 0;
-          const ramp = smoothstep(at - length - edge, at - length + edge, u) * (1 - smoothstep(at - edge, at + edge, u));
-          return 0.26 * ramp;
-        });
-      }
-      bolusMaterial.opacity = 0.7 * (1 - smoothstep(0.55, 1, travel));
-      bolus.visible = bolusMaterial.opacity > 0.01;
+    setBolus(travel, before = null) {
+      bolus.set(travel, bolusLengthFor(strokeVolumeMl), 1 + highlight.ejection * 0.4);
+      if (before) beforeBolus.set(before.travel, bolusLengthFor(before.strokeVolumeMl), 1);
+      else beforeBolus.set(-1, 0, 1);
+    },
+
+    /**
+     * Presentation: which part is being pointed at, 0..1 each. Adds to what
+     * the solved state set; changes no size and no speed.
+     *
+     * @param {{ arterial?: number, bed?: number, venous?: number, ejection?: number }} amounts
+     */
+    setHighlight(amounts = {}) {
+      highlight = { arterial: 0, bed: 0, venous: 0, ejection: 0, ...amounts };
+      paintHighlight();
+    },
+
+    /** How long each bolus is drawn, for a test (path units). */
+    bolusLengths() {
+      return { now: bolus.length, before: beforeBolus.mesh.visible ? beforeBolus.length : null };
     },
 
     /** @returns {null | {particleSpeed:number, particleCount:number, calibre:number}} */
@@ -450,4 +463,46 @@ export function buildCircuit({ compact = false } = {}) {
       bedFlow.dispose();
     },
   };
+}
+
+/**
+ * A length of the arterial run that leaves the valve with each ejection.
+ * Rebuilt only when its head has moved by a visible step (1/400 of the run,
+ * about a pixel at the scene's own framing) or its length changed.
+ */
+function createBolus({ name, radius, steps, radial, material, peakOpacity }) {
+  const tube = new TubeSurface(ARTERIAL_PATH, { radius: () => 0, steps, radial });
+  const mesh = new THREE.Mesh(tube.geometry, material);
+  mesh.name = name;
+  mesh.visible = false;
+  mesh.renderOrder = 2;
+  let drawn = null;
+  const state = {
+    mesh,
+    length: 0,
+    set(travel, length, gain) {
+      if (!(travel >= 0 && travel <= 1) || !(length > 0)) {
+        mesh.visible = false;
+        return;
+      }
+      state.length = length;
+      // The head leaves the valve and runs on past where the tail was; the
+      // whole length is on the run from a fifth of the way through.
+      const head = 0.02 + travel * (0.55 + length);
+      const edge = 0.015;
+      const key = `${Math.round(head * 400)}|${length}`;
+      if (key !== drawn) {
+        drawn = key;
+        const at = Math.round(head * 400) / 400;
+        tube.refresh((u) => {
+          if (u < at - length - edge || u > at + edge || u < 0.02) return 0;
+          const ramp = smoothstep(at - length - edge, at - length + edge, u) * (1 - smoothstep(at - edge, at + edge, u));
+          return radius * ramp;
+        });
+      }
+      material.opacity = Math.min(1, peakOpacity * gain) * (1 - smoothstep(0.55, 1, travel));
+      mesh.visible = material.opacity > 0.01;
+    },
+  };
+  return state;
 }

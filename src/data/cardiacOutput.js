@@ -19,6 +19,10 @@ export const PALETTE = {
   cavity: '#5e1d2a',
   flow: '#ff8a9c',
   residual: '#7d3a4a',
+  // The blood that stays, drawn as a body inside the chamber and at the foot
+  // of the gauge (bloodVolumes.js): a deep blood red the pink endocardium and
+  // the brighter ejected blood do not share, so "what stays" is its own thing.
+  residualBody: '#8f1631',
   artery: '#d2607a',
   vein: '#5a7098',
   resistance: '#ffc46b',
@@ -26,6 +30,47 @@ export const PALETTE = {
   // The "before" cage drawn inside the chamber while comparing: a colour the
   // tissue, the blood and the circuit do not use.
   before: '#f4f1c8',
+};
+
+/**
+ * The first-visit introduction (SceneIntro.js): what can be changed, where to
+ * look when it is, and one thing to try. No figure: what a change does is
+ * the model's to show.
+ */
+export const INTRO_COPY = {
+  title: { en: 'How to read this model', ja: 'このモデルの見方' },
+  lead: {
+    en: 'Change one of four conditions, and watch what the heart, the blood and the figures do.',
+    ja: '4つの条件のどれかを変えると、心臓・血流・数値が変わります。その変わり方を見るモデルです。',
+  },
+  changeHeading: { en: 'What you can change', ja: '変えられるもの' },
+  change: [
+    { en: 'Filling — the blood coming back to the heart', ja: '充満量 — 心臓に戻ってくる血液' },
+    { en: 'Vascular resistance — how narrow the small arteries are', ja: '血管抵抗 — 全身の細い動脈の細さ' },
+    { en: 'Contractility — how strongly the muscle squeezes', ja: '収縮力 — 心筋が縮む力' },
+    { en: 'Heart rate', ja: '心拍数' },
+  ],
+  lookHeading: { en: 'Where to look', ja: '見る場所' },
+  look: [
+    { swatch: PALETTE.residualBody, en: 'Heart: the dark red body inside is the blood left after each beat', ja: '心臓：中の濃い赤は、収縮したあとに残る血液' },
+    { swatch: PALETTE.flow, en: 'Blood: the bright length leaving the valve is one beat’s output', ja: '血流：弁から出ていく明るい部分が、1回に送り出す血液' },
+    { swatch: PALETTE.before, en: 'Columns beside the heart: the blood in the ventricle, at the start and now, at the same moment of the beat', ja: '右下の柱：心室の血液。開始時といまを、拍動の同じ瞬間で比べます' },
+    { en: 'Figures (right): cardiac output and blood pressure', ja: '数値（右）：心拍出量と血圧' },
+  ],
+  tryIt: { en: 'Try lowering contractility', ja: '収縮力を下げてみる' },
+  skip: { en: 'Skip', ja: 'スキップ' },
+  again: { en: 'You can bring this back from “How to read”.', ja: '「見方」からいつでも再表示できます。' },
+  reopen: { en: 'How to read', ja: '見方' },
+};
+
+/**
+ * The names under the volume gauge's two columns (bloodVolumes.js) and the
+ * line above them. No figure: the columns are the figures.
+ */
+export const GAUGE_LABELS = {
+  title: { en: 'Blood in the ventricle, now', ja: '心室の血液（この瞬間）' },
+  now: { en: 'Now', ja: 'いま' },
+  before: { en: 'Start', ja: '開始時' },
 };
 
 export const LEGEND = [
@@ -361,31 +406,41 @@ export const EXPLAINER_COPY = {
       heading: 'Start', headingJa: '開始時',
       text: 'The starting heart sends out {sv} mL with each beat.',
       textJa: '開始時の心臓は、1回の拍動で {sv} mL の血液を送り出しています。',
+      brief: 'Out per beat: {sv} mL', briefJa: '1回に {sv} mL を送り出す',
     },
     cause: {
       heading: 'The cause', headingJa: '原因',
-      text: 'The heart muscle contracts less forcefully: contractility {eesBefore} → {ees}.',
-      textJa: '心筋の縮む力（収縮力）が落ちます：{eesBefore}→{ees}。',
+      text: 'Watch the heart muscle: it now contracts less forcefully — contractility {eesBefore} → {ees}.',
+      textJa: '心筋に注目。縮む力（収縮力）が落ちます：{eesBefore}→{ees}。',
+      // Before the value has moved: pointing, not yet showing.
+      pending: 'Watch the heart muscle: its contractility is about to be lowered.',
+      pendingJa: '心筋に注目。これから縮む力（収縮力）を下げます。',
+      brief: 'Contractility ↓ {eesBefore}→{ees}', briefJa: '収縮力↓ {eesBefore}→{ees}',
+      briefPending: 'Watch the heart muscle', briefPendingJa: '心筋に注目',
     },
     inside: {
       heading: 'Inside the heart', headingJa: '心臓の中',
-      text: 'It cannot empty as far: blood left after contraction {esvBefore} → {esv} mL (lines: before).',
-      textJa: '縮みきれず、収縮後に残る血液が増えます：{esvBefore}→{esv} mL（線は変更前）。',
+      text: 'Held at the end of the beat: it cannot empty as far, so more blood stays (dark red) — {esvBefore} → {esv} mL. The lines are the start.',
+      textJa: '収縮しきった瞬間で止めています。縮みきれず、残る血液（濃い赤）が増えます：{esvBefore}→{esv} mL。線は開始時です。',
+      brief: 'Left after contraction ↑ {esvBefore}→{esv} mL', briefJa: '残る血液↑ {esvBefore}→{esv} mL',
     },
     ejection: {
       heading: 'What leaves', headingJa: '拍出',
-      text: 'Less leaves with each beat: stroke volume {svBefore} → {sv} mL — the bright length leaving the valve.',
-      textJa: '1回に送り出す血液が減ります：{svBefore}→{sv} mL（弁から出る明るい部分の長さ）。',
+      text: 'Less leaves with each beat: {svBefore} → {sv} mL. The bright length is now; the faint sleeve is how long it was at the start.',
+      textJa: '1回に送り出す血液が減ります：{svBefore}→{sv} mL。明るい部分がいま、薄い筒が開始時の長さです。',
+      brief: 'Out per beat ↓ {svBefore}→{sv} mL', briefJa: '1回の拍出↓ {svBefore}→{sv} mL',
     },
     circulation: {
       heading: 'The circulation', headingJa: '循環',
       text: 'Output and pressure fall: cardiac output {coBefore} → {co} L/min, mean arterial pressure {mapBefore} → {map} mmHg.',
       textJa: '心拍出量と血圧が下がります：心拍出量 {coBefore}→{co} L/min、平均動脈圧 {mapBefore}→{map} mmHg。',
+      brief: 'Output ↓ {coBefore}→{co} · pressure ↓ {mapBefore}→{map}', briefJa: '心拍出量↓ {coBefore}→{co}・血圧↓ {mapBefore}→{map}',
     },
     limits: {
       heading: 'What this model leaves out', headingJa: 'このモデルが含まないもの',
       text: 'In a body, reflexes would raise the rate and tighten the vessels to hold the pressure. This model has none, so the rate stays at {hr}/min.',
       textJa: '実際の体では、反射で心拍数が上がり血管が締まって血圧を支えます。このモデルには反射がないので、心拍数は {hr}/分 のままです。',
+      brief: 'No reflexes in this model', briefJa: 'このモデルに反射はない',
     },
   },
 };

@@ -38,12 +38,13 @@ import { el } from '../utils/dom.js';
  *   onBegin: () => void,        // put the model at the start (the shell syncs its read-outs)
  *   onStage: (stage: object) => void,
  *   onFrame: () => void,        // after a drive that changed the model: the shell refreshes what reads it
+ *   onTick?: (t: number) => void, // every frame it plays: for a cue inside a stage (e.g. the start's lines)
  *   onStateChange?: (state: string) => void,
  *   capture?: () => unknown,    // the reader's condition, before play replaces it
  *   restore?: (snapshot: unknown) => void,
  * }} options
  */
-export function createExplainerPlayer({ explainer, onBegin, onStage, onFrame, onStateChange = () => {}, capture, restore }) {
+export function createExplainerPlayer({ explainer, onBegin, onStage, onFrame, onTick = () => {}, onStateChange = () => {}, capture, restore }) {
   const { copy } = explainer;
   const pairOf = (en, ja) => [
     el('span', { class: 'lang-en', text: en ?? '' }),
@@ -236,6 +237,7 @@ export function createExplainerPlayer({ explainer, onBegin, onStage, onFrame, on
       if (state !== 'playing') return;
       t = Math.min(explainer.duration, t + dt);
       drive();
+      onTick(t);
       if (t >= explainer.duration) {
         explainer.end?.();
         setState('ended');
