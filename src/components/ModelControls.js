@@ -1,4 +1,5 @@
 import { el } from '../utils/dom.js';
+import { createExperimentInputs } from './ExperimentInputs.js';
 
 /**
  * Controls for a scene's own model inputs.
@@ -69,6 +70,8 @@ export function createModelControls({ controls, onChange, onReset, copy = {} }) 
   // pad is drawn and nothing else: no input, no start, no undo step, no camera.
   const switches = new Map();
   let padSet = null;
+  // The pads' own container, which `padSet` may be wrapped by below.
+  let padGroup = null;
   function refreshSwitcher() {
     for (const [id, parts] of switches) {
       const view = padViews.get(id);
@@ -78,7 +81,7 @@ export function createModelControls({ controls, onChange, onReset, copy = {} }) 
   }
   if (padViews.size) {
     const selectPad = (id) => {
-      padSet.dataset.active = id;
+      padGroup.dataset.active = id;
       for (const [key, parts] of switches) {
         parts.button.setAttribute('aria-selected', String(key === id));
         parts.button.tabIndex = key === id ? 0 : -1;
@@ -109,8 +112,37 @@ export function createModelControls({ controls, onChange, onReset, copy = {} }) 
       return button;
     }));
     padSet = el('div', { class: 'pad-set' }, [switcher, ...ordered.map(([, view]) => view.element)]);
+    padGroup = padSet;
     selectPad(padViews.has('heart') ? 'heart' : [...padViews.keys()][0]);
     refreshSwitcher();
+
+    // A scene that names its inputs (`copy.inputs`) gets them as one surface:
+    // all of them in a strip, one adjusted on its own first, and the pads as
+    // the way to try two at once (ExperimentInputs.js). The pads are the same
+    // pads; the surface wraps them.
+    if (copy.inputs) {
+      const padControls = controls.filter((control) => control.pad && padViews.has(control.pad.id));
+      const surface = createExperimentInputs({
+        controls: padControls,
+        padSet,
+        selectPad,
+        onChange,
+        copy: copy.inputs,
+        nextOperation,
+        snap,
+        formatterFor,
+      });
+      for (const control of padControls) {
+        const row = rows.get(control.id);
+        rows.set(control.id, {
+          setValue(value, definition) {
+            row.setValue(value, definition);
+            surface.setValue(control.id, value, definition);
+          },
+        });
+      }
+      padSet = surface.element;
+    }
   }
 
   let historyActions = null;

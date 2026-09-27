@@ -33,7 +33,9 @@ import { inLanguage, onLanguageChange } from '../utils/language.js';
 import { prefersReducedMotion } from '../utils/motion.js';
 import { markScrollable, publishHeight } from '../utils/scrollHint.js';
 import { createTitleCard } from '../components/TitleCard.js';
-import { createBeatRateControl, createConsoleCard, createConsoleCards } from '../components/ConsoleCards.js';
+import { createConsoleCard, createConsoleCards } from '../components/ConsoleCards.js';
+import { createEffectChain } from '../components/EffectChain.js';
+import { createExplainerPlayer } from '../components/ExplainerPlayer.js';
 import { createLegend } from '../components/Legend.js';
 import { createStageReadout, stageIndexFor } from '../components/StageReadout.js';
 import { createControlPanel } from '../components/ControlPanel.js';
@@ -1137,6 +1139,8 @@ export async function createApp({ stage, ui, onRetryModel = null }) {
         // `detail` carries the reader's operation (one drag, one press), so a
         // scene with undo can take a whole drag back in one step.
         onChange: (id, value, detail) => {
+          // The reader took the model: the explanation stops where it is.
+          explainerPlayer?.interrupt();
           scene.setModelControl(id, value, detail);
           // A model may canonicalise an input or make options mutually
           // exclusive. Read the accepted state back immediately so the
@@ -1144,7 +1148,10 @@ export async function createApp({ stage, ui, onRetryModel = null }) {
           modelControls.sync(scene.getModelControls());
           refreshModelReadouts();
         },
-        onReset: () => resetControlsToStart(),
+        onReset: () => {
+          explainerPlayer?.interrupt();
+          resetControlsToStart();
+        },
         copy: meta.modelControls,
       })
     : null;
@@ -1195,6 +1202,8 @@ export async function createApp({ stage, ui, onRetryModel = null }) {
 
   /** The experiment layout's two console cards, once they are built (below). */
   let consoleCards = null;
+  /** The explanation animation's player, when the scene has one. */
+  let explainerPlayer = null;
 
   /** Everything that reads back off the model after it is re-solved. */
   function refreshModelReadouts() {
@@ -1343,35 +1352,94 @@ export async function createApp({ stage, ui, onRetryModel = null }) {
   }
 
   /**
-   * The experiment layout's console as two cards the reader opens: the
-   * conditions (the model's inputs) and how they are shown (the beat's speed,
-   * the comparison, the camera, the plots). Both start closed. The same nodes
-   * with the same listeners are moved into them — nothing is rebuilt — and
-   * what is left of the control panel is the notice, which stays in view.
+   * The experiment layout's console as two cards the reader opens, one for
+   * each kind of thing (owner's review, 2026-09-27):
+   *
+   * - **Operate the model**: the inputs, what the change did (the scene's
+   *   cause → heart → figures chain), and the starting condition drawn over
+   *   the current one.
+   * - **Explanation animation**: one played sequence, and only that.
+   *
+   * Both start closed and open independently. The same nodes with the same
+   * listeners are moved in — nothing is rebuilt. What is left of the control
+   * panel is the notice and "More" (the plots, the camera, the rest), at the
+   * foot of the console, outside both cards.
    */
   const cardCopy = meta.console?.cards;
   consoleCards = cardCopy && controlsInConsole && modelControls
     ? (() => {
-        const beatRate = meta.console.beatRates && scene.setPresentationBeatRate
-          ? createBeatRateControl({
-              copy: meta.console.beatRates,
-              onChange: (rate) => {
-                scene.setPresentationBeatRate(rate);
+        const effectChain = scene.getEffectSummary && meta.console.effect
+          ? createEffectChain({ copy: meta.console.effect })
+          : null;
+        const compareButton = controlPanel.element.querySelector('[data-control="compare"]');
+        const operateTools = compareButton ? el('div', { class: 'operate-tools' }, [compareButton]) : null;
+        const conditions = createConsoleCard({
+          id: 'conditions',
+          copy: cardCopy.conditions,
+          body: [modelControls.element, effectChain?.element, operateTools],
+        });
+        const explainer = scene.getExplainer?.();
+        const player = explainer
+          ? createExplainerPlayer({
+              explainer,
+              onBegin: () => {
+                explainer.begin();
+                if (comparing) setComparison(false, { byReader: false });
+                modelControls.sync(scene.getModelControls());
+                refreshModelReadouts();
+              },
+              onStage: (stage) => {
+                // The overlay first, without its own camera move: the stage's
+                // framing is the one that has to win, and a comparison the
+                // explanation turned on is not one the reader used.
+                const wanted = Boolean(stage.compare) && (scene.canCompare?.() ?? true);
+                if (wanted !== comparing) setComparison(wanted, { byReader: false });
+                // A closer look is a smaller box fitted into the same band.
+                scene.setFramingFocus?.(stage.framing);
+                applyGuideFraming(stage.framing);
+              },
+              onFrame: () => {
+                modelControls.sync(scene.getModelControls());
+                refreshModelReadouts();
+              },
+              onStateChange: (state) => {
+                // Stopped, finished or interrupted: the whole assembly again,
+                // from the scene's own camera, so the reader operates from
+                // where they started rather than from a close-up.
+                if (state === 'interrupted' || state === 'ended') {
+                  scene.setFramingFocus?.(null);
+                  applyGuideFraming(null);
+                }
                 refreshConsoleCards();
+              },
+              // Play replaces the reader's condition with the reference heart;
+              // this is what is offered back at the end. Same list, same
+              // replay order as a lesson's snapshot (preset first).
+              capture: () => scene.getModelControls().map(({ id, value }) => ({ id, value })),
+              restore: (kept) => {
+                if (comparing) setComparison(false, { byReader: false });
+                for (const control of kept) scene.setModelControl(control.id, control.value);
+                modelControls.sync(scene.getModelControls());
+                refreshModelReadouts();
               },
             })
           : null;
-        const conditions = createConsoleCard({ id: 'conditions', copy: cardCopy.conditions, body: [modelControls.element] });
         const shown = createConsoleCard({
           id: 'view',
           copy: cardCopy.view,
-          body: [beatRate?.element, controlPanel.element.querySelector('.button-row')],
+          body: [player?.element],
         });
-        return { ...createConsoleCards([conditions, shown]), conditions, shown, beatRate };
+        return {
+          ...createConsoleCards([conditions, shown], { exclusive: false }),
+          conditions,
+          shown,
+          effectChain,
+          player,
+        };
       })()
     : null;
+  explainerPlayer = consoleCards?.player ?? null;
 
-  /** The closed cards' second line: what is inside, or what is changed. */
   // What each closed line last said, so a pad drag (a refresh per frame)
   // does not rebuild the heading's text — or have it re-announced — when
   // nothing in it changed.
@@ -1383,10 +1451,10 @@ export async function createApp({ stage, ui, onRetryModel = null }) {
     card.setState(en, ja);
   };
 
-  /** The closed cards' second line: what is inside, or what is changed. */
+  /** The closed cards' second line, and the chain under the inputs. */
   function refreshConsoleCards() {
     if (!consoleCards) return;
-    const { conditions: copy } = cardCopy;
+    const { conditions: copy, view: viewCopy } = cardCopy;
     // The scene's own list: the read-out's order, from the solved condition.
     const moved = scene.getChangedInputs?.() ?? [];
     const mark = (entry) => (entry.direction === 'up' ? '↑' : '↓');
@@ -1400,16 +1468,11 @@ export async function createApp({ stage, ui, onRetryModel = null }) {
     } else {
       setCardState(consoleCards.conditions, 'conditions', null, null);
     }
-    const rateOption = meta.console.beatRates?.options.find((option) => option.id === consoleCards.beatRate?.value);
-    const states = [
-      rateOption && rateOption.rate !== 1 ? { en: rateOption.label, ja: rateOption.labelJa } : null,
-      comparing ? { en: meta.comparison?.label ?? 'Comparing', ja: meta.comparison?.labelJa ?? '比較中' } : null,
-    ].filter(Boolean);
-    if (states.length) {
-      setCardState(consoleCards.shown, 'view', states.map((entry) => entry.en).join(', '), states.map((entry) => entry.ja).join('・'));
-    } else {
-      setCardState(consoleCards.shown, 'view', null, null);
-    }
+    consoleCards.effectChain?.update(scene.getEffectSummary());
+    const playing = consoleCards.player?.state;
+    if (playing === 'playing') setCardState(consoleCards.shown, 'view', viewCopy.playing, viewCopy.playingJa);
+    else if (playing === 'paused') setCardState(consoleCards.shown, 'view', viewCopy.paused, viewCopy.pausedJa);
+    else setCardState(consoleCards.shown, 'view', null, null);
   }
 
   const consoleElement = el('div', { class: `panel console${consoleCards ? ' has-cards' : ''}` }, [
@@ -1430,23 +1493,6 @@ export async function createApp({ stage, ui, onRetryModel = null }) {
     const railButtons = rail.querySelector('.rail-buttons');
     const menu = consoleElement.querySelector('.console-more-menu');
     if (railButtons && menu) menu.append(railButtons);
-  }
-  // With the console as cards, "More" (the lesson, the reel, the image, the
-  // language and "hide controls") goes with whichever card is open: at the
-  // end of the conditions' actions while those are open, in the view card's
-  // row otherwise. It lived only in the view card, and on a phone that card's
-  // heading steps out while the conditions are open — so the language switch
-  // could not be reached at all during an experiment. Moved, not copied.
-  if (consoleCards) {
-    const more = consoleElement.querySelector('.console-more');
-    const viewRow = consoleCards.shown.element.querySelector('.button-row');
-    const actions = consoleCards.conditions.element.querySelector('.model-control-actions');
-    const placeMore = () => {
-      const target = consoleCards.conditions.open && actions ? actions : viewRow;
-      if (more && target && more.parentElement !== target) target.append(more);
-    };
-    for (const card of consoleCards.cards) card.element.addEventListener('toggle', placeMore);
-    placeMore();
   }
   // On a phone the display panel docks just above the console. Only the console
   // knows how tall it is, and it differs by scene.
@@ -1549,25 +1595,40 @@ export async function createApp({ stage, ui, onRetryModel = null }) {
   let comparing = false;
   /** When the current comparison was entered, so "how long was it read for" is answerable. */
   let comparingSince = 0;
+  /** Whether the comparison on screen is one the reader turned on. */
+  let comparedByReader = false;
 
   /**
-   * Side-by-side with a healthy reference. The camera widens to hold both, and
-   * the annotation layer swaps to the comparison labels.
+   * The comparison with the start condition — side by side, or (cardiac
+   * output) the start drawn over the same heart. The camera goes to the
+   * scene's comparison view, and the annotation layer swaps to the comparison
+   * labels.
+   *
+   * `byReader: false` is a comparison something else turned on or off — the
+   * explanation's stage. It is not counted as the reader using the comparison,
+   * and it leaves the camera alone: the caller frames the shot.
+   *
+   * @param {boolean} enabled
+   * @param {{ byReader?: boolean }} [options]
    */
-  function setComparison(enabled) {
+  function setComparison(enabled, { byReader = true } = {}) {
     if (!scene.setComparison) return;
     // Leaving a comparison that was actually looked at is the completion; the
     // interesting question is whether side-by-side gets used, not offered.
-    if (comparing && !enabled) {
+    if (byReader && comparedByReader && comparing && !enabled) {
       emitAppEvent('compare:complete', { elapsedMs: Math.round(performance.now() - comparingSince) });
     }
-    if (!comparing && enabled) comparingSince = performance.now();
+    if (!comparing && enabled) {
+      comparingSince = performance.now();
+      comparedByReader = byReader;
+    }
     comparing = enabled;
     scene.setComparison(enabled);
     labels.setComparison(enabled);
     applyLabelFocus();
     controlPanel.setComparison(enabled);
     refreshModelReadouts();
+    if (!byReader) return;
     setShot(comparisonOrStageShot());
     view.active = true;
     view.resumeAutoRotate = true;
@@ -1577,8 +1638,9 @@ export async function createApp({ stage, ui, onRetryModel = null }) {
   /**
    * Where the camera rests.
    *
-   * The comparison has its own framing because both hearts have to stay in the
-   * frame. Everything else uses the scene's own establishing shot: the redesign
+   * The comparison has its own framing where the scene gives one (side by
+   * side, two hearts have to stay in the frame; an overlay scene has none and
+   * keeps its own shot). Everything else uses the scene's own establishing shot: the redesign
    * settled on one camera for the interactive view, and the guided sequence is
    * where a moving camera belongs.
    */
@@ -1700,6 +1762,7 @@ export async function createApp({ stage, ui, onRetryModel = null }) {
   // --- loop -----------------------------------------------------------------
   viewer.onFrame((dt, elapsed) => {
     playback.update(dt);
+    explainerPlayer?.tick(dt);
     scene.update(dt, elapsed);
     if (learning) {
       learningPanel.tick();
@@ -1833,8 +1896,8 @@ export async function createApp({ stage, ui, onRetryModel = null }) {
    * detail.
    */
   function applyLabelFocus() {
-    // The comparison has its own two labels and no stage focus list mentions
-    // them, so narrowing there would leave both hearts unnamed.
+    // The comparison has its own labels and no stage focus list mentions
+    // them, so narrowing there would leave the comparison unnamed.
     if (comparing) labels.setFocus(null);
     else if (storyFocus) labels.setFocus(storyFocus);
     else if (dataView) labels.setFocus(null);

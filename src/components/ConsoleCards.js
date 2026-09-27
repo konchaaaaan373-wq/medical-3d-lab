@@ -11,8 +11,8 @@ import { el } from '../utils/dom.js';
  * (App.js, "A disclosure in the console changed the band"), so opening a card
  * never leaves the model under it.
  *
- * One card open at a time. Two open at once is the full panel this replaced,
- * and on a phone it is most of the screen.
+ * One card open at a time by default (`createConsoleCards`); a layout whose
+ * cards are two different things may let them open independently.
  *
  * Closed, a card still says what it holds — and, for the conditions, what has
  * been changed — so "closed" never reads as "gone".
@@ -67,54 +67,25 @@ export function createConsoleCard({ id, copy, body }) {
 }
 
 /**
+ * The cards as one block.
+ *
+ * `exclusive` (the default) keeps one card open at a time. The experiment
+ * layout passes `false`: its two cards are two different things — operating
+ * the model and watching the explanation — and a reader may want both open
+ * (owner's review, 2026-09-27).
+ *
  * @param {ReturnType<typeof createConsoleCard>[]} cards
+ * @param {{ exclusive?: boolean }} [options]
  */
-export function createConsoleCards(cards) {
+export function createConsoleCards(cards, { exclusive = true } = {}) {
   const element = el('div', { class: 'console-cards' }, cards.map((card) => card.element));
-  for (const card of cards) {
-    card.element.addEventListener('toggle', () => {
-      if (!card.element.open) return;
-      for (const other of cards) if (other !== card) other.open = false;
-    });
+  if (exclusive) {
+    for (const card of cards) {
+      card.element.addEventListener('toggle', () => {
+        if (!card.element.open) return;
+        for (const other of cards) if (other !== card) other.open = false;
+      });
+    }
   }
   return { element, cards };
-}
-
-/**
- * How fast the beat is shown: a small set of buttons, one pressed.
- *
- * @param {{copy: {label: string, labelJa: string, note?: string, noteJa?: string, options: {id: string, rate: number, label: string, labelJa: string}[]}, onChange: (rate: number, id: string) => void, initial?: string}} options
- */
-export function createBeatRateControl({ copy, onChange, initial = copy.options[0]?.id }) {
-  const buttons = copy.options.map((option) =>
-    el('button', {
-      type: 'button',
-      class: 'beat-rate-option',
-      dataset: { rate: option.id },
-      'aria-pressed': String(option.id === initial),
-      on: {
-        click: () => {
-          select(option.id);
-          onChange(option.rate, option.id);
-        },
-      },
-    }, dual(option.label, option.labelJa))
-  );
-  const labelId = 'beat-rate-label';
-  const element = el('div', { class: 'beat-rate' }, [
-    el('span', { class: 'beat-rate-label', id: labelId }, dual(copy.label, copy.labelJa)),
-    el('div', { class: 'beat-rate-options', role: 'group', 'aria-labelledby': labelId }, buttons),
-    copy.note ? el('p', { class: 'beat-rate-note' }, dual(copy.note, copy.noteJa)) : null,
-  ]);
-  function select(id) {
-    for (const button of buttons) button.setAttribute('aria-pressed', String(button.dataset.rate === id));
-  }
-  return {
-    element,
-    select,
-    /** The id of the pressed option. */
-    get value() {
-      return buttons.find((button) => button.getAttribute('aria-pressed') === 'true')?.dataset.rate ?? null;
-    },
-  };
 }
