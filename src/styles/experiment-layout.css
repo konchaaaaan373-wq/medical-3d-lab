@@ -1962,3 +1962,16 @@
     display: none;
   }
 }
+
+/* Playing on a phone, the stage's sentence is what is read: the summary under
+   the title (which said what the animation is before it started) gives it
+   the room. */
+@media (max-width: 600px) {
+  #ui[data-layout='experiment'] .explainer:not([data-state='idle']) .explainer-summary {
+    display: none;
+  }
+
+  #ui[data-layout='experiment'] .explainer-title {
+    font-size: 14px;
+  }
+}
