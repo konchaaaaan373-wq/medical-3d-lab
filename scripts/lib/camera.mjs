@@ -8,8 +8,10 @@
  * ときは、時間ではなく状態を待つ" — the 124 px vs 0 px example).
  *
  * Settled means the camera position and target have not moved by more than
- * `tolerance` world units for `frames` consecutive animation frames — 30 by
- * default, which outlasts the second refit's 320 ms even at 60 fps.
+ * `tolerance` world units between frames for at least `stillMs` (and at
+ * least two frames) — 700 ms by default, which outlasts the second refit's
+ * 320 ms. Time, not a frame count: headless software GL draws a frame every
+ * ~450 ms, so "30 still frames" took 13 s and timed out.
  *
  * Not zero: damping leaves a tail. Measured on cardiac-output at rest, the
  * camera still creeps about 0.0007 world units per half second (at a distance
@@ -18,25 +20,30 @@
  * separates the two.
  *
  * @param {import('playwright').Page} page
- * @param {{ frames?: number, tolerance?: number, timeout?: number }} [options]
+ * @param {{ stillMs?: number, tolerance?: number, timeout?: number }} [options]
  */
-export async function waitForCameraToSettle(page, { frames = 30, tolerance = 1e-3, timeout = 10000 } = {}) {
+export async function waitForCameraToSettle(page, { stillMs = 700, tolerance = 1e-3, timeout = 20000 } = {}) {
+  await page.evaluate(() => {
+    window.__cameraSettle = null;
+  });
   await page.waitForFunction(
-    ({ frames, tolerance }) => {
+    ({ stillMs, tolerance }) => {
       const viewer = window.__app?.viewer;
       if (!viewer) return true;
       const now = [...viewer.camera.position.toArray(), ...viewer.controls.target.toArray()];
-      const state = (window.__cameraSettle ??= { last: null, still: 0 });
+      const time = performance.now();
+      const state = (window.__cameraSettle ??= { last: null, since: time, frames: 0 });
       const moved = !state.last || now.some((value, i) => Math.abs(value - state.last[i]) > tolerance);
-      state.still = moved ? 0 : state.still + 1;
-      state.last = now;
-      if (state.still >= frames) {
-        window.__cameraSettle = null;
-        return true;
+      if (moved) {
+        state.since = time;
+        state.frames = 0;
+      } else {
+        state.frames += 1;
       }
-      return false;
+      state.last = now;
+      return state.frames >= 2 && time - state.since >= stillMs;
     },
-    { frames, tolerance },
+    { stillMs, tolerance },
     { polling: 'raf', timeout }
   );
 }
