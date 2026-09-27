@@ -54,7 +54,10 @@ function mount(groups, currentId, { hash = `#/${currentId}`, showLab = true } = 
   ui.dataset.lang = 'ja';
   const restoreDocument = installFakeDocument({ elements: { ui } });
   const fakeWindow = installFakeWindow(hash);
-  const switcher = createSceneSwitcher({ groups, currentId, showLab });
+  // `models: []` — a header row that reaches none of these scenes, which is the
+  // only situation the catalogue (and so this footer) is rendered in: the
+  // preview unlock, where most of what the menu reaches is not on the row.
+  const switcher = createSceneSwitcher({ groups, currentId, showLab, models: [] });
   assert.ok(switcher, 'the switcher rendered');
   return {
     ...switcher,

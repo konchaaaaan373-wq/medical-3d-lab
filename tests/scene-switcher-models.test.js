@@ -35,7 +35,11 @@ function mount(groups, currentId) {
   ui.dataset.lang = 'ja';
   const restore = installFakeDocument({ elements: { ui } });
   try {
-    const switcher = createSceneSwitcher({ groups, currentId, showLab: false });
+    // `models: []`: the header row reaches none of these, so the menu carries
+    // the catalogue. With the release's own manifest the row reaches every
+    // published model and the catalogue — this list included — is not
+    // rendered at all; `scene-model-strip.test.js` holds that side.
+    const switcher = createSceneSwitcher({ groups, currentId, showLab: false, models: [] });
     assert.ok(switcher, 'the switcher rendered');
     return switcher;
   } finally {
@@ -57,7 +61,7 @@ const modelLinks = (element) => {
 test('the other published model is listed without opening its body system', () => {
   const { element } = mount(beta(), 'brain-anatomy');
   const [section] = findByClass(element, 'global-nav-models');
-  assert.ok(section, 'the drawer has a flat model list');
+  assert.ok(section, 'the menu has a flat model list');
   assert.equal(section.hidden, false);
 
   const hrefs = modelLinks(element).map((a) => a.getAttribute('href'));
@@ -140,14 +144,11 @@ test('the flat list is first inside the region that scrolls', () => {
     'and the system accordion follows it',
   );
 
-  // And not left outside the scroller as a sibling, which is the shape that
-  // clipped.
-  const [panel] = findByClass(element, 'global-nav-panel');
-  assert.deepEqual(
-    panel.children.filter((child) => (child.className || '').toString().includes('global-nav-models')),
-    [],
-    'the shortcut must not be a direct child of the panel',
-  );
+  // And inside the menu's scrolling body, not beside it: the shape that clipped
+  // was a section outside the one box that scrolls.
+  const [body] = findByClass(element, 'site-menu-body');
+  assert.ok(body, 'the menu has a scrolling body');
+  assert.ok(body.contains(list), 'the model list is inside the part of the menu that scrolls');
 });
 
 test('the section is styled, and its heading clears the type floor', () => {

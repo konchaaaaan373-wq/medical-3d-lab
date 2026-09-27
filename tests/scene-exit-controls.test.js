@@ -59,23 +59,24 @@ const oneModel = (options) => mountSwitcher({
   showLab: false,
 }, options);
 
-test('scene exits: one open model still gets a drawer', () => {
+test('scene exits: one open model still gets the site menu', () => {
   const { element } = oneModel();
-  const [trigger] = findByClass(element, 'global-nav-trigger');
+  const [trigger] = findByClass(element, 'site-menu-trigger');
 
-  // The trigger used to be hidden whenever the scene list held a single entry.
-  // That is exactly the public beta, so a 3D scene shipped with no navigation
-  // control on it at all — and the shelf links inside the drawer, which are
-  // the routes to every other page, went with it.
-  assert.ok(trigger, 'the drawer has a trigger');
+  // The model drawer's trigger used to be hidden whenever the scene list held a
+  // single entry. That is exactly the public beta, so a 3D scene shipped with
+  // no navigation control on it at all — and the links inside the drawer,
+  // which are the routes to every other page, went with it. The site menu is
+  // on every header, whatever the scene count.
+  assert.ok(trigger, 'the menu has a trigger');
   assert.equal(trigger.hidden, false, 'and it is not hidden away');
   assert.ok(element.classList.contains('is-single'), 'the header still knows it is one model');
 });
 
-test('scene exits: and that drawer opens', () => {
+test('scene exits: and that menu opens, and reaches the pages a scene has no row for', () => {
   const { element } = oneModel();
-  const [trigger] = findByClass(element, 'global-nav-trigger');
-  const [panel] = findByClass(element, 'global-nav-panel');
+  const [trigger] = findByClass(element, 'site-menu-trigger');
+  const [panel] = findByClass(element, 'site-menu-panel');
 
   // Hiding the trigger was only half of it: `setOpen` refused to open at all
   // with one model, so restoring the button without this would have produced a
@@ -84,18 +85,29 @@ test('scene exits: and that drawer opens', () => {
   trigger.click();
   assert.equal(panel.hidden, false, 'and it opens');
   assert.equal(trigger.getAttribute('aria-expanded'), 'true');
+
+  const hrefs = [...findByClass(panel, 'site-menu-link'), ...findByClass(panel, 'site-menu-legal-link')]
+    .map((link) => link.getAttribute('href'));
+  assert.ok(hrefs.includes('#/terms'), 'the terms are one press away, which a model had no route to at all');
+  assert.ok(hrefs.includes('#/support'), 'and so is support');
+  assert.equal(hrefs.includes('#/trust'), false, 'the publication ledger is not a reader destination (2026-09-27)');
 });
 
-test('scene exits: the way home is a labelled control, not just the wordmark', () => {
+test('scene exits: the way home is the product icon alone, and says where it goes', () => {
+  // Owner's decision, 2026-09-27: `← M/3 Medical 3D Lab | ホーム` said "home"
+  // twice. What stays is the icon — the same one as the tab — and a name for
+  // assistive tech that leads with the destination (next test).
   const { element } = oneModel();
   const [brand] = findByClass(element, 'global-nav-brand');
 
   assert.ok(brand, 'the header has a brand link');
   assert.equal(brand.getAttribute('href'), LANDING_ROUTE);
-  // A wordmark in the corner reads as the page's title. The arrow and the word
-  // are what make it an offer.
-  assert.equal(findByClass(brand, 'global-nav-brand-back').length, 1, 'a back arrow');
-  assert.equal(findByClass(brand, 'global-nav-brand-home').length, 1, 'and the word "Home"');
+  assert.equal(findByClass(brand, 'brand-icon').length, 1, 'the product icon');
+  assert.deepEqual(
+    brand.children.map((child) => child.className),
+    [findByClass(brand, 'brand-icon')[0].className],
+    'and nothing else: no arrow, no name, no ホーム'
+  );
 });
 
 test('scene exits: the accessible name leads with the destination, in one language', () => {
@@ -109,18 +121,4 @@ test('scene exits: the accessible name leads with the destination, in one langua
     assert.equal(label.includes(absent), false, `${lang}: only one language is announced`);
     assert.equal(brand.getAttribute('title'), label, `${lang}: the tooltip agrees`);
   }
-});
-
-test('scene exits: the brand is styled as a control, and the narrow gap survives', () => {
-  const navigation = read('src/styles/navigation.css');
-  const brandRule = navigation.match(/\n\.global-nav-brand \{([^}]*)\}/s)?.[1] ?? '';
-  assert.match(brandRule, /border:/, 'a border is what says "pressable"');
-
-  // `product-shell-b6.css` loads after `navigation.css` and had `gap: 0` at
-  // narrow widths — correct when dropping the 3D mark left a bare wordmark,
-  // wrong now that an arrow comes first. A rule in the earlier sheet cannot
-  // fix that, so the stale one had to go rather than be overridden.
-  const later = read('src/styles/product-shell-b6.css');
-  const narrowGap = later.match(/\.global-nav-brand \{ gap: (\d+)px; \}/)?.[1];
-  assert.ok(narrowGap && Number(narrowGap) > 0, `narrow-width brand gap is ${narrowGap ?? 'unset'}`);
 });

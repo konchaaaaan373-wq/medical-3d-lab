@@ -1,3 +1,5 @@
+import { MODEL_LAYERS, layerOfScene } from '../catalog/publicManifest.js';
+
 /**
  * Project an explicit release/development scene subset onto the UI-shaped scene
  * registry without changing its order or widening the set. Unknown ids are
@@ -76,6 +78,13 @@ export function navigationKindGroups(organGroup = {}) {
  * third competing product label.
  */
 export function navigationUseLabel(scene = {}, activeUses = []) {
+  // The header names a scene that explains how an organ works by the category
+  // `pathologyModels.js` owns, and so does this: the catalogue and the organ row are two views of one list,
+  // and a model that is "機序" in one and "解剖・生理" in the other reads as
+  // two models.
+  if (!scene.disease && layerOfScene(scene) === 'mechanism') {
+    return { en: MODEL_LAYERS.mechanism.en, ja: MODEL_LAYERS.mechanism.ja };
+  }
   if (!scene.disease) {
     const isAnatomy = Array.isArray(scene.tags) && scene.tags.includes('anatomy');
     return isAnatomy

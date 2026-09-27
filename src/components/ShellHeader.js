@@ -1,8 +1,12 @@
 import { EXPLORER_ROUTE, LAB_ROUTE, LANDING_ROUTE } from '../catalog/index.js';
-import { MODEL_INFO_ROUTE } from '../catalog/publicManifest.js';
+import { PUBLIC_MANIFEST } from '../catalog/publicManifest.js';
 import { betaUnlocked } from '../app/releaseGate.js';
+import { registerHeaderDock } from '../app/headerDock.js';
+import { organLayerNavigation } from '../app/modelNavigation.js';
 import { el } from '../utils/dom.js';
 import { inLanguage } from '../utils/language.js';
+import { createSiteHeaderMenu, organLayerList } from './SiteMenu.js';
+import { brandIcon } from './brandIcon.js';
 
 /**
  * The one header every reading surface wears.
@@ -40,20 +44,20 @@ import { inLanguage } from '../utils/language.js';
  *   bar. Nothing else in this product answered it.
  * - **The wordmark is the way home.** A separate "ホーム" link beside a
  *   wordmark that already goes home is a second door onto the same room.
+ * - **The same zones as a 3D model's header.** Who (the wordmark), where (these
+ *   destinations), you (language and account), and the site menu last. The
+ *   menu holds the published models — organ, then layer — which this row does
+ *   not, and whatever of "you" the width pushes out of the row. See
+ *   `SiteMenu.js`.
  *
- * ## Why "publication and review" and not "model information"
+ * ## Why the publication record is not a destination
  *
- * `#/trust` was labelled モデル情報 — "model information" — from four places on
- * the landing page and from inside every model. A reader who has a model on
- * screen and presses "model information" is asking about *that model*. What
- * arrived was a 8,000-pixel ledger of the publication status and medical
- * review state of all seventy, most of which cannot be opened.
- *
- * The page is worth having and the label was the problem: it described the
- * reader's expectation rather than the page. `公開とレビュー` matches the
- * page's own heading, which is the strongest information scent available —
- * the label predicts the title. A model's *own* record still exists and is
- * still one press away, from inside that model, where the question is asked.
+ * It was, labelled 公開とレビュー: the status and medical-review state of all
+ * seventy declared models, most of which cannot be opened. That is the
+ * product's internal ledger, and a header link to it told a reader that
+ * alpha/review-pending bookkeeping was one of the four things this site is
+ * for. Removed from the header and menu on 2026-09-27; a model's own record is
+ * still reached from inside that model.
  */
 
 /**
@@ -71,6 +75,18 @@ function labIsOffered() {
   } catch {
     return false;
   }
+}
+
+/**
+ * The product's mark — the cube icon, the same drawing as the favicon.
+ *
+ * One function for every header. There used to be two marks for one product —
+ * a typed `M/3` here and a `3D` tile on a 3D model — and before that, three.
+ *
+ * @param {string} [className] the surface's own hook, beside the shared one
+ */
+export function brandMark(className = 'shell-brand-mark') {
+  return brandIcon(el, className);
 }
 
 const dual = (en, ja) => [
@@ -99,12 +115,11 @@ export const SHELL_DESTINATIONS = Object.freeze([
   // and filters — and it is a destination again. `routeRedirects.js` holds the
   // other half of the rule.
   Object.freeze({ id: 'models', route: EXPLORER_ROUTE, en: 'Models', ja: 'モデル', gated: true }),
-  Object.freeze({
-    id: 'trust',
-    route: MODEL_INFO_ROUTE,
-    en: 'Publication & review',
-    ja: '公開とレビュー',
-  }),
+  // `公開とレビュー` (`#/trust`) is not here any more (owner's decision,
+  // 2026-09-27): it is the ledger of every model's publication and review
+  // state — the product's own working record, not a destination for a
+  // reader. A model's own sources and limits are still one press away from
+  // that model (「このモデルの根拠と限界」), where the question is asked.
   Object.freeze({ id: 'lab', route: LAB_ROUTE, en: 'Experimental', ja: '実験モデル', gated: true }),
 ]);
 
@@ -117,6 +132,9 @@ export const SHELL_DESTINATIONS = Object.freeze([
  * @param {HTMLElement|null} [options.accountButton]
  * @param {HTMLElement|null} [options.languageToggle]
  * @param {boolean} [options.showLab] override the release check, for tests
+ * @param {ReadonlyArray<object>} [options.models] the published models the menu
+ *   lists — the surface's own manifest, so a surface rendered from a fixture
+ *   (zero models, one) does not grow a menu of the real release's
  * @returns {HTMLElement}
  */
 export function createShellHeader({
@@ -124,6 +142,7 @@ export function createShellHeader({
   accountButton = null,
   languageToggle = null,
   showLab = labIsOffered(),
+  models = PUBLIC_MANIFEST?.models ?? [],
 } = {}) {
   const home = el(
     'a',
@@ -134,11 +153,7 @@ export function createShellHeader({
       ...(current === 'home' ? { 'aria-current': 'page' } : {}),
     },
     [
-      el('span', { class: 'shell-brand-mark', 'aria-hidden': 'true' }, [
-        el('span', { text: 'M' }),
-        el('i'),
-        el('span', { text: '3' }),
-      ]),
+      brandMark(),
       el('span', { class: 'shell-brand-name', text: 'Medical 3D Lab' }),
     ]
   );
@@ -155,13 +170,29 @@ export function createShellHeader({
     )
   );
 
-  return el('header', { class: 'shell-header', 'data-shell-header': '' }, [
+  // The models, organ then layer. This row carries none of them, so the menu is
+  // the one place in this header that does — no second door.
+  const site = createSiteHeaderMenu({
+    id: 'site-menu',
+    models: models.length ? [organLayerList(organLayerNavigation(models))] : null,
+  });
+  // The class the stylesheets and `check-departure` already address.
+  site.utilities.classList.add('shell-actions');
+  site.dock('account', accountButton);
+  site.dock('language', languageToggle);
+
+  const element = el('header', { class: 'shell-header has-site-menu', 'data-shell-header': '' }, [
     home,
     el(
       'nav',
       { class: 'shell-nav', 'aria-label': inLanguage('Product navigation', '製品ナビゲーション') },
       links
     ),
-    el('div', { class: 'shell-actions' }, [accountButton, languageToggle].filter(Boolean)),
+    site.utilities,
+    site.menu.trigger,
+    site.menu.backdrop,
+    site.menu.panel,
   ]);
+  registerHeaderDock(element, { dock: site.dock });
+  return element;
 }

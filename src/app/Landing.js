@@ -1,4 +1,4 @@
-import { MODEL_INFO_ROUTE, PUBLIC_MANIFEST } from '../catalog/publicManifest.js';
+import { PUBLIC_MANIFEST } from '../catalog/publicManifest.js';
 import { createLanguageToggle } from '../components/LanguageToggle.js';
 import {
   HERO_ORGANS,
@@ -91,6 +91,7 @@ export function createLanding({
       current: 'home',
       accountButton,
       languageToggle: languageToggle.element,
+      models,
     }),
 
     el('section', {
@@ -113,8 +114,8 @@ export function createLanding({
                 class: 'landing-empty-state',
                 role: 'status',
               }, dual(
-                'The current publication status is under Publication & review.',
-                '現在の公開状況は「公開とレビュー」から確認できます。'
+                'Models will appear here as they are published.',
+                '公開したモデルから、ここに表示します。'
               )),
         ]),
       ]),
@@ -127,39 +128,6 @@ export function createLanding({
             organHero.infoElement,
           ])
         : null,
-    ]),
-
-    el('section', { class: 'landing-method', 'aria-labelledby': 'landing-method-title' }, [
-      el('div', { class: 'landing-method-heading' }, [
-        el('h2', { id: 'landing-method-title' }, dual(
-          'Check the model before using it',
-          'モデルについて確認する'
-        )),
-      ]),
-      el('p', { class: 'landing-method-copy' }, dual(
-        'See the source, licence, revision, represented structures and known limits for each model.',
-        '各モデルの出典、ライセンス、改訂履歴、収録している構造、既知の限界を確認できます。'
-      )),
-      // One link, and it is the one this section is about.
-      //
-      // There were two: this destination *and* "report a problem", which the
-      // footer already offers. Removing the wrong one of the two left a heading
-      // reading "check the model before using it", a paragraph listing what the
-      // record contains, and then a link to a bug report — a section that
-      // described a destination and no longer offered it, which is worse scent
-      // than the duplication it was meant to fix.
-      //
-      // It is worded as the destination, matching the header and the page it
-      // opens. The hero's link beside it is not a duplicate of this one: that
-      // one carries `?model=<slug>` and follows the organ on screen.
-      el('nav', { class: 'landing-method-links', 'aria-label': 'Model records / モデルの記録' }, [
-        shellLink(
-          MODEL_INFO_ROUTE,
-          'Publication & review',
-          '公開とレビュー',
-          'landing-method-link is-primary landing-cta'
-        ),
-      ]),
     ]),
 
     el('section', { class: 'landing-neco', 'aria-labelledby': 'landing-neco-title' }, [
@@ -274,6 +242,7 @@ export function createPublicModelsExplorer({
       current: 'models',
       accountButton,
       languageToggle: languageToggle.element,
+      models,
     }),
     el('header', {
       class: 'explorer-header public-models-header',
@@ -301,9 +270,9 @@ export function createPublicModelsExplorer({
             'Model links appear only when a 3D anatomy model is available.',
             '利用できる3D解剖モデルがある場合に、モデルへのボタンを表示します。'
           )),
-          el('a', { class: 'explorer-shell-link', href: '#/trust' }, dual(
-            'Publication & review',
-            '公開とレビューを見る'
+          el('a', { class: 'explorer-shell-link', href: '#/' }, dual(
+            'Back to the top page',
+            'トップへ戻る'
           )),
         ]),
     organHero

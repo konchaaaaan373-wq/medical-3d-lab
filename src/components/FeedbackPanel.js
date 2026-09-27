@@ -1,4 +1,4 @@
-import { el } from '../utils/dom.js';
+import { el, focusBack } from '../utils/dom.js';
 import { redactText } from '../telemetry/redact.js';
 
 /**
@@ -297,7 +297,9 @@ export function createFeedbackPanel({
       status.textContent = '';
       problems.hidden = true;
       document.removeEventListener('keydown', onKeydown);
-      trigger.focus();
+      // Via the menu's trigger when this button lives in the site menu, which
+      // closed as the dialog opened. See `focusBack`.
+      focusBack(trigger);
     },
     /** Exposed for tests and for a caller that wants to submit without the form. */
     send,

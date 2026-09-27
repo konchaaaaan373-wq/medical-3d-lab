@@ -10,22 +10,6 @@
   box-shadow: 0 3px 12px rgba(0, 0, 0, 0.12);
 }
 
-/* The H1 in the scene is normally the visible model name. Keep the navigation's
- * copy in the accessibility tree without printing the same title twice. The
- * shared compact-landscape contract hides the card heading, so its navigation
- * copy stays visible there instead. */
-#ui[data-anatomy-shell='calm']:not([data-anatomy-compact='landscape']) .global-nav-current-scene,
-#ui[data-anatomy-shell='calm']:not([data-anatomy-compact='landscape']) .global-nav-separator {
-  position: absolute;
-  width: 1px;
-  height: 1px;
-  padding: 0;
-  margin: -1px;
-  overflow: hidden;
-  clip-path: inset(50%);
-  white-space: nowrap;
-}
-
 #ui[data-anatomy-shell='calm'] .title-card {
   max-width: min(39vw, 340px);
   padding: 12px 15px 13px;

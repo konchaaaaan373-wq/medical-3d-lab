@@ -13,6 +13,7 @@ import { beginGuideSession, captureGuideSession, restoreGuideSession } from './g
 import { ENTITLEMENT } from './policy.js';
 import { emitAppEvent } from '../app/appEvents.js';
 import { betaUnlocked } from '../app/releaseGate.js';
+import { headerDockIn } from '../app/headerDock.js';
 
 /**
  * Adds paid use-case modes around an already-created scene without changing the
@@ -99,11 +100,17 @@ function exitSceneModes(app) {
   if (app.story?.active && typeof app.story.exit === 'function') app.story.exit();
 }
 
+/**
+ * The account button goes where it is on every other screen: the header's own
+ * place for it — the row when it is wide, the site menu when it is not.
+ *
+ * It used to be inserted before the model drawer's trigger, and the beta took
+ * that trigger away, so a 3D model in the beta had no account button at all
+ * while the landing page beside it did.
+ */
 function mountAccountButton(access, ui) {
-  const nav = ui.querySelector('.global-scene-nav');
-  const trigger = nav?.querySelector('.global-nav-trigger');
-  if (!nav || !trigger || access.accountButton.isConnected) return;
-  nav.insertBefore(access.accountButton, trigger);
+  if (access.accountButton.isConnected) return;
+  headerDockIn(ui)?.dock('account', access.accountButton);
 }
 
 function installPatientGuide({ app, access, ui, sceneId, activate }) {

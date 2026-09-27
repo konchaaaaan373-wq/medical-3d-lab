@@ -27,6 +27,10 @@ import './styles/legal.css';
 import './styles/product-shell-b6.css';
 import './styles/surface-polish.css';
 import './styles/browser-first-release-polish.css';
+// The header structure every screen shares — the site menu and the zones around
+// it. After the older navigation sheets it replaces the layout of, before the
+// touch floor, which still has the last word on phone target sizes.
+import './styles/site-header.css';
 import './styles/patient-consultation.css';
 // A declared scene arrangement (`meta.layout = 'experiment'`). After the surface
 // sheets so its desktop layout wins, before the touch floor so that still does.
@@ -361,7 +365,7 @@ async function boot() {
         ui,
         surface: 'scene',
         sceneId: route.sceneId,
-        placement: 'rail',
+        placement: 'menu',
       }),
       (observability) => reportSceneStart(
         observability,

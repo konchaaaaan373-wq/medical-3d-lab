@@ -106,7 +106,10 @@ test('feedback: it is reachable from every product-shell surface', () => {
   const main = read('src/main.js');
   const surfaces = read('src/app/documentSurfaces.js');
 
-  assert.match(surfaces, /observe\(\{ ui, surface: TELEMETRY_SURFACE\[kind\] \}\)/);
+  assert.match(surfaces, /observe\(\{\s*ui,\s*surface: TELEMETRY_SURFACE\[kind\],/);
+  // In the site menu of the surface being mounted, like on a 3D model — not
+  // floating over the page on some screens and in the menu on others.
+  assert.match(surfaces, /placement: 'menu'/);
   for (const [kind, name] of [
     ['landing', 'landing'],
     ['explorer', 'explorer'],
@@ -150,7 +153,10 @@ test('feedback: the panel is keyboard-dismissable and announces itself', () => {
   assert.match(source, /'aria-modal': 'true'/);
   assert.match(source, /role: 'dialog'/);
   assert.match(source, /event\.key === 'Escape'/);
-  assert.match(source, /trigger\.focus\(\)/, 'closing must return focus to what opened it');
+  // Through `focusBack`, which is `trigger.focus()` unless the trigger sits in
+  // a site menu that has since closed — then the menu's own button.
+  // `tests/site-menu.test.js` holds what it does.
+  assert.match(source, /focusBack\(trigger\)/, 'closing must return focus to what opened it');
 });
 
 test('consent: refusing is offered as plainly as accepting', () => {

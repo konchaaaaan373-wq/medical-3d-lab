@@ -1,0 +1,989 @@
+/* ==========================================================================
+   One header structure, every screen
+   ==========================================================================
+
+   Every screen's header has the same four zones, in the same order:
+
+     who     the wordmark — the way home
+     where   what this screen navigates (organs → layers on a 3D model;
+             the site's pages on a reading surface)
+     you     language and account — in the row when it is wide enough,
+             in the menu when it is not (`UTILITIES_IN_ROW`, 981 px)
+     menu    ☰ — everything else the site has, in layers
+
+   `SiteMenu.js` builds the menu and `ShellHeader.js` / `SceneSwitcher.js` the
+   two rows it sits in. This sheet is loaded after the older navigation sheets
+   so that it is the one that decides how the header is laid out; the 44 px
+   touch floor (`phone-touch-targets.css`) still loads after it and still wins.
+
+   The menu reads its colours from `--menu-*`, which each header resolves from
+   its own palette: the 3D header is always a dark instrument over a pale
+   studio, the reading header is dark on the landing page and light on the
+   documents. One set of rules, two grounds.
+   ========================================================================== */
+
+.global-scene-nav.has-site-menu {
+  --menu-ink: var(--ink);
+  --menu-muted: var(--ink-dim);
+  --menu-faint: var(--ink-faint);
+  --menu-rule: var(--border);
+  --menu-accent: var(--accent);
+  --menu-accent-soft: var(--accent-soft);
+  --menu-surface: rgba(8, 13, 23, 0.98);
+  --menu-hover: rgba(255, 255, 255, 0.06);
+}
+
+.shell-header.has-site-menu {
+  --menu-ink: var(--shell-ink);
+  --menu-muted: var(--shell-muted);
+  --menu-faint: var(--shell-muted);
+  --menu-rule: var(--shell-rule);
+  --menu-accent: var(--shell-accent);
+  --menu-accent-soft: color-mix(in srgb, var(--shell-accent) 12%, transparent);
+  --menu-surface: var(--reading-surface);
+  --menu-hover: color-mix(in srgb, var(--shell-ink) 7%, transparent);
+}
+
+html[data-route='landing'] .shell-header.has-site-menu,
+html[data-route='locked'] .shell-header.has-site-menu {
+  --menu-surface: #0b111c;
+  --menu-on-accent: #0b111c;
+}
+
+/* Text on an accent ground: dark on the scene's cyan and the landing's coral,
+   white on the reading pages' teal. */
+.global-scene-nav.has-site-menu {
+  --menu-on-accent: #04121a;
+}
+
+.shell-header.has-site-menu {
+  --menu-on-accent: #ffffff;
+}
+
+/* ------------------------------------------------------------ the mark */
+
+/* The cube icon (`brandIcon.js`), the same drawing as the favicon, on every
+   screen. It replaced a typed `M/3` on the reading pages and a `3D` tile on the
+   models. */
+.brand-icon {
+  display: inline-block;
+  flex: none;
+  width: 28px;
+  height: 28px;
+  line-height: 0;
+}
+
+.brand-icon svg {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+
+/* On a 3D model the icon is the whole home link (owner's decision,
+   2026-09-27): no arrow, no name, no 「ホーム」, no frame. A 44 px square so it
+   is a thumb's target, and a hover ground so it still answers the pointer. */
+.global-scene-nav .global-nav-brand {
+  justify-content: center;
+  width: 44px;
+  min-width: 44px;
+  min-height: 44px;
+  padding: 0;
+  border-color: transparent;
+  background: none;
+}
+
+.global-scene-nav .global-nav-brand:hover,
+.global-scene-nav .global-nav-brand:focus-visible {
+  border-color: transparent;
+  background: rgba(255, 255, 255, 0.08);
+}
+
+.global-scene-nav .global-nav-brand-mark {
+  width: 32px;
+  height: 32px;
+}
+
+/* ------------------------------------------------------ the scene header */
+
+/* The blur moves to a layer behind the row; the colour stays on the row.
+
+   `backdrop-filter` on the header itself makes it the containing block for
+   its fixed descendants, so the menu's backdrop — `position: fixed; inset: 0`
+   — covered the 52 px header and nothing else, and the page behind an open
+   modal stayed undimmed. The colour does not do that, and it stays on the
+   element because that is where a contrast check looks for it: moved onto
+   the pseudo-layer as well, `verify:ui` measured every word in the header
+   against the pale studio behind it and reported 1.09:1. */
+.global-scene-nav.has-site-menu {
+  height: auto;
+  min-height: 52px;
+  background: rgba(6, 11, 20, 0.86);
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+  isolation: isolate;
+}
+
+.global-scene-nav.has-site-menu::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  border-radius: inherit;
+  backdrop-filter: blur(16px) saturate(1.15);
+  -webkit-backdrop-filter: blur(16px) saturate(1.15);
+  pointer-events: none;
+}
+
+/* The organ row takes the room it needs and no more, so the layer row can sit
+   directly after it; the reader's own controls and the menu go to the end. */
+.global-scene-nav.has-site-menu .global-nav-strip {
+  flex: 0 1 auto;
+  -webkit-mask-image: none;
+  mask-image: none;
+}
+
+.global-scene-nav.has-site-menu .global-nav-current {
+  flex: 0 1 auto;
+}
+
+/* ---- The layers of the organ on screen ------------------------------------
+   The second level, drawn as the child of the first.
+
+   The first version drew it as a second framed group of chips beside the
+   organs, and marked "current" two ways: the organ with a frame only, the
+   layer filled. Seen cold, the header offered two sibling rows of buttons and
+   no reason to read one as inside the other — and the organ you were on looked
+   less selected than the lungs you were not on.
+
+   Now: one filled chip is always the organ you are in (level 1). Its layers
+   follow a `›`, as tabs — text with an underline for the one on screen — so
+   the second level is lighter than the first and visibly hangs off it. */
+.global-nav-layers {
+  position: relative;
+  z-index: 2;
+  flex: 0 1 auto;
+  min-width: 0;
+  display: flex;
+  align-items: stretch;
+  gap: 2px;
+  padding-left: 12px;
+  border-left: 1px solid var(--border);
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+
+/* 「心臓 ›」: the parent, named, then its children. */
+.global-nav-layers-owner {
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding-right: 4px;
+  color: var(--ink-faint);
+  font-size: 12px;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.global-nav-layers-owner::after {
+  content: '›';
+  font-size: 16px;
+  line-height: 1;
+}
+
+.global-nav-layers::-webkit-scrollbar {
+  display: none;
+}
+
+.global-nav-layer-link {
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  /* 44, not 36: this is the only way to the heart's cardiac-output model, and
+     at 36 it was the smallest target in the header. */
+  min-height: 44px;
+  padding: 2px 10px 0;
+  border: 0;
+  border-bottom: 2px solid transparent;
+  border-radius: 0;
+  color: var(--ink-dim);
+  font-size: 13px;
+  font-weight: 600;
+  line-height: 1;
+  white-space: nowrap;
+  text-decoration: none;
+  transition: color 120ms ease, border-color 120ms ease;
+}
+
+.global-nav-layer-link:hover {
+  color: var(--ink);
+  border-bottom-color: color-mix(in srgb, var(--ink-dim) 45%, transparent);
+}
+
+.global-nav-layer-link:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: -2px;
+  border-radius: 6px;
+}
+
+.global-nav-layer-link.is-current {
+  color: var(--ink);
+  border-bottom-color: var(--accent);
+}
+
+/* The layer's name beside a model's own name — 機序 心拍出量 — quieter than
+   the name, so the eye reads the model and the level is there when asked. */
+.global-nav-layer-kind {
+  color: var(--ink-faint);
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.global-nav-layer-link.is-current .global-nav-layer-kind {
+  color: color-mix(in srgb, var(--accent) 70%, var(--ink-dim));
+}
+
+/* ---- The reader's controls, in the row ------------------------------------ */
+
+.site-utilities {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  margin-left: auto;
+  flex: none;
+}
+
+.site-utilities[hidden] {
+  display: none;
+}
+
+/* With the controls in the menu, the menu takes the far end on its own. */
+.site-utilities[hidden] + .site-menu-trigger {
+  margin-left: auto;
+}
+
+.global-scene-nav .site-utilities .account-trigger,
+.global-scene-nav .site-utilities .ui-toggle {
+  min-height: 44px;
+  padding: 0 11px;
+  border: 1px solid transparent;
+  border-radius: 9px;
+  background: transparent;
+  color: var(--ink-dim);
+  font: inherit;
+  font-size: 12px;
+  font-weight: 650;
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+}
+
+.global-scene-nav .site-utilities .account-trigger:hover,
+.global-scene-nav .site-utilities .ui-toggle:hover {
+  border-color: var(--border);
+  background: rgba(255, 255, 255, 0.05);
+  color: var(--ink);
+}
+
+/* ------------------------------------------------------ the language switch */
+
+/* Both options on the button, the current one marked by weight and colour
+   (not colour alone), the other one dimmed — so it reads as a switch between
+   two, not as a label for one. */
+.ui-toggle.is-language {
+  gap: 5px;
+}
+
+.ui-toggle-option {
+  opacity: 0.62;
+  font-weight: 500;
+}
+
+.ui-toggle-option.is-current {
+  opacity: 1;
+  font-weight: 700;
+  text-decoration: underline;
+  text-decoration-thickness: 1.5px;
+  text-underline-offset: 4px;
+}
+
+.ui-toggle-separator {
+  opacity: 0.45;
+}
+
+/* ------------------------------------------------------------ the account */
+
+/* Signed out: the word ログイン. Signed in: an initial in a circle, like an
+   account anywhere else; the name is spoken, and printed only in the menu's
+   settings row where there is room. */
+.account-trigger.is-signed-in {
+  justify-content: center;
+  gap: 8px;
+}
+
+.account-avatar {
+  display: inline-grid;
+  place-items: center;
+  flex: none;
+  width: 30px;
+  height: 30px;
+  border-radius: 50%;
+  background: var(--menu-accent);
+  color: var(--menu-on-accent);
+  font-size: 14px;
+  font-weight: 700;
+  line-height: 1;
+}
+
+.account-trigger.has-paid-access .account-avatar {
+  box-shadow: 0 0 0 2px var(--menu-surface), 0 0 0 4px var(--menu-accent);
+}
+
+.site-utilities .account-trigger.is-signed-in {
+  width: 44px;
+  padding: 0;
+}
+
+.site-utilities .account-name {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
+.site-menu-setting .account-name {
+  max-width: 12em;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* --------------------------------------------------------- the menu trigger */
+
+.site-menu-trigger {
+  position: relative;
+  z-index: 2;
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  min-width: 44px;
+  min-height: 44px;
+  padding: 0 12px;
+  /* A frame only when it is being aimed at or is open: at rest the menu is
+     one control among the header's, not the loudest thing in it. It used to
+     be the only framed control in the row, heavier than the organ you were
+     on. */
+  border: 1px solid transparent;
+  border-radius: 10px;
+  background: transparent;
+  color: var(--menu-ink);
+  font: inherit;
+  font-size: 12.5px;
+  font-weight: 650;
+  cursor: pointer;
+  transition: background-color 140ms ease, border-color 140ms ease;
+}
+
+.site-menu-trigger:hover,
+.site-menu-trigger[aria-expanded='true'] {
+  background: var(--menu-hover);
+  border-color: color-mix(in srgb, var(--menu-accent) 45%, var(--menu-rule));
+}
+
+.site-menu-trigger:focus-visible,
+.site-menu-close:focus-visible,
+.site-menu-panel a:focus-visible,
+.site-menu-panel button:focus-visible,
+.site-menu-panel summary:focus-visible {
+  outline: 2px solid var(--menu-accent);
+  outline-offset: 2px;
+}
+
+.site-menu-icon {
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  width: 16px;
+  height: 12px;
+  flex: none;
+}
+
+.site-menu-icon > span {
+  display: block;
+  height: 1.5px;
+  border-radius: 2px;
+  background: currentColor;
+  transition: transform 160ms ease, opacity 160ms ease;
+}
+
+.site-menu-trigger[aria-expanded='true'] .site-menu-icon > span:nth-child(1) {
+  transform: translateY(5.25px) rotate(45deg);
+}
+
+.site-menu-trigger[aria-expanded='true'] .site-menu-icon > span:nth-child(2) {
+  opacity: 0;
+}
+
+.site-menu-trigger[aria-expanded='true'] .site-menu-icon > span:nth-child(3) {
+  transform: translateY(-5.25px) rotate(-45deg);
+}
+
+.shell-header .site-menu-trigger {
+  border-radius: 8px;
+}
+
+/* ------------------------------------------------------------ the menu */
+
+.site-menu-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 1;
+  background: rgba(1, 4, 10, 0.4);
+}
+
+.site-menu-backdrop[hidden],
+.site-menu-panel[hidden],
+.site-menu-section[hidden],
+.site-menu-setting[hidden],
+.site-menu-feedback[hidden] {
+  display: none !important;
+}
+
+/* In the top layer the dim is the panel's own `::backdrop`, which is above
+   every page's stacking as well; the fallback element is for browsers without
+   popovers, where it sits in the header's stacking context. */
+.site-menu-panel::backdrop {
+  background: rgba(1, 4, 10, 0.4);
+}
+
+@supports selector(:popover-open) {
+  .site-menu-backdrop {
+    display: none !important;
+  }
+}
+
+/* A panel under the menu button, on every width. It is the same object as
+   the button, so it opens from where the button is — measured from the button
+   by `SiteMenu.js`, because the three headers sit in three different places.
+   The fallbacks are the scene header's, for a first frame before measuring. */
+.site-menu-panel {
+  position: fixed;
+  z-index: 3;
+  /* The popover UA sheet centres a top-layer box with `inset: 0; margin:
+     auto` and gives it a padding and a Canvas ground; this one is placed. */
+  inset: auto;
+  margin: 0;
+  padding: 0;
+  top: var(--site-menu-top, 70px);
+  right: var(--site-menu-right, 8px);
+  width: var(--site-menu-width, min(380px, calc(100vw - 16px)));
+  max-height: min(720px, calc(100dvh - var(--site-menu-top, 70px) - 8px));
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  border: 1px solid var(--menu-rule);
+  border-radius: 14px;
+  background: var(--menu-surface);
+  color: var(--menu-ink);
+  box-shadow: 0 24px 64px rgba(0, 0, 0, 0.45);
+  text-align: left;
+}
+
+.shell-header .site-menu-panel {
+  box-shadow: 0 18px 50px rgba(8, 20, 30, 0.22);
+}
+
+/* Where the panel cannot use the top layer (`SiteMenu.js` opens it there when
+   it can), the header comes forward instead. The landing hero is a later
+   sibling with stacking of its own, and it painted the organ viewport's
+   caption straight across the open menu. */
+@supports not selector(:popover-open) {
+  .shell-header.is-menu-open {
+    z-index: 60;
+  }
+}
+
+html[data-route='landing'] .shell-header .site-menu-panel,
+html[data-route='locked'] .shell-header .site-menu-panel {
+  box-shadow: 0 24px 64px rgba(0, 0, 0, 0.55);
+}
+
+.site-menu-head {
+  flex: none;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 10px 10px 10px 16px;
+  border-bottom: 1px solid var(--menu-rule);
+}
+
+.site-menu-title {
+  margin: 0;
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--menu-ink);
+}
+
+.site-menu-close {
+  flex: none;
+  width: 44px;
+  height: 44px;
+  display: grid;
+  place-items: center;
+  border: 1px solid transparent;
+  border-radius: 9px;
+  background: transparent;
+  color: var(--menu-muted);
+  font: inherit;
+  font-size: 22px;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.site-menu-close:hover {
+  color: var(--menu-ink);
+  background: var(--menu-hover);
+}
+
+.site-menu-body {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  padding: 4px 8px 10px;
+  scrollbar-width: thin;
+}
+
+.site-menu-section {
+  padding: 10px 0 8px;
+}
+
+.site-menu-section + .site-menu-section {
+  border-top: 1px solid var(--menu-rule);
+}
+
+/* Section headings name the layer, and are quieter than what they head. */
+.site-menu-section-title {
+  margin: 0 8px 6px;
+  color: var(--menu-faint);
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+}
+
+.site-menu-section-body {
+  display: grid;
+  gap: 2px;
+}
+
+.site-menu-link {
+  display: flex;
+  align-items: center;
+  min-height: 44px;
+  padding: 0 10px;
+  border-radius: 8px;
+  color: var(--menu-ink);
+  font-size: 14px;
+  text-decoration: none;
+}
+
+.site-menu-link:hover {
+  background: var(--menu-hover);
+}
+
+.site-menu-link[aria-current='page'] {
+  font-weight: 650;
+  background: var(--menu-accent-soft);
+}
+
+.site-menu-section.is-legal .site-menu-section-title {
+  /* A footer line needs no heading on screen; it keeps one for a screen
+     reader's heading list. */
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
+.site-menu-legal {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0 4px;
+  padding: 0 2px;
+}
+
+.site-menu-legal-link {
+  display: inline-flex;
+  align-items: center;
+  min-height: 44px;
+  padding: 0 8px;
+  border-radius: 6px;
+  color: var(--menu-muted);
+  font-size: 12px;
+  text-decoration: none;
+}
+
+.site-menu-legal-link:hover {
+  color: var(--menu-ink);
+  background: var(--menu-hover);
+}
+
+/* ---- models: organ, then its layers ---------------------------------------
+   One full-width link per model. The organ's name is the first column and is
+   printed once per organ; the second column is the layer (and the model's own
+   name when it is not simply the anatomy). */
+.site-menu-organs {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  display: grid;
+  gap: 0;
+}
+
+.site-menu-organ + .site-menu-organ:not(.is-continued) {
+  border-top: 1px solid color-mix(in srgb, var(--menu-rule) 60%, transparent);
+}
+
+.site-menu-model {
+  display: grid;
+  grid-template-columns: 4.5em minmax(0, 1fr);
+  align-items: center;
+  gap: 8px;
+  min-height: 44px;
+  padding: 0 10px;
+  border-radius: 8px;
+  color: var(--menu-ink);
+  font-size: 14px;
+  text-decoration: none;
+}
+
+.site-menu-model:hover {
+  background: var(--menu-hover);
+}
+
+.site-menu-model[aria-current='page'] {
+  background: var(--menu-accent-soft);
+  box-shadow: inset 3px 0 0 var(--menu-accent);
+}
+
+.site-menu-organ-name {
+  font-weight: 650;
+}
+
+/* Kept in the accessibility tree, taken off the screen: see `organLayerList`.
+   `opacity`, not `visibility: hidden` — the latter removes the name from the
+   tree as well, and the link would be announced as just "cardiac output". It
+   also keeps the column, so the layers line up under each other. */
+.site-menu-organ-name.is-repeat {
+  opacity: 0;
+}
+
+.site-menu-model-label {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 6px;
+  min-width: 0;
+  color: var(--menu-muted);
+}
+
+.site-menu-model[aria-current='page'] .site-menu-model-label {
+  color: var(--menu-ink);
+}
+
+.site-menu-model-kind {
+  color: var(--menu-faint);
+  font-size: 12px;
+  font-weight: 600;
+}
+
+/* ---- settings: a labelled row per control --------------------------------- */
+
+.site-menu-setting {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  min-height: 48px;
+  padding: 0 4px 0 10px;
+}
+
+.site-menu-setting-label {
+  color: var(--menu-muted);
+  font-size: 13px;
+}
+
+.site-menu-setting-control {
+  display: flex;
+  justify-content: flex-end;
+}
+
+/* The same two buttons as in the row, drawn as buttons: in a list of links a
+   borderless control reads as one more link. */
+.site-menu-setting .account-trigger,
+.site-menu-setting .ui-toggle {
+  position: static;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  width: auto;
+  min-width: 44px;
+  min-height: 40px;
+  padding: 0 14px;
+  border: 1px solid var(--menu-rule);
+  border-radius: 9px;
+  background: transparent;
+  color: var(--menu-ink);
+  font: inherit;
+  font-size: 13px;
+  font-weight: 650;
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+  cursor: pointer;
+}
+
+.site-menu-setting .account-trigger:hover,
+.site-menu-setting .ui-toggle:hover {
+  background: var(--menu-hover);
+}
+
+/* A phone hides the account button's label and leaves a bare ○ in the row,
+   which is what a phone header showed before this. In the menu the row has a
+   label and the button has room: it says what it does. */
+.site-menu-setting .account-label {
+  position: static;
+  width: auto;
+  height: auto;
+  overflow: visible;
+  clip-path: none;
+}
+
+/* ---- support: feedback, then the legal pages ------------------------------ */
+
+.site-menu-feedback {
+  display: grid;
+  padding-bottom: 4px;
+}
+
+.site-menu-feedback .feedback-trigger {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  justify-content: flex-start;
+  min-height: 44px;
+  padding: 0 10px;
+  border: 0;
+  border-radius: 8px;
+  background: transparent;
+  color: var(--menu-ink);
+  font-size: 14px;
+  font-weight: 400;
+}
+
+.site-menu-feedback .feedback-trigger:hover {
+  background: var(--menu-hover);
+}
+
+.site-menu-feedback .feedback-trigger::after {
+  content: '→';
+  margin-left: auto;
+  color: var(--menu-faint);
+}
+
+/* ---- the catalogue, under the preview unlock ------------------------------
+   The seventy-model accordion the old drawer carried, now the menu's model
+   section. It was laid out as a three-column mega menu across the whole
+   header; in a 380 px panel it is one column. */
+.site-menu-panel .global-nav-catalogue-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 0 4px 6px 8px;
+}
+
+.site-menu-panel .global-nav-panel-intro {
+  margin: 0;
+  color: var(--menu-muted);
+  font-size: 12px;
+  line-height: 1.45;
+}
+
+.site-menu-panel .global-nav-list {
+  display: block;
+  max-height: none;
+  overflow: visible;
+  padding: 0;
+}
+
+.site-menu-panel .global-nav-system-organs {
+  grid-template-columns: 1fr;
+}
+
+.site-menu-panel .global-nav-footer {
+  border-top: 0;
+  padding: 6px 8px 0;
+}
+
+/* ------------------------------------------------------------ narrow */
+
+@media (max-width: 720px) {
+  /* Two rows when the organ has layers: identity, organs and the menu on the
+     first, the layers of the organ on screen across the second. One row
+     cannot hold both on a phone — measured at 390 px, the old single row put
+     the lungs and the liver past its end. */
+  .global-scene-nav.has-site-menu {
+    display: grid;
+    grid-template-columns: auto minmax(0, 1fr) auto;
+    grid-template-areas:
+      'brand where menu'
+      'layers layers layers';
+    align-items: center;
+    column-gap: 6px;
+    row-gap: 0;
+    min-height: 50px;
+    padding: 3px 5px 3px 6px;
+  }
+
+  .global-scene-nav.has-site-menu > .global-nav-brand { grid-area: brand; }
+  .global-scene-nav.has-site-menu > .global-nav-strip,
+  .global-scene-nav.has-site-menu > .global-nav-current { grid-area: where; }
+  .global-scene-nav.has-site-menu > .site-menu-trigger { grid-area: menu; margin-left: 0; }
+  .global-scene-nav.has-site-menu > .site-utilities { display: none; }
+
+  /* On a phone the layers are a tab bar under the organs, the width of the
+     header: the `›` has nothing to point from across a row break, so the rule
+     between the rows and the tabs' underlines carry the relation instead. */
+  .global-scene-nav.has-site-menu > .global-nav-layers {
+    grid-area: layers;
+    justify-self: stretch;
+    margin: 3px -5px -3px -6px;
+    padding: 0 6px;
+    border-top: 1px solid var(--border);
+  }
+
+  .global-scene-nav.has-site-menu > .global-nav-layers {
+    border-left: 0;
+  }
+
+  .global-scene-nav.has-site-menu .global-nav-layers-owner {
+    display: none;
+  }
+
+  .global-nav-layer-link {
+    flex: 1 1 0;
+    justify-content: center;
+    min-height: 44px;
+  }
+
+  #ui.has-global-scene-nav.has-layer-row:not([data-layout='experiment']) {
+    padding-top: max(118px, calc(env(safe-area-inset-top) + 106px));
+  }
+
+  /* The experiment page (cardiac output) already says where it sits — its own
+     「病態モデル › 心拍出量」 line — and the 心臓 chip goes back to the anatomy.
+     On a phone the second header row cost the ventricle ~35px of the band it
+     needs to be read (`verify:disease` floors), so there it stays one row. */
+  #ui[data-layout='experiment'] .global-scene-nav.has-site-menu > .global-nav-layers {
+    display: none;
+  }
+}
+
+@media (max-width: 360px) {
+  /* Four organs have to fit on the narrowest phone without scrolling: at
+     320 px `verify:ui` found the liver scrolled out of the row (189 px of
+     chips in 165). The arrow goes first — the framed mark is still the
+     control, and its accessible name still says where it goes — and the
+     gaps tighten. */
+  .global-scene-nav.has-site-menu {
+    column-gap: 4px;
+  }
+
+  .global-scene-nav.has-site-menu .global-nav-strip {
+    padding-left: 4px;
+  }
+}
+
+@media (max-width: 620px) {
+  /* The reading header: one row — mark and name, the one destination, the
+     menu — where it used to be two, with a bare ○ for the account button.
+
+     When the row is short of room, the product's name gives way first, and
+     it gives way by truncating: the destination and the menu keep their full
+     width, because a clipped link is a link nobody can read. Measured at
+     390 px on the landing page, whose header sits inside 24 px margins, the
+     first version clipped 「公開とレビュー」 to 「開とレビュー」 under the
+     wordmark. */
+  .shell-header.has-site-menu {
+    display: flex;
+    grid-template-areas: none;
+    padding: 6px 8px;
+    gap: 4px;
+  }
+
+  .shell-header.has-site-menu .shell-brand {
+    flex: 0 1 auto;
+    /* The way home stays a thumb's width even when only the mark is left
+       (under 380 px): measured at 320 and 375 it was 41 px wide. */
+    min-width: 44px;
+    gap: 7px;
+  }
+
+  .shell-header.has-site-menu .shell-brand-name {
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    font-size: 0.88rem;
+  }
+
+  .shell-header.has-site-menu .shell-nav {
+    flex: none;
+    margin-left: auto;
+    margin-right: 0;
+    overflow: visible;
+  }
+
+  .shell-header.has-site-menu .shell-nav-link {
+    padding: 0 6px;
+    font-size: 0.82rem;
+  }
+
+  /* The destination sits against the menu, not halfway between it and the
+     wordmark: one flexible gap, not two. */
+  .shell-header.has-site-menu > .site-menu-trigger {
+    margin-left: 0;
+  }
+}
+
+@media (max-width: 520px) {
+  /* The word goes, the icon and its accessible name stay. */
+  .site-menu-trigger {
+    width: 44px;
+    min-height: 44px;
+    padding: 0;
+  }
+
+  .site-menu-trigger-label {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+    white-space: nowrap;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .site-menu-icon > span,
+  .site-menu-trigger,
+  .global-nav-layer-link {
+    transition: none;
+  }
+}

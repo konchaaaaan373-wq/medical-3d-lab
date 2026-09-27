@@ -140,8 +140,19 @@ export async function mountDocumentSurface({
    * `main.js` had this right before the mount table existed: it awaited the
    * surface, then called `observe()`. The order is restored here.
    */
+  // The feedback button goes in this surface's own site menu — the header in
+  // the nodes this mount added, not whichever header `#ui` holds first, which
+  // during a swap is the outgoing page's.
   const startObservability = () =>
-    observe({ ui, surface: TELEMETRY_SURFACE[kind] }).then((installed) => {
+    observe({
+      ui,
+      surface: TELEMETRY_SURFACE[kind],
+      placement: 'menu',
+      dockRoot: {
+        querySelector: (selector) =>
+          added.map((node) => (node.matches?.(selector) ? node : node.querySelector?.(selector))).find(Boolean) ?? null,
+      },
+    }).then((installed) => {
       observability = installed;
       return installed;
     });

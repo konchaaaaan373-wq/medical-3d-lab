@@ -64,6 +64,12 @@ test('the locked page names no published model in its own prose', () => {
   assert.ok(actions, 'the page has an actions row');
 
   const inTheLink = new Set(textOf(actions));
+  // The header's site menu lists the published models, organ then layer — and
+  // it is generated from the manifest exactly as the link is, on every screen
+  // including this one. It is the same kind of naming the rule allows, in the
+  // same kind of place: a manifest row, not a sentence the page wrote.
+  const inTheMenu = new Set(findByClass(element, 'site-menu-organs').flatMap((list) => textOf(list)));
+  assert.ok(inTheMenu.size > 0, 'the header menu lists the published models (from the manifest)');
 
   // The locked scene's own catalogue entry is not this page talking about the
   // release — it is the page saying what the withheld model is. COPD's
@@ -81,7 +87,7 @@ test('the locked page names no published model in its own prose', () => {
     [own?.title, own?.titleJa, own?.description, own?.descriptionJa].filter(Boolean)
   );
   const prose = nonEmpty(
-    textOf(element).filter((line) => !inTheLink.has(line) && !ownCopy.has(line)),
+    textOf(element).filter((line) => !inTheLink.has(line) && !inTheMenu.has(line) && !ownCopy.has(line)),
     'the page prose'
   );
 
