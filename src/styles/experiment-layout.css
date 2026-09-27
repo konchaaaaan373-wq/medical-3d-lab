@@ -1848,9 +1848,29 @@
        build marker takes ~48 px; `!important` because
        `browser-first-release-polish.css` sizes learning-view consoles under
        a (1,8,0) selector). */
-    max-height: calc(100dvh - var(--title-bottom, 100px) - 92px - 180px) !important;
+    --console-cap: calc(100dvh - var(--title-bottom, 100px) - 92px - clamp(180px, calc(100dvh - 590px), 280px));
+    max-height: var(--console-cap) !important;
     overflow-y: auto;
     overscroll-behavior: contain;
+  }
+
+  /* With a card open the console *is* that height, not at most that height:
+     a console anchored at the bottom that grows when the chain first appears
+     moves every control above it up under the reader's finger (verify:disease
+     measured 3 px on the first press and 20 px on a drag at 430×932). Fixed,
+     what grows grows below the controls, inside the scroll. The heart's band
+     (the clamp) grows with the screen: 180 px on a short phone, up to 280. */
+  #ui#ui[data-layout='experiment'] .console:has(.console-card[open]) {
+    height: var(--console-cap);
+  }
+
+  /* "Two at once": the pairs' values may take two lines — the tabs share the
+     row with the mode button — and the second line is always reserved, so a
+     value that grows a digit moves nothing. */
+  #ui[data-layout='experiment'] .exp-strip > .pad-switcher .pad-switch-summary {
+    white-space: normal;
+    overflow: visible;
+    height: 32px;
   }
 
   /* Nothing to say until something changes: the empty chain is a desktop

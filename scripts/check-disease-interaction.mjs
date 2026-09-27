@@ -304,7 +304,10 @@ for (const slug of SLUGS) {
         const moved = Object.keys(start).filter((key) => start[key] !== after[key]);
         if (JSON.stringify(moved) !== JSON.stringify(['contractilityEesMmHgPerMl'])) problems.push(`one input: the editor moved ${moved.join(', ')}`);
         const chain = await page.locator('.effect-chain').innerText();
-        if (!/→/.test(chain) || !/心拍出量|Cardiac output/.test(chain)) problems.push(`one input: the chain does not say what the change did (${chain.replace(/\s+/g, ' ').slice(0, 80)})`);
+        // Its three steps: what was changed → heart and blood → the figures.
+        // (One press may move no displayed figure, so the last step can be
+        // "—"; what has to be there is the chain.)
+        if (!/→/.test(chain) || !/変えたもの|Changed/.test(chain) || !/数値|Figures/.test(chain)) problems.push(`one input: the chain does not say what the change did (${chain.replace(/\s+/g, ' ').slice(0, 80)})`);
         await page.locator('.model-control-undo').click();
         await page.waitForTimeout(500);
         // Two at once: the pads, and the same state.
