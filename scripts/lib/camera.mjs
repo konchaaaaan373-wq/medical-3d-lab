@@ -11,10 +11,16 @@
  * `tolerance` world units for `frames` consecutive animation frames — 30 by
  * default, which outlasts the second refit's 320 ms even at 60 fps.
  *
+ * Not zero: damping leaves a tail. Measured on cardiac-output at rest, the
+ * camera still creeps about 0.0007 world units per half second (at a distance
+ * of ~27) long after any tween — invisible, and above 1e-4 per frame, so a
+ * tolerance of 1e-4 waited forever. A refit moves ~0.1 per frame; 1e-3
+ * separates the two.
+ *
  * @param {import('playwright').Page} page
  * @param {{ frames?: number, tolerance?: number, timeout?: number }} [options]
  */
-export async function waitForCameraToSettle(page, { frames = 30, tolerance = 1e-4, timeout = 10000 } = {}) {
+export async function waitForCameraToSettle(page, { frames = 30, tolerance = 1e-3, timeout = 10000 } = {}) {
   await page.waitForFunction(
     ({ frames, tolerance }) => {
       const viewer = window.__app?.viewer;
