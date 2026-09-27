@@ -847,9 +847,9 @@ export const SCENE_MANIFEST = [
     modelCard: 'docs/model-cards/rotator-cuff-tear.md',
     modelProfile: 'rotator-cuff-tear-containment',
     description:
-      'The cuff does not lift the arm; it holds the head on its socket. The tendon in front and the one behind pull against each other, so the whole width of the top tendon can be gone with the head exactly where it was.',
+      'The cuff mainly holds the head on its socket rather than lifting the arm (the top tendon helps start the lift). The tendon in front and the one behind pull against each other, so the whole width of the top tendon can be gone with the head exactly where it was.',
     descriptionJa:
-      '腱板は腕を持ち上げるものではなく、骨頭を臼蓋に保つものです。前の腱と後ろの腱が引き合っているため、上の腱が全幅失われても骨頭は元の位置のままでありえます。',
+      '腱板のおもな役目は、腕を持ち上げることより骨頭を臼蓋に保つことです（上の腱は腕の上げ始めを助けます）。前の腱と後ろの腱が引き合っているため、上の腱が全幅失われても骨頭は元の位置のままでありえます。',
     tags: ['musculoskeletal', 'injury-state', 'geometric-model'],
     load: () => import('../scenes/musculoskeletal/scenes/rotatorCuffTear/index.js'),
   },

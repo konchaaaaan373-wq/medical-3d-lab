@@ -2204,11 +2204,11 @@ export const CUFF_EVIDENCE = defineEvidence('rotator-cuff-tear', [
   {
     id: 'the-cuff-holds-rather-than-lifts',
     claim:
-      'The rotator cuff does not lift the arm. Its four tendons make a sleeve round the head of the humerus and hold it on its socket while the large muscle over the shoulder moves the limb.',
+      'The main job of the rotator cuff is to hold the head of the humerus on its socket, not to lift the arm. Its four tendons make a sleeve round the head and hold it there while the large muscle over the shoulder (deltoid) does most of the lifting; the top tendon (supraspinatus) also helps, mainly as the arm starts to rise.',
     confidence: CONFIDENCE.ESTABLISHED,
     source:
       'Standard shoulder anatomy and standard descriptions of the cuff as a head depressor and stabiliser rather than an elevator.',
-    validation: 'physiology: the cuff holds the head on its socket rather than lifting the arm',
+    validation: "physiology: the model draws the cuff's main job, holding the head on its socket, and nothing that lifts the arm",
     layer: LAYER.EXTERNAL,
   },
   {
