@@ -33,7 +33,9 @@ import { inLanguage, onLanguageChange } from '../utils/language.js';
 import { prefersReducedMotion } from '../utils/motion.js';
 import { markScrollable, publishHeight } from '../utils/scrollHint.js';
 import { createTitleCard } from '../components/TitleCard.js';
-import { createBeatRateControl, createConsoleCard, createConsoleCards } from '../components/ConsoleCards.js';
+import { createConsoleCard, createConsoleCards } from '../components/ConsoleCards.js';
+import { createEffectChain } from '../components/EffectChain.js';
+import { createExplainerPlayer } from '../components/ExplainerPlayer.js';
 import { createLegend } from '../components/Legend.js';
 import { createStageReadout, stageIndexFor } from '../components/StageReadout.js';
 import { createControlPanel } from '../components/ControlPanel.js';
@@ -1137,6 +1139,8 @@ export async function createApp({ stage, ui, onRetryModel = null }) {
         // `detail` carries the reader's operation (one drag, one press), so a
         // scene with undo can take a whole drag back in one step.
         onChange: (id, value, detail) => {
+          // The reader took the model: the explanation stops where it is.
+          explainerPlayer?.interrupt();
           scene.setModelControl(id, value, detail);
           // A model may canonicalise an input or make options mutually
           // exclusive. Read the accepted state back immediately so the
@@ -1144,7 +1148,10 @@ export async function createApp({ stage, ui, onRetryModel = null }) {
           modelControls.sync(scene.getModelControls());
           refreshModelReadouts();
         },
-        onReset: () => resetControlsToStart(),
+        onReset: () => {
+          explainerPlayer?.interrupt();
+          resetControlsToStart();
+        },
         copy: meta.modelControls,
       })
     : null;
@@ -1195,6 +1202,8 @@ export async function createApp({ stage, ui, onRetryModel = null }) {
 
   /** The experiment layout's two console cards, once they are built (below). */
   let consoleCards = null;
+  /** The explanation animation's player, when the scene has one. */
+  let explainerPlayer = null;
 
   /** Everything that reads back off the model after it is re-solved. */
   function refreshModelReadouts() {
@@ -1343,35 +1352,81 @@ export async function createApp({ stage, ui, onRetryModel = null }) {
   }
 
   /**
-   * The experiment layout's console as two cards the reader opens: the
-   * conditions (the model's inputs) and how they are shown (the beat's speed,
-   * the comparison, the camera, the plots). Both start closed. The same nodes
-   * with the same listeners are moved into them — nothing is rebuilt — and
-   * what is left of the control panel is the notice, which stays in view.
+   * The experiment layout's console as two cards the reader opens, one for
+   * each kind of thing (owner's review, 2026-09-27):
+   *
+   * - **Operate the model**: the inputs, what the change did (the scene's
+   *   cause → heart → figures chain), and the starting condition drawn over
+   *   the current one.
+   * - **Explanation animation**: one played sequence, and only that.
+   *
+   * Both start closed and open independently. The same nodes with the same
+   * listeners are moved in — nothing is rebuilt. What is left of the control
+   * panel is the notice and "More" (the plots, the camera, the rest), at the
+   * foot of the console, outside both cards.
    */
   const cardCopy = meta.console?.cards;
   consoleCards = cardCopy && controlsInConsole && modelControls
     ? (() => {
-        const beatRate = meta.console.beatRates && scene.setPresentationBeatRate
-          ? createBeatRateControl({
-              copy: meta.console.beatRates,
-              onChange: (rate) => {
-                scene.setPresentationBeatRate(rate);
+        const effectChain = scene.getEffectSummary && meta.console.effect
+          ? createEffectChain({ copy: meta.console.effect })
+          : null;
+        const compareButton = controlPanel.element.querySelector('[data-control="compare"]');
+        const operateTools = compareButton ? el('div', { class: 'operate-tools' }, [compareButton]) : null;
+        const conditions = createConsoleCard({
+          id: 'conditions',
+          copy: cardCopy.conditions,
+          body: [modelControls.element, effectChain?.element, operateTools],
+        });
+        const explainer = scene.getExplainer?.();
+        const player = explainer
+          ? createExplainerPlayer({
+              explainer,
+              onBegin: () => {
+                explainer.begin();
+                if (comparing) setComparison(false);
+                modelControls.sync(scene.getModelControls());
+                refreshModelReadouts();
+              },
+              onStage: (stage) => {
+                // A closer look is a smaller box fitted into the same band.
+                scene.setFramingFocus?.(stage.framing);
+                applyGuideFraming(stage.framing);
+                const wanted = Boolean(stage.compare) && (scene.canCompare?.() ?? true);
+                if (wanted !== comparing) setComparison(wanted);
+              },
+              onFrame: () => {
+                modelControls.sync(scene.getModelControls());
+                refreshModelReadouts();
+              },
+              onStateChange: (state) => {
+                // Stopped, finished or interrupted: the whole assembly again,
+                // from the scene's own camera, so the reader operates from
+                // where they started rather than from a close-up.
+                if (state === 'interrupted' || state === 'ended') {
+                  scene.setFramingFocus?.(null);
+                  applyGuideFraming(null);
+                }
                 refreshConsoleCards();
               },
             })
           : null;
-        const conditions = createConsoleCard({ id: 'conditions', copy: cardCopy.conditions, body: [modelControls.element] });
         const shown = createConsoleCard({
           id: 'view',
           copy: cardCopy.view,
-          body: [beatRate?.element, controlPanel.element.querySelector('.button-row')],
+          body: [player?.element],
         });
-        return { ...createConsoleCards([conditions, shown]), conditions, shown, beatRate };
+        return {
+          ...createConsoleCards([conditions, shown], { exclusive: false }),
+          conditions,
+          shown,
+          effectChain,
+          player,
+        };
       })()
     : null;
+  explainerPlayer = consoleCards?.player ?? null;
 
-  /** The closed cards' second line: what is inside, or what is changed. */
   // What each closed line last said, so a pad drag (a refresh per frame)
   // does not rebuild the heading's text — or have it re-announced — when
   // nothing in it changed.
@@ -1383,10 +1438,10 @@ export async function createApp({ stage, ui, onRetryModel = null }) {
     card.setState(en, ja);
   };
 
-  /** The closed cards' second line: what is inside, or what is changed. */
+  /** The closed cards' second line, and the chain under the inputs. */
   function refreshConsoleCards() {
     if (!consoleCards) return;
-    const { conditions: copy } = cardCopy;
+    const { conditions: copy, view: viewCopy } = cardCopy;
     // The scene's own list: the read-out's order, from the solved condition.
     const moved = scene.getChangedInputs?.() ?? [];
     const mark = (entry) => (entry.direction === 'up' ? '↑' : '↓');
@@ -1400,16 +1455,11 @@ export async function createApp({ stage, ui, onRetryModel = null }) {
     } else {
       setCardState(consoleCards.conditions, 'conditions', null, null);
     }
-    const rateOption = meta.console.beatRates?.options.find((option) => option.id === consoleCards.beatRate?.value);
-    const states = [
-      rateOption && rateOption.rate !== 1 ? { en: rateOption.label, ja: rateOption.labelJa } : null,
-      comparing ? { en: meta.comparison?.label ?? 'Comparing', ja: meta.comparison?.labelJa ?? '比較中' } : null,
-    ].filter(Boolean);
-    if (states.length) {
-      setCardState(consoleCards.shown, 'view', states.map((entry) => entry.en).join(', '), states.map((entry) => entry.ja).join('・'));
-    } else {
-      setCardState(consoleCards.shown, 'view', null, null);
-    }
+    consoleCards.effectChain?.update(scene.getEffectSummary());
+    const playing = consoleCards.player?.state;
+    if (playing === 'playing') setCardState(consoleCards.shown, 'view', viewCopy.playing, viewCopy.playingJa);
+    else if (playing === 'paused') setCardState(consoleCards.shown, 'view', viewCopy.paused, viewCopy.pausedJa);
+    else setCardState(consoleCards.shown, 'view', null, null);
   }
 
   const consoleElement = el('div', { class: `panel console${consoleCards ? ' has-cards' : ''}` }, [
@@ -1430,23 +1480,6 @@ export async function createApp({ stage, ui, onRetryModel = null }) {
     const railButtons = rail.querySelector('.rail-buttons');
     const menu = consoleElement.querySelector('.console-more-menu');
     if (railButtons && menu) menu.append(railButtons);
-  }
-  // With the console as cards, "More" (the lesson, the reel, the image, the
-  // language and "hide controls") goes with whichever card is open: at the
-  // end of the conditions' actions while those are open, in the view card's
-  // row otherwise. It lived only in the view card, and on a phone that card's
-  // heading steps out while the conditions are open — so the language switch
-  // could not be reached at all during an experiment. Moved, not copied.
-  if (consoleCards) {
-    const more = consoleElement.querySelector('.console-more');
-    const viewRow = consoleCards.shown.element.querySelector('.button-row');
-    const actions = consoleCards.conditions.element.querySelector('.model-control-actions');
-    const placeMore = () => {
-      const target = consoleCards.conditions.open && actions ? actions : viewRow;
-      if (more && target && more.parentElement !== target) target.append(more);
-    };
-    for (const card of consoleCards.cards) card.element.addEventListener('toggle', placeMore);
-    placeMore();
   }
   // On a phone the display panel docks just above the console. Only the console
   // knows how tall it is, and it differs by scene.
@@ -1700,6 +1733,7 @@ export async function createApp({ stage, ui, onRetryModel = null }) {
   // --- loop -----------------------------------------------------------------
   viewer.onFrame((dt, elapsed) => {
     playback.update(dt);
+    explainerPlayer?.tick(dt);
     scene.update(dt, elapsed);
     if (learning) {
       learningPanel.tick();

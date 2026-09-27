@@ -105,7 +105,7 @@ test('read-out: every row reads start → now with a signed change from the firs
   });
 });
 
-test('toolbar: the view tools are in the row (the view card), and only lesson, reel and image are behind "More"', async () => {
+test('toolbar: the comparison is in the row (it moves into the operating card); the view tools are behind "More"', async () => {
   await withDocument(async () => {
     const { createControlPanel } = await import('../src/components/ControlPanel.js');
     const { CardiacOutputScene } = await import(
@@ -139,15 +139,12 @@ test('toolbar: the view tools are in the row (the view card), and only lesson, r
     const [menu] = findByClass(panel, 'console-more-menu');
     assert.ok(menu, 'the scene declares an overflow, so there is a menu');
     const inMenu = controlsOf(menu);
-    for (const id of ['learn', 'reel', 'camera']) {
+    for (const id of ['learn', 'reel', 'camera', 'data', 'zoomIn', 'zoomOut', 'frame', 'eye']) {
       assert.ok(inMenu.has(id), `${id} is behind More`);
     }
-    // The ways of looking — the comparison, the plots, the camera, the
-    // display options — are what the view card is for (owner, 2026-09-26):
-    // one press to open the card, not two.
-    for (const id of ['compare', 'data', 'zoomIn', 'zoomOut', 'frame', 'eye']) {
-      assert.ok(!inMenu.has(id), `${id} is in the row, not behind More`);
-    }
+    // The comparison is part of operating — "before, drawn over now" — and
+    // the shell moves it into that card; it is never in the explanation's.
+    assert.ok(!inMenu.has('compare'), 'compare is not behind More');
     const [row] = findByClass(panel, 'button-row');
     const inRow = new Set([...controlsOf(row)].filter((id) => !inMenu.has(id)));
     assert.ok(inRow.has('more'), 'and More itself is in view');
@@ -306,7 +303,9 @@ test('console: the switcher draws one pad or the other and changes nothing else;
   await withDocument(async () => {
     const { session, console_, calls } = await padConsole();
     const [set] = findByClass(console_.element, 'pad-set');
-    const tabs = findByClass(set, 'pad-switch');
+    // In "two at once" the switcher stands in the inputs' strip, where the
+    // four chips were — found from the console, not from inside the pads.
+    const tabs = findByClass(console_.element, 'pad-switch');
     assert.deepEqual(tabs.map((tab) => tab.dataset.pad), ['heart', 'circulation']);
     assert.equal(set.dataset.active, 'heart', 'the heart first');
     assert.equal(tabs[0].getAttribute('aria-selected'), 'true');
@@ -326,5 +325,52 @@ test('console: the switcher draws one pad or the other and changes nothing else;
     assert.match(text(tabs[0]), /心拍 70(?!↑|↓)/, "the held one carries none");
     assert.equal(tabs[0].classList.contains('is-moved'), true);
     assert.equal(tabs[1].classList.contains('is-moved'), false);
+  });
+});
+
+
+test('inputs: all four named with values, one adjusted on its own, two at once on the pads — and switching changes nothing', async () => {
+  await withDocument(async () => {
+    const { session, console_, calls } = await padConsole();
+    const [surface] = findByClass(console_.element, 'exp-inputs');
+    assert.ok(surface, 'the four inputs are one surface');
+    const chips = findByClass(surface, 'exp-chip');
+    assert.deepEqual(
+      chips.map((chip) => chip.dataset.input),
+      ['fillingVolumeMl', 'systemicResistanceMmHgSPerMl', 'contractilityEesMmHgPerMl', 'heartRatePerMin'],
+      'all four, always'
+    );
+    assert.match(text(chips[0]), /充満量.*710/);
+    assert.equal(surface.dataset.mode, 'single', 'one at a time first');
+    assert.equal(chips[2].getAttribute('aria-pressed'), 'true', 'contractility chosen first');
+
+    // One input on its own: a press moves that input and only that one.
+    const start = { ...session.input };
+    const down = findByClass(surface, 'exp-step').find((node) => node.dataset.direction === 'down');
+    down.dispatchEvent({ type: 'click' });
+    const moved = Object.keys(start).filter((key) => session.input[key] !== start[key]);
+    assert.deepEqual(moved, ['contractilityEesMmHgPerMl']);
+    assert.match(text(chips[2]), /↓/, 'the strip says it moved');
+
+    // Choosing another input changes nothing in the model.
+    const count = calls.length;
+    chips[0].dispatchEvent({ type: 'click' });
+    assert.equal(calls.length, count, 'choosing is not changing');
+    assert.equal(chips[0].getAttribute('aria-pressed'), 'true');
+    findByClass(surface, 'exp-step').find((node) => node.dataset.direction === 'up').dispatchEvent({ type: 'click' });
+    assert.ok(session.input.fillingVolumeMl > start.fillingVolumeMl, 'the chosen one moves');
+    assert.ok(session.input.contractilityEesMmHgPerMl < start.contractilityEesMmHgPerMl, 'the other keeps its change');
+
+    // Two at once, and back: a view of the same state.
+    const held = { ...session.input };
+    const [mode] = findByClass(surface, 'exp-mode');
+    mode.dispatchEvent({ type: 'click' });
+    assert.equal(surface.dataset.mode, 'pair');
+    const [set] = findByClass(surface, 'pad-set');
+    assert.equal(set.dataset.active, 'circulation', 'the pad that holds the input the reader was on');
+    mode.dispatchEvent({ type: 'click' });
+    assert.equal(surface.dataset.mode, 'single');
+    assert.deepEqual({ ...session.input }, held, 'switching mode moved nothing');
+    assert.equal(calls.length, count + 1, 'only the two presses were sent');
   });
 });

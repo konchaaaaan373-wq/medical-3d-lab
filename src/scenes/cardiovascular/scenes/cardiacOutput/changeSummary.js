@@ -175,3 +175,59 @@ export function changeOf(now, before) {
     ? { change: 'up', changeLabel: 'higher', changeLabelJa: '上昇' }
     : { change: 'down', changeLabel: 'lower', changeLabelJa: '低下' };
 }
+
+/**
+ * What a change did, in the order it happened: what was changed → what the
+ * heart and the blood did → what the figures did.
+ *
+ * Every line is a pair of solved values (start → now) at the precision the
+ * read-out uses, and a line is only said when its displayed value moved — so
+ * the chain never claims a step the model did not take. The words for each
+ * step are fixed; which steps appear, and the numbers, are the model's.
+ * Nothing here is computed that the solver did not produce: no oxygen
+ * delivery, no organ perfusion.
+ *
+ * @param {{ baseline: object, shown: object, before: object, now: object }} condition
+ *   `baseline`/`shown` are model inputs; `before`/`now` are the solved metrics
+ * @returns {null | { cause: {en: string, ja: string},
+ *   heart: {id: string, en: string, ja: string}[],
+ *   results: {id: string, en: string, ja: string}[] }}
+ */
+export function describeEffect({ baseline, shown, before, now }) {
+  const moved = movedInputs({ baseline, shown });
+  if (moved.length === 0) return null;
+  const arrow = (entry) => (entry.direction === 'up' ? '↑' : '↓');
+  const cause = {
+    en: moved.map((entry) => `${entry.short} ${arrow(entry)}`).join(', '),
+    ja: moved.map((entry) => `${entry.shortJa}${arrow(entry)}`).join('・'),
+  };
+
+  const whole = (value) => String(Math.round(value));
+  const tenth = (value) => Number(value).toFixed(1);
+  const seconds = (rate) => (60 / rate).toFixed(2);
+  // Each line in a full form and a short one (for a phone's one paragraph).
+  const step = (id, [en, ja], [shortEn, shortJa], from, to, unit) =>
+    from === to
+      ? null
+      : {
+          id,
+          en: `${en} ${from} → ${to} ${unit}`,
+          ja: `${ja} ${from}→${to} ${unit}`,
+          shortEn: `${shortEn} ${from}→${to}`,
+          shortJa: `${shortJa} ${from}→${to}`,
+        };
+
+  const heart = [
+    step('edv', ['Filling of the ventricle (EDV)', '心室の満たされ方（拡張末期容積）'], ['filled', '満たされる量'], whole(before.edvMl), whole(now.edvMl), 'mL'),
+    step('esv', ['Blood left after contraction (ESV)', '収縮後に残る血液（収縮末期容積）'], ['left', '残る血液'], whole(before.esvMl), whole(now.esvMl), 'mL'),
+    step('sv', ['Blood sent out per beat (SV)', '1回に送り出す血液（1回拍出量）'], ['per beat', '1回の拍出'], whole(before.strokeVolumeMl), whole(now.strokeVolumeMl), 'mL'),
+    step('interval', ['Time between beats', '拍動の間隔'], ['interval', '拍動の間隔'], seconds(before.heartRatePerMin), seconds(now.heartRatePerMin), 's'),
+  ].filter(Boolean);
+
+  const results = [
+    step('co', ['Cardiac output', '心拍出量'], ['CO', '心拍出量'], tenth(before.cardiacOutputLMin), tenth(now.cardiacOutputLMin), 'L/min'),
+    step('map', ['Mean arterial pressure', '平均動脈圧'], ['MAP', '平均動脈圧'], whole(before.meanArterialPressureMmHg), whole(now.meanArterialPressureMmHg), 'mmHg'),
+  ].filter(Boolean);
+
+  return { cause, heart, results };
+}

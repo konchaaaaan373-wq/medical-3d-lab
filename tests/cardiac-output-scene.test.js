@@ -11,7 +11,8 @@ import {
   presetInput,
   solveCardiacOutput,
 } from '../src/models/cardiacOutput.js';
-import { myocardialVolumeFor } from '../src/models/cardiacMechanics.js';
+import { cavityVolumeAt, myocardialVolumeFor, ventricleShape } from '../src/models/cardiacMechanics.js';
+import { APEX_PINNING } from '../src/scenes/cardiovascular/scenes/heartFailure/geometry/ventricleGeometry.js';
 import { SCENE_MANIFEST } from '../src/catalog/scenes.js';
 import {
   BETA_ANATOMY_CANDIDATES,
@@ -406,36 +407,46 @@ test('comparison is against this preset’s own before-condition, from the same 
   assert.equal(rows.map.reference, Math.round(baseline.metrics.meanArterialPressureMmHg));
   assert.ok(Number(rows.map.value) > Number(rows.map.reference), 'pressure up');
   assert.ok(Number(rows.co.value) < Number(rows.co.reference), 'output down');
-  // The reference heart is drawn from the baseline solve, not from a separately
-  // tuned "normal-looking" ventricle.
-  assert.equal(scene.reference.metrics, scene.session.baseline.metrics);
+  // "Before" is drawn *in* this heart, not beside it (owner's review,
+  // 2026-09-27): the starting condition's cavity as a cage in the same group
+  // as the chamber — same place, same scale — at the same phase.
+  assert.equal(scene.beforeOutline.parent, scene.primary, 'the "before" cage is part of this heart, not a second one');
+  const phase = 0.3;
+  scene.setCardiacPhase(phase);
+  scene.update(0);
+  assert.equal(scene.beforeOutline.visible, true, 'drawn while comparing a moved condition');
+  const beforeShape = (at) => ventricleShape({
+    cavityVolumeMl: cavityVolumeAt(at, { cycle: scene.session.baseline.cycle }),
+    myocardialVolumeMl: scene.myocardialVolumeMl,
+    longToShortAxisRatio: 1.9,
+  });
+  const edBefore = ventricleShape({
+    cavityVolumeMl: scene.session.baseline.metrics.edvMl,
+    myocardialVolumeMl: scene.myocardialVolumeMl,
+    longToShortAxisRatio: 1.9,
+  });
+  const expected = (beforeShape(scene.phase).outerSemiLength - edBefore.outerSemiLength) * APEX_PINNING;
+  assert.ok(
+    Math.abs(scene.beforeOutline.position.y - expected) < 1e-9,
+    'the cage is the starting condition\'s cavity at the phase the heart is at'
+  );
 
-  // And it is actually drawable. `BloodField` takes particle *buffers*; handed
-  // a geometry instead it builds attributes wrapping `undefined`, which throws
-  // nothing here and draws nothing in a browser — the comparison came up as one
-  // heart with the metrics panel insisting there were two, and this file passed.
-  // So the attributes are inspected rather than the constructor merely survived.
-  for (const field of [scene.blood, scene.reference.blood]) {
-    for (const name of ['position', 'aExit', 'aEntry', 'aRank']) {
-      const attribute = field.geometry.getAttribute(name);
-      assert.ok(attribute, `the blood field has a ${name} attribute`);
-      assert.ok(attribute.array?.length > 0, `and ${name} has values in it`);
-      assert.ok(Number.isFinite(attribute.array[0]), `and ${name} is finite`);
-    }
+  // And the blood is actually drawable. `BloodField` takes particle *buffers*;
+  // handed a geometry instead it builds attributes wrapping `undefined`, which
+  // throws nothing here and draws nothing in a browser. So the attributes are
+  // inspected rather than the constructor merely survived.
+  for (const name of ['position', 'aExit', 'aEntry', 'aRank']) {
+    const attribute = scene.blood.geometry.getAttribute(name);
+    assert.ok(attribute, `the blood field has a ${name} attribute`);
+    assert.ok(attribute.array?.length > 0, `and ${name} has values in it`);
+    assert.ok(Number.isFinite(attribute.array[0]), `and ${name} is finite`);
   }
-  assert.ok(scene.reference.position.length() > 1, 'and the two hearts are drawn apart');
-  // Across the line of sight, at the same depth: spread along world x, one
-  // heart sat nearer the camera and was drawn larger and lower, so an
-  // unchanged condition looked like two different hearts (owner's recording).
-  const pose = scene.constructor.cameraPose;
-  const view = pose.position.clone().sub(pose.target).normalize();
-  assert.ok(Math.abs(scene.reference.position.dot(view)) < 1e-9, 'the "before" heart is not nearer or farther than the target');
-  assert.ok(Math.abs(scene.primary.position.dot(view)) < 1e-9, 'nor is the current one');
-  assert.ok(scene.reference.position.clone().add(scene.primary.position).length() < 1e-9, 'and they are symmetric about the target');
   assert.equal(scene.getPressureVolume().reference, scene.session.baseline.curves);
 
   scene.setComparison(false);
-  // Without the second heart the moved condition still carries its "before"
+  scene.update(0);
+  assert.equal(scene.beforeOutline.visible, false, 'and not drawn once the comparison is off');
+  // Without the drawn "before" the moved condition still carries its "before"
   // and its signed change, from the same baseline — the reader should not have
   // to remember what the number was.
   const off = Object.fromEntries(scene.getMetrics().map((row) => [row.id, row]));
@@ -459,42 +470,30 @@ test('comparison is against this preset’s own before-condition, from the same 
   assert.equal(back.co.delta, '±0');
 });
 
-test('the heart being compared against follows the baseline, not the button', async () => {
-  // Found by review, not by a test, and it is the failure this scene exists to
-  // make impossible: the read-out and the picture disagreeing about the same
-  // condition.
-  //
-  // The comparison heart used to be refreshed only in `setComparison`, which
-  // runs when the *button* is pressed. The baseline moves when a *control* is
-  // pressed — selecting a preset takes a new "before" snapshot, and so does
-  // choosing an intervention that belongs to the other preset. Switching preset
-  // while comparing therefore left the "before" column on the new baseline and
-  // the heart drawn beside it on the old one. Nothing threw.
+test('the "before" cage follows the baseline, not the button', async () => {
+  // The failure this is written against: the drawn "before" was refreshed when
+  // the Compare *button* was pressed, while the baseline moves when a
+  // *control* is pressed — a preset, or an intervention that belongs to the
+  // other preset. The read-out and the picture then disagreed about the same
+  // condition, and nothing threw.
   const scene = await buildScene();
   scene.setComparison(true);
-  assert.equal(scene.reference.metrics, scene.session.baseline.metrics);
+  const edOf = (metrics) => ventricleShape({
+    cavityVolumeMl: metrics.edvMl,
+    myocardialVolumeMl: scene.myocardialVolumeMl,
+    longToShortAxisRatio: 1.9,
+  }).outerSemiLength;
+  assert.equal(scene.beforeEdShape.outerSemiLength, edOf(scene.session.baseline.metrics));
 
   scene.setModelControl('preset', PRESET_IDS.REDUCED_CONTRACTILITY);
-  assert.equal(
-    scene.reference.metrics,
-    scene.session.baseline.metrics,
-    'the drawn heart is the baseline the numbers are measured against'
-  );
+  assert.equal(scene.beforeEdShape.outerSemiLength, edOf(scene.session.baseline.metrics), 'a new preset is a new "before"');
   const rows = Object.fromEntries(scene.getMetrics().map((row) => [row.id, row]));
-  assert.equal(Number(rows.edv.reference), Math.round(scene.reference.metrics.edvMl));
+  assert.equal(Number(rows.edv.reference), Math.round(scene.session.baseline.metrics.edvMl));
 
-  // And the same through the door an intervention opens, which switches the
-  // preset underneath the reader.
   scene.setModelControl('preset', PRESET_IDS.REFERENCE);
   scene.setModelControl('intervention', 'dobutamine');
   assert.equal(scene.session.presetId, PRESET_IDS.REDUCED_CONTRACTILITY);
-  assert.equal(scene.reference.metrics, scene.session.baseline.metrics);
-  const after = Object.fromEntries(scene.getMetrics().map((row) => [row.id, row]));
-  assert.equal(after.co.reference, scene.reference.metrics.cardiacOutputLMin.toFixed(1));
-
-  // Reset does not move the baseline, so nothing should change hands there.
-  scene.resetModelControls();
-  assert.equal(scene.reference.metrics, scene.session.baseline.metrics);
+  assert.equal(scene.beforeEdShape.outerSemiLength, edOf(scene.session.baseline.metrics), 'and through an intervention');
 });
 
 test('the circuit shows a change in output once, not twice', async () => {
@@ -700,22 +699,13 @@ test('whatever the reader has done, every panel is reading one solved beat', asy
     const pv = scene.getPressureVolume();
     assert.equal(pv.current, scene.session.view.curves, `${where}: the loop is a different beat`);
 
-    // Muscle is never grown by anything a reader can press.
-    assert.equal(scene.myocardialVolumeMl, scene.reference?.myocardialVolumeMl ?? scene.myocardialVolumeMl,
-      `${where}: the two hearts were given different muscle`);
-
-    // And the comparison — the pair that both earlier defects lived in.
+    // And the comparison — where both earlier defects lived.
     if (state.comparing) {
-      assert.equal(
-        scene.reference.metrics,
-        scene.session.baseline.metrics,
-        `${where}: the drawn "before" heart is not the baseline the numbers cite`
-      );
       assert.equal(pv.reference, scene.session.baseline.curves, `${where}: the reference loop is stale`);
       assert.equal(
         Number(rows.edv.reference),
-        Math.round(scene.reference.metrics.edvMl),
-        `${where}: the "before" column and the "before" heart disagree`
+        Math.round(scene.session.baseline.metrics.edvMl),
+        `${where}: the "before" column is not the baseline the cage is drawn from`
       );
     } else {
       // Without the second heart, the read-out still says where the numbers
@@ -894,7 +884,12 @@ test('every one of those states survives being captured and restored', async () 
       `${where}: the condition came back but not what it was called`
     );
     if (state.comparing) {
-      assert.equal(scene.reference.metrics, scene.session.baseline.metrics, `${where}: stale after restore`);
+      const edBefore = ventricleShape({
+        cavityVolumeMl: scene.session.baseline.metrics.edvMl,
+        myocardialVolumeMl: scene.myocardialVolumeMl,
+        longToShortAxisRatio: 1.9,
+      });
+      assert.equal(scene.beforeEdShape.outerSemiLength, edBefore.outerSemiLength, `${where}: the "before" cage is stale after restore`);
     }
   }
 });
@@ -959,76 +954,6 @@ test('the four inputs are drawn as two pads; each is still its own entry, and a 
   assert.deepEqual({ ...scene.session.input }, start);
 });
 
-test('side by side, each heart beats at its own rate: a rate difference is not synchronised away', async () => {
-  const scene = await buildScene();
-  scene.setModelControl('heartRatePerMin', 105);
-  scene.setComparison(true);
-  const start = scene.phase;
-  scene.update(0.2, 0.2);
-  const wrap = (value) => ((value % 1) + 1) % 1;
-  assert.ok(Math.abs(scene.phase - wrap(start + (0.2 * 105) / 60)) < 1e-9, 'the current heart at 105/min');
-  assert.ok(Math.abs(scene._referencePhase - wrap(start + (0.2 * 70) / 60)) < 1e-9, 'the "before" heart at its own 70/min');
-  // At equal rates they stay in step.
-  scene.setModelControl('heartRatePerMin', 70);
-  scene.setComparison(false);
-  scene.setComparison(true);
-  scene.update(0.2, 0.4);
-  assert.ok(Math.abs(scene.phase - scene._referencePhase) < 1e-9);
-});
-
-test('the framing box depends on the screen’s shape only, never on an input; portrait stops just above the heart', async () => {
-  const scene = await buildScene();
-  const top = () => Math.max(...scene.getSubjectBounds().corners.map((corner) => corner.y));
-  const wide = top();
-  scene.viewer.camera.aspect = 0.55;
-  const tall = top();
-  assert.ok(tall < wide, 'a portrait screen frames less of the loop above the heart');
-  // Every input to its end: the box does not move, so nothing refits.
-  for (const [id, value] of [['fillingVolumeMl', 980], ['heartRatePerMin', 110], ['contractilityEesMmHgPerMl', 0.8], ['systemicResistanceMmHgSPerMl', 1.8]]) {
-    scene.setModelControl(id, value);
-    assert.equal(top(), tall, `${id} moved the framing box`);
-  }
-});
-
-test('the beat can be shown slower or held, and nothing the model says changes', async () => {
-  const scene = await buildScene();
-  const before = JSON.stringify(scene.getMetrics());
-  const rate = scene.state.heartRatePerMin;
-
-  scene.setCardiacPhase(0.1);
-  scene.update(0.2, 1);
-  const moved = scene.getCardiacPhase() - 0.1;
-  assert.ok(moved > 0, 'at the normal rate the beat advances');
-
-  scene.setPresentationBeatRate(0.25);
-  scene.setCardiacPhase(0.1);
-  scene.update(0.2, 1.2);
-  assert.ok(Math.abs(scene.getCardiacPhase() - 0.1 - moved / 4) < 1e-9, 'a quarter of the speed is a quarter of the advance');
-
-  scene.setPresentationBeatRate(0);
-  scene.setCardiacPhase(0.1);
-  scene.update(0.2, 1.4);
-  assert.equal(scene.getCardiacPhase(), 0.1, 'held is held');
-
-  // Presentation only: the rate, the solved beat and every figure stay put.
-  assert.equal(scene.state.heartRatePerMin, rate);
-  assert.equal(JSON.stringify(scene.getMetrics()), before);
-
-  // Never faster than the model's own rate, and nonsense is the normal rate.
-  scene.setPresentationBeatRate(4);
-  assert.equal(scene.presentationBeatRate, 1);
-  scene.setPresentationBeatRate('fast');
-  assert.equal(scene.presentationBeatRate, 1);
-
-  // A phase driven from outside (the reel) is not slowed by the view.
-  scene.setPresentationBeatRate(0);
-  scene.setCardiacPhaseDriven(true);
-  scene.setCardiacPhase(0.3);
-  scene.update(0.2, 1.6);
-  assert.equal(scene.getCardiacPhase(), 0.3);
-  scene.setCardiacPhaseDriven(false);
-});
-
 test('the changed inputs a shell shows are the read-out\'s: same order, same solved condition', async () => {
   const scene = await buildScene();
   assert.deepEqual(scene.getChangedInputs(), [], 'nothing at the start');
@@ -1042,7 +967,7 @@ test('the changed inputs a shell shows are the read-out\'s: same order, same sol
   assert.ok(changed.every((entry) => entry.direction === 'up' || entry.direction === 'down'));
 });
 
-test('the animation clock does not jump when the reel takes the phase after a held beat', async () => {
+test('the animation clock does not jump when the reel takes the phase and hands it back', async () => {
   const scene = await buildScene();
   const seen = [];
   const update = scene.blood.update.bind(scene.blood);
@@ -1050,16 +975,14 @@ test('the animation clock does not jump when the reel takes the phase after a he
     seen.push(elapsed);
     return update(elapsed);
   };
-  // The viewer's own clock keeps running (second argument) while the beat is
-  // held; what the blood is animated by must not jump to it when the reel
-  // takes the phase, nor back when it lets go.
-  scene.setPresentationBeatRate(0);
-  scene.update(5, 100);
-  const held = seen.at(-1);
+  // The viewer's own clock (second argument) may be anywhere; what the blood
+  // is animated by is one clock advanced by the frame time, driven or not.
+  scene.update(0.5, 100);
+  const before = seen.at(-1);
   scene.setCardiacPhaseDriven(true);
-  scene.update(0.2, 100.2);
-  assert.ok(Math.abs(seen.at(-1) - held - 0.2) < 1e-9, `driven, it advances from where it was (${held} → ${seen.at(-1)})`);
+  scene.update(0.2, 250);
+  assert.ok(Math.abs(seen.at(-1) - before - 0.2) < 1e-9, `driven, it advances from where it was (${before} → ${seen.at(-1)})`);
   scene.setCardiacPhaseDriven(false);
-  scene.update(0.2, 100.4);
-  assert.ok(Math.abs(seen.at(-1) - held - 0.2) < 1e-9, 'and holds again when the reel lets go');
+  scene.update(0.2, 3);
+  assert.ok(Math.abs(seen.at(-1) - before - 0.4) < 1e-9, 'and on from there when the reel lets go');
 });

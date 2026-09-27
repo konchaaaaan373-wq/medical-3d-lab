@@ -23,6 +23,11 @@ export const PALETTE = {
   vein: '#5a7098',
   resistance: '#ffc46b',
   outline: '#7ff0ff',
+  // The "before" cage drawn inside the chamber while comparing: a colour the
+  // tissue, the blood and the circuit do not use.
+  before: '#f4f1c8',
+  // The systemic bed (see circuit.js) — the colour the resistance always had.
+  bed: '#ffc46b',
 };
 
 export const LEGEND = [
@@ -36,7 +41,8 @@ export const LEGEND = [
   // that paints them blue teaches the opposite.
   { key: 'artery', label: 'Oxygenated (schematic)', labelJa: '酸素化された血液（模式）' },
   { key: 'vein', label: 'Deoxygenated (schematic)', labelJa: '脱酸素化された血液（模式）' },
-  { key: 'resistance', label: 'Where the resistance is', labelJa: '血管抵抗のある場所' },
+  // The whole bed, not a spot on a tube: many small vessels narrowing together.
+  { key: 'resistance', label: 'Systemic arteriolar bed (schematic)', labelJa: '全身の細動脈（模式・抵抗で細くなる）' },
 ];
 
 /**
@@ -186,15 +192,16 @@ export const CONTROLS = [
 export const CONTROL_PADS = [
   {
     id: 'heart',
-    label: 'Heart',
-    labelJa: '心臓',
+    // Named by the two inputs it moves together (owner's review, 2026-09-27).
+    label: 'Contractility × rate',
+    labelJa: '収縮力×心拍数',
     x: 'contractilityEesMmHgPerMl',
     y: 'heartRatePerMin',
   },
   {
     id: 'circulation',
-    label: 'Blood & vessels',
-    labelJa: '血液・血管',
+    label: 'Filling × resistance',
+    labelJa: '充満量×抵抗',
     x: 'fillingVolumeMl',
     y: 'systemicResistanceMmHgSPerMl',
   },
@@ -263,67 +270,132 @@ export const MODEL_CONTROLS = {
     noteJa: '開始状態を選ぶと新しい実験になり、調整は置き換わります。介入は開始状態に対してかかります。',
   },
   pads: PAD_COPY,
+  // The four inputs as one surface (ExperimentInputs.js): one adjusted on its
+  // own first — contractility, the input the explanation is about — and the
+  // pads as "two at once".
+  inputs: {
+    label: 'Four inputs',
+    labelJa: '4つの入力',
+    pair: 'Two at once',
+    pairJa: '2つ同時',
+    start: 'start',
+    startJa: '開始時',
+    initial: 'contractilityEesMmHgPerMl',
+  },
 };
 
 /**
- * The console as two cards the reader opens: one that changes the condition
- * (the model's inputs) and one that changes how it is seen (the animation's
- * speed, the comparison, the camera, the plots). Both start closed, so the
- * first screen is the heart and its numbers (owner's review, 2026-09-26).
+ * The console as two cards the reader opens, each for one kind of thing
+ * (owner's review, 2026-09-27):
  *
- * Keeping "change the model" and "change the view" in different cards is the
- * point: a reader should not have to work out whether a button moved the
- * physiology or only the picture.
+ * - **Operate the model** — the four inputs, what the change did, and the
+ *   starting condition drawn over the current one. Pressing anything here
+ *   re-solves the model.
+ * - **Explanation animation** — one played sequence (`explainerStoryboard.js`),
+ *   and nothing else. The beat-speed buttons that sat here were a display
+ *   setting, not an explanation, and are gone.
  *
- * `overflow` is what stays behind "More" inside the view card — the lessons,
- * the reel and the image export.
+ * Both start closed and open independently. The plots, the camera, the
+ * display options, the lesson, the reel and the image export are behind
+ * "More" at the foot of the console — neither operating nor the explanation.
  */
 export const CONSOLE_LAYOUT = {
-  overflow: ['learn', 'reel', 'capture'],
+  overflow: ['data', 'zoom', 'inspection', 'learn', 'reel', 'capture'],
   cards: {
-    // Named for what pressing inside them does (2026-09-27): one card
-    // *operates the model* — the numbers are recomputed — and the other only
-    // changes the *animation* and how it is shown. The old names 「条件を変える」
-    // and 「見え方」 did not say which of the two moves the physiology.
     conditions: {
       title: 'Operate the model',
       titleJa: '実際に操作する',
-      // Closed and nothing moved: what is inside. The changed state is built
-      // from the controls themselves (App.js).
-      summary: 'Contractility, rate, filling, resistance',
-      summaryJa: '収縮力・心拍数・充満量・抵抗',
+      summary: 'Filling, resistance, contractility, rate',
+      summaryJa: '充満量・血管抵抗・収縮力・心拍数',
       changedPrefix: 'Changed:',
       changedPrefixJa: '変更中：',
     },
     view: {
-      title: 'Animation & view',
-      titleJa: 'アニメーションと表示',
-      summary: 'Beat speed, comparison, camera, plots',
-      summaryJa: '拍動の速さ・比較・視点・グラフ',
+      title: 'Explanation animation',
+      titleJa: '説明アニメーション',
+      summary: 'When contractility falls — press play',
+      summaryJa: '収縮力が落ちると（再生して見る）',
+      playing: 'Playing',
+      playingJa: '再生中',
+      paused: 'Paused',
+      pausedJa: '一時停止中',
     },
   },
-  /**
-   * How fast the beat is shown. Presentation only — the heart rate, the
-   * solved beat and every number stay as they are (`setPresentationBeatRate`).
-   */
-  beatRates: {
-    label: 'Beat shown at',
-    labelJa: '拍動の表示',
-    note: 'Display only; the heart rate and results do not change.',
-    noteJa: '表示だけの速さです。心拍数と計算結果は変わりません。',
-    options: [
-      { id: 'normal', rate: 1, label: 'Normal', labelJa: '通常' },
-      { id: 'slow', rate: 0.25, label: '¼ speed', labelJa: '1/4の速さ' },
-      { id: 'hold', rate: 0, label: 'Hold', labelJa: '止める' },
-    ],
+  /** The chain under the inputs (EffectChain.js). */
+  effect: {
+    empty: 'Change an input and what it did appears here: the change → the heart and blood → the figures.',
+    emptyJa: '入力を変えると、ここに「変えたもの → 心臓・血流 → 数値」が出ます。',
+    cause: 'Changed',
+    causeJa: '変えたもの',
+    heart: 'Heart & blood',
+    heartJa: '心臓・血流',
+    results: 'Figures',
+    resultsJa: '数値',
+  },
+};
+
+/**
+ * The explanation animation's words (`explainerStoryboard.js`). `{name}` is a
+ * solved value filled in at that moment; no figure is written here.
+ */
+export const EXPLAINER_COPY = {
+  title: 'When contractility falls',
+  titleJa: '収縮力が落ちると',
+  summary: 'From the cause, to the heart, to the circulation — the same model you operate, played in order.',
+  summaryJa: '原因 → 心臓の中 → 拍出 → 循環の順に、操作できるのと同じモデルを動かして見せます。',
+  play: 'Play', playJa: '再生',
+  pause: 'Pause', pauseJa: '一時停止',
+  resume: 'Resume', resumeJa: '続きから',
+  replay: 'Play from the start', replayJa: '最初から再生',
+  // Said when the reader changes an input while it plays: the animation
+  // stops where it is, and the condition on screen is theirs from there.
+  interrupted: 'Stopped — you changed an input. The condition on screen is yours to change from here; “Play from the start” begins again from the start.',
+  interruptedJa: '手で操作したので再生を止めました。いまの状態から操作を続けられます。「最初から再生」で開始時から見直せます。',
+  ended: 'Finished. The model is left at the lowered contractility — “Back to start” returns it.',
+  endedJa: '再生が終わりました。モデルは収縮力を下げた状態のままです。「開始時に戻す」で元に戻せます。',
+  note: 'Numbers are the model’s. It does not compute oxygen delivery or organ perfusion.',
+  noteJa: '数値はモデルの計算結果です。酸素供給や臓器の血流は計算していません。',
+  stages: {
+    start: {
+      heading: 'Start', headingJa: '開始時',
+      text: 'The starting heart sends out {sv} mL with each beat.',
+      textJa: '開始時の心臓は、1回の拍動で {sv} mL の血液を送り出しています。',
+    },
+    cause: {
+      heading: 'The cause', headingJa: '原因',
+      text: 'The heart muscle contracts less forcefully: contractility {eesBefore} → {ees}.',
+      textJa: '心筋の縮む力（収縮力）が落ちます：{eesBefore}→{ees}。',
+    },
+    inside: {
+      heading: 'Inside the heart', headingJa: '心臓の中',
+      text: 'It cannot empty as far: blood left after contraction {esvBefore} → {esv} mL (lines: before).',
+      textJa: '縮みきれず、収縮後に残る血液が増えます：{esvBefore}→{esv} mL（線は変更前）。',
+    },
+    ejection: {
+      heading: 'What leaves', headingJa: '拍出',
+      text: 'Less leaves with each beat: stroke volume {svBefore} → {sv} mL — the bright length leaving the valve.',
+      textJa: '1回に送り出す血液が減ります：{svBefore}→{sv} mL（弁から出る明るい部分の長さ）。',
+    },
+    circulation: {
+      heading: 'The circulation', headingJa: '循環',
+      text: 'Output and pressure fall: cardiac output {coBefore} → {co} L/min, mean arterial pressure {mapBefore} → {map} mmHg.',
+      textJa: '心拍出量と血圧が下がります：心拍出量 {coBefore}→{co} L/min、平均動脈圧 {mapBefore}→{map} mmHg。',
+    },
+    limits: {
+      heading: 'What this model leaves out', headingJa: 'このモデルが含まないもの',
+      text: 'In a body, reflexes would raise the rate and tighten the vessels to hold the pressure. This model has none, so the rate stays at {hr}/min.',
+      textJa: '実際の体では、反射で心拍数が上がり血管が締まって血圧を支えます。このモデルには反射がないので、心拍数は {hr}/分 のままです。',
+    },
   },
 };
 
 export const COMPARISON_LABEL = {
-  label: 'Compare with before',
-  labelJa: '変更前と並べる',
-  description: 'Side by side with this preset’s starting condition — the same scale, the same phase.',
-  descriptionJa: 'このプリセットの操作前の条件と並べます。縮尺も位相も同じです。',
+  // Drawn over, not beside: the starting condition's cavity as lines inside
+  // this chamber, at the same phase (owner's review, 2026-09-27).
+  label: 'Show before (lines)',
+  labelJa: '変更前を重ねる',
+  description: 'The starting condition’s cavity, drawn as lines inside this heart at the same moment of the beat — same view, same scale.',
+  descriptionJa: '開始時の内腔を、同じ拍動の瞬間に、この心臓の中へ線で重ねます。視点も縮尺も同じです。',
 };
 
 export const PRESSURE_VOLUME_LABEL = {
@@ -559,17 +631,11 @@ export const ANNOTATIONS = [
  */
 export const COMPARISON_ANNOTATIONS = [
   {
-    id: 'before-heart',
-    text: 'Before',
-    sub: '変更前',
-    anchor: 'comparisonBefore',
-    comparisonOnly: true,
-  },
-  {
-    id: 'current-heart',
-    text: 'After',
-    sub: '変更後',
-    anchor: 'comparisonNow',
+    // One label: "before" is a cage drawn inside this heart, not a second heart.
+    id: 'before-cage',
+    text: 'Before (lines)',
+    sub: '変更前（線）',
+    anchor: 'beforeCage',
     comparisonOnly: true,
   },
 ];

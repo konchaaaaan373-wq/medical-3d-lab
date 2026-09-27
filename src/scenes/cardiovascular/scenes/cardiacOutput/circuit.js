@@ -88,16 +88,53 @@ export const RETURN_PATH = smoothCurve([
   [ANATOMY.mitralValve.x, ANATOMY.mitralValve.y + 0.3, ANATOMY.mitralValve.z],
 ]);
 
-/** Where along the arterial run the resistance is marked, in path coordinates. */
-const RESISTANCE_ZONE = { from: 0.5, to: 0.92 };
-const BAND_POSITIONS = [0.58, 0.7, 0.82];
+/**
+ * The systemic bed: many small vessels side by side, between the end of the
+ * arterial run and the start of the venous one.
+ *
+ * Systemic vascular resistance is a property of the whole bed — thousands of
+ * arterioles in parallel, which narrow and widen together — not of one place
+ * on one tube. It was drawn as three rings closing on the arterial run, and a
+ * ring on a tube reads as a stenosis: a local lesion, the opposite of what it
+ * stood for (owner's review, 2026-09-27). So the bed is drawn as a fan of
+ * parallel vessels, all narrowing by the same amount, with the blood crossing
+ * it slower as the output falls. The count, their length and their spread are
+ * drawing choices; what is the model's is that they narrow together and by
+ * how much the lumped resistance moved.
+ */
+const BED_FROM = 0.72; // on the arterial run
+const BED_TO = 0.28; // on the venous run
+const BED_VESSELS = 7;
+const BED_SPREAD = 1.6; // how far the widest arc bows out, world units
+
+function bedCurves() {
+  const start = ARTERIAL_PATH.getPointAt(BED_FROM);
+  const end = VENOUS_PATH.getPointAt(BED_TO);
+  const mid = start.clone().add(end).multiplyScalar(0.5);
+  // Nested arcs bowing out to the screen's left, away from the heart: the
+  // vessels separate on screen instead of stacking along the line of sight.
+  // (The scene's camera looks along roughly +z, so a spread in z was a spread
+  // nobody could see — the first version drew the bed as one flat patch.)
+  const screenLeft = new THREE.Vector3(-0.92, 0, 0.34).normalize();
+  return Array.from({ length: BED_VESSELS }, (_, i) => {
+    const k = i / (BED_VESSELS - 1); // 0 … 1
+    const bow = mid.clone().addScaledVector(screenLeft, BED_SPREAD * (0.25 + 1.35 * k));
+    return new THREE.QuadraticBezierCurve3(start.clone(), bow, end.clone());
+  });
+}
+
+/** The venous run's resting calibre; it fills with the circulating volume. */
+const VENOUS_RADIUS = 0.2;
+
+/** The bed's resting calibre, and how far it narrows and widens (presentation). */
+const BED_RADIUS = 0.085;
 
 /** The node standing for the right heart and the pulmonary circulation. */
 const NODE_POSITION = new THREE.Vector3(6.4, -0.2, -2.95);
 
 /** Anchors a label may hang from. World coordinates, since nothing here moves. */
 const CIRCUIT_ANCHORS = {
-  resistance: ARTERIAL_PATH.getPointAt((RESISTANCE_ZONE.from + RESISTANCE_ZONE.to) / 2),
+  resistance: ARTERIAL_PATH.getPointAt(BED_FROM).lerp(VENOUS_PATH.getPointAt(BED_TO), 0.5).add(new THREE.Vector3(-0.92, 0, 0.34).multiplyScalar(BED_SPREAD * 1.1)),
   return: VENOUS_PATH.getPointAt(0.45),
   node: NODE_POSITION.clone(),
 };
@@ -105,6 +142,21 @@ const CIRCUIT_ANCHORS = {
 /**
  * @param {{ compact?: boolean }} [options]
  */
+/**
+ * How much of the arterial run one beat's blood fills, in path coordinates.
+ *
+ * Blood in a tube of fixed calibre occupies a length in proportion to its
+ * volume, so the bolus is drawn as a length, not a sphere: a stroke of 44 mL
+ * is 0.62 of the length of one of 71 mL — the same ratio as the volumes, and
+ * readable at a glance, where a sphere's width would change by only the cube
+ * root. The calibre is the drawing's and the scale (a fifth of the run at
+ * 70 mL) is a drawing scale; the proportion is the model's.
+ */
+export function bolusLengthFor(strokeVolumeMl) {
+  const sv = Math.max(0, Number(strokeVolumeMl) || 0);
+  return 0.2 * (sv / 70);
+}
+
 export function buildCircuit({ compact = false } = {}) {
   const object = new THREE.Group();
   object.name = 'circuit';
@@ -115,7 +167,7 @@ export function buildCircuit({ compact = false } = {}) {
     radial: compact ? 12 : 16,
   });
   const venousTube = new TubeSurface(VENOUS_PATH, {
-    radius: () => 0.2,
+    radius: () => VENOUS_RADIUS,
     steps: compact ? 44 : 64,
     radial: compact ? 10 : 14,
   });
@@ -149,24 +201,44 @@ export function buildCircuit({ compact = false } = {}) {
   const back = new THREE.Mesh(returnTube.geometry, arterialMaterial);
   back.name = 'oxygenated-return';
 
-  // The bands mark the zone rather than pinch one spot. A single ring closing
-  // on a tube reads as a stenosis, which is a local lesion — the opposite of
-  // what a distributed arteriolar resistance is.
-  const bandMaterial = new THREE.MeshBasicMaterial({
+  // The bed: see `bedCurves`. One material, so every vessel in it narrows and
+  // tints together.
+  const bedMaterial = tissueMaterial({
     color: PALETTE.resistance,
+    roughness: 0.45,
+    emissive: PALETTE.resistance,
+    emissiveIntensity: 0.12,
+    opacity: 0.75,
+  });
+  const bedPaths = bedCurves();
+  const bedTubes = bedPaths.map((curve) => new TubeSurface(curve, {
+    radius: () => BED_RADIUS,
+    steps: compact ? 16 : 24,
+    radial: compact ? 6 : 8,
+  }));
+  const bed = new THREE.Group();
+  bed.name = 'systemic-bed';
+  for (const tube of bedTubes) bed.add(new THREE.Mesh(tube.geometry, bedMaterial));
+
+  // What one beat sends out: a bright length of the arterial run that leaves
+  // the aortic valve with each ejection, as long as the solved stroke volume
+  // (`bolusLengthFor`). A presentation of a model output — the tube is not a
+  // vessel — but its length is the stroke volume and nothing else.
+  const bolusTube = new TubeSurface(ARTERIAL_PATH, {
+    radius: () => 0,
+    steps: compact ? 72 : 110,
+    radial: compact ? 10 : 14,
+  });
+  const bolusMaterial = new THREE.MeshBasicMaterial({
+    color: PALETTE.flow,
     transparent: true,
-    opacity: 0.4,
+    opacity: 0,
     depthWrite: false,
   });
-  const bands = new THREE.Group();
-  bands.name = 'resistance-zone';
-  for (const u of BAND_POSITIONS) {
-    const band = new THREE.Mesh(new THREE.TorusGeometry(0.33, 0.07, 10, 28), bandMaterial);
-    band.position.copy(ARTERIAL_PATH.getPointAt(u));
-    const tangent = ARTERIAL_PATH.getTangentAt(u);
-    band.quaternion.setFromUnitVectors(new THREE.Vector3(0, 0, 1), tangent);
-    bands.add(band);
-  }
+  const bolus = new THREE.Mesh(bolusTube.geometry, bolusMaterial);
+  bolus.name = 'stroke-bolus';
+  bolus.visible = false;
+  bolus.renderOrder = 2;
 
   // One node for the right ventricle, the pulmonary circulation and the left
   // atrium. It is drawn as a rounded block, not as chambers, because it stands
@@ -180,6 +252,18 @@ export function buildCircuit({ compact = false } = {}) {
   const node = new THREE.Mesh(new THREE.CapsuleGeometry(0.62, 1.1, 4, 12), nodeMaterial);
   node.name = 'right-heart-and-lungs';
   node.position.copy(NODE_POSITION);
+
+  // Blood crossing the bed, at the same rate as the rest of the loop.
+  const bedFlow = createFlowStream({
+    curves: bedPaths,
+    count: compact ? 42 : 70,
+    color: PALETTE.flow,
+    size: 4.2,
+    speed: 0.3,
+    spread: 0.02,
+    seed: 7717,
+    opacity: 0.55,
+  });
 
   const particleCount = compact ? 90 : 150;
   const arterialFlow = createFlowStream({
@@ -220,7 +304,9 @@ export function buildCircuit({ compact = false } = {}) {
     artery,
     vein,
     back,
-    bands,
+    bed,
+    bolus,
+    bedFlow.object,
     node,
     arterialFlow.object,
     venousFlow.object,
@@ -232,6 +318,7 @@ export function buildCircuit({ compact = false } = {}) {
    * mapping without pretending these unitless numbers are medical outputs.
    */
   let presentation = null;
+  let strokeVolumeMl = 68;
 
   return {
     object,
@@ -239,10 +326,12 @@ export function buildCircuit({ compact = false } = {}) {
 
     /**
      * @param {{ cardiacOutputLMin: number, systemicResistanceMmHgSPerMl: number,
-     *   meanArterialPressureMmHg: number }} metrics from the solved beat
+     *   meanArterialPressureMmHg: number, strokeVolumeMl: number }} metrics from the solved beat
      * @param {{ min: number, max: number }} resistanceDomain
+     * @param {{ fillingVolumeMl?: number, fillingDomain?: { min: number, max: number } }} [input]
+     *   the circulating filling the beat was solved for, and its range
      */
-    setState(metrics, resistanceDomain) {
+    setState(metrics, resistanceDomain, { fillingVolumeMl, fillingDomain } = {}) {
       // Normalised positions inside the ranges the model can reach, so the
       // drawing uses its whole span instead of crowding into a corner.
       const flow = clamp((metrics.cardiacOutputLMin - 2.0) / 6.0);
@@ -251,36 +340,72 @@ export function buildCircuit({ compact = false } = {}) {
         (metrics.systemicResistanceMmHgSPerMl - resistanceDomain.min) /
           (resistanceDomain.max - resistanceDomain.min)
       );
+      const filling = fillingDomain && Number.isFinite(fillingVolumeMl)
+        ? clamp((fillingVolumeMl - fillingDomain.min) / (fillingDomain.max - fillingDomain.min))
+        : 0.5;
 
       // Rate rides on speed alone. Doubling the particle count as well would
       // show one change in cardiac output twice and make it look larger than
       // the model said.
       const particleSpeed = 0.55 + flow * 1.25;
-      const calibre = lerp(1.06, 0.68, resistance);
+      // The bed narrows with the lumped resistance. Poiseuille would make the
+      // radius go as the fourth root of 1/R — a narrowing too small to see
+      // across this range — so the calibre is a drawing scale over the
+      // control's range, labelled as such; its direction and its order are
+      // the model's.
+      const calibre = lerp(1.5, 0.45, resistance);
+      // Most of the circulating volume sits in the veins, so that is where
+      // more filling is drawn: a fuller venous run. A drawing scale again.
+      const venousCalibre = lerp(0.7, 1.45, filling);
 
       arterialFlow.setRate(particleSpeed);
       venousFlow.setRate(particleSpeed);
       returnFlow.setRate(particleSpeed);
+      bedFlow.setRate(particleSpeed);
       arterialMaterial.emissiveIntensity = 0.06 + pressure * 0.26;
-      bandMaterial.opacity = 0.26 + resistance * 0.54;
+      bedMaterial.emissiveIntensity = 0.08 + resistance * 0.3;
 
-      // Narrow the marked zone only. The run leaving the ventricle keeps its
-      // calibre, because the resistance being represented is arteriolar.
-      arterialTube.refresh((u, base) => {
-        const inZone = smoothstep(RESISTANCE_ZONE.from, RESISTANCE_ZONE.from + 0.1, u) *
-          (1 - smoothstep(RESISTANCE_ZONE.to - 0.06, RESISTANCE_ZONE.to, u));
-        return base * lerp(1, calibre, inZone);
-      });
-      for (const band of bands.children) band.scale.setScalar(calibre);
+      for (const tube of bedTubes) tube.refresh((u, base) => base * calibre);
+      venousTube.refresh((u, base) => base * venousCalibre);
+      strokeVolumeMl = metrics.strokeVolumeMl;
 
       presentation = {
         particleSpeed,
         particleCount,
         returnParticleCount: Math.round(particleCount * 0.7),
         calibre,
+        bedVessels: bedTubes.length,
+        bedRadius: BED_RADIUS * calibre,
+        venousRadius: VENOUS_RADIUS * venousCalibre,
+        bolusLength: bolusLengthFor(metrics.strokeVolumeMl),
         arterialEmissive: arterialMaterial.emissiveIntensity,
-        bandOpacity: bandMaterial.opacity,
       };
+    },
+
+    /**
+     * Where this beat's bolus is: `travel` 0 at the valve as ejection starts,
+     * 1 where it has faded into the arterial run. Called every frame.
+     *
+     * @param {number} travel 0..1, or a negative number when there is none
+     */
+    setBolus(travel) {
+      if (!(travel >= 0 && travel <= 1)) {
+        bolus.visible = false;
+        return;
+      }
+      const length = bolusLengthFor(strokeVolumeMl);
+      // The head leaves the valve and runs on past where the tail was; the
+      // whole length is on the run from a fifth of the way through.
+      const head = 0.02 + travel * (0.55 + length);
+      const tail = head - length;
+      const edge = 0.015;
+      bolusTube.refresh((u) => {
+        if (u < tail - edge || u > head + edge || u < 0.02) return 0;
+        const ramp = smoothstep(tail - edge, tail + edge, u) * (1 - smoothstep(head - edge, head + edge, u));
+        return 0.26 * ramp;
+      });
+      bolusMaterial.opacity = 0.7 * (1 - smoothstep(0.55, 1, travel));
+      bolus.visible = bolusMaterial.opacity > 0.01;
     },
 
     /** @returns {null | {particleSpeed:number, particleCount:number, calibre:number}} */
@@ -292,12 +417,14 @@ export function buildCircuit({ compact = false } = {}) {
       arterialFlow.update(dt);
       venousFlow.update(dt);
       returnFlow.update(dt);
+      bedFlow.update(dt);
     },
 
     dispose() {
       arterialFlow.dispose();
       venousFlow.dispose();
       returnFlow.dispose();
+      bedFlow.dispose();
     },
   };
 }

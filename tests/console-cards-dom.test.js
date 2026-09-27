@@ -1,13 +1,15 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 
-import { createBeatRateControl, createConsoleCard, createConsoleCards } from '../src/components/ConsoleCards.js';
+import { createConsoleCard, createConsoleCards } from '../src/components/ConsoleCards.js';
 import { CONSOLE_LAYOUT } from '../src/data/cardiacOutput.js';
 import { findByClass, installFakeDocument } from './helpers/fake-dom.js';
 
 /**
- * The experiment console as two cards (owner, 2026-09-26): "change the
- * conditions" and "how it is shown", both closed at first, one open at a time.
+ * The experiment console as two cards: operating the model, and the
+ * explanation animation — both closed at first. By default one card is open
+ * at a time; the experiment layout opens them independently (owner,
+ * 2026-09-27).
  * Opening and closing is the browser's (<details>); what is ours is that a
  * card starts closed, that opening one closes the other, and that a closed
  * card still says what is in it.
@@ -31,7 +33,7 @@ const press = (card) => {
   card.element.dispatchEvent({ type: 'toggle' });
 };
 
-test('both cards start closed, and opening one closes the other', () =>
+test('both cards start closed, and by default opening one closes the other', () =>
   withDocument(() => {
     const conditions = createConsoleCard({ id: 'conditions', copy: CONSOLE_LAYOUT.cards.conditions, body: [] });
     const shown = createConsoleCard({ id: 'view', copy: CONSOLE_LAYOUT.cards.view, body: [] });
@@ -48,11 +50,24 @@ test('both cards start closed, and opening one closes the other', () =>
     assert.ok(!conditions.open && !shown.open, 'and both can be closed again');
   }));
 
+test('the experiment layout\'s two cards open and close independently', () =>
+  withDocument(() => {
+    const conditions = createConsoleCard({ id: 'conditions', copy: CONSOLE_LAYOUT.cards.conditions, body: [] });
+    const shown = createConsoleCard({ id: 'view', copy: CONSOLE_LAYOUT.cards.view, body: [] });
+    createConsoleCards([conditions, shown], { exclusive: false });
+    assert.ok(!conditions.open && !shown.open, 'closed at first');
+    press(conditions);
+    press(shown);
+    assert.ok(conditions.open && shown.open, 'both open at once');
+    press(conditions);
+    assert.ok(!conditions.open && shown.open, 'closing one leaves the other');
+  }));
+
 test('a closed card says what it holds, and can say what changed', () =>
   withDocument(() => {
     const card = createConsoleCard({ id: 'conditions', copy: CONSOLE_LAYOUT.cards.conditions, body: [] });
     const [summary] = findByClass(card.element, 'console-card-summary');
-    assert.match(words(summary), /収縮力・心拍数・充満量・抵抗/);
+    assert.match(words(summary), /充満量・血管抵抗・収縮力・心拍数/);
     assert.match(words(findByClass(card.element, 'console-card-title')[0]), /実際に操作する/);
     assert.equal(card.element.dataset.state, undefined, 'no state until something changes');
     card.setState('Changed: Contractility↓', '変更中：収縮力↓');
@@ -63,25 +78,15 @@ test('a closed card says what it holds, and can say what changed', () =>
     assert.equal(card.element.dataset.state, undefined);
   }));
 
-test('the beat-speed control presses one option and reports its rate', () =>
-  withDocument(() => {
-    const calls = [];
-    const control = createBeatRateControl({ copy: CONSOLE_LAYOUT.beatRates, onChange: (...args) => calls.push(args) });
-    const options = findByClass(control.element, 'beat-rate-option');
-    assert.deepEqual(options.map((node) => node.getAttribute('aria-pressed')), ['true', 'false', 'false']);
-    options[1].click();
-    assert.deepEqual(calls, [[0.25, 'slow']]);
-    assert.equal(control.value, 'slow');
-    assert.deepEqual(options.map((node) => node.getAttribute('aria-pressed')), ['false', 'true', 'false']);
-    // Slower or held, never faster than the model's own rate.
-    assert.ok(CONSOLE_LAYOUT.beatRates.options.every((option) => option.rate >= 0 && option.rate <= 1));
-  }));
-
-test('"change the model" and "change the view" are in different cards', () => {
-  // The view tools live in the view card, not behind "More": only the lesson,
-  // the reel and the image export stay there.
-  for (const id of ['compare', 'data', 'zoom', 'inspection']) {
-    assert.ok(!CONSOLE_LAYOUT.overflow.includes(id), `${id} is a view tool and belongs in the view card`);
+test('the animation card holds the explanation and nothing else; the view tools are behind More', () => {
+  // The beat-speed buttons were a display setting shown under "animation",
+  // and read as the explanation the owner asked for (2026-09-27). They are
+  // gone, and the plots, the camera and the display options are behind
+  // "More", in neither card.
+  assert.equal(CONSOLE_LAYOUT.beatRates, undefined, 'no beat-speed setting');
+  for (const id of ['data', 'zoom', 'inspection']) {
+    assert.ok(CONSOLE_LAYOUT.overflow.includes(id), `${id} is behind More`);
   }
-  assert.ok(CONSOLE_LAYOUT.cards.conditions.titleJa && CONSOLE_LAYOUT.cards.view.titleJa);
+  assert.ok(!CONSOLE_LAYOUT.overflow.includes('compare'), 'the comparison belongs to operating, not to More');
+  assert.match(CONSOLE_LAYOUT.cards.view.titleJa, /説明アニメーション/);
 });

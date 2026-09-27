@@ -16,7 +16,8 @@ import {
   resistanceAt,
 } from './reelStoryboard.js';
 import { ExperimentSession } from './experimentSession.js';
-import { changeOf, describeChange, movedInputs, signedDelta } from './changeSummary.js';
+import { EXPLAINER_DURATION, EXPLAINER_STAGES, captionFor, contractilityAt, stageAt } from './explainerStoryboard.js';
+import { changeOf, describeChange, describeEffect, movedInputs, signedDelta } from './changeSummary.js';
 import { CONTROL_DOMAIN, PRESET_IDS, REFERENCE_GEOMETRY } from '../../../../models/cardiacOutput.js';
 import {
   advanceCardiacPhase,
@@ -38,6 +39,7 @@ import {
   LEARNING_LABEL,
   LEARNING_MODULES,
   REEL_LABEL,
+  EXPLAINER_COPY,
   DISCLAIMER,
   DISCLAIMER_JA,
   DISCLAIMER_SHORT,
@@ -58,20 +60,16 @@ import { disposeObject } from '../../../../utils/dispose.js';
 const VIEW_DIRECTION = new THREE.Vector3(0.34, 0.2, 0.92).normalize();
 
 /**
- * The direction the two hearts are spread along while comparing: the screen's
- * horizontal, as seen from `VIEW_DIRECTION` — not world x.
- *
- * They used to be spread along world x. The camera looks at the scene from
- * the side and above, so along x one heart sat nearer the camera than the
- * other and was drawn larger and lower: at the start of an experiment, with
- * every figure ±0, "before" and "now" looked like two different hearts
- * (owner's recording, 24 s). Spread across the line of sight instead, both
- * are at the same depth, and what differs between them is the condition.
+ * Smaller subject boxes for the explanation's closer looks (see
+ * `getSubjectBounds`). "heart" is the chamber with a margin, "cavity" the
+ * opened cavity where the "before" lines are drawn, "outflow" the valve and
+ * the first run of the arterial loop where the bolus leaves.
  */
-const COMPARISON_AXIS = new THREE.Vector3(VIEW_DIRECTION.z, 0, -VIEW_DIRECTION.x).normalize();
-
-/** How far apart the two hearts sit while comparing. */
-const COMPARISON_OFFSET = 7.4;
+const FOCUS_BOXES = {
+  heart: { min: new THREE.Vector3(-3.8, -7.2, -3.0), max: new THREE.Vector3(3.6, 2.8, 3.4) },
+  cavity: { min: new THREE.Vector3(-2.4, -6.4, -1.2), max: new THREE.Vector3(2.8, 1.6, 3.2) },
+  outflow: { min: new THREE.Vector3(-6.2, -2.4, -3.6), max: new THREE.Vector3(2.6, 4.8, 2.8) },
+};
 
 const framing = (target, distance) => ({
   position: target.clone().addScaledVector(VIEW_DIRECTION, distance),
@@ -168,13 +166,9 @@ export class CardiacOutputScene {
     this.phase = 0;
     this.cardiacPhaseDriven = false;
     this.comparing = false;
-    /**
-     * How fast the beat is *shown*, 0 (held) to 1 (real time). Presentation
-     * only: the solved beat, the heart rate and every number are unchanged;
-     * only the clock the animation reads is scaled. A phase driven from
-     * outside (the reel) ignores it.
-     */
-    this.presentationBeatRate = 1;
+    // The animation's own clock (the blood's drift), advanced by the frame
+    // time. One clock whether or not the reel drives the phase, so nothing
+    // jumps when it takes the beat or hands it back.
     this._presentationClock = 0;
 
     this.session = new ExperimentSession({ presetId: PRESET_IDS.REFERENCE });
@@ -235,20 +229,24 @@ export class CardiacOutputScene {
 
     this.circuit = buildCircuit({ compact });
 
-    // The mark of where the cavity wall stood at end-diastole. Off until there
-    // is a stroke to see it against — at end-diastole it lies on the lining.
-    this.outline = new CavityOutline({ cutAngle: ANATOMY.cutAngle, color: PALETTE.outline });
-    this.outline.visible = false;
+    // "Before", drawn over "now": the cavity of the condition the experiment
+    // started from, at the same phase, in the same place, at the same scale —
+    // a wire cage inside the cut-open chamber. It replaced a second, smaller
+    // heart drawn beside this one, which asked the reader to compare two
+    // pictures across the screen (owner's review, 2026-09-27). Off until the
+    // reader asks for it and there is something to compare.
+    this.beforeOutline = new CavityOutline({ cutAngle: ANATOMY.cutAngle, color: PALETTE.before });
+    this.beforeOutline.name = 'before-cavity';
+    this.beforeOutline.visible = false;
 
     this.primary = new THREE.Group();
     this.primary.name = 'current-condition';
-    this.primary.add(this.ventricle, this.apparatus, this.blood, this.outline);
+    this.primary.add(this.ventricle, this.apparatus, this.blood, this.beforeOutline);
 
     this.root.add(this._createLights(), this.primary, this.circuit.object);
 
     this._offResize = this.viewer.onResize((camera, renderer) => {
       this.blood.syncViewport(camera, renderer);
-      this.reference?.syncViewport(camera, renderer);
     });
 
     this._applyState();
@@ -287,6 +285,13 @@ export class CardiacOutputScene {
       myocardialVolumeMl: this.myocardialVolumeMl,
       longToShortAxisRatio: REFERENCE_GEOMETRY.longToShortAxisRatio,
     });
+    // The same anchor for the "before" cage, so its apex is pinned the way
+    // the chamber's is.
+    this.beforeEdShape = ventricleShape({
+      cavityVolumeMl: this.session.baseline.metrics.edvMl,
+      myocardialVolumeMl: this.myocardialVolumeMl,
+      longToShortAxisRatio: REFERENCE_GEOMETRY.longToShortAxisRatio,
+    });
   }
 
   /**
@@ -302,47 +307,38 @@ export class CardiacOutputScene {
    * condition. Nothing threw.
    */
   _applyState() {
-    // The sequence drives a control every frame and the cache answers most of
-    // those with the beat already on screen. Rebuilding the circuit's tube
-    // geometry for a solution nothing changed is work nobody asked for.
-    // The heart being compared against follows the *baseline*, so it is
-    // refreshed here with everything else rather than when the Compare button
-    // is pressed.
-    this.reference?.setState(this.session.baseline.metrics, this.session.baseline.cycle);
     this._refreshEndDiastolicShape();
     if (!this.blood) return;
     this.blood.setEjectionWindow(this.state.ejectionStartPhase, this.state.ejectionEndPhase);
-    this.circuit.setState(this.state, CONTROL_DOMAIN.systemicResistanceMmHgSPerMl);
-    this._applyOutlineShape();
+    this.circuit.setState(this.state, CONTROL_DOMAIN.systemicResistanceMmHgSPerMl, {
+      fillingVolumeMl: this.session.view.input.fillingVolumeMl,
+      fillingDomain: CONTROL_DOMAIN.fillingVolumeMl,
+    });
   }
 
-  update(realDt) {
-    // One clock for the animation, always: it runs at the display rate, or at
-    // real time while the phase is driven from outside (the reel). Switching
-    // between this and the viewer's own elapsed time made the blood jump at
-    // the start and end of every reel recorded after a slowed or held beat.
-    const rate = this.cardiacPhaseDriven ? 1 : this.presentationBeatRate;
-    const dt = realDt * rate;
+  update(dt) {
     this._presentationClock += dt;
-    const elapsed = this._presentationClock;
     if (!this.cardiacPhaseDriven) {
       this.phase = advanceCardiacPhase(this.phase, dt, this.state.heartRatePerMin);
     }
     this._applyShape();
-    this._applyOutlineVisibility();
+    this._applyBeforeOutline();
     this.blood.setCycle(this.phase, this.state.ejectionFraction);
-    this.blood.update(elapsed);
+    this.blood.update(this._presentationClock);
     this.circuit.update(dt);
-    if (this.comparing && this.reference) {
-      // Its own rate — see `setComparison`. A phase driven from outside (the
-      // reel) is one clock for both, because the sequence is a presentation of
-      // one beat, not a comparison of two rates.
-      this._referencePhase = this.cardiacPhaseDriven
-        ? this.phase
-        : advanceCardiacPhase(this._referencePhase ?? this.phase, dt, this.session.baseline.metrics.heartRatePerMin);
-      this.reference.setPhase(this._referencePhase);
-      this.reference.update(elapsed);
-    }
+    this.circuit.setBolus(this.bolusTravel());
+  }
+
+  /**
+   * Where this beat's stroke is on its way out: 0 as ejection starts, 1 when
+   * it has faded, negative when there is none on screen. It leaves with the
+   * solved ejection and is gone before the next one.
+   */
+  bolusTravel() {
+    const since = this.phase - this.state.ejectionStartPhase;
+    const t = since - Math.floor(since);
+    const visibleFor = 0.62;
+    return t <= visibleFor ? t / visibleFor : -1;
   }
 
   _applyShape() {
@@ -380,16 +376,24 @@ export class CardiacOutputScene {
     return Math.min(1, Math.max(0, (edvMl - volume) / Math.max(1, edvMl - esvMl)));
   }
 
-  _applyOutlineShape() {
-    this.outline?.setShape({ ...this.edShape, baseY: ANATOMY.baseY });
-  }
-
-  _applyOutlineVisibility() {
-    // Presentation only: the mark itself is the solved end-diastolic cavity and
-    // this decides whether it is drawn. It earns its place while comparing,
-    // where the stroke is what the two hearts are being read for.
-    this.outline?.setOpacity((this.comparing ? 1 : 0) * this._emptiedFraction());
-    this.reference?.setOutline(this.comparing ? this.reference.emptiedFraction() : 0);
+  /**
+   * The "before" cage, at the phase the chamber is at. Presentation only: the
+   * cage is the solved cavity of the starting condition; this decides whether
+   * it is drawn and keeps it in step.
+   */
+  _applyBeforeOutline() {
+    const show = this.comparing && this.session.moved;
+    this.beforeOutline.visible = show;
+    if (!show) return;
+    const cavityVolumeMl = cavityVolumeAt(this.phase, { cycle: this.session.baseline.cycle });
+    const shape = ventricleShape({
+      cavityVolumeMl,
+      myocardialVolumeMl: this.myocardialVolumeMl,
+      longToShortAxisRatio: REFERENCE_GEOMETRY.longToShortAxisRatio,
+    });
+    this.beforeOutline.position.y = (shape.outerSemiLength - this.beforeEdShape.outerSemiLength) * APEX_PINNING;
+    this.beforeOutline.setShape({ ...shape, baseY: ANATOMY.baseY });
+    this.beforeOutline.setOpacity(1);
   }
 
   // -------------------------------------------------------------------------
@@ -527,6 +531,72 @@ export class CardiacOutputScene {
   }
 
   /**
+   * The explanation animation (`explainerStoryboard.js`): what the shell's
+   * player needs to play it. The player owns time and the play/pause state;
+   * everything about the circulation is here, and every change goes through
+   * `setModelControl`, as a reader's would.
+   */
+  getExplainer() {
+    return {
+      copy: EXPLAINER_COPY,
+      duration: EXPLAINER_DURATION,
+      stages: EXPLAINER_STAGES,
+      stageAt,
+      /** Where it starts: the reference heart, nothing changed. */
+      begin: () => {
+        this.setModelControl('preset', PRESET_IDS.REFERENCE);
+        this.resetModelControls();
+      },
+      /**
+       * The model at time `t`. One `op` for the whole playback, so one undo
+       * takes the whole fall back.
+       */
+      driveAt: (t, op) => {
+        const value = contractilityAt(t);
+        if (value !== this.session.input.contractilityEesMmHgPerMl) {
+          this.setModelControl('contractilityEesMmHgPerMl', value, { op });
+        }
+        const { emphasis } = stageAt(t);
+        this.setBeatEmphasis({ residual: emphasis.residual ?? 0, ejection: emphasis.ejection ?? 0 });
+      },
+      /** Leave no emphasis behind when it stops. */
+      end: () => this.setBeatEmphasis({ residual: 0, ejection: 0 }),
+      caption: (stageId) =>
+        captionFor(stageId, {
+          before: this.session.baseline.metrics,
+          now: this.state,
+          input: this.session.view.input,
+        }),
+    };
+  }
+
+  /**
+   * Which part the framing is fitted to: one of `FOCUS_BOXES`, or null for
+   * the whole assembly. Presentation only — it changes the box the shell fits
+   * the camera to, nothing the model is in.
+   *
+   * @param {string|null} id
+   */
+  setFramingFocus(id) {
+    this._framingFocus = FOCUS_BOXES[id] ? id : null;
+  }
+
+  /**
+   * Where the explanation looks from at each stage (`applyGuideFraming`).
+   * Same view direction as the scene's own camera, so a stage change reads as
+   * moving closer or further, never as the heart turning.
+   */
+  getGuideFramings() {
+    const at = (x, y, z, distance) => ({ target: new THREE.Vector3(x, y, z), direction: VIEW_DIRECTION.clone(), distance });
+    return {
+      overview: at(-0.4, -1.6, 0.2, 30),
+      heart: at(0.1, -2.2, 0.4, 20),
+      cavity: at(0.3, -2.0, 0.9, 15.5),
+      outflow: at(-2.2, 0.8, -0.8, 19),
+    };
+  }
+
+  /**
    * Guided lessons.
    *
    * Pure data. The lesson has no private path into the model: it moves the same
@@ -556,13 +626,13 @@ export class CardiacOutputScene {
       durationSeconds: REEL_DURATION,
       cues: REEL_CUES,
       viewDirection: VIEW_DIRECTION.clone(),
-      // The comparison is the sequence: the right-hand heart is the condition
-      // being driven and the left-hand one is where it started.
+      // The comparison is the sequence: the starting condition's cavity is
+      // drawn as lines inside the heart being driven.
       comparison: true,
       framing: {
-        // Wider than the pair actually is, so the opening dolly has somewhere
-        // to come in from.
-        halfWidth: 12.6,
+        // A little wider than the heart and its loop, so the opening dolly
+        // has somewhere to come in from.
+        halfWidth: 10.2,
         halfHeight: 7.2,
         minimumDistance: 20,
         target: new THREE.Vector3(0, -1.8, 0.2),
@@ -608,7 +678,6 @@ export class CardiacOutputScene {
    */
   setBeatEmphasis(emphasis) {
     this.blood?.setEmphasis(emphasis);
-    this.reference?.blood.setEmphasis(emphasis);
   }
 
   // -------------------------------------------------------------------------
@@ -907,21 +976,23 @@ export class CardiacOutputScene {
     return movedInputs({ baseline: this.session.baseline.input, shown: this.session.view.input });
   }
 
+  /**
+   * What the change did, as a chain: cause → heart and blood → figures
+   * (`describeEffect`). From the starting condition to the one on screen,
+   * both solved; null at the start.
+   */
+  getEffectSummary() {
+    return describeEffect({
+      baseline: this.session.baseline.input,
+      shown: this.session.view.input,
+      before: this.session.baseline.metrics,
+      now: this.state,
+    });
+  }
+
   /** @returns {number} 0..1 */
   getCardiacPhase() {
     return this.phase;
-  }
-
-  /**
-   * How fast the beat is shown (see the constructor). Clamped to 0..1: the
-   * view may slow the beat down or hold it, never run it faster than the rate
-   * the model solved.
-   *
-   * @param {number} rate
-   */
-  setPresentationBeatRate(rate) {
-    const value = Number(rate);
-    this.presentationBeatRate = Number.isFinite(value) ? Math.min(1, Math.max(0, value)) : 1;
   }
 
   /** @param {boolean} driven */
@@ -957,28 +1028,17 @@ export class CardiacOutputScene {
     return this.session.moved;
   }
 
+  /**
+   * "Before" over "now", in place: the starting condition's cavity drawn as a
+   * cage inside this chamber, at the same phase. Same view, same scale, same
+   * moment of the beat — the difference between the cage and the wall is the
+   * change (owner's review, 2026-09-27; it replaced two hearts side by side).
+   *
+   * @param {boolean} enabled
+   */
   setComparison(enabled) {
     this.comparing = enabled;
-    if (enabled && !this.reference) {
-      this.reference = new BeforeHeart(this._bloodBuffers, this._quality, this.myocardialVolumeMl);
-      this.reference.syncViewport(this.viewer.camera, this.viewer.renderer);
-      this.root.add(this.reference);
-    }
-    if (this.reference) {
-      this.reference.setState(this.session.baseline.metrics, this.session.baseline.cycle);
-      this.reference.visible = enabled;
-      this.reference.position.copy(COMPARISON_AXIS).multiplyScalar(enabled ? -COMPARISON_OFFSET : 0);
-      if (enabled) {
-        this._referencePhase = this.phase;
-        this.reference.setPhase(this.phase);
-      }
-    }
-    this.primary.position.copy(COMPARISON_AXIS).multiplyScalar(enabled ? COMPARISON_OFFSET : 0);
-    // The circuit is about one condition, and two conditions cannot share it
-    // without implying they are connected to each other.
-    this.circuit.object.visible = !enabled;
-    this.blood.setExitFalloff(enabled ? 3.5 : 1.2);
-    this._applyOutlineVisibility();
+    this._applyBeforeOutline();
   }
 
   /**
@@ -996,9 +1056,6 @@ export class CardiacOutputScene {
    * into the safe band; it is not a branch in the shell.
    */
   getSubjectBounds() {
-    // The two hearts lie along COMPARISON_AXIS, which has x and z parts.
-    const spreadX = this.comparing ? COMPARISON_OFFSET * Math.abs(COMPARISON_AXIS.x) : 0;
-    const spreadZ = this.comparing ? COMPARISON_OFFSET * Math.abs(COMPARISON_AXIS.z) : 0;
     // On a portrait screen the box stops just above the heart (y 2.6, the
     // ventricle's base is at 2.1) instead of at the top of the loop's arches
     // (4.4). What has to be readable while operating is the ventricle, not the
@@ -1008,9 +1065,12 @@ export class CardiacOutputScene {
     // resistance zone (y ≈ 2.0) stay inside; only the arches' tops may run
     // under the title. Fixed per aspect, never per input, so nothing refits
     // when a value changes.
-    const portrait = !this.comparing && (this.viewer?.camera?.aspect ?? 1.6) < 0.85;
-    const min = new THREE.Vector3(-7.8 - spreadX, -7.1, -3.8 - spreadZ);
-    const max = new THREE.Vector3(7.1 + spreadX, portrait ? 2.6 : 4.4, 3.8 + spreadZ);
+    const portrait = (this.viewer?.camera?.aspect ?? 1.6) < 0.85;
+    // The explanation may look closer (`setFramingFocus`): the same fit,
+    // into the same band, of a smaller box. Fixed per focus, never per input.
+    const focus = FOCUS_BOXES[this._framingFocus];
+    const min = focus ? focus.min.clone() : new THREE.Vector3(-9.3, -7.1, -3.8);
+    const max = focus ? focus.max.clone() : new THREE.Vector3(7.1, portrait ? 2.6 : 4.4, 3.8);
     const corners = [];
     for (const x of [min.x, max.x]) {
       for (const y of [min.y, max.y]) {
@@ -1030,12 +1090,6 @@ export class CardiacOutputScene {
     };
   }
 
-  /** Wider framing that holds both hearts clear of the console. */
-  getComparisonView() {
-    const portrait = this.viewer.camera.aspect < 0.85;
-    return framing(new THREE.Vector3(0, portrait ? -2.4 : -3.4, 0.3), portrait ? 34 : 30);
-  }
-
   getAnnotations() {
     const anchors = {
       cavity: ANCHORS.cavity ?? new THREE.Vector3(0, -2.4, 1.4),
@@ -1043,9 +1097,8 @@ export class CardiacOutputScene {
       resistance: this.circuit?.anchors.resistance.clone() ?? new THREE.Vector3(-8.6, -0.4, -3.4),
       return: this.circuit?.anchors.return.clone() ?? new THREE.Vector3(-1, -5.3, -3),
       node: this.circuit?.anchors.node.clone() ?? new THREE.Vector3(6.4, -0.2, -2.95),
-      // Above each heart's base, where the two sit while comparing.
-      comparisonBefore: COMPARISON_AXIS.clone().multiplyScalar(-COMPARISON_OFFSET).setY(ANATOMY.baseY + 1.6),
-      comparisonNow: COMPARISON_AXIS.clone().multiplyScalar(COMPARISON_OFFSET).setY(ANATOMY.baseY + 1.6),
+      // Just inside the cavity's cut edge, where the "before" cage shows.
+      beforeCage: new THREE.Vector3(0.6, -1.2, 2.1),
     };
     return [...ANNOTATIONS, ...COMPARISON_ANNOTATIONS].map((annotation) => ({
       ...annotation,
@@ -1055,7 +1108,7 @@ export class CardiacOutputScene {
 
   dispose() {
     this._offResize?.();
-    this.reference?.dispose();
+    this.beforeOutline?.dispose();
     this.apparatus?.dispose();
     this.circuit?.dispose();
     disposeObject(this.root);
@@ -1067,99 +1120,4 @@ function formatControl(id, value) {
   if (id === 'systemicResistanceMmHgSPerMl') return value.toFixed(2);
   if (id === 'contractilityEesMmHgPerMl') return value.toFixed(2);
   return String(Math.round(value));
-}
-
-/**
- * The condition before the reader moved anything, drawn beside the current one.
- *
- * Its cavity comes from the same model, solved for that condition, and its
- * myocardial volume is the same fixed value the current heart uses — the two
- * differ in what the circulation did, not in how much muscle they were given.
- */
-class BeforeHeart extends THREE.Group {
-  /**
-   * @param {object} bloodBuffers the same particle slots the current heart uses
-   * @param {{segments:number, profilePoints:number}} quality
-   * @param {number} myocardialVolumeMl the one fixed muscle volume, shared
-   */
-  constructor(bloodBuffers, quality, myocardialVolumeMl) {
-    super();
-    this.name = 'before-condition';
-    this.myocardialVolumeMl = myocardialVolumeMl;
-    this.phase = 0;
-    this.chamber = new Chamber({
-      cutAngle: ANATOMY.cutAngle,
-      segments: quality.segments,
-      profilePoints: quality.profilePoints,
-      variant: 'reference',
-    });
-    this.apparatus = new ValveApparatus({ variant: 'reference' });
-    this.blood = new BloodField(bloodBuffers, {
-      flowColor: PALETTE.flow,
-      staticColor: PALETTE.residual,
-    });
-    this.blood.material.uniforms.uOpacity.value = 0.3;
-    this.outline = new CavityOutline({ cutAngle: ANATOMY.cutAngle, color: PALETTE.outline });
-    this.outline.visible = true;
-    this.add(this.chamber, this.apparatus, this.blood, this.outline);
-  }
-
-  setState(metrics, cycle) {
-    this.metrics = metrics;
-    this.cycle = cycle;
-    this.edShape = ventricleShape({
-      cavityVolumeMl: metrics.edvMl,
-      myocardialVolumeMl: this.myocardialVolumeMl,
-      longToShortAxisRatio: REFERENCE_GEOMETRY.longToShortAxisRatio,
-    });
-    this.blood.setEjectionWindow(metrics.ejectionStartPhase, metrics.ejectionEndPhase);
-    this.outline.setShape({ ...this.edShape, baseY: ANATOMY.baseY });
-  }
-
-  emptiedFraction() {
-    const volume = cavityVolumeAt(this.phase, { cycle: this.cycle });
-    const { edvMl, esvMl } = this.metrics;
-    return Math.min(1, Math.max(0, (edvMl - volume) / Math.max(1, edvMl - esvMl)));
-  }
-
-  setOutline(value) {
-    this.outline.setOpacity(value);
-  }
-
-  setPhase(phase) {
-    this.phase = phase;
-    const cavityVolumeMl = cavityVolumeAt(phase, { cycle: this.cycle });
-    const shape = ventricleShape({
-      cavityVolumeMl,
-      myocardialVolumeMl: this.myocardialVolumeMl,
-      longToShortAxisRatio: REFERENCE_GEOMETRY.longToShortAxisRatio,
-    });
-    const descent = (shape.outerSemiLength - this.edShape.outerSemiLength) * APEX_PINNING;
-    this.chamber.position.y = descent;
-    this.blood.setDescent(descent);
-    this.chamber.setTorsion(
-      TORSION_ILLUSTRATIVE_MAX * this.emptiedFraction() * Math.min(1, this.metrics.ejectionFraction / 0.58)
-    );
-    this.chamber.setShape({ ...shape, baseY: ANATOMY.baseY });
-    this.apparatus.update({ ...shape, baseY: ANATOMY.baseY }, phase, this.metrics, descent);
-    this.blood.setCavity(shape.cavityRadius, shape.cavitySemiLength);
-    this.blood.setApexDrift(
-      VENTRICLE_SHAPING.apexDriftX * shape.outerSemiLength,
-      VENTRICLE_SHAPING.apexDriftZ * shape.outerSemiLength
-    );
-  }
-
-  update(elapsed) {
-    this.blood.setCycle(this.phase, this.metrics.ejectionFraction);
-    this.blood.update(elapsed);
-  }
-
-  syncViewport(camera, renderer) {
-    this.blood.syncViewport(camera, renderer);
-  }
-
-  dispose() {
-    this.apparatus.dispose();
-    this.outline.dispose();
-  }
 }
