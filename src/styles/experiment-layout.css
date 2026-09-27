@@ -1645,11 +1645,13 @@
 
 #ui[data-layout='experiment'] .explainer-controls {
   display: flex;
+  flex-wrap: wrap;
   gap: 6px;
 }
 
 #ui[data-layout='experiment'] .explainer-play,
-#ui[data-layout='experiment'] .explainer-replay {
+#ui[data-layout='experiment'] .explainer-replay,
+#ui[data-layout='experiment'] .explainer-restore {
   display: inline-flex;
   align-items: center;
   gap: 6px;
@@ -1661,6 +1663,12 @@
   color: var(--ink);
   font-size: 14px;
   cursor: pointer;
+}
+
+/* `display: inline-flex` above outranks the user agent's `[hidden]`, so a
+   button the player hides would stay on screen without this. */
+#ui[data-layout='experiment'] .explainer-controls > [hidden] {
+  display: none;
 }
 
 #ui[data-layout='experiment'] .explainer-play {

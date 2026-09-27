@@ -24,6 +24,7 @@ import {
 import { MODEL_PROFILES } from '../src/catalog/modelProfiles.js';
 import { INTERVENTION_IDS } from '../src/models/cardiacInterventions.js';
 import { CONTROLS, PRESET_OPTIONS } from '../src/data/cardiacOutput.js';
+import { EXPLAINER_DURATION } from '../src/scenes/cardiovascular/scenes/cardiacOutput/explainerStoryboard.js';
 
 /**
  * The cardiac-output scene against the contract the App actually calls it with.
@@ -985,4 +986,57 @@ test('the animation clock does not jump when the reel takes the phase and hands 
   scene.setCardiacPhaseDriven(false);
   scene.update(0.2, 3);
   assert.ok(Math.abs(seen.at(-1) - before - 0.4) < 1e-9, 'and on from there when the reel lets go');
+});
+
+test('the framing box depends on the screen’s shape and the explanation’s focus only, never on an input', async () => {
+  const scene = await buildScene();
+  const box = () => JSON.stringify(scene.getSubjectBounds().corners.map((corner) => corner.toArray()));
+  const top = () => Math.max(...scene.getSubjectBounds().corners.map((corner) => corner.y));
+  const wide = top();
+  scene.viewer.camera.aspect = 0.55;
+  const tall = top();
+  assert.ok(tall < wide, 'a portrait screen frames less of the loop above the heart');
+  const portrait = box();
+  // Every input to its end: the box does not move, so nothing refits.
+  for (const [id, value] of [['fillingVolumeMl', 980], ['heartRatePerMin', 110], ['contractilityEesMmHgPerMl', 0.8], ['systemicResistanceMmHgSPerMl', 1.8]]) {
+    scene.setModelControl(id, value);
+    assert.equal(box(), portrait, `${id} moved the framing box`);
+  }
+  // A closer look is the explanation's choice, and only through the focus;
+  // an unknown focus, or none, is the whole assembly again.
+  scene.setFramingFocus('cavity');
+  const cavity = box();
+  assert.notEqual(cavity, portrait, 'the focus is a different box');
+  assert.ok(top() < tall, 'and a smaller one');
+  scene.setModelControl('contractilityEesMmHgPerMl', 2.4);
+  assert.equal(box(), cavity, 'an input does not move the focused box either');
+  scene.setFramingFocus('no-such-part');
+  assert.equal(box(), portrait);
+  scene.setFramingFocus('cavity');
+  scene.setFramingFocus(null);
+  assert.equal(box(), portrait);
+});
+
+test('the explanation\'s state key sees every writer: an input, an undo, a reset, a preset, an intervention', async () => {
+  const scene = await buildScene();
+  const explainer = scene.getExplainer();
+  const changes = (what, write) => {
+    const before = explainer.stateKey();
+    write();
+    assert.notEqual(explainer.stateKey(), before, `${what} left the key as it was`);
+  };
+  changes('an input', () => scene.setModelControl('heartRatePerMin', 100, { op: 'a' }));
+  changes('an undo', () => scene.setModelControl('history', 'undo'));
+  scene.setModelControl('fillingVolumeMl', 900, { op: 'b' });
+  changes('a reset', () => scene.resetModelControls());
+  const other = PRESET_OPTIONS.find((option) => option.value !== scene.session.presetId);
+  changes('a preset', () => scene.setModelControl('preset', other.value));
+  scene.setModelControl('preset', PRESET_IDS.REFERENCE);
+  const intervention = Object.values(INTERVENTION_IDS).find((id) => id !== INTERVENTION_IDS.NONE);
+  changes('an intervention', () => scene.setModelControl('intervention', intervention));
+  // Its own drive says whether it changed the model: a held frame did not.
+  explainer.begin();
+  assert.equal(explainer.driveAt(0, 'x'), false, 'the first stage is the untouched start');
+  assert.equal(explainer.driveAt(EXPLAINER_DURATION, 'x'), true);
+  assert.equal(explainer.driveAt(EXPLAINER_DURATION, 'x'), false);
 });

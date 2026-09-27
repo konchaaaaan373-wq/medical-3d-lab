@@ -106,19 +106,23 @@ const BED_FROM = 0.72; // on the arterial run
 const BED_TO = 0.28; // on the venous run
 const BED_VESSELS = 7;
 const BED_SPREAD = 1.6; // how far the widest arc bows out, world units
+/**
+ * The direction the bed's arcs bow out in: to the screen's left, away from the
+ * heart. The scene's camera looks along roughly +z, so a spread in z is a
+ * spread nobody can see — the first version drew the bed as one flat patch.
+ * One constant, because the label that names the bed hangs off the same bow.
+ */
+const SCREEN_LEFT = new THREE.Vector3(-0.92, 0, 0.34).normalize();
 
 function bedCurves() {
   const start = ARTERIAL_PATH.getPointAt(BED_FROM);
   const end = VENOUS_PATH.getPointAt(BED_TO);
   const mid = start.clone().add(end).multiplyScalar(0.5);
-  // Nested arcs bowing out to the screen's left, away from the heart: the
-  // vessels separate on screen instead of stacking along the line of sight.
-  // (The scene's camera looks along roughly +z, so a spread in z was a spread
-  // nobody could see — the first version drew the bed as one flat patch.)
-  const screenLeft = new THREE.Vector3(-0.92, 0, 0.34).normalize();
+  // Nested arcs, so the vessels separate on screen instead of stacking along
+  // the line of sight (`SCREEN_LEFT`).
   return Array.from({ length: BED_VESSELS }, (_, i) => {
     const k = i / (BED_VESSELS - 1); // 0 … 1
-    const bow = mid.clone().addScaledVector(screenLeft, BED_SPREAD * (0.25 + 1.35 * k));
+    const bow = mid.clone().addScaledVector(SCREEN_LEFT, BED_SPREAD * (0.25 + 1.35 * k));
     return new THREE.QuadraticBezierCurve3(start.clone(), bow, end.clone());
   });
 }
@@ -134,7 +138,7 @@ const NODE_POSITION = new THREE.Vector3(6.4, -0.2, -2.95);
 
 /** Anchors a label may hang from. World coordinates, since nothing here moves. */
 const CIRCUIT_ANCHORS = {
-  resistance: ARTERIAL_PATH.getPointAt(BED_FROM).lerp(VENOUS_PATH.getPointAt(BED_TO), 0.5).add(new THREE.Vector3(-0.92, 0, 0.34).multiplyScalar(BED_SPREAD * 1.1)),
+  resistance: ARTERIAL_PATH.getPointAt(BED_FROM).lerp(VENOUS_PATH.getPointAt(BED_TO), 0.5).addScaledVector(SCREEN_LEFT, BED_SPREAD * 1.1),
   return: VENOUS_PATH.getPointAt(0.45),
   node: NODE_POSITION.clone(),
 };
@@ -319,6 +323,12 @@ export function buildCircuit({ compact = false } = {}) {
    */
   let presentation = null;
   let strokeVolumeMl = 68;
+  // What the tubes were last rebuilt for. A rebuild rewrites every vertex of
+  // the tube, and `setState` runs on every model read — most of which (a
+  // rate change, the explanation's held frames) leave these as they were.
+  let drawnCalibre = null;
+  let drawnVenousCalibre = null;
+  let drawnBolus = null;
 
   return {
     object,
@@ -365,8 +375,14 @@ export function buildCircuit({ compact = false } = {}) {
       arterialMaterial.emissiveIntensity = 0.06 + pressure * 0.26;
       bedMaterial.emissiveIntensity = 0.08 + resistance * 0.3;
 
-      for (const tube of bedTubes) tube.refresh((u, base) => base * calibre);
-      venousTube.refresh((u, base) => base * venousCalibre);
+      if (calibre !== drawnCalibre) {
+        for (const tube of bedTubes) tube.refresh((u, base) => base * calibre);
+        drawnCalibre = calibre;
+      }
+      if (venousCalibre !== drawnVenousCalibre) {
+        venousTube.refresh((u, base) => base * venousCalibre);
+        drawnVenousCalibre = venousCalibre;
+      }
       strokeVolumeMl = metrics.strokeVolumeMl;
 
       presentation = {
@@ -397,13 +413,20 @@ export function buildCircuit({ compact = false } = {}) {
       // The head leaves the valve and runs on past where the tail was; the
       // whole length is on the run from a fifth of the way through.
       const head = 0.02 + travel * (0.55 + length);
-      const tail = head - length;
       const edge = 0.015;
-      bolusTube.refresh((u) => {
-        if (u < tail - edge || u > head + edge || u < 0.02) return 0;
-        const ramp = smoothstep(tail - edge, tail + edge, u) * (1 - smoothstep(head - edge, head + edge, u));
-        return 0.26 * ramp;
-      });
+      // Rebuilt only when the head has moved by a visible step (1/400 of the
+      // run, about a pixel at the scene's own framing) or the stroke volume changed: at a
+      // slow rate most frames would otherwise rewrite the same vertices.
+      const key = `${Math.round(head * 400)}|${length}`;
+      if (key !== drawnBolus) {
+        drawnBolus = key;
+        const at = Math.round(head * 400) / 400;
+        bolusTube.refresh((u) => {
+          if (u < at - length - edge || u > at + edge || u < 0.02) return 0;
+          const ramp = smoothstep(at - length - edge, at - length + edge, u) * (1 - smoothstep(at - edge, at + edge, u));
+          return 0.26 * ramp;
+        });
+      }
       bolusMaterial.opacity = 0.7 * (1 - smoothstep(0.55, 1, travel));
       bolus.visible = bolusMaterial.opacity > 0.01;
     },

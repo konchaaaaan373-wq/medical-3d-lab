@@ -347,6 +347,9 @@ test('inputs: all four named with values, one adjusted on its own, two at once o
     // One input on its own: a press moves that input and only that one.
     const start = { ...session.input };
     const down = findByClass(surface, 'exp-step').find((node) => node.dataset.direction === 'down');
+    // Its accessible name is one language, the one on screen: an aria-label
+    // cannot hold both spans, and a mixed one is read with the wrong phonemes.
+    assert.equal(down.getAttribute('aria-label'), '収縮力を弱める');
     down.dispatchEvent({ type: 'click' });
     const moved = Object.keys(start).filter((key) => session.input[key] !== start[key]);
     assert.deepEqual(moved, ['contractilityEesMmHgPerMl']);

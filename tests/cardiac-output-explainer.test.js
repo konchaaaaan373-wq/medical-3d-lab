@@ -170,3 +170,137 @@ test('the circuit takes its drawing from the solved beat: bolus length, bed cali
   assert.ok(weak.bolusLength < strong.bolusLength, 'a weaker heart sends out a shorter bolus');
   circuit.dispose();
 });
+
+test('the player keeps what the reader had before play, and offers it back at the end', () => {
+  const restoreDom = installFakeDocument();
+  try {
+    // A stand-in model: one number the player drives, and a key over it.
+    const model = { value: 'reader' };
+    const explainer = {
+      copy: EXPLAINER_COPY,
+      duration: EXPLAINER_DURATION,
+      stages: EXPLAINER_STAGES,
+      stageAt,
+      driveAt: (t) => {
+        const next = `explainer-${Math.floor(t)}`;
+        const changed = next !== model.value;
+        model.value = next;
+        return changed;
+      },
+      stateKey: () => model.value,
+      caption: () => ({ heading: { en: 'h', ja: 'h' }, text: { en: 't', ja: 't' } }),
+    };
+    const restored = [];
+    const player = createExplainerPlayer({
+      explainer,
+      onBegin: () => {
+        model.value = 'start';
+      },
+      onStage: () => {},
+      onFrame: () => {},
+      capture: () => ({ kept: model.value }),
+      restore: (kept) => {
+        restored.push(kept.kept);
+        model.value = kept.kept;
+      },
+    });
+    const [back] = findByClass(player.element, 'explainer-restore');
+    assert.equal(back.hidden, true, 'nothing to offer before play');
+    player.play();
+    player.tick(2);
+    // A replay mid-way keeps the reader's condition, not the explanation's.
+    const [replay] = findByClass(player.element, 'explainer-replay');
+    replay.click();
+    for (let i = 0; i < 100; i += 1) player.tick(1);
+    assert.equal(player.state, 'ended');
+    assert.equal(back.hidden, false, 'offered at the end');
+    back.click();
+    assert.deepEqual(restored, ['reader'], 'what the reader had, not a frame of the explanation');
+    assert.equal(model.value, 'reader');
+    assert.equal(player.state, 'idle');
+    assert.equal(back.hidden, true, 'offered once');
+  } finally {
+    restoreDom();
+  }
+});
+
+test('the player stops when anything else moves the model, not only the reader\'s inputs', () => {
+  const restoreDom = installFakeDocument();
+  try {
+    const model = { value: 0, frames: 0, captions: 0 };
+    const explainer = {
+      copy: EXPLAINER_COPY,
+      duration: EXPLAINER_DURATION,
+      stages: EXPLAINER_STAGES,
+      stageAt,
+      // Changes the model once a second, not every frame.
+      driveAt: (t) => {
+        const next = Math.floor(t);
+        const changed = next !== model.value;
+        model.value = next;
+        return changed;
+      },
+      stateKey: () => String(model.value),
+      caption: (id) => {
+        model.captions += 1;
+        return { heading: { en: id, ja: id }, text: { en: String(model.value), ja: String(model.value) } };
+      },
+    };
+    const player = createExplainerPlayer({
+      explainer,
+      onBegin: () => {
+        model.value = 0;
+      },
+      onStage: () => {},
+      onFrame: () => {
+        model.frames += 1;
+      },
+    });
+    player.play();
+    const [text] = findByClass(player.element, 'explainer-caption-text');
+    const firstText = text.children[0];
+    const frames = model.frames;
+    for (let i = 0; i < 10; i += 1) player.tick(0.01);
+    assert.equal(model.frames, frames, 'a frame that changed nothing is not re-read');
+    assert.equal(text.children[0], firstText, 'and the live caption is not rewritten with the same sentence');
+    player.tick(1);
+    assert.ok(model.frames > frames, 'a frame that changed the model is');
+    // A lesson, the reel or a reset elsewhere: the model moves without the
+    // shell calling interrupt.
+    model.value = 'someone else';
+    player.tick(0.01);
+    assert.equal(player.state, 'interrupted');
+    // Paused counts too: the reader may pause and then start a lesson.
+    player.play();
+    player.pause();
+    model.value = 'someone else';
+    player.tick(0.01);
+    assert.equal(player.state, 'interrupted');
+  } finally {
+    restoreDom();
+  }
+});
+
+test('the live caption is written only when its sentence changes', () => {
+  const restoreDom = installFakeDocument();
+  try {
+    const explainer = {
+      copy: EXPLAINER_COPY,
+      duration: EXPLAINER_DURATION,
+      stages: EXPLAINER_STAGES,
+      stageAt,
+      driveAt: () => true, // the model changes every frame…
+      caption: () => ({ heading: { en: 'h', ja: 'h' }, text: { en: 'same', ja: 'same' } }), // …and the sentence does not
+    };
+    const player = createExplainerPlayer({ explainer, onBegin: () => {}, onStage: () => {}, onFrame: () => {} });
+    player.play();
+    const [text] = findByClass(player.element, 'explainer-caption-text');
+    const first = text.children[0];
+    assert.ok(first, 'a sentence is written');
+    player.tick(0.01);
+    player.tick(0.01);
+    assert.equal(text.children[0], first, 'an aria-live region re-written with the same words is announced again');
+  } finally {
+    restoreDom();
+  }
+});

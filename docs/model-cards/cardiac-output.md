@@ -326,9 +326,13 @@ the circulation, what the model leaves out), played with play / pause / play
 from the start. It sets contractility through the same `setModelControl` path
 on the control's own grid, fits the camera to a smaller box for the closer
 stages, draws the "before" lines for the two stages about the heart, and quotes
-only solved numbers. A change by hand while it plays stops it and leaves the
-condition to the reader; one undo takes the whole fall back. It says that the
-model has no reflexes and does not compute oxygen delivery or perfusion.
+only solved numbers. A change by hand while it plays — or any other change to
+the model, from a lesson, the reel or a reset — stops it and leaves the
+condition to the reader; one undo takes the whole fall back. Playing starts
+from the reference heart, so the condition the reader had is kept and offered
+back at the end ("back to what you had"), not restored unasked: the end state
+is what the explanation is for. It says that the model has no reflexes and
+does not compute oxygen delivery or perfusion.
 
 The beat-speed buttons (通常・1/4・止める) are gone: they were a display
 setting shown where the owner expected an explanation. The plots, the camera

@@ -26,8 +26,6 @@ export const PALETTE = {
   // The "before" cage drawn inside the chamber while comparing: a colour the
   // tissue, the blood and the circuit do not use.
   before: '#f4f1c8',
-  // The systemic bed (see circuit.js) — the colour the resistance always had.
-  bed: '#ffc46b',
 };
 
 export const LEGEND = [
@@ -351,8 +349,11 @@ export const EXPLAINER_COPY = {
   // stops where it is, and the condition on screen is theirs from there.
   interrupted: 'Stopped — you changed an input. The condition on screen is yours to change from here; “Play from the start” begins again from the start.',
   interruptedJa: '手で操作したので再生を止めました。いまの状態から操作を続けられます。「最初から再生」で開始時から見直せます。',
-  ended: 'Finished. The model is left at the lowered contractility — “Back to start” returns it.',
-  endedJa: '再生が終わりました。モデルは収縮力を下げた状態のままです。「開始時に戻す」で元に戻せます。',
+  ended: 'Finished. The model is left at the lowered contractility — “Back to what you had” returns the condition you had before playing.',
+  endedJa: '再生が終わりました。モデルは収縮力を下げた状態のままです。「再生前の状態に戻す」で、再生する前の条件に戻せます。',
+  // Playing starts from the reference heart, which replaces whatever the
+  // reader had set. What they had is kept, and this puts it back.
+  restore: 'Back to what you had', restoreJa: '再生前の状態に戻す',
   note: 'Numbers are the model’s. It does not compute oxygen delivery or organ perfusion.',
   noteJa: '数値はモデルの計算結果です。酸素供給や臓器の血流は計算していません。',
   stages: {

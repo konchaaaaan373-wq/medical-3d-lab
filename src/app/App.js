@@ -1384,16 +1384,19 @@ export async function createApp({ stage, ui, onRetryModel = null }) {
               explainer,
               onBegin: () => {
                 explainer.begin();
-                if (comparing) setComparison(false);
+                if (comparing) setComparison(false, { byReader: false });
                 modelControls.sync(scene.getModelControls());
                 refreshModelReadouts();
               },
               onStage: (stage) => {
+                // The overlay first, without its own camera move: the stage's
+                // framing is the one that has to win, and a comparison the
+                // explanation turned on is not one the reader used.
+                const wanted = Boolean(stage.compare) && (scene.canCompare?.() ?? true);
+                if (wanted !== comparing) setComparison(wanted, { byReader: false });
                 // A closer look is a smaller box fitted into the same band.
                 scene.setFramingFocus?.(stage.framing);
                 applyGuideFraming(stage.framing);
-                const wanted = Boolean(stage.compare) && (scene.canCompare?.() ?? true);
-                if (wanted !== comparing) setComparison(wanted);
               },
               onFrame: () => {
                 modelControls.sync(scene.getModelControls());
@@ -1408,6 +1411,16 @@ export async function createApp({ stage, ui, onRetryModel = null }) {
                   applyGuideFraming(null);
                 }
                 refreshConsoleCards();
+              },
+              // Play replaces the reader's condition with the reference heart;
+              // this is what is offered back at the end. Same list, same
+              // replay order as a lesson's snapshot (preset first).
+              capture: () => scene.getModelControls().map(({ id, value }) => ({ id, value })),
+              restore: (kept) => {
+                if (comparing) setComparison(false, { byReader: false });
+                for (const control of kept) scene.setModelControl(control.id, control.value);
+                modelControls.sync(scene.getModelControls());
+                refreshModelReadouts();
               },
             })
           : null;
@@ -1582,25 +1595,40 @@ export async function createApp({ stage, ui, onRetryModel = null }) {
   let comparing = false;
   /** When the current comparison was entered, so "how long was it read for" is answerable. */
   let comparingSince = 0;
+  /** Whether the comparison on screen is one the reader turned on. */
+  let comparedByReader = false;
 
   /**
-   * Side-by-side with a healthy reference. The camera widens to hold both, and
-   * the annotation layer swaps to the comparison labels.
+   * The comparison with the start condition — side by side, or (cardiac
+   * output) the start drawn over the same heart. The camera goes to the
+   * scene's comparison view, and the annotation layer swaps to the comparison
+   * labels.
+   *
+   * `byReader: false` is a comparison something else turned on or off — the
+   * explanation's stage. It is not counted as the reader using the comparison,
+   * and it leaves the camera alone: the caller frames the shot.
+   *
+   * @param {boolean} enabled
+   * @param {{ byReader?: boolean }} [options]
    */
-  function setComparison(enabled) {
+  function setComparison(enabled, { byReader = true } = {}) {
     if (!scene.setComparison) return;
     // Leaving a comparison that was actually looked at is the completion; the
     // interesting question is whether side-by-side gets used, not offered.
-    if (comparing && !enabled) {
+    if (byReader && comparedByReader && comparing && !enabled) {
       emitAppEvent('compare:complete', { elapsedMs: Math.round(performance.now() - comparingSince) });
     }
-    if (!comparing && enabled) comparingSince = performance.now();
+    if (!comparing && enabled) {
+      comparingSince = performance.now();
+      comparedByReader = byReader;
+    }
     comparing = enabled;
     scene.setComparison(enabled);
     labels.setComparison(enabled);
     applyLabelFocus();
     controlPanel.setComparison(enabled);
     refreshModelReadouts();
+    if (!byReader) return;
     setShot(comparisonOrStageShot());
     view.active = true;
     view.resumeAutoRotate = true;
@@ -1610,8 +1638,9 @@ export async function createApp({ stage, ui, onRetryModel = null }) {
   /**
    * Where the camera rests.
    *
-   * The comparison has its own framing because both hearts have to stay in the
-   * frame. Everything else uses the scene's own establishing shot: the redesign
+   * The comparison has its own framing where the scene gives one (side by
+   * side, two hearts have to stay in the frame; an overlay scene has none and
+   * keeps its own shot). Everything else uses the scene's own establishing shot: the redesign
    * settled on one camera for the interactive view, and the guided sequence is
    * where a moving camera belongs.
    */
@@ -1867,8 +1896,8 @@ export async function createApp({ stage, ui, onRetryModel = null }) {
    * detail.
    */
   function applyLabelFocus() {
-    // The comparison has its own two labels and no stage focus list mentions
-    // them, so narrowing there would leave both hearts unnamed.
+    // The comparison has its own labels and no stage focus list mentions
+    // them, so narrowing there would leave the comparison unnamed.
     if (comparing) labels.setFocus(null);
     else if (storyFocus) labels.setFocus(storyFocus);
     else if (dataView) labels.setFocus(null);

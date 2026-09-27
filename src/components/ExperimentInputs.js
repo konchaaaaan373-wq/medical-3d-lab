@@ -1,4 +1,5 @@
 import { el } from '../utils/dom.js';
+import { inLanguage, onLanguageChange } from '../utils/language.js';
 
 /**
  * The four inputs of a one-factor experiment, as one surface: all four always
@@ -183,17 +184,46 @@ export function createExperimentInputs({ controls, padSet, selectPad, onChange, 
     range.max = String(control.max);
     range.step = String(control.step);
     if (document.activeElement !== range) range.value = String(control.value);
-    range.setAttribute('aria-label', `${control.labelJa ?? ''} ${control.label ?? ''}`.trim());
     range.setAttribute('aria-valuetext', `${format(control.value)}${control.unit ? ` ${control.unit}` : ''}`);
     down.label.replaceChildren(...pairOf(control.decrease, control.decreaseJa));
     up.label.replaceChildren(...pairOf(control.increase, control.increaseJa));
-    down.button.setAttribute('aria-label', `${control.labelJa}を${control.decreaseJa ?? ''}`);
-    up.button.setAttribute('aria-label', `${control.labelJa}を${control.increaseJa ?? ''}`);
+    paintNames();
     down.button.disabled = control.value <= control.min;
     up.button.disabled = control.value >= control.max;
   }
 
+  /**
+   * The accessible names, in the language on screen. An `aria-label` is one
+   * string, so it cannot carry both spans the way the visible text does; a
+   * Japanese sentence read to an English page is read with English phonemes.
+   */
+  function paintNames() {
+    const control = byId.get(selected);
+    if (!control) return;
+    range.setAttribute('aria-label', inLanguage(control.label, control.labelJa));
+    down.button.setAttribute('aria-label', inLanguage(
+      `${control.short ?? control.label}: ${control.decrease ?? 'decrease'}`,
+      `${control.shortJa ?? control.labelJa}を${control.decreaseJa ?? '減らす'}`
+    ));
+    up.button.setAttribute('aria-label', inLanguage(
+      `${control.short ?? control.label}: ${control.increase ?? 'increase'}`,
+      `${control.shortJa ?? control.labelJa}を${control.increaseJa ?? '増やす'}`
+    ));
+  }
+
   paint();
+  // Repaint on a language switch for as long as this surface is on the page.
+  // A scene change drops it, so it stops itself then rather than leaving a
+  // painter for a surface nobody can see.
+  let shown = false;
+  const stopNames = onLanguageChange(() => {
+    if (element.isConnected) shown = true;
+    else if (shown) {
+      stopNames?.();
+      return;
+    }
+    paintNames();
+  });
 
   return {
     element,

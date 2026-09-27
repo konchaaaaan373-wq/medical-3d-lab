@@ -71,11 +71,6 @@ const FOCUS_BOXES = {
   outflow: { min: new THREE.Vector3(-6.2, -2.4, -3.6), max: new THREE.Vector3(2.6, 4.8, 2.8) },
 };
 
-const framing = (target, distance) => ({
-  position: target.clone().addScaledVector(VIEW_DIRECTION, distance),
-  target: target.clone(),
-});
-
 /**
  * Cardiac output — one circulation, four things a reader may change.
  *
@@ -215,11 +210,10 @@ export class CardiacOutputScene {
       entryCurve: RETURN_PATH,
       entryRange: [0.6, 0.97],
     };
-    // Kept, not discarded: the before-condition heart builds its own field from
-    // the same slots, and `BloodField` takes the *buffers* rather than a
-    // geometry. Handing it `this.blood.geometry` builds a points cloud whose
-    // position attribute wraps `undefined` — which throws nothing in Node, so a
-    // unit test that constructs it passes, and draws nothing in a browser.
+    // `BloodField` takes the *buffers* rather than a geometry. Handing it
+    // `this.blood.geometry` builds a points cloud whose position attribute
+    // wraps `undefined` — which throws nothing in Node, so a unit test that
+    // constructs it passes, and draws nothing in a browser.
     this._bloodBuffers = buildCavityBlood(compact ? 420 : 620, 90210, this._bloodPaths);
     this.blood = new BloodField(this._bloodBuffers, {
       flowColor: PALETTE.flow,
@@ -549,15 +543,26 @@ export class CardiacOutputScene {
       },
       /**
        * The model at time `t`. One `op` for the whole playback, so one undo
-       * takes the whole fall back.
+       * takes the whole fall back. Says whether the model changed, so the
+       * shell re-reads it only then — most frames hold the same value.
        */
       driveAt: (t, op) => {
         const value = contractilityAt(t);
-        if (value !== this.session.input.contractilityEesMmHgPerMl) {
-          this.setModelControl('contractilityEesMmHgPerMl', value, { op });
-        }
+        const changed = value !== this.session.input.contractilityEesMmHgPerMl;
+        if (changed) this.setModelControl('contractilityEesMmHgPerMl', value, { op });
         const { emphasis } = stageAt(t);
         this.setBeatEmphasis({ residual: emphasis.residual ?? 0, ejection: emphasis.ejection ?? 0 });
+        return changed;
+      },
+      /**
+       * Everything a writer can change: the preset, where the condition came
+       * from, and the four inputs. The player compares it with what its own
+       * last drive left, so a lesson, the reel or a reset that moves the model
+       * some other way stops the playback too.
+       */
+      stateKey: () => {
+        const input = this.session.input;
+        return [this.session.presetId, this.session.origin, ...CONTROLS.map((control) => input[control.id])].join('|');
       },
       /** Leave no emphasis behind when it stops. */
       end: () => this.setBeatEmphasis({ residual: 0, ejection: 0 }),

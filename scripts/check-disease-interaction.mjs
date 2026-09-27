@@ -299,7 +299,9 @@ for (const slug of SLUGS) {
         }, viewport);
         for (const line of firstView) problems.push(`experiment layout, one input: “${line}” is not inside the first viewport`);
         await page.locator('.exp-step[data-direction="down"]').click();
-        await page.waitForTimeout(600);
+        // The chain is rebuilt on the refresh that follows the change: wait
+        // for it to say something, not for a guessed number of milliseconds.
+        await page.waitForFunction(() => document.querySelector('.effect-chain')?.dataset.state === 'changed', null, { timeout: 10000 }).catch(() => {});
         const after = await page.evaluate(() => ({ ...window.__app.scene.session.input }));
         const moved = Object.keys(start).filter((key) => start[key] !== after[key]);
         if (JSON.stringify(moved) !== JSON.stringify(['contractilityEesMmHgPerMl'])) problems.push(`one input: the editor moved ${moved.join(', ')}`);
@@ -309,10 +311,12 @@ for (const slug of SLUGS) {
         // "—"; what has to be there is the chain.)
         if (!/→/.test(chain) || !/変えたもの|Changed/.test(chain) || !/数値|Figures/.test(chain)) problems.push(`one input: the chain does not say what the change did (${chain.replace(/\s+/g, ' ').slice(0, 80)})`);
         await page.locator('.model-control-undo').click();
-        await page.waitForTimeout(500);
+        await page
+          .waitForFunction((key) => JSON.stringify(window.__app.scene.session.input) === key, JSON.stringify(start), { timeout: 10000 })
+          .catch(() => problems.push('one input: undo did not take the press back'));
         // Two at once: the pads, and the same state.
         await page.locator('.exp-mode').click();
-        await page.waitForTimeout(300);
+        await page.waitForFunction(() => document.querySelector('.exp-inputs')?.dataset.mode === 'pair', null, { timeout: 10000 }).catch(() => problems.push('two at once: the mode did not switch'));
         if (JSON.stringify(await page.evaluate(() => ({ ...window.__app.scene.session.input }))) !== JSON.stringify(start)) problems.push('two at once: switching mode moved an input');
       }
     }
@@ -907,6 +911,9 @@ for (const slug of SLUGS) {
     // "Before" is drawn in the same heart, at the same phase (owner's
     // review, 2026-09-27) — a scene that draws it that way says so with a
     // `beforeOutline`; one that draws a second heart has `reference`.
+    // Drawn on the next frame after the press: wait for that state, and let
+    // a timeout fall through to the report below rather than guess a delay.
+    await page.waitForFunction(() => window.__app?.scene?.beforeOutline?.visible !== false, null, { timeout: 5000 }).catch(() => {});
     const overlay = await page.evaluate(() => {
       const { scene } = window.__app ?? {};
       if (!scene?.beforeOutline) return null;
@@ -933,6 +940,22 @@ for (const slug of SLUGS) {
   // closer, and that a reader's own change stops it and leaves the model to
   // them (owner's review, 2026-09-27). Waited for by state, not by time.
   if (await page.locator('.explainer').count()) {
+    const explainerState = () => page.evaluate(() => document.querySelector('.explainer')?.dataset.state);
+    const untilState = (wanted, timeout = 10000) =>
+      page
+        .waitForFunction((value) => document.querySelector('.explainer')?.dataset.state === value, wanted, { timeout })
+        .then(() => true)
+        .catch(() => false);
+    const inputs = () => page.evaluate(() => JSON.stringify(window.__app.scene.session.input));
+    // Before anything has played there is nothing to replay and nothing to
+    // give back. Asked of the browser, not of the attribute: a stylesheet
+    // that sets `display` on the button outranks `[hidden]`, and the replay
+    // button stood on screen from the first frame that way.
+    // (The computed `display`, so a closed card does not hide the answer.)
+    for (const selector of ['.explainer-replay', '.explainer-restore']) {
+      const display = await page.locator(selector).evaluate((node) => getComputedStyle(node).display);
+      if (display !== 'none') problems.push(`explanation: ${selector} is drawn (display ${display}) before anything has played`);
+    }
     await pressConsoleControl(page, '.explainer-play');
     const reached = await page
       .waitForFunction(() => document.querySelector('.explainer-stage[data-state="current"]')?.dataset.stage === 'inside', null, { timeout: 180000 })
@@ -958,12 +981,12 @@ for (const slug of SLUGS) {
       console.log(`  ${slug}: explanation reached "inside the heart" — camera at ${at.distance.toFixed(1)}`);
       // A reader's change stops it, and the model is theirs from there.
       await pressConsoleControl(page, '.exp-step[data-direction="up"]:visible, .pad-step[data-direction="up"]:visible');
-      await page.waitForTimeout(400);
-      const state = await page.evaluate(() => document.querySelector('.explainer')?.dataset.state);
-      if (state !== 'interrupted') problems.push(`explanation: a change by hand did not stop it (state ${state})`);
-      // Play from the start begins again from the start state.
+      if (!(await untilState('interrupted'))) problems.push(`explanation: a change by hand did not stop it (state ${await explainerState()})`);
+      // Play from the start begins again from the start state — and what it
+      // will offer back at the end is the reader's condition as it is now.
+      const readerHad = await inputs();
       await pressConsoleControl(page, '.explainer-replay');
-      await page.waitForTimeout(600);
+      await untilState('playing');
       const again = await page.evaluate(() => ({
         state: document.querySelector('.explainer')?.dataset.state,
         contractility: window.__app.scene.session.input.contractilityEesMmHgPerMl,
@@ -971,10 +994,27 @@ for (const slug of SLUGS) {
       }));
       if (again.state !== 'playing' || again.contractility !== again.start) problems.push(`explanation: "play from the start" did not start from the start (${JSON.stringify(again)})`);
       await pressConsoleControl(page, '.explainer-play');
-      await page.waitForTimeout(300);
-      if ((await page.evaluate(() => document.querySelector('.explainer')?.dataset.state)) !== 'paused') problems.push('explanation: pause did not pause');
+      if (!(await untilState('paused'))) problems.push('explanation: pause did not pause');
+      // To the end, and back to what the reader had.
+      await pressConsoleControl(page, '.explainer-play');
+      if (!(await untilState('ended', 180000))) problems.push(`explanation: it did not reach the end (state ${await explainerState()})`);
+      else if (!(await page.locator('.explainer-restore').isVisible())) problems.push('explanation: at the end, nothing offers back the condition the reader had');
+      else {
+        await pressConsoleControl(page, '.explainer-restore');
+        const restored = await page
+          .waitForFunction((key) => JSON.stringify(window.__app.scene.session.input) === key, readerHad, { timeout: 10000 })
+          .then(() => true)
+          .catch(() => false);
+        if (!restored) problems.push(`explanation: "back to what you had" did not restore it (${await inputs()} vs ${readerHad})`);
+        else console.log(`  ${slug}: explanation ended and gave back the reader's condition`);
+      }
       await pressConsoleControl(page, '.model-control-reset');
-      await page.waitForTimeout(900);
+      await page
+        .waitForFunction(() => {
+          const { session } = window.__app.scene;
+          return JSON.stringify(session.input) === JSON.stringify(session.baseline.input);
+        }, null, { timeout: 10000 })
+        .catch(() => problems.push('explanation: reset did not return to the start'));
     }
   }
 
