@@ -377,8 +377,15 @@ for (const slug of SLUGS) {
     const boxes = () =>
       page.evaluate(() =>
         ['.is-pad[data-pad="heart"] .pad-area', '.pad-switcher', '.is-pad[data-pad="heart"] .pad-range-x', '.model-control-undo', '.metrics', '.console'].map((selector) => {
-          const rect = document.querySelector(selector).getBoundingClientRect();
-          return [Math.round(rect.top), Math.round(rect.left), Math.round(rect.height)];
+          const node = document.querySelector(selector);
+          const rect = node.getBoundingClientRect();
+          // Inside a console that scrolls (a short phone), measured in the
+          // console's content: a reader — or Playwright, bringing a button
+          // into view before pressing it — scrolling it is not the layout
+          // moving the controls.
+          const scroller = node.closest('.console');
+          const scrolled = scroller && scroller !== node ? scroller.scrollTop : 0;
+          return [Math.round(rect.top + scrolled), Math.round(rect.left), Math.round(rect.height)];
         })
       );
     const sameBoxes = (label, before, after) =>

@@ -1848,7 +1848,7 @@
        build marker takes ~48 px; `!important` because
        `browser-first-release-polish.css` sizes learning-view consoles under
        a (1,8,0) selector). */
-    --console-cap: calc(100dvh - var(--title-bottom, 100px) - 92px - clamp(180px, calc(100dvh - 590px), 280px));
+    --console-cap: calc(100dvh - var(--title-bottom, 100px) - 92px - clamp(180px, calc(100dvh - 540px), 320px));
     max-height: var(--console-cap) !important;
     overflow-y: auto;
     overscroll-behavior: contain;
@@ -1859,7 +1859,7 @@
      moves every control above it up under the reader's finger (verify:disease
      measured 3 px on the first press and 20 px on a drag at 430×932). Fixed,
      what grows grows below the controls, inside the scroll. The heart's band
-     (the clamp) grows with the screen: 180 px on a short phone, up to 280. */
+     (the clamp) grows with the screen: 180 px on a short phone, up to 320. */
   #ui#ui[data-layout='experiment'] .console:has(.console-card[open]) {
     height: var(--console-cap);
   }
