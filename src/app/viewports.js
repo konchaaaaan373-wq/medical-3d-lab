@@ -79,6 +79,8 @@ export const SURFACES = [
   // `src/app/routeRedirects.js` for why, and for the day it goes away.
   { id: 'explorer', route: '#/organs', redirectsTo: '#/', label: 'Explorer (redirected)' },
   { id: 'lab', route: '#/lab', label: 'Lab', locked: true },
+  // Where a mechanism scene's breadcrumb 「病態モデル ›」 goes back to.
+  { id: 'pathology', route: '#/pathology', label: 'Disease models' },
   { id: 'trust', route: '#/trust', label: 'Trust' },
   { id: 'terms', route: '#/terms', label: 'Terms' },
   { id: 'privacy', route: '#/privacy', label: 'Privacy' },

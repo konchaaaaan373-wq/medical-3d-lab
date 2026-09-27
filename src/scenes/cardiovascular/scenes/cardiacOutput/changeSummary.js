@@ -45,6 +45,31 @@ const READING_ORDER = [
   'heartRatePerMin',
 ];
 
+/**
+ * The moved inputs alone, in reading order, each with its direction — the
+ * short form of the same line, for a place that has room for one phrase
+ * ("収縮力↑・心拍数↑"): the console card's closed line on a phone. The same
+ * reading order and the same `shown` condition as the read-out, so the two
+ * cannot name a change differently.
+ *
+ * @param {{ baseline: object, shown: object }} condition
+ * @returns {{ id: string, short: string, shortJa: string, direction: 'up'|'down' }[]}
+ */
+export function movedInputs({ baseline, shown }) {
+  const ordered = [...READING_ORDER, ...CONTROL_IDS.filter((id) => !READING_ORDER.includes(id))];
+  return ordered
+    .filter((id) => shown[id] !== baseline[id])
+    .map((id) => {
+      const control = CONTROLS.find((entry) => entry.id === id);
+      return {
+        id,
+        short: control?.short ?? id,
+        shortJa: control?.shortJa ?? id,
+        direction: shown[id] > baseline[id] ? 'up' : 'down',
+      };
+    });
+}
+
 export function describeChange({ baseline, shown, interventionId }) {
   const ordered = [...READING_ORDER, ...CONTROL_IDS.filter((id) => !READING_ORDER.includes(id))];
   const moved = ordered.filter((id) => shown[id] !== baseline[id]);

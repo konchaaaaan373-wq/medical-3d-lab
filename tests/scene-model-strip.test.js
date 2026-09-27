@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 
 import { createSceneSwitcher } from '../src/components/SceneSwitcher.js';
 import { PUBLIC_MANIFEST } from '../src/catalog/publicManifest.js';
+import { PATHOLOGY_CATEGORY } from '../src/catalog/pathologyModels.js';
 import { FakeElement, findByClass, installFakeDocument } from './helpers/fake-dom.js';
 
 globalThis.requestAnimationFrame ??= (fn) => { fn(0); return 0; };
@@ -179,7 +180,7 @@ test('a layer that is not anatomy says which layer it is', () => {
   const link = layerLinks(element).find((candidate) => candidate.getAttribute('href') === mechanism.route);
   const [kind] = findByClass(link, 'global-nav-layer-kind');
   assert.ok(kind, 'the mechanism link carries its layer');
-  assert.equal(findByClass(kind, 'lang-ja')[0].textContent, '機序');
+  assert.equal(findByClass(kind, 'lang-ja')[0].textContent, PATHOLOGY_CATEGORY.ja, 'the same word as the breadcrumb under it');
   assert.equal(findByClass(findByClass(link, 'global-nav-layer-name')[0], 'lang-ja')[0].textContent, mechanism.titleJa);
 
   // The anatomy link *is* the layer, so it does not say it twice.

@@ -25,6 +25,7 @@
 import { EXPLORER_ROUTE, SCENES, sceneRoute } from './index.js';
 import { modelCardForScene } from './clinicalReview.js';
 import { MECHANISM_LEVEL, modelProfileForScene } from './modelProfiles.js';
+import { PATHOLOGY_CATEGORY } from './pathologyModels.js';
 import { RELEASE_CHANNEL, RELEASED_SCENES } from './release.js';
 import { organById } from './taxonomy.js';
 
@@ -79,7 +80,12 @@ function revisionOf(models) {
  */
 export const MODEL_LAYERS = Object.freeze({
   anatomy: Object.freeze({ id: 'anatomy', en: 'Anatomy', ja: '解剖' }),
-  mechanism: Object.freeze({ id: 'mechanism', en: 'Mechanism', ja: '機序' }),
+  // Named by `PATHOLOGY_CATEGORY` — the category #160 put on the same scenes,
+  // by the same rule (a mechanism level above `none`). This said 機序 and the
+  // breadcrumb under it said 病態モデル, so one model had two names on one
+  // screen. One word, owned in `pathologyModels.js`; whether it is the right
+  // word for cardiac output is F-217.
+  mechanism: Object.freeze({ id: 'mechanism', en: PATHOLOGY_CATEGORY.en, ja: PATHOLOGY_CATEGORY.ja }),
   pathology: Object.freeze({ id: 'pathology', en: 'Disease', ja: '病態' }),
 });
 

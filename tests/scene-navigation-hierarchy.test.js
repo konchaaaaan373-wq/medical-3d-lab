@@ -53,8 +53,8 @@ test('a mechanism scene is labelled with the word the header uses for its layer'
   // call the same model 解剖・生理, and one model under two names reads as two.
   const cardiacOutput = scene('cardiac-output');
   assert.deepEqual(navigationUseLabel(cardiacOutput, activeUsesForSceneEntry(cardiacOutput)), {
-    en: 'Mechanism model',
-    ja: '機序モデル',
+    en: 'Disease models',
+    ja: '病態モデル',
   });
   assert.deepEqual(navigationUseLabel(scene('brain-anatomy'), []), { en: 'Anatomy model', ja: '解剖モデル' });
 });

@@ -24,7 +24,7 @@ person: Safari, Firefox, touch and a screen reader.
 - **Organs first, then layers.** Inside a model the row is the organs that are
   open — brain, heart, lungs, liver — and, for an organ with more than one
   model, a second row naming its layers: the heart's anatomy, and cardiac
-  output as a *mechanism*. It used to mix organ names with a full model title
+  output under disease models — the same word as the page's own breadcrumb. It used to mix organ names with a full model title
   in one row, and on a phone the lungs and the liver fell off its end.
 - **One icon.** The product has an icon now — a cube — in the browser tab and
   as the way home on a 3D model, where the header used to read

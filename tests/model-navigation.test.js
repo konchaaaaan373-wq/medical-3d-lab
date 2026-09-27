@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 
 import { organLayerNavigation } from '../src/app/modelNavigation.js';
 import { PUBLIC_MANIFEST, layerOfScene } from '../src/catalog/publicManifest.js';
+import { PATHOLOGY_CATEGORY } from '../src/catalog/pathologyModels.js';
 import { SCENES } from '../src/catalog/index.js';
 import { modelProfileForScene } from '../src/catalog/modelProfiles.js';
 
@@ -59,7 +60,7 @@ test('a lone anatomy model is called by its layer; everything else by its own ti
   assert.deepEqual(anatomy.name, { en: 'Anatomy', ja: '解剖' });
   assert.equal(anatomy.showKind, false, 'it is the layer, so it does not say it twice');
   assert.deepEqual(mechanism.name, { en: 'cardiac-output title', ja: 'cardiac-outputの題' });
-  assert.deepEqual(mechanism.kind, { en: 'Mechanism', ja: '機序' });
+  assert.deepEqual(mechanism.kind, { en: PATHOLOGY_CATEGORY.en, ja: PATHOLOGY_CATEGORY.ja }, 'one word with the breadcrumb');
   assert.equal(mechanism.showKind, true);
 
   // Two anatomy models of one organ cannot both be called 解剖.

@@ -6,7 +6,7 @@ import { join } from 'node:path';
 /**
  * Every header class the stylesheets style is one the code actually renders.
  *
- * ## Why this exists (L-122)
+ * ## Why this exists (L-124)
  *
  * `anatomy-shell-presentation.css` hid `.global-nav-current-scene` so the 3D
  * header would not print a model's title twice, and

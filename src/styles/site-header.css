@@ -883,8 +883,16 @@ html[data-route='locked'] .shell-header .site-menu-panel {
     min-height: 44px;
   }
 
-  #ui.has-global-scene-nav.has-layer-row {
+  #ui.has-global-scene-nav.has-layer-row:not([data-layout='experiment']) {
     padding-top: max(118px, calc(env(safe-area-inset-top) + 106px));
+  }
+
+  /* The experiment page (cardiac output) already says where it sits — its own
+     「病態モデル › 心拍出量」 line — and the 心臓 chip goes back to the anatomy.
+     On a phone the second header row cost the ventricle ~35px of the band it
+     needs to be read (`verify:disease` floors), so there it stays one row. */
+  #ui[data-layout='experiment'] .global-scene-nav.has-site-menu > .global-nav-layers {
+    display: none;
   }
 }
 

@@ -76,6 +76,9 @@ export const EXPLORER_SLUG = 'organs';
 export const EXPLORER_ROUTE = `#/${EXPLORER_SLUG}`;
 export const LAB_SLUG = 'lab';
 export const LAB_ROUTE = `#/${LAB_SLUG}`;
+/** The list a mechanism scene's breadcrumb goes back to (`src/catalog/pathologyModels.js`). */
+export const PATHOLOGY_SLUG = 'pathology';
+export const PATHOLOGY_ROUTE = `#/${PATHOLOGY_SLUG}`;
 
 /**
  * Slugs the product shell has already claimed.
@@ -90,6 +93,7 @@ export const RESERVED_ROUTE_SLUGS = Object.freeze([
   'explore',
   LAB_SLUG,
   'experimental',
+  PATHOLOGY_SLUG,
   'trust',
   'evidence',
   'home',

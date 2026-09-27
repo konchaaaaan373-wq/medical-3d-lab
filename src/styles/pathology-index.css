@@ -1,0 +1,25 @@
+/* `#/pathology` (PathologyIndex.js): the Explorer's cards and ground, with
+   the few things a one-section list does not need from it. */
+
+.explorer.is-pathology .explorer-header {
+  padding: 30px 42px 26px;
+}
+
+.explorer.is-pathology .explorer-scene-open {
+  flex-direction: row;
+  align-items: center;
+}
+
+.explorer.is-pathology .explorer-scene-title {
+  font-size: 19px;
+}
+
+@media (max-width: 720px) {
+  .explorer.is-pathology .explorer-header {
+    padding: 22px 18px 18px;
+  }
+
+  .explorer.is-pathology .explorer-scenes {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
