@@ -1028,3 +1028,38 @@ test('the beat can be shown slower or held, and nothing the model says changes',
   assert.equal(scene.getCardiacPhase(), 0.3);
   scene.setCardiacPhaseDriven(false);
 });
+
+test('the changed inputs a shell shows are the read-out\'s: same order, same solved condition', async () => {
+  const scene = await buildScene();
+  assert.deepEqual(scene.getChangedInputs(), [], 'nothing at the start');
+  scene.setModelControl('intervention', INTERVENTION_IDS.DOBUTAMINE);
+  const changed = scene.getChangedInputs();
+  const changedRow = scene.getMetrics().find((row) => row.id === 'changed');
+  // The read-out names them in its reading order; the short list must match it.
+  const order = changed.map((entry) => changedRow.valueJa.indexOf(entry.shortJa));
+  assert.ok(order.every((at) => at >= 0), `every changed input is named in the read-out (${changedRow.valueJa})`);
+  assert.deepEqual(order, [...order].sort((a, b) => a - b), 'in the same order');
+  assert.ok(changed.every((entry) => entry.direction === 'up' || entry.direction === 'down'));
+});
+
+test('the animation clock does not jump when the reel takes the phase after a held beat', async () => {
+  const scene = await buildScene();
+  const seen = [];
+  const update = scene.blood.update.bind(scene.blood);
+  scene.blood.update = (elapsed) => {
+    seen.push(elapsed);
+    return update(elapsed);
+  };
+  // The viewer's own clock keeps running (second argument) while the beat is
+  // held; what the blood is animated by must not jump to it when the reel
+  // takes the phase, nor back when it lets go.
+  scene.setPresentationBeatRate(0);
+  scene.update(5, 100);
+  const held = seen.at(-1);
+  scene.setCardiacPhaseDriven(true);
+  scene.update(0.2, 100.2);
+  assert.ok(Math.abs(seen.at(-1) - held - 0.2) < 1e-9, `driven, it advances from where it was (${held} → ${seen.at(-1)})`);
+  scene.setCardiacPhaseDriven(false);
+  scene.update(0.2, 100.4);
+  assert.ok(Math.abs(seen.at(-1) - held - 0.2) < 1e-9, 'and holds again when the reel lets go');
+});

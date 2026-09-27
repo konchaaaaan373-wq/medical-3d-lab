@@ -16,7 +16,7 @@ import {
   resistanceAt,
 } from './reelStoryboard.js';
 import { ExperimentSession } from './experimentSession.js';
-import { changeOf, describeChange, signedDelta } from './changeSummary.js';
+import { changeOf, describeChange, movedInputs, signedDelta } from './changeSummary.js';
 import { CONTROL_DOMAIN, PRESET_IDS, REFERENCE_GEOMETRY } from '../../../../models/cardiacOutput.js';
 import {
   advanceCardiacPhase,
@@ -316,11 +316,15 @@ export class CardiacOutputScene {
     this._applyOutlineShape();
   }
 
-  update(realDt, realElapsed) {
+  update(realDt) {
+    // One clock for the animation, always: it runs at the display rate, or at
+    // real time while the phase is driven from outside (the reel). Switching
+    // between this and the viewer's own elapsed time made the blood jump at
+    // the start and end of every reel recorded after a slowed or held beat.
     const rate = this.cardiacPhaseDriven ? 1 : this.presentationBeatRate;
     const dt = realDt * rate;
     this._presentationClock += dt;
-    const elapsed = this.cardiacPhaseDriven ? realElapsed : this._presentationClock;
+    const elapsed = this._presentationClock;
     if (!this.cardiacPhaseDriven) {
       this.phase = advanceCardiacPhase(this.phase, dt, this.state.heartRatePerMin);
     }
@@ -890,6 +894,17 @@ export class CardiacOutputScene {
   /** Where the beat is, named from the same phase and the same solved valve times. */
   getBeatPhase() {
     return beatPhaseAt(this.phase, this.state);
+  }
+
+  /**
+   * Which inputs the figures on screen differ from the start in, in the
+   * read-out's own order and from the same solved condition (`view.input`).
+   * For a shell that names the change somewhere short; empty at the start.
+   *
+   * @returns {{ id: string, short: string, shortJa: string, direction: 'up'|'down' }[]}
+   */
+  getChangedInputs() {
+    return movedInputs({ baseline: this.session.baseline.input, shown: this.session.view.input });
   }
 
   /** @returns {number} 0..1 */

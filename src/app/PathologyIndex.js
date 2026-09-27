@@ -2,10 +2,9 @@ import { el, skipLink } from '../utils/dom.js';
 import { inLanguage } from '../utils/language.js';
 import { createShellHeader } from '../components/ShellHeader.js';
 import { createLanguageToggle } from '../components/LanguageToggle.js';
-import { SCENES, sceneRoute } from '../catalog/index.js';
-import { statusById } from '../catalog/taxonomy.js';
-import { clinicalReviewPresentation } from '../catalog/clinicalReview.js';
-import { RELEASED_SCENES } from '../catalog/release.js';
+import { SCENES, sceneById, sceneRoute } from '../catalog/index.js';
+import { PUBLIC_MANIFEST } from '../catalog/publicManifest.js';
+import { sceneCardText, sceneOpenLabel, sceneReviewBadge, sceneStatusBadge } from '../components/SceneCardParts.js';
 import { PATHOLOGY_CATEGORY, pathologyModelScenes } from '../catalog/pathologyModels.js';
 import { betaUnlocked } from './releaseGate.js';
 import '../styles/clinical-review.css';
@@ -18,10 +17,12 @@ import '../styles/pathology-index.css';
  * rather than a word: the reader is told what kind of model they are looking
  * at, and pressing the name of that kind shows the others of it.
  *
- * Deliberately small. The cards are the Explorer's (`explorer.css`), on the
- * Explorer's ground, and which scenes appear is the release gate's decision —
- * the released set, or everything on a preview build, as the scene switcher
- * does. Nothing here decides what is published.
+ * Deliberately small. The cards are built from the same parts as the
+ * Explorer's (`SceneCardParts.js`, `explorer.css`), on the Explorer's ground.
+ * Which scenes appear is read from the public manifest — the one list every
+ * surface that tells a visitor what is published reads — or, on a preview
+ * build, every scene, as the scene switcher does. Nothing here decides what is
+ * published.
  *
  * @param {{ui: HTMLElement, accountButton?: HTMLElement|null, scenes?: ReadonlyArray<object>}} options
  */
@@ -29,7 +30,8 @@ export function createPathologyIndex({ ui, accountButton = null, scenes = null }
   const languageToggle = createLanguageToggle((mode) => {
     ui.dataset.lang = mode;
   });
-  const listed = pathologyModelScenes(scenes ?? (safeUnlocked() ? SCENES : RELEASED_SCENES));
+  const published = () => PUBLIC_MANIFEST.models.map((model) => sceneById(model.sceneId)).filter(Boolean);
+  const listed = pathologyModelScenes(scenes ?? (safeUnlocked() ? SCENES : published()));
 
   const element = el('main', { class: 'explorer is-public is-pathology' }, [
     createShellHeader({ current: null, accountButton, languageToggle: languageToggle.element }),
@@ -78,37 +80,13 @@ export function createPathologyIndex({ ui, accountButton = null, scenes = null }
 }
 
 function card(scene) {
-  const status = statusById(scene.status);
-  const review = scene.status === 'prototype' ? null : clinicalReviewPresentation(scene);
   return el('a', { class: 'explorer-scene', href: sceneRoute(scene), dataset: { scene: scene.id } }, [
     el('span', { class: 'explorer-scene-kicker' }, [
-      status?.badge
-        ? el('span', { class: `status-badge is-${scene.status}`, title: inLanguage(status.note, status.noteJa ?? status.note) }, [
-            el('span', { class: 'lang-en', text: status.label }),
-            el('span', { class: 'lang-ja', text: status.labelJa }),
-          ])
-        : null,
-      review
-        ? el('span', { class: `status-badge clinical-review-badge is-${review.status}` }, [
-            el('span', { class: 'lang-en', text: review.en }),
-            el('span', { class: 'lang-ja', text: review.ja }),
-          ])
-        : null,
+      sceneStatusBadge(scene.status),
+      scene.status === 'prototype' ? null : sceneReviewBadge(scene),
     ]),
-    el('span', { class: 'explorer-scene-title' }, [
-      el('span', { class: 'lang-en', text: scene.titleEn }),
-      el('span', { class: 'lang-ja', text: scene.titleJa }),
-    ]),
-    el('span', { class: 'explorer-scene-note' }, [
-      el('span', { class: 'lang-en', text: scene.description }),
-      el('span', { class: 'lang-ja', text: scene.descriptionJa }),
-    ]),
-    el('span', { class: 'explorer-scene-footer' }, [
-      el('span', { class: 'explorer-scene-open' }, [
-        el('span', { class: 'lang-en', text: 'Open model' }),
-        el('span', { class: 'lang-ja', text: 'モデルを開く' }),
-      ]),
-    ]),
+    ...sceneCardText(scene),
+    el('span', { class: 'explorer-scene-footer' }, [sceneOpenLabel()]),
   ]);
 }
 

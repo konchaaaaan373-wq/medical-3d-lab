@@ -1346,22 +1346,33 @@ export async function createApp({ stage, ui, onRetryModel = null }) {
     : null;
 
   /** The closed cards' second line: what is inside, or what is changed. */
+  // What each closed line last said, so a pad drag (a refresh per frame)
+  // does not rebuild the heading's text — or have it re-announced — when
+  // nothing in it changed.
+  const cardStates = new Map();
+  const setCardState = (card, key, en, ja) => {
+    const text = `${en ?? ''}\u0000${ja ?? ''}`;
+    if (cardStates.get(key) === text) return;
+    cardStates.set(key, text);
+    card.setState(en, ja);
+  };
+
+  /** The closed cards' second line: what is inside, or what is changed. */
   function refreshConsoleCards() {
     if (!consoleCards) return;
     const { conditions: copy } = cardCopy;
-    const moved = (scene.getModelControls?.() ?? [])
-      .filter((control) => control.pad && Number.isFinite(control.start) && Math.abs(control.value - control.start) > 1e-9)
-      .map((control) => ({
-        en: `${control.short ?? control.label}${control.value > control.start ? '↑' : '↓'}`,
-        ja: `${control.shortJa ?? control.labelJa}${control.value > control.start ? '↑' : '↓'}`,
-      }));
+    // The scene's own list: the read-out's order, from the solved condition.
+    const moved = scene.getChangedInputs?.() ?? [];
+    const mark = (entry) => (entry.direction === 'up' ? '↑' : '↓');
     if (moved.length) {
-      consoleCards.conditions.setState(
-        `${copy.changedPrefix} ${moved.map((entry) => entry.en).join(', ')}`,
-        `${copy.changedPrefixJa}${moved.map((entry) => entry.ja).join('・')}`
+      setCardState(
+        consoleCards.conditions,
+        'conditions',
+        `${copy.changedPrefix} ${moved.map((entry) => `${entry.short}${mark(entry)}`).join(', ')}`,
+        `${copy.changedPrefixJa}${moved.map((entry) => `${entry.shortJa}${mark(entry)}`).join('・')}`
       );
     } else {
-      consoleCards.conditions.setState(null, null);
+      setCardState(consoleCards.conditions, 'conditions', null, null);
     }
     const rateOption = meta.console.beatRates?.options.find((option) => option.id === consoleCards.beatRate?.value);
     const states = [
@@ -1369,9 +1380,9 @@ export async function createApp({ stage, ui, onRetryModel = null }) {
       comparing ? { en: meta.comparison?.label ?? 'Comparing', ja: meta.comparison?.labelJa ?? '比較中' } : null,
     ].filter(Boolean);
     if (states.length) {
-      consoleCards.shown.setState(states.map((entry) => entry.en).join(', '), states.map((entry) => entry.ja).join('・'));
+      setCardState(consoleCards.shown, 'view', states.map((entry) => entry.en).join(', '), states.map((entry) => entry.ja).join('・'));
     } else {
-      consoleCards.shown.setState(null, null);
+      setCardState(consoleCards.shown, 'view', null, null);
     }
   }
 
@@ -1391,6 +1402,23 @@ export async function createApp({ stage, ui, onRetryModel = null }) {
     const railButtons = rail.querySelector('.rail-buttons');
     const menu = consoleElement.querySelector('.console-more-menu');
     if (railButtons && menu) menu.append(railButtons);
+  }
+  // With the console as cards, "More" (the lesson, the reel, the image, the
+  // language and "hide controls") goes with whichever card is open: at the
+  // end of the conditions' actions while those are open, in the view card's
+  // row otherwise. It lived only in the view card, and on a phone that card's
+  // heading steps out while the conditions are open — so the language switch
+  // could not be reached at all during an experiment. Moved, not copied.
+  if (consoleCards) {
+    const more = consoleElement.querySelector('.console-more');
+    const viewRow = consoleCards.shown.element.querySelector('.button-row');
+    const actions = consoleCards.conditions.element.querySelector('.model-control-actions');
+    const placeMore = () => {
+      const target = consoleCards.conditions.open && actions ? actions : viewRow;
+      if (more && target && more.parentElement !== target) target.append(more);
+    };
+    for (const card of consoleCards.cards) card.element.addEventListener('toggle', placeMore);
+    placeMore();
   }
   // On a phone the display panel docks just above the console. Only the console
   // knows how tall it is, and it differs by scene.

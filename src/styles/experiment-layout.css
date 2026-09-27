@@ -205,9 +205,6 @@
   flex-wrap: wrap;
   align-items: flex-start;
   gap: 6px;
-  /* "More" sits at the right end of this line (the console grid puts it
-     there); the actions leave it the room. */
-  padding-right: 52px;
 }
 
 #ui[data-layout='experiment'] .model-control-undo-short {
@@ -647,23 +644,19 @@
   color: var(--ink-faint);
 }
 
-/* ---------- the console as one grid ----------
-   Row 1: the pads and, on their last line, the actions — with "More" at the
-   right of that line. Row 2: the start state · intervention, and the notice.
-   The panels inside the console are flattened into it. */
+/* ---------- the console ----------
+   Two cards the reader opens ("条件を変える", "見え方") and, under them, the
+   notice — one column. The cards and what is in them are at the end of this
+   file. */
 #ui#ui[data-layout='experiment'] .console {
-  display: grid;
-  grid-template-columns: auto minmax(0, 1fr) auto;
-  align-items: center;
-  column-gap: 10px;
-  row-gap: 8px;
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 6px;
 }
 
-#ui[data-layout='experiment'] .console > * {
-  grid-column: 1 / -1;
-}
-
-#ui[data-layout='experiment'] .console > .model-controls.is-primary,
+/* The control panel's wrapper holds only the notice now; the notice is a
+   line of the console. */
 #ui[data-layout='experiment'] .console > .controls {
   display: contents;
 }
@@ -673,23 +666,8 @@
   overflow: visible;
 }
 
-#ui[data-layout='experiment'] .console .model-controls > .model-control-list {
-  grid-column: 1 / -1;
-  grid-row: 1;
-}
-
 #ui[data-layout='experiment'] .console .model-controls-head {
   display: none;
-}
-
-/* "More" on the actions' line, at its right. */
-#ui[data-layout='experiment'] .console .controls > .button-row {
-  grid-column: 3;
-  grid-row: 1;
-  align-self: end;
-  justify-content: flex-end;
-  flex-wrap: nowrap;
-  gap: 4px;
 }
 
 #ui[data-layout='experiment'] .console .button-row > .button-gap {
@@ -697,8 +675,6 @@
 }
 
 #ui[data-layout='experiment'] .console .controls > .disclaimer {
-  grid-column: 1 / -1;
-  grid-row: 2;
   margin: 0;
   font-size: 12px;
   line-height: 1.35;
@@ -1222,16 +1198,13 @@
     display: inline;
   }
 
-  /* The console: the two pads, their actions and "More", then the start
-     state · intervention and the notice. Not a scroll box — "More" opens
-     above its button and a scrolling console clips it (L-116) — and nothing
-     inside it scrolls either. */
+  /* The console: the two cards and the notice. Not a scroll box — "More"
+     opens above its button and a scrolling console clips it (L-116) — and
+     nothing inside it scrolls either. */
   #ui#ui[data-layout='experiment'] .console {
     max-height: none !important;
     overflow: visible;
     padding: 8px 12px 6px;
-    row-gap: 6px;
-    column-gap: 8px;
   }
 
   #ui[data-layout='experiment'] .console .model-controls > .model-control-list {
@@ -1351,13 +1324,6 @@
    heart and its numbers. One panel with two rows, not two cards inside a
    card — the rows are separated by a hairline, and an open row's contents
    hang under its own heading. One row open at a time. */
-#ui#ui[data-layout='experiment'] .console.has-cards {
-  display: flex;
-  flex-direction: column;
-  align-items: stretch;
-  gap: 6px;
-}
-
 #ui[data-layout='experiment'] .console-cards {
   display: flex;
   flex-direction: column;
@@ -1460,12 +1426,6 @@
   flex-direction: column;
   gap: 10px;
   padding: 2px 0 12px;
-}
-
-/* The actions no longer share their line with "More" (it is in the view
-   card now). */
-#ui[data-layout='experiment'] .console.has-cards .model-control-actions {
-  padding-right: 0;
 }
 
 /* The view card: the beat's speed, then the view tools in one wrapping row. */
@@ -1652,4 +1612,15 @@
     overflow: visible;
     height: 32px;
   }
+}
+
+/* "More" travels with the open card (App.js): at the end of the conditions'
+   actions, or in the view card's row. A 44 px target in both. */
+#ui[data-layout='experiment'] .model-control-actions > .console-more {
+  margin-left: auto;
+}
+
+#ui[data-layout='experiment'] .console-cards .console-more > .btn {
+  min-height: 44px;
+  min-width: 44px;
 }

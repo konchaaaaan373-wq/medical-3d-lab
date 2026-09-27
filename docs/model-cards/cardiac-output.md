@@ -306,7 +306,9 @@ unchanged.
 - **Two cards, closed at first.** 「条件を変える」 holds the pads, the one-axis
   controls, undo, 「開始時に戻す」 and 「開始状態・介入」. 「見え方」 holds the
   beat's display speed, the comparison, the plots, the camera and the display
-  options, with the lesson, the reel and the image export behind 「その他」.
+  options. 「その他」 (the lesson, the reel, the image export, the language
+  switch and "hide controls") goes with whichever card is open — at the end of
+  the conditions' actions, or in the view card's row.
   Changing the model and changing the view are in different cards so that a
   reader does not have to work out which a button did. One card is open at a
   time. Closed, each says what it holds; the conditions card says which inputs

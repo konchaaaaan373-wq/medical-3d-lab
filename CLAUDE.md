@@ -66,6 +66,7 @@ CLAUDE.md が禁じる「中身のない網羅」の、インフラ版です。
 | ログイン周り | `npm run verify:auth` |
 | 静的サーバ（range・traversal ガード・mount） | `scripts/lib/serve-dist.mjs` |
 | Chromium の実行ファイル解決 | `scripts/lib/browser.mjs` |
+| カメラの tween が止まるまで待つ（固定時間で待たない） | `scripts/lib/camera.mjs` |
 | 端末状態の撮影 | `npm run shots:phone` / `npm run shots:anatomy` |
 
 **一度きりの調査で終わらせない。** 使い捨てで測って捨てると、次の人が同じものを

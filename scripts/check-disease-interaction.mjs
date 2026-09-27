@@ -59,6 +59,7 @@ import { join, resolve } from 'node:path';
 import * as playwright from 'playwright';
 import { chromiumExecutable } from './lib/browser.mjs';
 import { pressConsoleControl } from './lib/console-controls.mjs';
+import { waitForCameraToSettle } from './lib/camera.mjs';
 import { serveDist } from './lib/serve-dist.mjs';
 import { videoExportOffered } from '../src/app/videoExport.js';
 import { VIDEO_MIME_CANDIDATES } from '../src/app/videoRecorder.js';
@@ -237,13 +238,24 @@ for (const slug of SLUGS) {
     // Pressed where a reader presses it: at the chevron, on the right. On a
     // phone the open conditions card lends the rest of its heading row to the
     // pad switcher, so the middle of the row is a tab, not the heading.
+    // A heading can be hidden — on a phone the view card's steps out while
+    // the conditions are open — and a hidden heading has no box. Close the
+    // open card first, as a reader would, rather than dereference nothing.
     const pressCardHead = async (id) => {
+      if (!(await cardHead(id).isVisible())) {
+        const open = page.locator('details.console-card[open] > summary');
+        if (await open.count()) {
+          const openBox = await open.first().boundingBox();
+          if (openBox) await open.first().click({ position: { x: openBox.width - 20, y: openBox.height / 2 } });
+        }
+      }
       const box = await cardHead(id).boundingBox();
+      if (!box) throw new Error(`the “${id}” card's heading cannot be reached`);
       await cardHead(id).click({ position: { x: box.width - 20, y: box.height / 2 } });
+      await waitForCameraToSettle(page);
     };
     const openCard = async (id) => {
       if (!(await cardIsOpen(id))) await pressCardHead(id);
-      await page.waitForTimeout(500);
     };
     const hasCards = (await page.locator('details.console-card').count()) > 0;
     if (hasCards) {
@@ -515,7 +527,7 @@ for (const slug of SLUGS) {
       // The screen a reader arrives at: both cards closed.
       if (hasCards) {
         if (await cardIsOpen('conditions')) await pressCardHead('conditions');
-        await page.waitForTimeout(1500);
+        await waitForCameraToSettle(page);
         const result = await covered();
         if (result) {
           if (result.hits.length) {
@@ -526,7 +538,6 @@ for (const slug of SLUGS) {
           console.log(`  ${slug}: ${where} with the cards closed: model drawn ${result.height}px tall, ventricle ${result.heart}px`);
         }
         await openCard('conditions');
-        await page.waitForTimeout(1000);
       }
 
       const rest = await boxes();

@@ -4,6 +4,7 @@ import { readFileSync } from 'node:fs';
 
 import { PATHOLOGY_ROUTE, RESERVED_ROUTE_SLUGS, SCENES, sceneById } from '../src/catalog/index.js';
 import { isRouteReleased, RELEASED_SCENES } from '../src/catalog/release.js';
+import { PUBLIC_MANIFEST } from '../src/catalog/publicManifest.js';
 import { isPathologyModelScene, pathologyModelScenes } from '../src/catalog/pathologyModels.js';
 import { DOCUMENT_ROUTE_KINDS, resolveRoute } from '../src/app/router.js';
 
@@ -37,4 +38,18 @@ test('every released scene whose breadcrumb names the category appears in the re
   const listed = pathologyModelScenes(RELEASED_SCENES).map((scene) => scene.id);
   for (const scene of RELEASED_SCENES.filter(isPathologyModelScene)) assert.ok(listed.includes(scene.id));
   assert.ok(listed.includes('cardiac-output'), 'the scene the breadcrumb is on is on the list it goes back to');
+});
+
+test('the list reads what is published from the public manifest, like every other surface', () => {
+  const source = readFileSync(new URL('../src/app/PathologyIndex.js', import.meta.url), 'utf8');
+  assert.match(source, /PUBLIC_MANIFEST\.models/);
+  assert.doesNotMatch(source, /RELEASED_SCENES/, 'not the release module directly (CLAUDE.md: one public list)');
+  const published = PUBLIC_MANIFEST.models.map((model) => sceneById(model.sceneId));
+  assert.ok(pathologyModelScenes(published).some((scene) => scene.id === 'cardiac-output'));
+});
+
+test('the Explorer names the category by the same rule as the breadcrumb', () => {
+  const source = readFileSync(new URL('../src/app/Explorer.js', import.meta.url), 'utf8');
+  assert.match(source, /isPathologyModelScene\(scene\) \? PATHOLOGY_CATEGORY/);
+  assert.doesNotMatch(source, /scene\.disease \? '病態モデル'/, 'no second definition of the category');
 });
