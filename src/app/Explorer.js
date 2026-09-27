@@ -15,14 +15,14 @@ import {
   organById,
   sceneById,
   sceneRoute,
-  statusById,
   systemsWithOrgans,
 } from '../catalog/index.js';
 import { PUBLIC_MANIFEST } from '../catalog/publicManifest.js';
+import { PATHOLOGY_CATEGORY, isPathologyModelScene } from '../catalog/pathologyModels.js';
+import { sceneCardText, sceneOpenLabel, sceneReviewBadge, sceneStatusBadge } from '../components/SceneCardParts.js';
 import { createPublicModelsExplorer } from './Landing.js';
 import { RELEASED_SCENES, isSceneReleased } from '../catalog/release.js';
 import { betaUnlocked } from './releaseGate.js';
-import { clinicalReviewPresentation } from '../catalog/clinicalReview.js';
 import { activeUsesForScene, productBadgesForScene } from '../access/features.js';
 import { readSceneLibrary, toggleSceneFavorite } from './sceneLibrary.js';
 import {
@@ -97,35 +97,9 @@ export function createExplorer({
       el('span', { class: 'lang-ja', text: ja }),
     ]);
 
-  const badge = (statusId) => {
-    const status = statusById(statusId);
-    if (!status?.badge) return null;
-    return el('span', { class: `status-badge is-${statusId}`, title: status.note }, [
-      el('span', { class: 'lang-en', text: status.label }),
-      el('span', { class: 'lang-ja', text: status.labelJa }),
-    ]);
-  };
+  const badge = sceneStatusBadge;
 
-  const reviewBadge = (scene) => {
-    if (isLab) return null;
-    const review = clinicalReviewPresentation(scene);
-    return el(
-      'span',
-      {
-        class: `status-badge clinical-review-badge is-${review.status}`,
-        // A tooltip holds one language, and this one explains a distinction a
-        // reader is entitled to be confused by — so it says it in theirs.
-        title: inLanguage(
-          'Clinical-review attestation is tracked separately from model maturity.',
-          '臨床レビューの記録は、モデルの成熟度とは別に管理しています。'
-        ),
-      },
-      [
-        el('span', { class: 'lang-en', text: review.en }),
-        el('span', { class: 'lang-ja', text: review.ja }),
-      ]
-    );
-  };
+  const reviewBadge = (scene) => (isLab ? null : sceneReviewBadge(scene));
 
   const productBadges = (scene) =>
     el(
@@ -198,27 +172,20 @@ export function createExplorer({
   const sceneCard = (scene, system, organ) => {
     const body = [
       el('span', { class: 'explorer-scene-kicker' }, [
+        // The same rule as the breadcrumb 「病態モデル ›」 and `#/pathology`
+        // (`catalog/pathologyModels.js`): one definition of the category, so
+        // a scene is not a disease model in one place and 解剖・生理 in another.
         bilingual(
-          scene.disease ? 'Pathophysiology' : 'Anatomy & physiology',
-          scene.disease ? '病態モデル' : '解剖・生理',
+          isPathologyModelScene(scene) ? PATHOLOGY_CATEGORY.en : 'Anatomy & physiology',
+          isPathologyModelScene(scene) ? PATHOLOGY_CATEGORY.ja : '解剖・生理',
           'explorer-scene-kind'
         ),
         badge(scene.status),
       ]),
-      el('span', { class: 'explorer-scene-title' }, [
-        el('span', { class: 'lang-en', text: scene.titleEn }),
-        el('span', { class: 'lang-ja', text: scene.titleJa }),
-      ]),
-      scene.storyTitleEn
-        ? bilingual(scene.storyTitleEn, scene.storyTitleJa, 'explorer-scene-story')
-        : null,
-      el('span', { class: 'explorer-scene-note' }, [
-        el('span', { class: 'lang-en', text: scene.description }),
-        el('span', { class: 'lang-ja', text: scene.descriptionJa }),
-      ]),
+      ...sceneCardText(scene),
       el('span', { class: 'explorer-scene-footer' }, [
         useBadges(scene),
-        bilingual('Open model', 'モデルを開く', 'explorer-scene-open'),
+        sceneOpenLabel(),
       ]),
       el('span', { class: 'explorer-scene-trust' }, [productBadges(scene), reviewBadge(scene)]),
     ].filter(Boolean);
@@ -271,7 +238,7 @@ export function createExplorer({
       : null;
     if (preview) previewMounts.push({ element: preview, organId: organ.id });
 
-    const diseaseCount = organ.scenes.filter((scene) => scene.disease).length;
+    const diseaseCount = organ.scenes.filter(isPathologyModelScene).length;
     const element = el('div', { class: `explorer-organ${organ.scenes.length ? '' : ' is-empty'}` }, [
       el('div', { class: 'explorer-organ-identity' }, [
         el('div', { class: 'explorer-organ-heading' }, [

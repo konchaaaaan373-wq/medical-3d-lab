@@ -1,6 +1,7 @@
 import {
   EXPLORER_SLUG,
   LAB_SLUG,
+  PATHOLOGY_SLUG,
   resolveSceneId,
   sceneBySlug,
 } from '../catalog/index.js';
@@ -20,6 +21,8 @@ import { LEGAL_SLUGS } from '../data/legalRoutes.js';
 const EXPLORER_ALIASES = new Set([EXPLORER_SLUG, 'explore']);
 const LAB_ALIASES = new Set([LAB_SLUG, 'experimental']);
 const TRUST_ALIASES = new Set(['trust', 'evidence']);
+/** The disease-model list: where "病態モデル" in a mechanism scene's breadcrumb goes. */
+const PATHOLOGY_ALIASES = new Set([PATHOLOGY_SLUG]);
 const LANDING_ALIASES = new Set(['', 'home']);
 /** One slug per legal document, declared in `src/data/legal.js`. */
 const LEGAL_ALIASES = new Set(LEGAL_SLUGS);
@@ -115,7 +118,7 @@ export function isInPageAnchor(hash = '') {
 
 /**
  * @param {string} hash
- * @returns {{kind:'landing'}|{kind:'explorer'}|{kind:'lab'}
+ * @returns {{kind:'landing'}|{kind:'explorer'}|{kind:'lab'}|{kind:'pathology'}
  *   |{kind:'trust',focusId:string|null}
  *   |{kind:'legal',docId:string}|{kind:'scene',sceneId:string,structureId:string|null}}
  */
@@ -124,6 +127,7 @@ export function resolveRoute(hash = '') {
   if (LANDING_ALIASES.has(slug)) return { kind: 'landing' };
   if (EXPLORER_ALIASES.has(slug)) return { kind: 'explorer' };
   if (LAB_ALIASES.has(slug)) return { kind: 'lab' };
+  if (PATHOLOGY_ALIASES.has(slug)) return { kind: 'pathology' };
   if (TRUST_ALIASES.has(slug)) return { kind: 'trust', focusId: trustFocusOf(hash) };
   if (LEGAL_ALIASES.has(slug)) return { kind: 'legal', docId: slug };
   return { kind: 'scene', sceneId: resolveSceneId(hash), structureId: structureOf(hash) };
@@ -146,6 +150,7 @@ export const DOCUMENT_ROUTE_SLUGS = Object.freeze([
   ...LANDING_ALIASES,
   ...EXPLORER_ALIASES,
   ...LAB_ALIASES,
+  ...PATHOLOGY_ALIASES,
   ...TRUST_ALIASES,
   ...LEGAL_ALIASES,
 ].sort());
@@ -164,6 +169,7 @@ export const DOCUMENT_ROUTE_KINDS = Object.freeze([
   'landing',
   'explorer',
   'lab',
+  'pathology',
   'trust',
   'legal',
 ]);

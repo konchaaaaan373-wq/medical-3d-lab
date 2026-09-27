@@ -2,7 +2,8 @@ import { el } from '../utils/dom.js';
 import { inLanguage } from '../utils/language.js';
 import { statusById } from '../catalog/taxonomy.js';
 import { clinicalReviewPresentation } from '../catalog/clinicalReview.js';
-import { relatedScenesFor, sceneById, sceneRoute } from '../catalog/index.js';
+import { PATHOLOGY_ROUTE, relatedScenesFor, sceneById, sceneRoute } from '../catalog/index.js';
+import { PATHOLOGY_CATEGORY, isPathologyModelScene } from '../catalog/pathologyModels.js';
 import { sceneOpen } from '../app/releaseGate.js';
 import '../styles/clinical-review.css';
 import '../styles/scene-pairing.css';
@@ -74,6 +75,25 @@ function trustFold(status, badges) {
   ]);
 }
 
+/**
+ * "病態モデル ›" before the title: which kind of model this is, and the way
+ * back to the others of that kind (`#/pathology`). The title that follows is
+ * the current place, so it is not repeated here.
+ *
+ * Only for scenes the catalogue puts in the category; an anatomy scene keeps
+ * its eyebrow.
+ */
+function categoryTrail(meta) {
+  if (!isPathologyModelScene(sceneById(meta.id))) return null;
+  return el('nav', { class: 'title-trail', 'aria-label': inLanguage('Breadcrumb', '現在地') }, [
+    el('a', { class: 'title-trail-parent', href: PATHOLOGY_ROUTE }, [
+      el('span', { class: 'lang-en', text: PATHOLOGY_CATEGORY.en }),
+      el('span', { class: 'lang-ja', text: PATHOLOGY_CATEGORY.ja }),
+    ]),
+    el('span', { class: 'title-trail-separator', 'aria-hidden': 'true', text: '›' }),
+  ]);
+}
+
 /** Top-left identity block. Sized to survive a 1080x1350 crop for social posts. */
 export function createTitleCard(meta) {
   // Catalogue maturity and clinical review are deliberately separate. A mature
@@ -141,8 +161,9 @@ export function createTitleCard(meta) {
   // The badges sit outside both title lines on purpose. Nested in the English
   // heading they disappeared in Japanese-only mode, which hides `.lang-en` —
   // taking the badge away from the readers its Japanese label was written for.
-  return el('header', { class: 'panel title-card' }, [
-    el('p', { class: 'eyebrow', text: 'medical-3d-lab' }),
+  const trail = categoryTrail(meta);
+  return el('header', { class: `panel title-card${trail ? ' has-trail' : ''}` }, [
+    trail ?? el('p', { class: 'eyebrow', text: 'medical-3d-lab' }),
     el('h1', { class: 'title lang-en', text: meta.title }),
     el('p', { class: 'title-ja lang-ja', text: meta.titleJa }),
     meta.titleCard?.foldTrust && trustBadges ? trustFold(status, trustBadges) : trustBadges,
