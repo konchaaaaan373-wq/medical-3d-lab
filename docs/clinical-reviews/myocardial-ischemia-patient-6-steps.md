@@ -1,5 +1,11 @@
 # 医学レビュー用 — 心筋虚血の患者説明 6 段階
 
+> **2026-09-27 注記 — ここに引用した「患者に出る文章」は古い版です。** 患者説明の日本語は
+> 医療者でない読み手向けに書き直されました（`docs/follow-ups.md` F-232）。**いま画面に出る文言は
+> [`packets/myocardial-ischemia.md`](packets/myocardial-ischemia.md)**（`npm run review:packets` がソースから生成）にあります。
+> この一覧は段ごとの根拠の記録として残しており、文言の照合には packet を使ってください。
+
+
 心不全の一覧と同じ形式です（[`heart-failure-patient-6-steps.md`](heart-failure-patient-6-steps.md)）。
 **承認の代筆はしていません。** `myocardial-ischemia` は `alpha`、臨床レビューは `pending` のまま、
 公開・課金・レビューのゲートは変更していません。

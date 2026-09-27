@@ -7,10 +7,13 @@ import { RotatorCuffTearScene } from '../src/scenes/musculoskeletal/scenes/rotat
 
 const at = (tear, couple = 1) => solveRotatorCuffTear({ tear, couple });
 
-test('physiology: the cuff holds the head on its socket rather than lifting the arm', () => {
+test("physiology: the model draws the cuff's main job, holding the head on its socket, and nothing that lifts the arm", () => {
   // The correction the scene opens with, and it has to be true of the model as
   // well as of the copy: everything the cuff does here is containment, and
-  // there is nothing in it that lifts anything.
+  // there is nothing in it that lifts anything. Not because the cuff never
+  // helps lift — the top tendon helps start the arm rising (2026-09-27: the
+  // copy used to say it does not lift at all) — but because lifting is not
+  // what this model is about.
   const solved = at(0);
   assert.equal(solved.containment, 1, 'intact, all of the holding is there');
   assert.ok(solved.fromSupraspinatus > 0 && solved.fromCouple > 0, 'and it comes from both');

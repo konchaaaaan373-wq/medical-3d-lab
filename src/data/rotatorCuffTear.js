@@ -32,9 +32,9 @@ export const STAGES = [
     at: 0,
     focus: ['tendon', 'couple'],
     summary:
-      'Four tendons wrap the head of the arm bone. They do not lift the arm — they hold the head on its socket while something else does.',
+      'Four tendons wrap the head of the arm bone. Their main job is not to lift the arm but to hold the head on its socket while the big muscle over the shoulder does most of the lifting (the top tendon helps it start).',
     summaryJa:
-      '4 本の腱が上腕骨の骨頭を包んでいます。腕を持ち上げるのはこれらではありません。別のものが持ち上げるあいだ、骨頭を臼蓋に保つのが役目です。',
+      '4 本の腱が上腕骨の骨頭を包んでいます。おもな役目は腕を持ち上げることではなく、肩の大きな筋が持ち上げるあいだ骨頭を臼蓋に保つことです（上の腱は上げ始めを助けます）。',
   },
   {
     id: 'partial',
@@ -107,9 +107,9 @@ export const MODEL_SCOPE = {
     '肩の上を通る腱が断裂したとき、上腕骨頭が元の位置に留まるかどうかを決めているのは何か。',
   answers: [
     {
-      text: 'That the cuff does not lift the arm. It holds the head on its socket while the large muscle over the shoulder lifts it.',
+      text: 'That the main job of the cuff is not lifting the arm. It holds the head on its socket while the large muscle over the shoulder does most of the lifting.',
       textJa:
-        '腱板は腕を持ち上げるものではないこと。肩の大きな筋が持ち上げるあいだ、骨頭を臼蓋に保つのが役目です。',
+        '腱板のおもな役目は腕を持ち上げることではないこと。肩の大きな筋がおもに持ち上げるあいだ、骨頭を臼蓋に保つのが役目です。',
     },
     {
       text: 'That the tendon in front and the tendon behind pull against one another across the sleeve, and that pairing is what keeps the head centred.',
