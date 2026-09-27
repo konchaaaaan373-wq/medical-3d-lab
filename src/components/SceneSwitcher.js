@@ -1,7 +1,7 @@
 import { el } from '../utils/dom.js';
 import { inLanguage } from '../utils/language.js';
 import { EXPLORER_ROUTE, LAB_ROUTE, LANDING_ROUTE, organById } from '../catalog/index.js';
-import { MODEL_INFO_ROUTE, PUBLIC_MANIFEST } from '../catalog/publicManifest.js';
+import { PUBLIC_MANIFEST } from '../catalog/publicManifest.js';
 import { activeUsesForSceneEntry } from '../access/sceneUses.js';
 import { readSceneLibrary, toggleSceneFavorite } from '../app/sceneLibrary.js';
 import { resolveRoute } from '../app/router.js';
@@ -376,41 +376,31 @@ export function createSceneSwitcher({ groups, currentId, showLab = true, models 
 
   // --------------------------------------------------------------- the menu
 
-  // The pages a scene's row does not carry. The publication record is always
-  // open; its gated neighbours ride with the catalogue's footer above, which is
-  // only rendered where the preview unlock makes them destinations.
+  // No page links: the publication record left the menu with the header's
+  // link to it (2026-09-27). The catalogue's own footer keeps the gated indexes
+  // for the preview unlock.
   const header = createSiteHeaderMenu({
     id: 'scene-navigation-panel',
     models: catalogue,
-    pages: [{ href: MODEL_INFO_ROUTE, en: 'Publication & review', ja: '公開とレビュー' }],
   });
   const { menu } = header;
 
   // ---------------------------------------------------------------- who
 
-  // The brand is the way home, so it has to look like one: the arrow and the
-  // word are what make a wordmark an offer. The mark is the product's one mark
-  // — the same `M/3` every reading surface wears — so arriving on a model does
-  // not look like arriving in a different product.
+  // The way home is the product's icon, alone (owner's decision, 2026-09-27).
+  // It used to be `← M/3 Medical 3D Lab | ホーム`: an arrow and a word saying
+  // "home" twice, after a mark and a name. The icon is the same one the tab
+  // and every other screen show; the link's accessible name and tooltip still
+  // say where it goes, destination first.
   const brand = el(
     'a',
     {
       class: 'global-nav-brand',
       href: LANDING_ROUTE,
-      // The destination leads: what a screen reader announces first should be
-      // where the link goes, not what the product is called.
       title: inLanguage('Home — Medical 3D Lab', 'トップへ戻る — Medical 3D Lab'),
       'aria-label': inLanguage('Home — Medical 3D Lab', 'トップへ戻る — Medical 3D Lab'),
     },
-    [
-      el('span', { class: 'global-nav-brand-back', 'aria-hidden': 'true', text: '←' }),
-      brandMark('global-nav-brand-mark'),
-      el('span', { class: 'global-nav-brand-name' }, [
-        el('span', { class: 'global-nav-brand-full', text: 'Medical 3D Lab' }),
-        el('span', { class: 'global-nav-brand-compact', text: 'Medical 3D' }),
-      ]),
-      bilingual('Home', 'ホーム', 'global-nav-brand-home'),
-    ]
+    [brandMark('global-nav-brand-mark')]
   );
 
   const element = el(

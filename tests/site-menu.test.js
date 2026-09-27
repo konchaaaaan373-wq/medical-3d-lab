@@ -277,7 +277,8 @@ test('the 3D header in the beta: the menu offers none of the models the row alre
     const switcher = createSceneSwitcher({ groups, currentId: PUBLIC_MANIFEST.models[0].sceneId, showLab: false });
     const { row, menu } = hrefsOf(switcher.element);
     assert.deepEqual(row.filter((href) => menu.includes(href)), [], 'no destination is both in the row and the menu');
-    assert.ok(menu.includes('#/trust'), 'the menu carries the page the row does not');
+    assert.ok(menu.includes('#/support'), 'the menu carries the pages the row does not');
+    assert.equal(menu.includes('#/trust'), false, 'and not the publication ledger (2026-09-27)');
   });
 });
 

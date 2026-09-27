@@ -1,11 +1,12 @@
 import { EXPLORER_ROUTE, LAB_ROUTE, LANDING_ROUTE } from '../catalog/index.js';
-import { MODEL_INFO_ROUTE, PUBLIC_MANIFEST } from '../catalog/publicManifest.js';
+import { PUBLIC_MANIFEST } from '../catalog/publicManifest.js';
 import { betaUnlocked } from '../app/releaseGate.js';
 import { registerHeaderDock } from '../app/headerDock.js';
 import { organLayerNavigation } from '../app/modelNavigation.js';
 import { el } from '../utils/dom.js';
 import { inLanguage } from '../utils/language.js';
 import { createSiteHeaderMenu, organLayerList } from './SiteMenu.js';
+import { brandIcon } from './brandIcon.js';
 
 /**
  * The one header every reading surface wears.
@@ -49,19 +50,14 @@ import { createSiteHeaderMenu, organLayerList } from './SiteMenu.js';
  *   not, and whatever of "you" the width pushes out of the row. See
  *   `SiteMenu.js`.
  *
- * ## Why "publication and review" and not "model information"
+ * ## Why the publication record is not a destination
  *
- * `#/trust` was labelled モデル情報 — "model information" — from four places on
- * the landing page and from inside every model. A reader who has a model on
- * screen and presses "model information" is asking about *that model*. What
- * arrived was a 8,000-pixel ledger of the publication status and medical
- * review state of all seventy, most of which cannot be opened.
- *
- * The page is worth having and the label was the problem: it described the
- * reader's expectation rather than the page. `公開とレビュー` matches the
- * page's own heading, which is the strongest information scent available —
- * the label predicts the title. A model's *own* record still exists and is
- * still one press away, from inside that model, where the question is asked.
+ * It was, labelled 公開とレビュー: the status and medical-review state of all
+ * seventy declared models, most of which cannot be opened. That is the
+ * product's internal ledger, and a header link to it told a reader that
+ * alpha/review-pending bookkeeping was one of the four things this site is
+ * for. Removed from the header and menu on 2026-09-27; a model's own record is
+ * still reached from inside that model.
  */
 
 /**
@@ -82,20 +78,15 @@ function labIsOffered() {
 }
 
 /**
- * The product's mark: `M/3`.
+ * The product's mark — the cube icon, the same drawing as the favicon.
  *
- * One function, because it was drawn twice — as `M/3` in this header and as a
- * `3D` tile on a 3D model — and arriving on a model from the landing page read
- * as arriving in a different product.
+ * One function for every header. There used to be two marks for one product —
+ * a typed `M/3` here and a `3D` tile on a 3D model — and before that, three.
  *
  * @param {string} [className] the surface's own hook, beside the shared one
  */
 export function brandMark(className = 'shell-brand-mark') {
-  return el('span', { class: `brand-mark ${className}`, 'aria-hidden': 'true' }, [
-    el('span', { text: 'M' }),
-    el('i'),
-    el('span', { text: '3' }),
-  ]);
+  return brandIcon(el, className);
 }
 
 const dual = (en, ja) => [
@@ -124,12 +115,11 @@ export const SHELL_DESTINATIONS = Object.freeze([
   // and filters — and it is a destination again. `routeRedirects.js` holds the
   // other half of the rule.
   Object.freeze({ id: 'models', route: EXPLORER_ROUTE, en: 'Models', ja: 'モデル', gated: true }),
-  Object.freeze({
-    id: 'trust',
-    route: MODEL_INFO_ROUTE,
-    en: 'Publication & review',
-    ja: '公開とレビュー',
-  }),
+  // `公開とレビュー` (`#/trust`) is not here any more (owner's decision,
+  // 2026-09-27): it is the ledger of every model's publication and review
+  // state — the product's own working record, not a destination for a
+  // reader. A model's own sources and limits are still one press away from
+  // that model (「このモデルの根拠と限界」), where the question is asked.
   Object.freeze({ id: 'lab', route: LAB_ROUTE, en: 'Experimental', ja: '実験モデル', gated: true }),
 ]);
 

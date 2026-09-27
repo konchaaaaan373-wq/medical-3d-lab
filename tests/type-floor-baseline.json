@@ -88,7 +88,6 @@
       ".locked-system": 9.5
     },
     "navigation.css": {
-      ".global-nav-brand-mark": 10,
       ".global-nav-scene-name": 10.5,
       ".global-nav-scene-name .lang-ja": 9
     },
@@ -107,7 +106,6 @@
       ".global-nav-footer-link": 11.5,
       "#ui[data-anatomy-shell='calm'] .usage-recording-state": 11,
       "#ui[data-anatomy-shell='calm'] .usage-recording-privacy": 11.5,
-      ".global-nav-brand-name": 10.5,
       ".consent-detail": 11.5,
       ".global-nav-current-label": 11.5,
       "#ui[data-anatomy-shell='calm'] .title-card .clinical-review-badge": 10,

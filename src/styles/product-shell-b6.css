@@ -9,10 +9,6 @@
   box-shadow: 0 8px 24px rgba(0, 0, 0, 0.24);
 }
 
-.global-nav-brand-compact {
-  display: none;
-}
-
 .global-nav-current {
   flex-direction: row;
   align-items: center;
@@ -321,22 +317,6 @@
   color: var(--ink);
 }
 
-@media (max-width: 980px) {
-  /* Upstream navigation hides the brand name below 980px. Keep a compact but
-   * explicit product identity instead of relying on the 3D mark alone. */
-  .global-nav-brand-name {
-    display: inline;
-  }
-
-  .global-nav-brand-full {
-    display: none;
-  }
-
-  .global-nav-brand-compact {
-    display: inline;
-  }
-}
-
 @media (max-width: 720px) {
   .global-scene-nav,
   .global-scene-nav.is-single {
@@ -354,27 +334,6 @@
   .global-nav-brand {
     flex: 0 0 auto;
     gap: 6px;
-  }
-
-  .global-nav-brand-mark {
-    width: 32px;
-    height: 32px;
-  }
-
-  .global-nav-brand-name {
-    display: inline;
-    max-width: none;
-    overflow: visible;
-    white-space: nowrap;
-    font-size: 11px;
-  }
-
-  .global-nav-brand-full {
-    display: none;
-  }
-
-  .global-nav-brand-compact {
-    display: inline;
   }
 
   .global-nav-current {
@@ -430,10 +389,6 @@
 }
 
 @media (max-width: 390px) {
-  .global-nav-brand-name {
-    font-size: 10.5px;
-  }
-
   .global-nav-current-label {
     font-size: 11.5px;
   }
@@ -605,7 +560,6 @@
 }
 
 @media (max-width: 720px) {
-  .global-nav-brand-mark { display: none; }
   /* Was `gap: 0`, which was right when dropping the 3D mark left a bare
      wordmark. The brand now starts with a back arrow, and an arrow welded to
      the first letter of "Medical" reads as a typo rather than as "back". */

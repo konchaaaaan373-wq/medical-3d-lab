@@ -25,9 +25,6 @@
   border-color: color-mix(in srgb, var(--accent) 42%, var(--border));
 }
 
-.account-trigger.has-paid-access .account-icon {
-  color: var(--accent);
-}
 
 .account-trigger:focus-visible,
 .access-dialog button:focus-visible,

@@ -47,50 +47,60 @@
 html[data-route='landing'] .shell-header.has-site-menu,
 html[data-route='locked'] .shell-header.has-site-menu {
   --menu-surface: #0b111c;
+  --menu-on-accent: #0b111c;
+}
+
+/* Text on an accent ground: dark on the scene's cyan and the landing's coral,
+   white on the reading pages' teal. */
+.global-scene-nav.has-site-menu {
+  --menu-on-accent: #04121a;
+}
+
+.shell-header.has-site-menu {
+  --menu-on-accent: #ffffff;
 }
 
 /* ------------------------------------------------------------ the mark */
 
-/* `M/3`, everywhere. The 3D header drew a `3D` tile instead, and arriving on a
-   model from the landing page read as arriving somewhere else. */
-.brand-mark {
-  display: inline-flex;
-  align-items: center;
-  gap: 1px;
-  padding: 3px 6px;
-  border: 1px solid currentColor;
-  border-radius: 6px;
-  font-size: 12px;
-  font-weight: 700;
-  line-height: 1;
-  letter-spacing: 0;
-}
-
-.brand-mark i {
+/* The cube icon (`brandIcon.js`), the same drawing as the favicon, on every
+   screen. It replaced a typed `M/3` on the reading pages and a `3D` tile on the
+   models. */
+.brand-icon {
   display: inline-block;
-  width: 1px;
-  height: 11px;
-  background: currentColor;
-  transform: rotate(18deg);
-  opacity: 0.7;
+  flex: none;
+  width: 28px;
+  height: 28px;
+  line-height: 0;
 }
 
-.shell-brand-mark {
-  color: var(--shell-accent);
+.brand-icon svg {
+  display: block;
+  width: 100%;
+  height: 100%;
 }
 
-/* The scene header's tile rules (a 30 px square, a filled ground) came from
-   the `3D` mark and would box `M/3` into a cell it does not fit. */
-.global-scene-nav .global-nav-brand-mark {
-  display: inline-flex;
-  width: auto;
-  height: auto;
-  padding: 3px 6px;
-  border: 1px solid color-mix(in srgb, var(--accent) 70%, transparent);
-  border-radius: 6px;
+/* On a 3D model the icon is the whole home link (owner's decision,
+   2026-09-27): no arrow, no name, no 「ホーム」, no frame. A 44 px square so it
+   is a thumb's target, and a hover ground so it still answers the pointer. */
+.global-scene-nav .global-nav-brand {
+  justify-content: center;
+  width: 44px;
+  min-width: 44px;
+  min-height: 44px;
+  padding: 0;
+  border-color: transparent;
   background: none;
-  color: var(--accent);
-  font-size: 12px;
+}
+
+.global-scene-nav .global-nav-brand:hover,
+.global-scene-nav .global-nav-brand:focus-visible {
+  border-color: transparent;
+  background: rgba(255, 255, 255, 0.08);
+}
+
+.global-scene-nav .global-nav-brand-mark {
+  width: 32px;
+  height: 32px;
 }
 
 /* ------------------------------------------------------ the scene header */
@@ -299,6 +309,55 @@ html[data-route='locked'] .shell-header.has-site-menu {
 
 .ui-toggle-separator {
   opacity: 0.45;
+}
+
+/* ------------------------------------------------------------ the account */
+
+/* Signed out: the word ログイン. Signed in: an initial in a circle, like an
+   account anywhere else; the name is spoken, and printed only in the menu's
+   settings row where there is room. */
+.account-trigger.is-signed-in {
+  justify-content: center;
+  gap: 8px;
+}
+
+.account-avatar {
+  display: inline-grid;
+  place-items: center;
+  flex: none;
+  width: 30px;
+  height: 30px;
+  border-radius: 50%;
+  background: var(--menu-accent);
+  color: var(--menu-on-accent);
+  font-size: 14px;
+  font-weight: 700;
+  line-height: 1;
+}
+
+.account-trigger.has-paid-access .account-avatar {
+  box-shadow: 0 0 0 2px var(--menu-surface), 0 0 0 4px var(--menu-accent);
+}
+
+.site-utilities .account-trigger.is-signed-in {
+  width: 44px;
+  padding: 0;
+}
+
+.site-utilities .account-name {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
+.site-menu-setting .account-name {
+  max-width: 12em;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 /* --------------------------------------------------------- the menu trigger */
@@ -775,13 +834,6 @@ html[data-route='locked'] .shell-header .site-menu-panel {
 
 /* ------------------------------------------------------------ narrow */
 
-@media (max-width: 980px) {
-  /* The word ホーム goes; the arrow and the frame carry "back". */
-  .global-scene-nav.has-site-menu .global-nav-brand-home {
-    display: none;
-  }
-}
-
 @media (max-width: 720px) {
   /* Two rows when the organ has layers: identity, organs and the menu on the
      first, the layers of the organ on screen across the second. One row
@@ -831,16 +883,9 @@ html[data-route='locked'] .shell-header .site-menu-panel {
     min-height: 44px;
   }
 
-  /* The name of the product goes before the organs do: the mark is the
-     product's mark on every screen, and the organs are the reason to be here. */
-  .global-scene-nav.has-site-menu .global-nav-brand-name {
-    display: none;
-  }
-
   #ui.has-global-scene-nav.has-layer-row {
     padding-top: max(118px, calc(env(safe-area-inset-top) + 106px));
   }
-
 }
 
 @media (max-width: 360px) {
@@ -851,10 +896,6 @@ html[data-route='locked'] .shell-header .site-menu-panel {
      gaps tighten. */
   .global-scene-nav.has-site-menu {
     column-gap: 4px;
-  }
-
-  .global-scene-nav.has-site-menu .global-nav-brand-back {
-    display: none;
   }
 
   .global-scene-nav.has-site-menu .global-nav-strip {

@@ -26,8 +26,16 @@ person: Safari, Firefox, touch and a screen reader.
   model, a second row naming its layers: the heart's anatomy, and cardiac
   output as a *mechanism*. It used to mix organ names with a full model title
   in one row, and on a phone the lungs and the liver fell off its end.
+- **One icon.** The product has an icon now — a cube — in the browser tab and
+  as the way home on a 3D model, where the header used to read
+  `← M/3 Medical 3D Lab | ホーム`. Signed out, the account button says
+  ログイン; signed in, it shows your initial.
+- **The publication ledger is no longer a destination.** 「公開とレビュー」 — the
+  status and review state of every model — was the product's own working
+  record and has left the header, the menu and the top page. Each model's own
+  sources and limits are still linked from that model.
 - **The menu holds the rest, in layers.** Models (organ, then layer) where the
-  row does not already show them; the publication record; language and account
+  row does not already show them; language and account
   when the screen is too narrow to show them in the row; feedback, the terms,
   privacy and support — which a 3D model had no route to at all.
 

@@ -110,6 +110,16 @@ export const SITE_SURFACE_PATHS = Object.freeze([
     reason: 'Deploy header configuration for the static host. Checked by tests/security-headers.test.js.',
   }),
   Object.freeze({
+    path: 'favicon.svg',
+    reason:
+      'The product icon, drawn by us. Byte-for-byte the markup in src/components/brandIcon.js, which ' +
+      'tests/brand-icon.test.js holds, so the tab and the header cannot drift apart.',
+  }),
+  Object.freeze({
+    path: 'apple-touch-icon.png',
+    reason: 'The same icon rendered at 180 px on its own ground, for home screens that do not take SVG.',
+  }),
+  Object.freeze({
     path: '.gitkeep',
     reason:
       'Keeps public/ in git when it would otherwise be empty. Zero bytes, and it ships — which is how this ' +

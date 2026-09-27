@@ -69,7 +69,6 @@ html[lang='ja'] .inspection-section-label {
 .landing-eyebrow,
 .landing-section-kicker,
 .landing-demo-kicker,
-.global-nav-brand-name,
 .global-nav-system-heading,
 .global-nav-organ-name,
 .global-nav-kind-heading {
@@ -367,14 +366,6 @@ html[lang='ja'] .global-nav-current-label {
 }
 
 @media (max-width: 430px) {
-  .global-nav-brand-full {
-    display: none;
-  }
-
-  .global-nav-brand-compact {
-    display: inline;
-  }
-
   .global-nav-current-label {
     font-size: 12px;
     gap: 3px;

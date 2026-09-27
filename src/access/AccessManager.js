@@ -59,6 +59,28 @@ const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 const grantSet = (from = FREE) => withPreviewGrants(new Set(from));
 
 /**
+ * What to call a signed-in reader, and the one character that stands for them.
+ *
+ * The name they gave if the account has one, the part of the address before
+ * the @ otherwise. The initial is the first character of that — a whole
+ * character, not half of a surrogate pair — upper-cased where that means
+ * anything, so 「山田」 gives 山 and `neco@…` gives N.
+ *
+ * @param {{email?: string, user_metadata?: Record<string, unknown>}} user
+ * @returns {{name: string, initial: string}}
+ */
+export function accountIdentity(user) {
+  const meta = user?.user_metadata ?? {};
+  const given = [meta.full_name, meta.name, meta.display_name].find(
+    (value) => typeof value === 'string' && value.trim()
+  );
+  const email = typeof user?.email === 'string' ? user.email : '';
+  const name = (given ?? email.split('@')[0] ?? '').trim() || '?';
+  const [first = '?'] = [...name];
+  return { name, initial: first.toLocaleUpperCase() };
+}
+
+/**
  * Account + entitlement state for the browser.
  *
  * Failing billing infrastructure must never make the free medical model fail to
@@ -675,21 +697,38 @@ export function createAccessManager({ ui }) {
   function renderAccountButton() {
     const access = paidAccessLabel();
     const paid = Boolean(access);
-    const en = state.user ? access?.en ?? 'Account' : 'Sign in';
-    const ja = state.user ? access?.ja ?? 'アカウント' : 'ログイン';
+    const signedIn = Boolean(state.user);
+    const who = signedIn ? accountIdentity(state.user) : null;
+    // Signed out: the action, and nothing else. Signed in: who you are, as an
+    // initial in a circle — the way an account is shown everywhere else a
+    // reader has one. The ○ / ● status glyphs this replaced read as a radio
+    // button, and "signed out" is not a state worth a symbol: the button that
+    // says ログイン already says it.
     accountButton.replaceChildren(
-      el('span', { class: 'account-icon', 'aria-hidden': 'true', text: state.user ? '●' : '○' }),
-      el('span', { class: 'account-label lang-en', text: en }),
-      el('span', { class: 'account-label lang-ja', text: ja })
+      ...(signedIn
+        ? [
+            el('span', { class: 'account-avatar', 'aria-hidden': 'true', text: who.initial }),
+            // The name beside the circle where there is room for it (the site
+            // menu's settings row); the header row shows the circle alone.
+            el('span', { class: 'account-name', text: who.name }),
+          ]
+        : [
+            el('span', { class: 'account-label lang-en', text: 'Sign in' }),
+            el('span', { class: 'account-label lang-ja', text: 'ログイン' }),
+          ])
     );
+    accountButton.classList.toggle('is-signed-in', signedIn);
     accountButton.classList.toggle('has-paid-access', paid);
     // Both languages are in the DOM for the *visible* label, and CSS hides one.
     // An attribute cannot hold two, so it holds the one on screen. Without this
     // the Japanese interface announced its login button as "Sign in" to a
     // screen reader and showed "Sign in" in the tooltip, under a button reading
     // ログイン.
-    const label = state.user
-      ? inLanguage(`Account and access — ${access?.en ?? 'free'}`, `アカウントと利用権 — ${access?.ja ?? '無料'}`)
+    const label = signedIn
+      ? inLanguage(
+          `Account (${who.name}) — ${access?.en ?? 'free'}`,
+          `アカウント（${who.name}）— ${access?.ja ?? '無料'}`
+        )
       : inLanguage('Sign in', 'ログイン');
     accountButton.setAttribute('aria-label', label);
     accountButton.title = label;

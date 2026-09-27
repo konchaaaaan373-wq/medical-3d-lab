@@ -71,9 +71,12 @@ test('reading routes use direct headings and legal prose remains body-sized', ()
   // information", pressed with a model on screen, promised something about
   // that model and arrived at a ledger of seventy.
   assert.match(legal, /createShellHeader\(/);
+  // The header no longer offers the publication record at all (owner's
+  // decision, 2026-09-27): it is the product's own ledger, not a reader's
+  // destination.
   const shell = read('src/components/ShellHeader.js');
-  assert.match(shell, /ja: '公開とレビュー'/);
-  assert.match(shell, /route: MODEL_INFO_ROUTE/);
+  assert.doesNotMatch(shell, /ja: '公開とレビュー'/);
+  assert.doesNotMatch(shell, /route: MODEL_INFO_ROUTE/);
   // The size `.legal-body p` ends up with, not "somewhere after that selector
   // there is a 16px": the anchored form reads the first `font-size` it finds
   // after one spelling of the selector, which is two of this repo's recorded

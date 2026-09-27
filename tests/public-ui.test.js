@@ -162,9 +162,17 @@ test('public model route: one model has no search, filters, category jumps or pl
     assert.equal(findByClass(mounted.element, 'explorer-jump').length, 0);
     assert.equal(findByClass(mounted.element, 'explorer-scene').length, 0);
     assert.ok(hrefs.includes('#/brain-anatomy'));
-    for (const route of ['#/', '#/trust', '#/terms', '#/privacy', '#/commerce', '#/support']) {
+    for (const route of ['#/', '#/terms', '#/privacy', '#/commerce', '#/support']) {
       assert.ok(hrefs.includes(route), `the public model route keeps ${route} reachable`);
     }
+    // The model's own record, not the ledger of all of them: the header's
+    // 公開とレビュー link was removed on 2026-09-27, and what a reader keeps is
+    // the sources and limits of the model on screen.
+    assert.ok(
+      hrefs.some((href) => href?.startsWith('#/trust?model=')),
+      'the model on screen keeps a route to its own sources and limits'
+    );
+    assert.equal(hrefs.includes('#/trust'), false, 'and nothing links the whole ledger');
   });
 });
 
