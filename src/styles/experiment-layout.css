@@ -1233,12 +1233,12 @@
     font-size: 12px;
   }
 
-  /* One line for the three actions and "More" at 375 px: measured, the three
-     came to 288 px in a 284 px line and the last wrapped (costing the heart a
-     row). The chevron gives way; the words do not. */
+  /* One line for the three actions and "More" (now inside the line, as an
+     icon) at 375 px: measured, the three came to 288 px in a 284 px line and
+     the last wrapped (costing the heart a row). The chevron gives way; the
+     words do not. */
   #ui[data-layout='experiment'] .model-control-actions {
     gap: 4px;
-    padding-right: 48px;
   }
 
   #ui[data-layout='experiment'] .model-control-actions .model-controls-advanced > summary::before {
@@ -1623,4 +1623,22 @@
 #ui[data-layout='experiment'] .console-cards .console-more > .btn {
   min-height: 44px;
   min-width: 44px;
+}
+
+/* In the actions' line "More" is its icon alone (the name stays for assistive
+   technology): with its label the line wrapped at 390 px and the second row
+   came out of the heart's band (ventricle 83 → 49 px at 390×664). */
+#ui[data-layout='experiment'] .model-control-actions > .console-more > .btn .btn-label {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
+#ui[data-layout='experiment'] .model-control-actions > .console-more > .btn {
+  padding: 0;
+  justify-content: center;
 }
