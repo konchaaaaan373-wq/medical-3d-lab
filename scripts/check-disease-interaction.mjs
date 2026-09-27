@@ -278,10 +278,40 @@ for (const slug of SLUGS) {
         return found;
       }, viewport);
       for (const line of closed) problems.push(`experiment layout, cards closed: ${line}`);
-      // One open at a time: opening "how it is shown" closes the conditions.
+      // Independent (owner, 2026-09-27): operating and the explanation can
+      // both be open. Then the explanation is closed for the operating flow.
       await openCard('view');
       await openCard('conditions');
-      if (await cardIsOpen('view')) problems.push('experiment layout: opening one card left the other open');
+      if (!(await cardIsOpen('view')) || !(await cardIsOpen('conditions'))) problems.push('experiment layout: the two cards do not open independently');
+      await pressCardHead('view');
+
+      // One input on its own first: the strip names all four, the editor
+      // moves the chosen one and only it, and the chain says what it did.
+      if (await page.locator('.exp-inputs').count()) {
+        const start = await page.evaluate(() => ({ ...window.__app.scene.session.input }));
+        const firstView = await page.evaluate(({ width, height }) => {
+          const nodes = [...document.querySelectorAll('.exp-chip, .exp-step, .model-control-undo, .metrics .metric.is-key')].filter((node) => node.checkVisibility());
+          if (nodes.filter((node) => node.classList.contains('exp-chip')).length !== 4) return ['the four inputs are not all named'];
+          return nodes
+            .map((node) => ({ node, rect: node.getBoundingClientRect() }))
+            .filter(({ rect }) => !(rect.top >= 0 && rect.bottom <= height && rect.left >= 0 && rect.right <= width))
+            .map(({ node }) => node.textContent.trim().replace(/\s+/g, ' ').slice(0, 40));
+        }, viewport);
+        for (const line of firstView) problems.push(`experiment layout, one input: “${line}” is not inside the first viewport`);
+        await page.locator('.exp-step[data-direction="down"]').click();
+        await page.waitForTimeout(600);
+        const after = await page.evaluate(() => ({ ...window.__app.scene.session.input }));
+        const moved = Object.keys(start).filter((key) => start[key] !== after[key]);
+        if (JSON.stringify(moved) !== JSON.stringify(['contractilityEesMmHgPerMl'])) problems.push(`one input: the editor moved ${moved.join(', ')}`);
+        const chain = await page.locator('.effect-chain').innerText();
+        if (!/→/.test(chain) || !/心拍出量|Cardiac output/.test(chain)) problems.push(`one input: the chain does not say what the change did (${chain.replace(/\s+/g, ' ').slice(0, 80)})`);
+        await page.locator('.model-control-undo').click();
+        await page.waitForTimeout(500);
+        // Two at once: the pads, and the same state.
+        await page.locator('.exp-mode').click();
+        await page.waitForTimeout(300);
+        if (JSON.stringify(await page.evaluate(() => ({ ...window.__app.scene.session.input }))) !== JSON.stringify(start)) problems.push('two at once: switching mode moved an input');
+      }
     }
     const outside = await page.evaluate(({ width, height }) => {
       // Only one pad is shown at a time; the other is display:none and has no
@@ -549,7 +579,7 @@ for (const slug of SLUGS) {
 
       // Hit areas, not glyphs: every control in the pads' console is 44 px.
       const small = await page.evaluate(() =>
-        [...document.querySelectorAll('.pad-switch, .pad-step, .pad-range-x, .model-control-undo, .model-control-actions .model-control-reset, .model-control-actions .model-controls-advanced > summary')]
+        [...document.querySelectorAll('.pad-switch, .pad-step, .pad-range-x, .exp-mode, .model-control-undo, .model-control-actions .model-control-reset, .model-control-actions .model-controls-advanced > summary, .operate-tools .btn')]
           .map((node) => ({ node, rect: node.getBoundingClientRect() }))
           .filter(({ rect }) => rect.width > 0 && (rect.height < 44 || rect.width < 44))
           .map(({ node, rect }) => `${node.className} ${Math.round(rect.width)}x${Math.round(rect.height)}`)
@@ -864,34 +894,76 @@ for (const slug of SLUGS) {
       [...document.querySelectorAll('.metrics .metric-reference')].filter((node) => node.textContent.trim()).length
     );
     if (!referenced) problems.push('comparison is on and no row shows what it is compared against');
-    // The two hearts at the same depth: the same condition drawn twice would
-    // otherwise be drawn at two sizes (owner's recording, 24 s). Measured as
-    // the projected height of each heart's outer wall.
-    const heights = await page.evaluate(() => {
-      const { viewer, scene } = window.__app ?? {};
-      if (!scene?.reference || !scene?.ventricle) return null;
-      const height = (object) => {
-        const box = [Infinity, -Infinity];
-        const probe = viewer.camera.position.clone();
-        object.updateWorldMatrix(true, true);
-        object.traverse((node) => {
-          const position = node.geometry?.attributes?.position;
-          if (!position || node.isPoints) return;
-          for (let i = 0; i < position.count; i += 7) {
-            probe.fromBufferAttribute(position, i).applyMatrix4(node.matrixWorld).project(viewer.camera);
-            box[0] = Math.min(box[0], probe.y);
-            box[1] = Math.max(box[1], probe.y);
-          }
-        });
-        return ((box[1] - box[0]) / 2) * innerHeight;
-      };
-      return { before: height(scene.reference.chamber), now: height(scene.ventricle) };
+    // "Before" is drawn in the same heart, at the same phase (owner's
+    // review, 2026-09-27) — a scene that draws it that way says so with a
+    // `beforeOutline`; one that draws a second heart has `reference`.
+    const overlay = await page.evaluate(() => {
+      const { scene } = window.__app ?? {};
+      if (!scene?.beforeOutline) return null;
+      return { visible: scene.beforeOutline.visible, inHeart: scene.beforeOutline.parent === scene.primary };
     });
-    if (heights) console.log(`  ${slug}: comparison hearts drawn ${Math.round(heights.before)}px / ${Math.round(heights.now)}px tall`);
+    if (overlay) {
+      if (!overlay.visible) problems.push('comparison is on and the "before" lines are not drawn');
+      if (!overlay.inHeart) problems.push('the "before" lines are not part of the heart they are drawn over');
+      console.log(`  ${slug}: "before" drawn over the heart (${overlay.visible ? 'visible' : 'hidden'})`);
+    }
     await pressConsoleControl(page, 'button[data-control="compare"]');
     await page.waitForTimeout(900);
     if (madeChange) {
       await pressConsoleControl(page, '.model-control-undo');
+      await page.waitForTimeout(900);
+    }
+  }
+
+  // --- the explanation animation -------------------------------------------
+  //
+  // A played sequence is content, and like a lesson it can only be proved
+  // walkable in a browser: that "play" starts it, that it reaches the stage
+  // inside the heart with the solved numbers in its sentence and the camera
+  // closer, and that a reader's own change stops it and leaves the model to
+  // them (owner's review, 2026-09-27). Waited for by state, not by time.
+  if (await page.locator('.explainer').count()) {
+    await pressConsoleControl(page, '.explainer-play');
+    const reached = await page
+      .waitForFunction(() => document.querySelector('.explainer-stage[data-state="current"]')?.dataset.stage === 'inside', null, { timeout: 180000 })
+      .then(() => true)
+      .catch(() => false);
+    if (!reached) problems.push('explanation: it never reached the stage inside the heart');
+    else {
+      await waitForCameraToSettle(page);
+      await page.screenshot({ path: join(outDir, `${slug}-explainer-inside.png`) });
+      const at = await page.evaluate(() => {
+        const { scene, viewer } = window.__app;
+        return {
+          caption: document.querySelector('.explainer-caption')?.innerText ?? '',
+          contractility: scene.session.input.contractilityEesMmHgPerMl,
+          start: scene.session.baseline.input.contractilityEesMmHgPerMl,
+          comparing: scene.comparing,
+          distance: viewer.camera.position.distanceTo(viewer.controls.target),
+        };
+      });
+      if (!/\d+→\d+/.test(at.caption)) problems.push(`explanation: the sentence carries no solved numbers (${at.caption.slice(0, 60)})`);
+      if (!(at.contractility < at.start)) problems.push('explanation: contractility did not fall');
+      if (!at.comparing) problems.push('explanation: the "before" lines are not drawn inside the heart');
+      console.log(`  ${slug}: explanation reached "inside the heart" — camera at ${at.distance.toFixed(1)}`);
+      // A reader's change stops it, and the model is theirs from there.
+      await pressConsoleControl(page, '.exp-step[data-direction="up"]:visible, .pad-step[data-direction="up"]:visible');
+      await page.waitForTimeout(400);
+      const state = await page.evaluate(() => document.querySelector('.explainer')?.dataset.state);
+      if (state !== 'interrupted') problems.push(`explanation: a change by hand did not stop it (state ${state})`);
+      // Play from the start begins again from the start state.
+      await pressConsoleControl(page, '.explainer-replay');
+      await page.waitForTimeout(600);
+      const again = await page.evaluate(() => ({
+        state: document.querySelector('.explainer')?.dataset.state,
+        contractility: window.__app.scene.session.input.contractilityEesMmHgPerMl,
+        start: window.__app.scene.session.baseline.input.contractilityEesMmHgPerMl,
+      }));
+      if (again.state !== 'playing' || again.contractility !== again.start) problems.push(`explanation: "play from the start" did not start from the start (${JSON.stringify(again)})`);
+      await pressConsoleControl(page, '.explainer-play');
+      await page.waitForTimeout(300);
+      if ((await page.evaluate(() => document.querySelector('.explainer')?.dataset.state)) !== 'paused') problems.push('explanation: pause did not pause');
+      await pressConsoleControl(page, '.model-control-reset');
       await page.waitForTimeout(900);
     }
   }

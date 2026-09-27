@@ -293,6 +293,50 @@ supports is refusing to publish the reduction.
 
 **Catalog status:** `alpha`
 
+### Screen, 2026-09-27 — the 3D answers each input; operating and the explanation apart
+
+Not a model revision: the solver, its inputs and their ranges are unchanged.
+The owner's recording showed the figures moving while the heart, the vessels
+and the blood looked the same. What changed on screen, each drawn from the
+solved beat and nothing else (the scales are in `docs/medical-notes.md`):
+
+| Input | What the 3D does |
+| --- | --- |
+| Filling | the chamber fills to the solved EDV (to scale); the venous run is fuller (drawing scale) |
+| Contractility | the chamber empties to the solved ESV (to scale) — less or more blood left behind |
+| Rate | the beat's period is the solved rate (to scale) |
+| Resistance | the systemic arteriolar bed — many small vessels — narrows or widens together (drawing scale); it replaced three rings on one tube, which read as a stenosis |
+| (all) | the stroke leaves the aortic valve as a bright length of the arterial run, in proportion to the solved stroke volume |
+
+**"Before", drawn over "now".** 「変更前を重ねる」 draws the starting
+condition's cavity as lines inside this chamber, at the same phase, in the same
+place and at the same scale. It replaced two small hearts side by side.
+
+**Operating.** The four inputs are always named with their values and whether
+each has moved (↑/↓). One is adjusted on its own first — its name, value,
+start and a step each way in words. 「2つ同時」 shows the XY pads
+(「収縮力×心拍数」「充満量×抵抗」); switching between the two ways, or between
+the pairs, changes no value. Under the inputs, the chain of what the change
+did: what was changed → the heart and the blood (EDV, ESV, stroke volume, beat
+interval) → the figures (CO, MAP), each only when its displayed value moved.
+
+**The explanation animation** is its own card and holds nothing else: "when
+contractility falls", six stages (start, cause, inside the heart, what leaves,
+the circulation, what the model leaves out), played with play / pause / play
+from the start. It sets contractility through the same `setModelControl` path
+on the control's own grid, fits the camera to a smaller box for the closer
+stages, draws the "before" lines for the two stages about the heart, and quotes
+only solved numbers. A change by hand while it plays stops it and leaves the
+condition to the reader; one undo takes the whole fall back. It says that the
+model has no reflexes and does not compute oxygen delivery or perfusion.
+
+The beat-speed buttons (通常・1/4・止める) are gone: they were a display
+setting shown where the owner expected an explanation. The plots, the camera
+and the display options are behind 「その他」, in neither card. The two cards
+open and close independently.
+
+Not yet known: F-234.
+
 ### Screen, 2026-09-26 — where the reader is, and a console that starts closed
 
 Not a model revision: the solver, its inputs, their ranges and the pads are
