@@ -281,9 +281,13 @@ export const MODEL_CONTROLS = {
 export const CONSOLE_LAYOUT = {
   overflow: ['learn', 'reel', 'capture'],
   cards: {
+    // Named for what pressing inside them does (2026-09-27): one card
+    // *operates the model* — the numbers are recomputed — and the other only
+    // changes the *animation* and how it is shown. The old names 「条件を変える」
+    // and 「見え方」 did not say which of the two moves the physiology.
     conditions: {
-      title: 'Change the conditions',
-      titleJa: '条件を変える',
+      title: 'Operate the model',
+      titleJa: '実際に操作する',
       // Closed and nothing moved: what is inside. The changed state is built
       // from the controls themselves (App.js).
       summary: 'Contractility, rate, filling, resistance',
@@ -292,8 +296,8 @@ export const CONSOLE_LAYOUT = {
       changedPrefixJa: '変更中：',
     },
     view: {
-      title: 'How it is shown',
-      titleJa: '見え方',
+      title: 'Animation & view',
+      titleJa: 'アニメーションと表示',
       summary: 'Beat speed, comparison, camera, plots',
       summaryJa: '拍動の速さ・比較・視点・グラフ',
     },

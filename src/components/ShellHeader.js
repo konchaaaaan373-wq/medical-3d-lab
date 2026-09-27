@@ -1,6 +1,8 @@
-import { EXPLORER_ROUTE, LAB_ROUTE, LANDING_ROUTE } from '../catalog/index.js';
+import { EXPLORER_ROUTE, LAB_ROUTE, LANDING_ROUTE, PATIENT_ROUTE } from '../catalog/index.js';
 import { PUBLIC_MANIFEST } from '../catalog/publicManifest.js';
 import { betaUnlocked } from '../app/releaseGate.js';
+import { PURPOSE, purposeById } from '../app/purpose.js';
+import { patientExplanationScenes } from '../access/patientPurpose.js';
 import { registerHeaderDock } from '../app/headerDock.js';
 import { organLayerNavigation } from '../app/modelNavigation.js';
 import { el } from '../utils/dom.js';
@@ -89,6 +91,45 @@ export function brandMark(className = 'shell-brand-mark') {
   return brandIcon(el, className);
 }
 
+/**
+ * Whether this build offers patient explanation on any model.
+ *
+ * Asked once per header. When it does not — the released product, today — the
+ * header offers no purpose at all: a 患者説明 entrance that opens a list of
+ * nothing is a door to an empty room (`patientPurpose.js`).
+ */
+function patientPurposeOffered() {
+  try {
+    return patientExplanationScenes().length > 0;
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * The two purposes as the product's top level, when there are two.
+ *
+ * Medical education is explored by system, organ and mechanism — the model
+ * index under the preview unlock, the home page's organ chooser in the beta
+ * (where `#/organs` *is* the home page, see `routeRedirects.js`). Patient
+ * explanation is explored by the question a person brings (`#/patient`).
+ *
+ * @param {boolean} labOffered
+ */
+export function purposeDestinations(labOffered) {
+  const education = purposeById(PURPOSE.EDUCATION);
+  const patient = purposeById(PURPOSE.PATIENT);
+  return Object.freeze([
+    Object.freeze({
+      id: 'education',
+      route: labOffered ? EXPLORER_ROUTE : LANDING_ROUTE,
+      en: education.en,
+      ja: education.ja,
+    }),
+    Object.freeze({ id: 'patient', route: PATIENT_ROUTE, en: patient.en, ja: patient.ja }),
+  ]);
+}
+
 const dual = (en, ja) => [
   el('span', { class: 'lang-en', text: en }),
   el('span', { class: 'lang-ja', text: ja }),
@@ -125,13 +166,17 @@ export const SHELL_DESTINATIONS = Object.freeze([
 
 /**
  * @param {object} options
- * @param {'home'|'models'|'trust'|'lab'|'legal'|null} [options.current] which
+ * @param {'home'|'models'|'education'|'patient'|'trust'|'lab'|'legal'|null} [options.current] which
  *   destination the reader is on, so the header can say so. `legal` and `null`
  *   mark nothing, because a legal document is not one of the destinations and
  *   claiming otherwise would be a lie in an ARIA attribute.
  * @param {HTMLElement|null} [options.accountButton]
  * @param {HTMLElement|null} [options.languageToggle]
  * @param {boolean} [options.showLab] override the release check, for tests
+ * @param {boolean} [options.showPurposes] override "is patient explanation
+ *   offered anywhere", for tests. When it is, the model index is named as the
+ *   purpose it serves — 医学教育 — beside 患者説明, and `current: 'models'`
+ *   marks the first.
  * @param {ReadonlyArray<object>} [options.models] the published models the menu
  *   lists — the surface's own manifest, so a surface rendered from a fixture
  *   (zero models, one) does not grow a menu of the real release's
@@ -142,6 +187,7 @@ export function createShellHeader({
   accountButton = null,
   languageToggle = null,
   showLab = labIsOffered(),
+  showPurposes = patientPurposeOffered(),
   models = PUBLIC_MANIFEST?.models ?? [],
 } = {}) {
   const home = el(
@@ -158,13 +204,19 @@ export function createShellHeader({
     ]
   );
 
-  const links = SHELL_DESTINATIONS.filter((item) => !item.gated || showLab).map((item) =>
+  // With two purposes, they are the top level and the model index is the
+  // first of them rather than a third link beside them.
+  const here = showPurposes && current === 'models' ? 'education' : current;
+  const destinations = showPurposes
+    ? [...purposeDestinations(showLab), ...SHELL_DESTINATIONS.filter((item) => item.id !== 'models')]
+    : SHELL_DESTINATIONS;
+  const links = destinations.filter((item) => !item.gated || showLab).map((item) =>
     el(
       'a',
       {
-        class: 'shell-nav-link',
+        class: `shell-nav-link${item.id === 'education' || item.id === 'patient' ? ` is-purpose is-${item.id}` : ''}`,
         href: item.route,
-        ...(current === item.id ? { 'aria-current': 'page' } : {}),
+        ...(here === item.id ? { 'aria-current': 'page' } : {}),
       },
       dual(item.en, item.ja)
     )

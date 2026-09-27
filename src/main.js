@@ -35,6 +35,10 @@ import './styles/patient-consultation.css';
 // A declared scene arrangement (`meta.layout = 'experiment'`). After the surface
 // sheets so its desktop layout wins, before the touch floor so that still does.
 import './styles/experiment-layout.css';
+// Patient explanation and medical education as two purposes over one model:
+// the header's switch and location, the title card, the patient console, the
+// entrances (`src/app/purpose.js`). After the consultation sheet it adjusts.
+import './styles/purpose.css';
 // Last, and deliberately: it is the one place that owns the 44 px touch floor
 // for phone widths, and it has to outrank every surface sheet that compacts —
 // the consultation view above included.
@@ -330,8 +334,18 @@ async function boot() {
        */
       onRetryModel: () => window.location.reload(),
     });
-    installAccess({ app, access, ui, sceneId: resolveSceneId() });
+    const modes = installAccess({ app, access, ui, sceneId: resolveSceneId() });
     void accessReady;
+    // Which purpose the address asks for — patient explanation or medical
+    // education — over this one model (`src/app/purposeController.js`). After
+    // the paid modes, because patient explanation *is* one of them.
+    try {
+      const { installPurpose } = await import('./app/purposeController.js');
+      await installPurpose({ app, ui, sceneId: resolveSceneId(), modes });
+    } catch (error) {
+      // The model is on screen and works in medical education without this.
+      console.warn('[purpose] not installed', error);
+    }
 
     // The shared anatomy implementation owns the actual panel and its state.
     // Work only opts its presentation adapter in when that real panel exists.

@@ -49,6 +49,8 @@ import { createCausalStoryPanel } from '../components/CausalStoryPanel.js';
 import { createModelControls } from '../components/ModelControls.js';
 import { createLearningPanel } from '../components/LearningPanel.js';
 import { createSceneSwitcher } from '../components/SceneSwitcher.js';
+import { patientExplanationAvailable } from '../access/patientPurpose.js';
+import { hashWithPurpose } from './purpose.js';
 import { createReelMode } from './ReelMode.js';
 import { videoConsentTerms, videoExportOffered, videoFileName } from './videoExport.js';
 // The *question* — can this browser record a canvas — is asked on every scene
@@ -1223,6 +1225,16 @@ export async function createApp({ stage, ui, onRetryModel = null }) {
     groups: systemsWithScenes(betaUnlocked() ? SCENES : RELEASED_SCENES),
     currentId: resolveSceneId(),
     showLab: betaUnlocked(),
+    // Whether this model is explained for patients as well as taught. The
+    // switch only writes the address; `purposeController.js` answers the
+    // address — the same path a shared link, a reload and Back take.
+    purpose: {
+      available: patientExplanationAvailable(sceneById(resolveSceneId())),
+      onChange: (purpose) => {
+        const next = hashWithPurpose(window.location.hash, purpose);
+        if (next !== window.location.hash) window.location.hash = next;
+      },
+    },
   });
 
   // Both languages in the DOM, CSS hides one — this button had only the
@@ -2299,7 +2311,30 @@ export async function createApp({ stage, ui, onRetryModel = null }) {
   window.__app = {
     viewer,
     scene,
+    meta,
     playback,
+    /** The header, so the purpose it is in can be said there. */
+    header: sceneSwitcher,
+    titleCard,
+    /**
+     * Put the model's own controls back to where the model opens, and leave
+     * the progression where it is. Used when a purpose change must not carry
+     * a medical-education setting into a patient explanation.
+     *
+     * @returns {boolean} whether anything was actually changed
+     */
+    resetModelControls: () => {
+      const before = JSON.stringify((scene.getModelControls?.() ?? []).map(({ id, value }) => [id, value]));
+      const wasComparing = comparing;
+      if (comparing) setComparison(false);
+      if (scene.resetModelControls) {
+        scene.resetModelControls();
+        modelControls?.sync(scene.getModelControls?.() ?? []);
+        refreshModelReadouts();
+      }
+      const after = JSON.stringify((scene.getModelControls?.() ?? []).map(({ id, value }) => [id, value]));
+      return wasComparing || before !== after;
+    },
     setComparison,
     isComparing: () => comparing,
     reel: reelMode,
@@ -2321,6 +2356,16 @@ export async function createApp({ stage, ui, onRetryModel = null }) {
      */
     guideView: {
       apply: applyGuideFraming,
+      /**
+       * Let go of the explanation's labels and camera tween **without** moving
+       * the camera: the viewpoint the reader is looking from stays theirs when
+       * the explanation closes because they changed purpose.
+       */
+      release: () => {
+        storyFocus = null;
+        applyLabelFocus();
+        view.active = false;
+      },
       framings: () => Object.keys(scene.getGuideFramings?.() ?? {}),
     },
     related,

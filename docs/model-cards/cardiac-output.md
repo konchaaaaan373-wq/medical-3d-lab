@@ -303,12 +303,14 @@ unchanged.
   category (`src/catalog/pathologyModels.js`: a mechanism level other than
   `none`, or a disease). Which of them are listed is the release gate's
   decision; the list does not publish anything.
-- **Two cards, closed at first.** 「条件を変える」 holds the pads, the one-axis
-  controls, undo, 「開始時に戻す」 and 「開始状態・介入」. 「見え方」 holds the
+- **Two cards, closed at first.** 「実際に操作する」 holds the pads, the one-axis
+  controls, undo, 「開始時に戻す」 and 「開始状態・介入」. 「アニメーションと表示」 holds the
   beat's display speed, the comparison, the plots, the camera and the display
   options. 「その他」 (the lesson, the reel, the image export, the language
   switch and "hide controls") goes with whichever card is open — at the end of
   the conditions' actions, or in the view card's row.
+  (Renamed from 「条件を変える」「見え方」 on 2026-09-27: the names now say which card
+  recomputes the model and which only changes the animation.)
   Changing the model and changing the view are in different cards so that a
   reader does not have to work out which a button did. One card is open at a
   time. Closed, each says what it holds; the conditions card says which inputs

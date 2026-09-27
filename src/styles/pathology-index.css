@@ -23,3 +23,12 @@
     grid-template-columns: minmax(0, 1fr);
   }
 }
+
+/* Maturity and review, under the model rather than above its name. */
+.pathology-card-trust {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 4px;
+  opacity: 0.85;
+}

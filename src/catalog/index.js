@@ -79,6 +79,14 @@ export const LAB_ROUTE = `#/${LAB_SLUG}`;
 /** The list a mechanism scene's breadcrumb goes back to (`src/catalog/pathologyModels.js`). */
 export const PATHOLOGY_SLUG = 'pathology';
 export const PATHOLOGY_ROUTE = `#/${PATHOLOGY_SLUG}`;
+/**
+ * The patient-explanation entrance: questions a person brings, each opening a
+ * model in its patient-explanation purpose (`src/app/purpose.js`). It lists
+ * only what the release, the clinical review and the authored content allow
+ * (`src/access/patientPurpose.js`), so on a build with none it says so.
+ */
+export const PATIENT_SLUG = 'patient';
+export const PATIENT_ROUTE = `#/${PATIENT_SLUG}`;
 
 /**
  * Slugs the product shell has already claimed.
@@ -94,6 +102,7 @@ export const RESERVED_ROUTE_SLUGS = Object.freeze([
   LAB_SLUG,
   'experimental',
   PATHOLOGY_SLUG,
+  PATIENT_SLUG,
   'trust',
   'evidence',
   'home',
