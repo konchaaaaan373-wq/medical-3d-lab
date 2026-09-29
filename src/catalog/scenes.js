@@ -205,9 +205,9 @@ export const SCENE_MANIFEST = [
     modelCard: 'docs/model-cards/cardiac-output.md',
     modelProfile: 'cardiac-output-elastance-experiment',
     description:
-      'Move circulating filling, systemic resistance, contractility or rate one at a time and read stroke volume, cardiac output and pressure out of the same solved beat.',
+      'Blood pressure going up does not mean the heart sends out more: an introduction shows it with a vasopressor’s vasoconstrictor action, and the full model moves filling, resistance, contractility or rate one at a time.',
     descriptionJa:
-      '循環充満・体血管抵抗・収縮力・心拍数を 1 つずつ動かし、同じ 1 拍から 1回拍出量・心拍出量・血圧を読みます。',
+      '血圧が上がっても、心臓から送り出す量が増えたとは限らない——昇圧薬の血管収縮作用で確かめる入門と、循環充満・体血管抵抗・収縮力・心拍数を 1 つずつ動かす詳しいモデル。',
     tags: ['haemodynamics', 'learning-module', 'one-factor-at-a-time'],
     load: () => import('../scenes/cardiovascular/scenes/cardiacOutput/index.js'),
   },

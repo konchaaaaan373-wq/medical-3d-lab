@@ -19,13 +19,62 @@ rather than left to be inferred from the fact that the page opens.
 | **Decided by** | Repository owner's decision to publish this scene and to stop the beta being anatomy-only; carried out and recorded by Claude Code (AI engineering agent) |
 | **Role** | `engineering` — software behaviour and agreement with the model, not physiological or clinical judgement |
 | **Assets** | none. The geometry is **procedural**, so there is no external file, no licence obligation and no hash to pin |
-| **Scene revision** | model card revision **7**, source digest `62aa45633791a39c` (re-pinned twice on 2026-09-22 — see below) |
+| **Scene revision** | model card revision **10**, source digest `2760e907f47f8ef6` (re-taken on 2026-09-29 for the introductory lesson — see below; earlier pins: 7 and 9 on 2026-09-22) |
 
 The decision is pinned to that scene revision in
 [`src/catalog/release.js`](../../src/catalog/release.js). Change what the model
 solves or what a control does and `npm run revisions:check` fails until the card
 is revised, which moves the revision and closes this record until it is taken
 again.
+
+## Re-taken on 2026-09-29 — the route opens an introductory lesson (revision 10)
+
+**What changed.** On the owner's brief of 2026-09-29 (Issue #166)
+`#/cardiac-output` now opens a lesson with one question — 「血圧が上がった。
+心臓から出る量も増えた？」 — built on the same solver: a low-output circulation
+(A, the reduced-contractility preset), the vasoconstrictor action of a
+vasopressor added to it (B: systemic resistance ×1.5 and nothing else), and a
+different circulation beside it (C, the reference heart) with about the same
+mean pressure and clearly more output. The full model this record was first
+taken for is **unchanged** at `#/cardiac-output?view=detail`, with a
+breadcrumb back to the lesson. Same catalogue entry, same profile, same
+prohibited uses, same `alpha` badge and `医学レビュー：未完了` chip.
+
+**Why this is re-taken and not re-pinned.** The model gained one intervention
+and the lesson's conditions joined the pinned sources, so the digest moved;
+but more than that, **what a reader meets first changed**. The engineering
+acceptance below is re-stated for the lesson: what it puts on screen is what
+the model solved, and every claim it makes about A, B and C is re-derived from
+the solver by `tests/cardiac-output-lesson.test.js`. Nothing the full model
+already solved moved; its tests, fixtures and figures are unchanged.
+
+**What was checked for the lesson** (headless Chromium, software GL):
+
+- `npm run verify:disease -- <dir> cardiac-output` drives the lesson at
+  1440×900, 390×844 and 375×667 (`scripts/lib/lesson-drive.mjs`): the first
+  screen shows the question, the model, both results and both ways in without
+  scrolling and with no modal; each of the five scenes shows its own condition
+  and words; the player pauses, steps and restarts; leaving the explanation
+  half way through the change hands the reader B and says so; the buttons add
+  and take away the vasoconstrictor action and show and hide C; "before (A)" is
+  shown only while B stands alone; the model keeps its band (≥ 150 px on a
+  phone, ≥ 360 px on a desktop) and every tag stays inside it and clear of the
+  others. It then drives the full model at `?view=detail` exactly as before.
+- The explanation and the buttons were recorded frame by frame on a fixed
+  clock at each window (`--record-lesson`).
+- `tests/cardiac-output-lesson-scene.test.js` holds the 3D to the solver: the
+  vessels narrow from A to B, each stroke's length is its stroke volume at the
+  moment of comparison, B's and C's needles point the same way, and the two
+  circulations are equidistant from the camera and seen from the same angle.
+
+**What was not checked for the lesson**: no first-time reader has used it —
+which is the owner's completion condition (F-239); no clinician has read its
+three conditions, its naming of the vasoconstrictor action or its wording
+(F-240); no real device (F-238). The ×1.5 is illustrative.
+
+**It takes effect when the owner merges the change that carries it** — this
+record is written in a Draft pull request, and the publication gate reads the
+pin in `src/catalog/release.js` from the merged tree.
 
 ## Re-pinned twice on 2026-09-22, and once a displayed number moved
 

@@ -158,7 +158,10 @@ CLAUDE.md が禁じる「中身のない網羅」の、インフラ版です。
 （機序シーンのパンくず「病態モデル ›」の戻り先。載るのは公開ゲートが開けたものだけ）、
 `#/patient` が患者説明の入口（知りたいことから選ぶ。載るのは公開・版固定の医学レビュー・
 説明文が揃ったモデルだけ）。同じモデルを患者説明で開くのは `#/<slug>?purpose=patient`
-（`src/app/purpose.js`。医学教育が既定で、パラメータ無し）。ルートは `src/catalog/scenes.js`
+（`src/app/purpose.js`。医学教育が既定で、パラメータ無し）。1 つのシーンが画面を
+2 つ持つときは `#/<slug>?view=<name>`（`viewOf`。シーンのモジュールが `views` を
+export する。例: `#/cardiac-output` は入門教材、`#/cardiac-output?view=detail` が
+詳しいモデル）。ルートは `src/catalog/scenes.js`
 から生成されるので、**シーンを増やしても routing に手を入れません**。
 
 ---

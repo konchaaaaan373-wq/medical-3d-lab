@@ -98,6 +98,45 @@ export function trustFocusOf(hash = '') {
 }
 
 /**
+ * Which screen of a model a scene route asks for, or `null` for its default.
+ *
+ * `#/cardiac-output?view=detail` is the full cardiac-output model;
+ * `#/cardiac-output` its introductory lesson. A query, like `structure`,
+ * because the address is still the one model — same catalogue entry, same
+ * publication record. Unlike `structure` it **is** part of what `sameRoute`
+ * compares: the two views are different scene classes with different shells,
+ * and moving between them builds a new one (`loadScene`'s `view`).
+ *
+ * Only the characters a view name can have; anything else is no view.
+ *
+ * @param {string} hash
+ * @returns {string|null}
+ */
+export function viewOf(hash = '') {
+  const value = queryValue(hash, 'view');
+  return value && /^[a-z][a-z0-9-]{0,31}$/.test(value) ? value : null;
+}
+
+/**
+ * The same hash, asking for `view` — or for the default screen when `view` is
+ * null. Every other part of the query is kept as written.
+ *
+ * @param {string} hash
+ * @param {string|null} view
+ */
+export function hashWithView(hash, view) {
+  const value = String(hash ?? '');
+  const at = value.indexOf('?');
+  const route = at < 0 ? value : value.slice(0, at);
+  const query = at < 0 ? '' : value.slice(at + 1);
+  const kept = query
+    .split('&')
+    .filter((part) => part && decodeURIComponent(part.split('=')[0].replace(/\+/g, ' ')) !== 'view');
+  if (view) kept.push(`view=${encodeURIComponent(view)}`);
+  return kept.length ? `${route}?${kept.join('&')}` : route;
+}
+
+/**
  * Is this hash an in-page anchor rather than a route?
  *
  * Every route in this product is written `#/something`. A hash without that
@@ -134,7 +173,14 @@ export function resolveRoute(hash = '') {
   if (PATIENT_ALIASES.has(slug)) return { kind: 'patient' };
   if (TRUST_ALIASES.has(slug)) return { kind: 'trust', focusId: trustFocusOf(hash) };
   if (LEGAL_ALIASES.has(slug)) return { kind: 'legal', docId: slug };
-  return { kind: 'scene', sceneId: resolveSceneId(hash), structureId: structureOf(hash) };
+  const view = viewOf(hash);
+  return {
+    kind: 'scene',
+    sceneId: resolveSceneId(hash),
+    structureId: structureOf(hash),
+    // Only when one is asked for, so a route without a view reads as it always did.
+    ...(view ? { view } : {}),
+  };
 }
 
 /**
@@ -213,5 +259,11 @@ export function sameRoute(a, b) {
   const right = resolveRoute(b);
   // Two legal documents are two routes, not one: `#/terms` and `#/privacy`
   // share a `kind` and must still reload the page.
-  return left.kind === right.kind && left.sceneId === right.sceneId && left.docId === right.docId;
+  // Two views of one model are two screens with two shells (`viewOf`).
+  return (
+    left.kind === right.kind &&
+    left.sceneId === right.sceneId &&
+    left.docId === right.docId &&
+    (left.view ?? null) === (right.view ?? null)
+  );
 }

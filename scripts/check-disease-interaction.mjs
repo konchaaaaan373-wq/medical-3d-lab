@@ -51,6 +51,7 @@
  *   --engine <name>  chromium (default), firefox or webkit
  *   --dpr <number>   device scale factor (default 1)
  *   --dist <path>    build directory (default dist)
+ *   --record-lesson  also record a lesson's explanation and buttons as video
  *   the scene slugs to drive, as arguments, after an optional output directory
  *   for the screenshots.
  */
@@ -60,6 +61,7 @@ import * as playwright from 'playwright';
 import { chromiumExecutable } from './lib/browser.mjs';
 import { pressConsoleControl } from './lib/console-controls.mjs';
 import { waitForCameraToSettle } from './lib/camera.mjs';
+import { LESSON_WINDOWS, driveLesson } from './lib/lesson-drive.mjs';
 import { serveDist } from './lib/serve-dist.mjs';
 import { videoExportOffered } from '../src/app/videoExport.js';
 import { VIDEO_MIME_CANDIDATES } from '../src/app/videoRecorder.js';
@@ -90,6 +92,12 @@ if (!['chromium', 'firefox', 'webkit'].includes(engineName)) {
   console.error(`Unknown --engine "${engineName}". Choose one of: chromium, firefox, webkit.`);
   process.exit(1);
 }
+
+// `--record-lesson`: also write the lesson's explanation and buttons as video,
+// frame by frame (see `lib/lesson-drive.mjs`). Minutes per window, so opt-in.
+const recordLessonAt = argv.indexOf('--record-lesson');
+const recordLesson = recordLessonAt >= 0;
+if (recordLesson) argv.splice(recordLessonAt, 1);
 
 const distAt = argv.indexOf('--dist');
 const distDir = resolve(distAt >= 0 ? argv[distAt + 1] : 'dist');
@@ -210,6 +218,26 @@ for (const slug of SLUGS) {
   await page.waitForTimeout(300);
 
   const problems = [];
+
+  // --- a lesson, then the full model --------------------------------------
+  //
+  // A route whose first screen is a lesson (`layout: 'lesson'` — the
+  // cardiac-output introduction) is driven as one, at the three windows the
+  // owner named, and everything below then drives the model's full view at
+  // `?view=detail`. Before the lesson existed this loop drove the full model
+  // at the bare route; opened there now, it would find no console and report
+  // the lesson as a broken experiment.
+  if (await page.evaluate(() => Boolean(window.__app?.lesson))) {
+    const found = await driveLesson(browser, { url: `${base}?preview=1#/${slug}`, slug, outDir, record: recordLesson });
+    problems.push(...found.map((problem) => `lesson: ${problem}`));
+    console.log(
+      `  ${slug}: lesson driven at ${LESSON_WINDOWS.map(({ width, height }) => `${width}×${height}`).join(', ')}` +
+        `${recordLesson ? ', recorded' : ''} — ${found.length ? `${found.length} problem(s)` : 'no problems'}`
+    );
+    await page.goto(`${base}?preview=1#/${slug}?view=detail`, { waitUntil: 'networkidle' });
+    await page.waitForSelector('canvas');
+    await page.waitForTimeout(2600);
+  }
 
   // --- the first-visit introduction ----------------------------------------
   //

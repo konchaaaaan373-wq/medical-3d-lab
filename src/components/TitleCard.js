@@ -85,12 +85,22 @@ function trustFold(status, badges) {
  */
 function categoryTrail(meta) {
   if (!isPathologyModelScene(sceneById(meta.id))) return null;
+  // A second screen of the same model (`?view=detail`) names the first one
+  // here, so the way back to it is a link rather than the Back button.
+  const view = meta.viewTrail;
   return el('nav', { class: 'title-trail', 'aria-label': inLanguage('Breadcrumb', '現在地') }, [
     el('a', { class: 'title-trail-parent', href: PATHOLOGY_ROUTE }, [
       el('span', { class: 'lang-en', text: PATHOLOGY_CATEGORY.en }),
       el('span', { class: 'lang-ja', text: PATHOLOGY_CATEGORY.ja }),
     ]),
     el('span', { class: 'title-trail-separator', 'aria-hidden': 'true', text: '›' }),
+    view
+      ? el('a', { class: 'title-trail-parent title-trail-view', href: view.href, dataset: { control: 'view-default' } }, [
+          el('span', { class: 'lang-en', text: `${meta.title}: ${view.name.en}` }),
+          el('span', { class: 'lang-ja', text: `${meta.titleJa}：${view.name.ja}` }),
+        ])
+      : null,
+    view ? el('span', { class: 'title-trail-separator', 'aria-hidden': 'true', text: '›' }) : null,
   ]);
 }
 

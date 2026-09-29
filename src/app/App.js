@@ -4,7 +4,7 @@ import { loadScene, sceneById, systemsWithScenes, resolveSceneId } from './scene
 import { SCENES, structureFunctionScene } from '../catalog/index.js';
 import { RELEASED_SCENES } from '../catalog/release.js';
 import { betaUnlocked, routeOpen, sceneOpen } from './releaseGate.js';
-import { resolveRoute, structureOf } from './router.js';
+import { hashWithView, resolveRoute, structureOf, viewOf } from './router.js';
 import { hasDataOnlySurface } from './dataView.js';
 import { installDeparture } from './departure.js';
 import { openingMessage } from './destinationName.js';
@@ -95,7 +95,11 @@ import { emitAppEvent } from './appEvents.js';
 export async function createApp({ stage, ui, onRetryModel = null }) {
   const viewer = new Viewer(stage);
 
-  const SceneClass = await loadScene(resolveSceneId());
+  // Which screen of the model the address asks for (`viewOf`): a scene module
+  // may offer more than one — cardiac output opens its introductory lesson and
+  // keeps the full model at `?view=detail`.
+  const routeView = viewOf(window.location.hash);
+  const SceneClass = await loadScene(resolveSceneId(), { view: routeView });
   const scene = new SceneClass({ viewer });
   viewer.scene.add(scene.build());
   // Most scenes build synchronously. Asset-backed atlases expose `ready` so
@@ -121,11 +125,19 @@ export async function createApp({ stage, ui, onRetryModel = null }) {
   // so the header over the 3D reads it too; a scene's own `meta.title` is only
   // the fallback for a scene the catalogue does not know.
   const entry = sceneById(resolveSceneId());
+  // A non-default view names the default one in its breadcrumb, so the way
+  // back to it is on screen rather than only behind the Back button.
+  const DefaultSceneClass = routeView ? await loadScene(resolveSceneId()) : SceneClass;
+  const viewTrail =
+    DefaultSceneClass !== SceneClass && DefaultSceneClass.meta?.viewName
+      ? { href: hashWithView(window.location.hash, null), name: DefaultSceneClass.meta.viewName }
+      : null;
   const meta = {
     ...SceneClass.meta,
     status: entry?.status ?? SceneClass.meta.status ?? 'production',
     title: entry?.titleEn ?? SceneClass.meta.title,
     titleJa: entry?.titleJa ?? SceneClass.meta.titleJa,
+    ...(viewTrail ? { viewTrail } : {}),
   };
   document.title = `${meta.title} — medical-3d-lab`;
   ui.dataset.scene = meta.id;
@@ -134,6 +146,16 @@ export async function createApp({ stage, ui, onRetryModel = null }) {
   // always was.
   if (meta.layout) ui.dataset.layout = meta.layout;
   else delete ui.dataset.layout;
+
+  // A lesson is a different screen, not this one with parts hidden: a
+  // question, the model, two results and two ways in (`LessonShell.js`). It
+  // shares the viewer, the header, the title card and the way out with every
+  // other scene, and none of the experiment console, read-out rail or data
+  // view — which is what a first-time reader could not see past (Issue #166).
+  if (meta.layout === 'lesson') {
+    const { mountLessonShell } = await import('./LessonShell.js');
+    return mountLessonShell({ viewer, scene, SceneClass, meta, entry, ui });
+  }
   const defaultBackground = backgroundPresetById(meta.inspection?.background ?? DEFAULT_BACKGROUND_ID);
 
   /**

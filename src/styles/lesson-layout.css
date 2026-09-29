@@ -1,0 +1,739 @@
+/*
+ * The introductory lesson (`LessonShell.js`, `LessonPanel.js`).
+ *
+ * Three bands and nothing else: the question on top, the model in the middle
+ * (nothing drawn over it but short tags beside the parts they name), the two
+ * results and what to do under it. Scoped to `data-layout='lesson'` so no other
+ * scene is touched.
+ *
+ * Colours name the three circulations and nothing else:
+ *   A (start)  — slate
+ *   B (after)  — amber, the colour of the small vessels the action narrows
+ *   C (other)  — sky blue: a different circulation, never a shade of A or B
+ *   "before"   — cream, the colour the full model already uses for "before"
+ */
+
+#ui[data-layout='lesson'] {
+  --lesson-a: #b9c7db;
+  --lesson-b: #ffc46b;
+  --lesson-c: #7fd4ff;
+  --lesson-before: #f4f1c8;
+  --lesson-card: rgba(9, 14, 25, 0.82);
+  gap: 8px;
+}
+
+#ui[data-layout='lesson'] .lesson-top,
+#ui[data-layout='lesson'] .lesson-bottom {
+  pointer-events: auto;
+  position: relative;
+  z-index: 6;
+}
+
+/* --- top ------------------------------------------------------------------ */
+
+#ui[data-layout='lesson'] .lesson-top {
+  display: grid;
+  gap: 4px;
+  max-width: min(760px, 100%);
+}
+
+#ui[data-layout='lesson'] .lesson-top .title-card {
+  padding: 8px 12px;
+  background: transparent;
+  border: 0;
+  box-shadow: none;
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 2px 10px;
+  max-width: none;
+}
+
+/* The question is the heading of this screen; the card's own subtitle would say
+   it twice. The maturity is inside the fold, with the clinical-review mark, as
+   on the full model. */
+#ui[data-layout='lesson'] .lesson-top .title-card .subtitle,
+#ui[data-layout='lesson'] .lesson-top .title-card .eyebrow,
+#ui[data-layout='lesson'] .title-trust-maturity {
+  display: none;
+}
+
+#ui[data-layout='lesson'] .title-card .title-trail {
+  margin: 0;
+  font-size: 13px;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+/* "根拠と限界 ＋": one quiet line that opens **over** the page, so reading the
+   limits does not push the model around. */
+#ui[data-layout='lesson'] .title-trust-fold {
+  position: relative;
+  margin-left: 8px;
+}
+
+#ui[data-layout='lesson'] .title-trust-summary {
+  list-style: none;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 28px;
+  font-size: 12px;
+  color: var(--ink-dim);
+  white-space: nowrap;
+}
+
+#ui[data-layout='lesson'] .title-trust-summary::-webkit-details-marker {
+  display: none;
+}
+
+#ui[data-layout='lesson'] .title-trust-summary::after {
+  content: '＋';
+  font-size: 12px;
+  opacity: 0.7;
+}
+
+#ui[data-layout='lesson'] .title-trust-fold[open] .title-trust-summary::after {
+  content: '−';
+}
+
+#ui[data-layout='lesson'] .title-trust-fold[open] > :not(summary) {
+  position: absolute;
+  left: 0;
+  width: min(560px, calc(100vw - 32px));
+  z-index: 30;
+  background: var(--panel-sheet);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
+  padding: 10px 14px;
+}
+
+#ui[data-layout='lesson'] .title-trust-fold[open] > .title-trust-badges {
+  top: 30px;
+  border-bottom-left-radius: 0;
+  border-bottom-right-radius: 0;
+  padding-bottom: 4px;
+}
+
+#ui[data-layout='lesson'] .title-trust-fold[open] > .model-scope {
+  top: 74px;
+  max-height: min(58vh, 520px);
+  overflow: auto;
+  border-top: 0;
+  border-top-left-radius: 0;
+  border-top-right-radius: 0;
+  margin: 0;
+}
+
+#ui[data-layout='lesson'] .lesson-top .title-card .title,
+#ui[data-layout='lesson'] .lesson-top .title-card .title-ja {
+  font-size: 15px;
+  margin: 0;
+}
+
+#ui[data-layout='lesson'] .lesson-question {
+  margin: 0;
+  padding: 0 12px;
+  font-size: clamp(19px, 2.1vw, 27px);
+  line-height: 1.3;
+  font-weight: var(--weight-bold);
+  letter-spacing: 0.01em;
+  text-shadow: 0 1px 8px rgba(0, 0, 0, 0.55);
+}
+
+#ui[data-layout='lesson'] .lesson-guide {
+  margin: 0;
+  padding: 0 12px;
+  font-size: 14px;
+  line-height: 1.45;
+  color: var(--ink-dim);
+  text-shadow: 0 1px 6px rgba(0, 0, 0, 0.6);
+}
+
+/* --- bottom ---------------------------------------------------------------- */
+
+#ui[data-layout='lesson'] .lesson-bottom {
+  display: grid;
+  grid-template-columns: auto minmax(0, 620px);
+  grid-template-areas:
+    'readout actions'
+    'readout detail';
+  justify-content: center;
+  align-items: end;
+  gap: 8px 18px;
+  width: min(1320px, 100%);
+  margin: 0 auto;
+}
+
+#ui[data-layout='lesson'] .lesson-readout {
+  grid-area: readout;
+  align-self: end;
+  min-width: 300px;
+}
+
+#ui[data-layout='lesson'] .lesson-entries,
+#ui[data-layout='lesson'] .lesson-manual,
+#ui[data-layout='lesson'] .lesson-explaining {
+  grid-area: actions;
+}
+
+#ui[data-layout='lesson'] .lesson-detail {
+  grid-area: detail;
+  justify-self: end;
+  font-size: 13px;
+  color: var(--ink-dim);
+  text-decoration: underline;
+  text-underline-offset: 3px;
+  padding: 4px 2px;
+}
+
+#ui[data-layout='lesson'] .lesson-detail:hover,
+#ui[data-layout='lesson'] .lesson-detail:focus-visible {
+  color: var(--ink);
+}
+
+/* The results: a column per result, a row per circulation */
+
+#ui[data-layout='lesson'] .lesson-readout {
+  background: var(--lesson-card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 6px 12px 8px;
+}
+
+#ui[data-layout='lesson'] .lesson-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-variant-numeric: tabular-nums;
+}
+
+#ui[data-layout='lesson'] .lesson-table thead th {
+  font-size: 12px;
+  font-weight: var(--weight-medium);
+  color: var(--ink-dim);
+  text-align: left;
+  padding: 0 6px 3px;
+  white-space: nowrap;
+}
+
+#ui[data-layout='lesson'] .lesson-table tbody th {
+  text-align: left;
+  font-weight: var(--weight-regular);
+  padding: 4px 6px 4px 0;
+  vertical-align: middle;
+}
+
+#ui[data-layout='lesson'] .lesson-table td {
+  padding: 4px 6px;
+  white-space: nowrap;
+  vertical-align: middle;
+}
+
+#ui[data-layout='lesson'] .lesson-row + .lesson-row th,
+#ui[data-layout='lesson'] .lesson-row + .lesson-row td {
+  border-top: 1px solid var(--border);
+}
+
+#ui[data-layout='lesson'] .lesson-row-name {
+  display: block;
+  margin-top: 2px;
+  font-size: 12px;
+  line-height: 1.3;
+  color: var(--ink-dim);
+  max-width: 17em;
+}
+
+#ui[data-layout='lesson'] .lesson-result-abbr {
+  margin-left: 4px;
+  font-size: 12px;
+  color: var(--ink-faint);
+}
+
+#ui[data-layout='lesson'] .lesson-result-number {
+  font-size: 24px;
+  font-weight: var(--weight-bold);
+  color: var(--ink);
+  line-height: 1.1;
+}
+
+#ui[data-layout='lesson'] .lesson-result-unit {
+  margin-left: 4px;
+  font-size: 12px;
+  color: var(--ink-dim);
+}
+
+#ui[data-layout='lesson'] .lesson-result-arrow {
+  margin-left: 4px;
+  font-size: 15px;
+  font-weight: var(--weight-bold);
+  color: var(--ink);
+}
+
+/* "Before" is a comparison, not a result: its own row, cream, smaller. */
+#ui[data-layout='lesson'] .lesson-row.is-before th,
+#ui[data-layout='lesson'] .lesson-row.is-before td {
+  padding-top: 2px;
+  padding-bottom: 2px;
+  border-top-style: dashed !important;
+}
+
+#ui[data-layout='lesson'] .lesson-row.is-before .lesson-result-number {
+  font-size: 15px;
+  font-weight: var(--weight-medium);
+  color: var(--lesson-before);
+}
+
+#ui[data-layout='lesson'] .lesson-before-label {
+  font-size: 12px;
+  color: var(--lesson-before);
+}
+
+#ui[data-layout='lesson'] .lesson-before-swatch {
+  display: inline-block;
+  width: 10px;
+  height: 10px;
+  margin-right: 6px;
+  border-radius: 2px;
+  background: var(--lesson-before);
+  opacity: 0.85;
+  vertical-align: -1px;
+}
+
+/* Chips: which circulation — on the card, and over the model */
+
+#ui[data-layout='lesson'] .lesson-chip,
+#ui[data-layout='lesson'] .lesson-unit-chip {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 6px;
+  padding: 2px 9px 3px;
+  border-radius: 999px;
+  border: 1px solid var(--tone, var(--lesson-a));
+  color: var(--tone, var(--lesson-a));
+  background: rgba(6, 10, 18, 0.78);
+  font-size: 13px;
+  white-space: nowrap;
+}
+
+#ui[data-layout='lesson'] .is-start { --tone: var(--lesson-a); }
+#ui[data-layout='lesson'] .is-after { --tone: var(--lesson-b); }
+#ui[data-layout='lesson'] .is-other { --tone: var(--lesson-c); }
+#ui[data-layout='lesson'] .is-changing { --tone: var(--ink-dim); }
+
+#ui[data-layout='lesson'] .lesson-chip-letter {
+  font-size: 15px;
+  font-weight: var(--weight-bold);
+}
+
+/* Buttons */
+
+#ui[data-layout='lesson'] .lesson-entries,
+#ui[data-layout='lesson'] .lesson-manual {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  justify-content: flex-end;
+}
+
+#ui[data-layout='lesson'] .lesson-button {
+  min-height: 44px;
+  padding: 8px 16px;
+  border-radius: 999px;
+  border: 1px solid var(--accent-border);
+  background: var(--control-bg);
+  color: var(--ink);
+  font: inherit;
+  font-size: 15px;
+  font-weight: var(--weight-semibold);
+  cursor: pointer;
+}
+
+#ui[data-layout='lesson'] .lesson-button:hover {
+  background: var(--control-hover);
+}
+
+#ui[data-layout='lesson'] .lesson-button:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+#ui[data-layout='lesson'] .lesson-button.is-primary {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: var(--accent-ink);
+}
+
+#ui[data-layout='lesson'] .lesson-button.is-primary:hover {
+  background: var(--accent-hover);
+}
+
+#ui[data-layout='lesson'] .lesson-button.is-quiet {
+  border-color: var(--border);
+  font-weight: var(--weight-medium);
+  color: var(--ink-dim);
+}
+
+#ui[data-layout='lesson'] .lesson-button.is-toggle.is-intervention {
+  border-color: var(--lesson-b);
+}
+
+#ui[data-layout='lesson'] .lesson-button.is-toggle.is-intervention[aria-pressed='true'] {
+  background: rgba(255, 196, 107, 0.18);
+}
+
+#ui[data-layout='lesson'] .lesson-button.is-toggle.is-other {
+  border-color: var(--lesson-c);
+}
+
+#ui[data-layout='lesson'] .lesson-button.is-toggle.is-other[aria-pressed='true'] {
+  background: rgba(127, 212, 255, 0.16);
+}
+
+/* The explanation */
+
+#ui[data-layout='lesson'] .lesson-explaining {
+  display: grid;
+  gap: 8px;
+}
+
+#ui[data-layout='lesson'] .lesson-caption {
+  background: var(--lesson-card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 9px 14px 10px;
+}
+
+#ui[data-layout='lesson'] .lesson-caption-head {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 12px;
+  color: var(--ink-faint);
+}
+
+#ui[data-layout='lesson'] .lesson-dots {
+  display: flex;
+  gap: 5px;
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+#ui[data-layout='lesson'] .lesson-dots li {
+  width: 18px;
+  height: 4px;
+  border-radius: 2px;
+  background: rgba(160, 180, 210, 0.28);
+}
+
+#ui[data-layout='lesson'] .lesson-dots li.is-done {
+  background: rgba(160, 180, 210, 0.6);
+}
+
+#ui[data-layout='lesson'] .lesson-dots li.is-current {
+  background: var(--accent);
+}
+
+#ui[data-layout='lesson'] .lesson-caption-heading {
+  margin: 4px 0 2px;
+  font-size: 17px;
+  line-height: 1.35;
+}
+
+#ui[data-layout='lesson'] .lesson-caption-text {
+  margin: 0;
+  font-size: 14px;
+  line-height: 1.55;
+  color: var(--ink);
+}
+
+#ui[data-layout='lesson'] .lesson-caption-note {
+  margin: 5px 0 0;
+  font-size: 12px;
+  line-height: 1.45;
+  color: var(--ink-dim);
+}
+
+#ui[data-layout='lesson'] .lesson-player {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  justify-content: flex-end;
+  align-items: center;
+}
+
+#ui[data-layout='lesson'] .lesson-button.is-icon {
+  min-width: 44px;
+  padding: 6px 12px;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+#ui[data-layout='lesson'] .lesson-glyph {
+  font-size: 13px;
+  letter-spacing: -0.1em;
+}
+
+#ui[data-layout='lesson'] .lesson-icon-label {
+  font-size: 13px;
+  font-weight: var(--weight-medium);
+}
+
+/* --- tags on the model ------------------------------------------------------ */
+
+#ui[data-layout='lesson'] .lesson-tags {
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 4;
+  overflow: hidden;
+}
+
+#ui[data-layout='lesson'] .lesson-tag-item > * {
+  position: absolute;
+  left: 0;
+  top: 0;
+}
+
+#ui[data-layout='lesson'] .lesson-tag {
+  padding: 3px 9px 4px;
+  border-radius: 6px;
+  background: rgba(6, 10, 18, 0.84);
+  border: 1px solid rgba(234, 242, 255, 0.35);
+  color: var(--ink);
+  font-size: 13px;
+  line-height: 1.3;
+  white-space: nowrap;
+}
+
+#ui[data-layout='lesson'] .lesson-tag-line {
+  height: 1px;
+  background: rgba(234, 242, 255, 0.65);
+  transform-origin: 0 50%;
+}
+
+#ui[data-layout='lesson'] .lesson-tag-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: #ffffff;
+  box-shadow: 0 0 0 2px rgba(6, 10, 18, 0.6);
+}
+
+#ui[data-layout='lesson'] [hidden] {
+  display: none !important;
+}
+
+/* A build that says which build it is keeps its marker clear of the buttons. */
+body.has-build-marker #ui[data-layout='lesson'] .lesson-bottom {
+  margin-bottom: 34px;
+}
+
+/* --- a wide window: the results and what to do stand in a column on the right,
+   and the model has the full height to the left of it. ------------------------ */
+
+@media (min-width: 1100px) and (min-aspect-ratio: 5/4) {
+  #ui[data-layout='lesson'] {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) clamp(380px, 29vw, 440px);
+    grid-template-rows: auto minmax(0, 1fr);
+    column-gap: 18px;
+  }
+
+  #ui[data-layout='lesson'] .lesson-top {
+    grid-column: 1;
+    grid-row: 1;
+    align-self: start;
+  }
+
+  #ui[data-layout='lesson'] .lesson-bottom {
+    grid-column: 2;
+    grid-row: 1 / span 2;
+    align-self: end;
+    width: auto;
+    margin: 0;
+    display: flex;
+    flex-direction: column;
+    align-items: stretch;
+    gap: 10px;
+    max-height: 100%;
+    overflow: auto;
+  }
+
+  #ui[data-layout='lesson'] .lesson-entries,
+  #ui[data-layout='lesson'] .lesson-manual,
+  #ui[data-layout='lesson'] .lesson-player {
+    justify-content: stretch;
+  }
+
+  #ui[data-layout='lesson'] .lesson-entries > .lesson-button,
+  #ui[data-layout='lesson'] .lesson-manual > .lesson-button {
+    flex: 1 1 100%;
+  }
+
+  #ui[data-layout='lesson'] .lesson-player > .lesson-button {
+    flex: 1 1 auto;
+  }
+
+  #ui[data-layout='lesson'] .lesson-detail {
+    align-self: flex-end;
+  }
+}
+
+/* --- narrower windows ------------------------------------------------------ */
+
+@media (max-width: 900px) {
+  #ui[data-layout='lesson'] .lesson-readout {
+    min-width: 0;
+  }
+
+  #ui[data-layout='lesson'] .lesson-bottom {
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-areas:
+      'readout'
+      'actions'
+      'detail';
+    gap: 6px;
+  }
+
+  #ui[data-layout='lesson'] .lesson-entries,
+  #ui[data-layout='lesson'] .lesson-manual,
+  #ui[data-layout='lesson'] .lesson-player {
+    justify-content: stretch;
+  }
+
+  #ui[data-layout='lesson'] .lesson-entries > .lesson-button,
+  #ui[data-layout='lesson'] .lesson-manual > .lesson-button {
+    flex: 1 1 40%;
+  }
+}
+
+/* A phone: every row as short as it can be read, so the model keeps its band. */
+@media (max-width: 430px) {
+  #ui[data-layout='lesson'] {
+    gap: 4px;
+  }
+
+  #ui[data-layout='lesson'] .lesson-top .title-card {
+    padding: 2px 4px 0;
+  }
+
+  #ui[data-layout='lesson'] .lesson-question {
+    padding: 0 4px;
+    font-size: 18px;
+  }
+
+  #ui[data-layout='lesson'] .lesson-guide {
+    padding: 0 4px;
+    font-size: 13px;
+    line-height: 1.35;
+  }
+
+  #ui[data-layout='lesson'] .lesson-question {
+    font-size: 16px;
+    letter-spacing: 0;
+  }
+
+  #ui[data-layout='lesson'] .lesson-readout {
+    padding: 3px 8px 4px;
+  }
+
+  #ui[data-layout='lesson'] .lesson-row-name,
+  #ui[data-layout='lesson'] .lesson-result-abbr {
+    display: none;
+  }
+
+  #ui[data-layout='lesson'] .lesson-table thead th {
+    font-size: 12px;
+    padding-bottom: 1px;
+  }
+
+  #ui[data-layout='lesson'] .lesson-table tbody th,
+  #ui[data-layout='lesson'] .lesson-table td {
+    padding-top: 2px;
+    padding-bottom: 2px;
+  }
+
+  #ui[data-layout='lesson'] .lesson-result-number {
+    font-size: 19px;
+  }
+
+  #ui[data-layout='lesson'] .lesson-result-unit {
+    font-size: 12px;
+  }
+
+  #ui[data-layout='lesson'] .lesson-table .lesson-chip {
+    font-size: 12px;
+    padding: 0 6px 1px;
+  }
+
+  #ui[data-layout='lesson'] .lesson-button {
+    font-size: 14px;
+    padding: 8px 10px;
+  }
+
+  #ui[data-layout='lesson'] .lesson-caption {
+    padding: 7px 10px 8px;
+  }
+
+  #ui[data-layout='lesson'] .lesson-caption-heading {
+    font-size: 15px;
+  }
+
+  #ui[data-layout='lesson'] .lesson-caption-text {
+    font-size: 13px;
+    line-height: 1.5;
+  }
+
+  #ui[data-layout='lesson'] .lesson-caption-note {
+    font-size: 12px;
+  }
+
+  /* The player's words go; its glyphs and names stay for a screen reader. */
+  #ui[data-layout='lesson'] .lesson-icon-label {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip: rect(0 0 0 0);
+    white-space: nowrap;
+  }
+
+  #ui[data-layout='lesson'] .lesson-player {
+    flex-wrap: nowrap;
+  }
+
+  #ui[data-layout='lesson'] .lesson-player > .lesson-button.is-secondary {
+    flex: 1 1 auto;
+  }
+
+  #ui[data-layout='lesson'] .lesson-bottom[data-mode='explaining'] .lesson-detail {
+    display: none;
+  }
+
+  #ui[data-layout='lesson'] .lesson-tag {
+    font-size: 12px;
+    padding: 2px 7px 3px;
+  }
+
+  #ui[data-layout='lesson'] .lesson-chip,
+  #ui[data-layout='lesson'] .lesson-unit-chip {
+    font-size: 12px;
+    padding: 1px 7px 2px;
+  }
+}
+
+/* A short phone, while the explanation plays: the breadcrumb line steps aside
+   so the two circulations keep a band. It is back the moment the explanation
+   is closed, with "根拠と限界" in it. */
+@media (max-width: 430px) and (max-height: 740px) {
+  #ui[data-layout='lesson'] .lesson-top[data-mode='explaining'] .title-card {
+    display: none;
+  }
+}

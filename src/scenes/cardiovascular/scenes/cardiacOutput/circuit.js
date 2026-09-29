@@ -158,6 +158,34 @@ export function bolusLengthFor(strokeVolumeMl) {
   return 0.2 * (sv / 70);
 }
 
+/**
+ * How wide the small vessels are drawn for a systemic resistance, as a
+ * multiple of their resting calibre.
+ *
+ * Poiseuille would make the radius go as the fourth root of 1/R — a narrowing
+ * too small to see across this range — so the calibre is a drawing scale over
+ * the control's range, labelled as such; its direction and its order are the
+ * model's. One function, so the full model and the introductory lesson draw
+ * the same resistance at the same width.
+ *
+ * @param {number} resistance mmHg·s/mL
+ * @param {{ min: number, max: number }} domain the control's range
+ */
+export function bedCalibreFor(resistance, domain) {
+  return lerp(1.5, 0.45, clamp((resistance - domain.min) / (domain.max - domain.min)));
+}
+
+/**
+ * How fast the drawn blood moves for a cardiac output, as a multiple of the
+ * streams' authored rate. Output rides on speed alone — the particle count is
+ * fixed — so one change is not shown twice. A drawing scale.
+ *
+ * @param {number} cardiacOutputLMin
+ */
+export function flowRateFor(cardiacOutputLMin) {
+  return 0.55 + clamp((cardiacOutputLMin - 2.0) / 6.0) * 1.25;
+}
+
 export function buildCircuit({ compact = false } = {}) {
   const object = new THREE.Group();
   object.name = 'circuit';
@@ -360,7 +388,6 @@ export function buildCircuit({ compact = false } = {}) {
     setState(metrics, resistanceDomain, { fillingVolumeMl, fillingDomain } = {}) {
       // Normalised positions inside the ranges the model can reach, so the
       // drawing uses its whole span instead of crowding into a corner.
-      const flow = clamp((metrics.cardiacOutputLMin - 2.0) / 6.0);
       const pressure = clamp((metrics.meanArterialPressureMmHg - 40) / 120);
       const resistance = clamp(
         (metrics.systemicResistanceMmHgSPerMl - resistanceDomain.min) /
@@ -373,13 +400,9 @@ export function buildCircuit({ compact = false } = {}) {
       // Rate rides on speed alone. Doubling the particle count as well would
       // show one change in cardiac output twice and make it look larger than
       // the model said.
-      const particleSpeed = 0.55 + flow * 1.25;
-      // The bed narrows with the lumped resistance. Poiseuille would make the
-      // radius go as the fourth root of 1/R — a narrowing too small to see
-      // across this range — so the calibre is a drawing scale over the
-      // control's range, labelled as such; its direction and its order are
-      // the model's.
-      const calibre = lerp(1.5, 0.45, resistance);
+      const particleSpeed = flowRateFor(metrics.cardiacOutputLMin);
+      // The bed narrows with the lumped resistance (`bedCalibreFor`).
+      const calibre = bedCalibreFor(metrics.systemicResistanceMmHgSPerMl, resistanceDomain);
       // Most of the circulating volume sits in the veins, so that is where
       // more filling is drawn: a fuller venous run. A drawing scale again.
       const venousCalibre = lerp(0.7, 1.45, filling);
