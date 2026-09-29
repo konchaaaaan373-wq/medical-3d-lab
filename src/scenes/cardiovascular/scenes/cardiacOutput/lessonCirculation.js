@@ -425,10 +425,10 @@ export class LessonCirculation extends THREE.Group {
   anchor(part) {
     this.updateWorldMatrix(true, false);
     if (part === 'ejected') {
-      // The middle of the blood that is out, or where it comes out.
-      const shown = this.stroke.span;
-      const u = shown ? (shown.tail + shown.head) / 2 : 0.18;
-      return this.localToWorld(ARTERY.getPointAt(Math.min(1, u)).clone());
+      // A fixed point on the arch the stroke runs along — not the moving
+      // stroke itself, whose tag would chase it round the arch every beat and,
+      // on a phone, settle on the dial beside the rising artery.
+      return this.localToWorld(ARTERY.getPointAt(0.42).clone());
     }
     const local = ANCHORS[part];
     return local ? this.localToWorld(local.clone()) : null;

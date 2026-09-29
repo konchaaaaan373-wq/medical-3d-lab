@@ -80,6 +80,24 @@ const read = (page) =>
     };
   });
 
+/**
+ * Wait for the lesson to arrive somewhere — a state, never a time (L-123,
+ * L-143). The walk from A to B is 1.4 s of the lesson's own clock, and on
+ * software GL at three frames a second that is several seconds of wall time.
+ */
+const arrive = (page, { primaryId, showOther }) =>
+  page
+    .waitForFunction(
+      ({ primaryId, showOther }) => {
+        const state = window.__app.lesson.state();
+        return state.primaryId === primaryId && (showOther == null || state.showOther === showOther);
+      },
+      { primaryId, showOther },
+      { timeout: 20000 }
+    )
+    .then(() => true)
+    .catch(() => false);
+
 const inside = (box, width, height) => box && box.top >= 0 && box.left >= 0 && box.bottom <= height + 1 && box.right <= width + 1;
 
 function checkBand(seen, where, problems) {
@@ -183,7 +201,7 @@ export async function driveLesson(browser, { url, slug, outDir, record = false, 
     }, constrict.at + 3.1);
     await page.waitForTimeout(300);
     await page.click('[data-lesson="try-from-player"]');
-    await page.waitForTimeout(2200);
+    await arrive(page, { primaryId: 'B' });
     seen = await read(page);
     if (seen.state.mode !== 'manual') problems.push(where('hand-over: the buttons did not take over'));
     if (seen.state.primaryId !== 'B') problems.push(where(`hand-over: left at ${seen.state.primaryId}, expected B`));
@@ -196,21 +214,23 @@ export async function driveLesson(browser, { url, slug, outDir, record = false, 
     seen = await read(page);
     if (seen.state.primaryId !== 'A' || seen.state.showOther) problems.push(where('start over: not back at A alone'));
     await page.click('[data-lesson="constrict"]');
-    await page.waitForTimeout(2200);
+    await arrive(page, { primaryId: 'B' });
+    await page.waitForTimeout(400);
     seen = await read(page);
     if (seen.state.primaryId !== 'B') problems.push(where('buttons: the vasoconstrictor action did not arrive at B'));
     if (!seen.rows.includes('before')) problems.push(where('buttons: B alone is not read against "before (A)"'));
     checkBand(seen, where('buttons, B'), problems);
     await page.screenshot({ path: join(outDir, `${tag}-3-B.png`) });
     await page.click('[data-lesson="other"]');
-    await page.waitForTimeout(2200);
+    await arrive(page, { primaryId: 'B', showOther: true });
+    await page.waitForTimeout(1500);
     seen = await read(page);
     if (!seen.state.showOther || !seen.rows.includes('C')) problems.push(where('buttons: C did not appear'));
     if (seen.rows.includes('before')) problems.push(where('buttons: "before (A)" is shown beside C'));
     checkBand(seen, where('buttons, B and C'), problems);
     await page.screenshot({ path: join(outDir, `${tag}-4-BC.png`) });
     await page.click('[data-lesson="constrict"]');
-    await page.waitForTimeout(2200);
+    await arrive(page, { primaryId: 'A' });
     seen = await read(page);
     if (seen.state.primaryId !== 'A') problems.push(where('buttons: taking the action away did not return to A'));
 
