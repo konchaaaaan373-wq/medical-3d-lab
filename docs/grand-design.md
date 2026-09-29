@@ -27,6 +27,7 @@ Last updated: 2026-09-06（現在地の数値は §3 参照）
 | 全モデル共通の表示・定型視点・背景・リセット境界 | [`architecture/spatial-inspection.md`](architecture/spatial-inspection.md) |
 | シーンの追加手順・suitability check・昇格条件 | [`adding-a-scene.md`](adding-a-scene.md) |
 | アーキテクチャ規則 6 か条（semantic geometry など） | [`architecture-rules.md`](architecture-rules.md) |
+| Vanilla SPA / UI framework の拡張限界と再評価条件 | [`architecture/ui-framework-scalability-risk.md`](architecture/ui-framework-scalability-risk.md) |
 | 3D 実装の失敗モードと切り分け手順・完成チェックリスト | [`organ-3d-playbook.md`](organ-3d-playbook.md) |
 | 医学的単純化の記録（シーンごと） | [`medical-notes.md`](medical-notes.md) |
 | 各モデルの主張の根拠（Claim → Source → …） | [`model-evidence/`](model-evidence/) |
