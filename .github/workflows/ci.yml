@@ -70,7 +70,11 @@ jobs:
     # minutes, and #162 added a surface to the matrix (`#/patient`) and made
     # `verify:gated` actually open the patient explanation. It was cancelled in
     # the video export — every step before it green — rather than failing.
-    timeout-minutes: 30
+    # 30 → 40 (2026-09-29): on main it now runs ~29 of 30 minutes (run 816),
+    # and #165 was cancelled at 30.3 in the same step, the DPR 2 video export
+    # of copd, with every earlier step green. Nothing in #165 is in that step;
+    # the job is simply at its limit. How to make it shorter is F-236.
+    timeout-minutes: 40
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
