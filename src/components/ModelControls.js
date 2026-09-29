@@ -71,6 +71,8 @@ export function createModelControls({ controls, onChange, onReset, copy = {} }) 
   const switches = new Map();
   let padSet = null;
   // The pads' own container, which `padSet` may be wrapped by below.
+  /** The four-input surface, when the scene names its inputs. */
+  let experimentSurface = null;
   let padGroup = null;
   function refreshSwitcher() {
     for (const [id, parts] of switches) {
@@ -142,6 +144,7 @@ export function createModelControls({ controls, onChange, onReset, copy = {} }) 
         });
       }
       padSet = surface.element;
+      experimentSurface = surface;
     }
   }
 
@@ -426,6 +429,10 @@ export function createModelControls({ controls, onChange, onReset, copy = {} }) 
         if (!row) continue;
         row.setValue(control.value, control);
       }
+    },
+    /** Put one input in the single-input editor (a view choice; no value moves). */
+    chooseInput(id) {
+      experimentSurface?.choose(id);
     },
   };
 }

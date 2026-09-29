@@ -4,8 +4,15 @@ import { ValveApparatus } from '../heartFailure/ValveApparatus.js';
 import { CavityOutline } from '../heartFailure/CavityOutline.js';
 import { BloodField } from '../heartFailure/BloodField.js';
 import { ANATOMY, ANCHORS, buildCavityBlood } from '../heartFailure/anatomy.js';
-import { APEX_PINNING, TORSION_ILLUSTRATIVE_MAX, VENTRICLE_SHAPING } from '../heartFailure/geometry/ventricleGeometry.js';
-import { ARTERIAL_PATH, RETURN_PATH, buildCircuit } from './circuit.js';
+import {
+  APEX_PINNING,
+  TORSION_ILLUSTRATIVE_MAX,
+  VENTRICLE_SHAPING,
+  epicardialSurfacePoint,
+} from '../heartFailure/geometry/ventricleGeometry.js';
+import { ARTERIAL_PATH, RETURN_PATH, VENOUS_PATH, buildCircuit } from './circuit.js';
+import { ResidualBlood, VolumeGauge } from './bloodVolumes.js';
+import { calloutSequence, formatControl } from './calloutSequence.js';
 import {
   REEL_CUES,
   REEL_DURATION,
@@ -16,7 +23,15 @@ import {
   resistanceAt,
 } from './reelStoryboard.js';
 import { ExperimentSession } from './experimentSession.js';
-import { EXPLAINER_DURATION, EXPLAINER_STAGES, captionFor, contractilityAt, stageAt } from './explainerStoryboard.js';
+import {
+  EXPLAINER_CONTRACTILITY,
+  EXPLAINER_DURATION,
+  EXPLAINER_STAGES,
+  captionFor,
+  contractilityAt,
+  presentationAt,
+  stageAt,
+} from './explainerStoryboard.js';
 import { changeOf, describeChange, describeEffect, movedInputs, signedDelta } from './changeSummary.js';
 import { CONTROL_DOMAIN, PRESET_IDS, REFERENCE_GEOMETRY } from '../../../../models/cardiacOutput.js';
 import {
@@ -40,6 +55,8 @@ import {
   LEARNING_MODULES,
   REEL_LABEL,
   EXPLAINER_COPY,
+  GAUGE_LABELS,
+  INTRO_COPY,
   DISCLAIMER,
   DISCLAIMER_JA,
   DISCLAIMER_SHORT,
@@ -56,6 +73,24 @@ import {
 } from '../../../../data/cardiacOutput.js';
 import { disposeObject } from '../../../../utils/dispose.js';
 
+/**
+ * What a pointer adds to the chamber's own glow. The outer wall and the cut
+ * faces have no emissive colour of their own, so "brighter" did nothing to
+ * them and the heart muscle could not be pointed at (review, 2026-09-28).
+ */
+const MYOCARDIUM_HIGHLIGHT = new THREE.Color('#ff9a7a');
+
+/** The parts `setHighlight` can point at. */
+const HIGHLIGHT_PARTS = ['myocardium', 'cavity', 'residual', 'ejection', 'arterial', 'bed', 'venous'];
+
+/**
+ * Where the volume gauge stands: on the reader's right of the heart, below
+ * and outside the venous run, so it covers neither the heart nor a vessel.
+ * Measured by rendering three candidate places (2026-09-27): in front of the
+ * heart it hid the cut wedge; on the left it stood in the systemic bed.
+ */
+const GAUGE_POSITION = new THREE.Vector3(5.8, -7.0, 0.9);
+
 /** Where the hero shot looks from — into the cut wedge. */
 const VIEW_DIRECTION = new THREE.Vector3(0.34, 0.2, 0.92).normalize();
 
@@ -66,9 +101,13 @@ const VIEW_DIRECTION = new THREE.Vector3(0.34, 0.2, 0.92).normalize();
  * the first run of the arterial loop where the bolus leaves.
  */
 const FOCUS_BOXES = {
-  heart: { min: new THREE.Vector3(-3.8, -7.2, -3.0), max: new THREE.Vector3(3.6, 2.8, 3.4) },
-  cavity: { min: new THREE.Vector3(-2.4, -6.4, -1.2), max: new THREE.Vector3(2.8, 1.6, 3.2) },
-  outflow: { min: new THREE.Vector3(-6.2, -2.4, -3.6), max: new THREE.Vector3(2.6, 4.8, 2.8) },
+  // The whole chamber and the gauge beside it: what "inside the heart" is
+  // about, and the columns that measure it. Never the cavity alone — a box
+  // around the cavity cropped the heart it was looking into (owner's review,
+  // 2026-09-27: カメラの拡大で心臓が画面外に切れない).
+  heart: { min: new THREE.Vector3(-4.2, -7.6, -3.8), max: new THREE.Vector3(6.8, 3.0, 3.6) },
+  // The whole chamber and the arterial run to the bed, where the bolus goes.
+  outflow: { min: new THREE.Vector3(-7.6, -7.4, -3.8), max: new THREE.Vector3(4.2, 4.8, 3.6) },
 };
 
 /**
@@ -233,11 +272,21 @@ export class CardiacOutputScene {
     this.beforeOutline.name = 'before-cavity';
     this.beforeOutline.visible = false;
 
+    // The blood that stays: this condition's end-systolic cavity, solid,
+    // inside the chamber (`bloodVolumes.js`). The wall closes onto it at the
+    // end of every beat, so how much is left behind is a body in the heart.
+    this.residual = new ResidualBlood({ color: PALETTE.residualBody });
+
+    // The same two volumes on a linear scale beside the heart: start and now,
+    // at the same moment of the beat.
+    this.gauge = new VolumeGauge({ residualColor: PALETTE.residualBody, ejectColor: PALETTE.flow, outlineColor: PALETTE.before });
+    this.gauge.position.copy(GAUGE_POSITION);
+
     this.primary = new THREE.Group();
     this.primary.name = 'current-condition';
-    this.primary.add(this.ventricle, this.apparatus, this.blood, this.beforeOutline);
+    this.primary.add(this.ventricle, this.apparatus, this.blood, this.residual, this.beforeOutline);
 
-    this.root.add(this._createLights(), this.primary, this.circuit.object);
+    this.root.add(this._createLights(), this.primary, this.circuit.object, this.gauge);
 
     this._offResize = this.viewer.onResize((camera, renderer) => {
       this.blood.syncViewport(camera, renderer);
@@ -303,6 +352,7 @@ export class CardiacOutputScene {
   _applyState() {
     this._refreshEndDiastolicShape();
     if (!this.blood) return;
+    this._applyResidual();
     this.blood.setEjectionWindow(this.state.ejectionStartPhase, this.state.ejectionEndPhase);
     this.circuit.setState(this.state, CONTROL_DOMAIN.systemicResistanceMmHgSPerMl, {
       fillingVolumeMl: this.session.view.input.fillingVolumeMl,
@@ -312,15 +362,240 @@ export class CardiacOutputScene {
 
   update(dt) {
     this._presentationClock += dt;
-    if (!this.cardiacPhaseDriven) {
-      this.phase = advanceCardiacPhase(this.phase, dt, this.state.heartRatePerMin);
-    }
+    if (!this.cardiacPhaseDriven) this._advancePhase(dt);
     this._applyShape();
     this._applyBeforeOutline();
     this.blood.setCycle(this.phase, this.state.ejectionFraction);
     this.blood.update(this._presentationClock);
     this.circuit.update(dt);
-    this.circuit.setBolus(this.bolusTravel());
+    const moved = this.session.moved;
+    this.circuit.setBolus(
+      this.bolusTravel(),
+      moved ? { travel: this.bolusTravel(this.session.baseline.metrics), strokeVolumeMl: this.session.baseline.metrics.strokeVolumeMl } : null
+    );
+    this._applyGauge(moved);
+    this._applyHighlight(dt);
+  }
+
+  /**
+   * The beat's clock. Runs at the solved rate, except while a hold is asked
+   * for (`setBeatHold`): then it runs on at the same rate until it reaches
+   * the held moment and stops there, so the picture never jumps.
+   */
+  _advancePhase(dt) {
+    const next = advanceCardiacPhase(this.phase, dt, this.state.heartRatePerMin);
+    if (this._holdAt == null) {
+      this.phase = next;
+      this.holding = false;
+      return;
+    }
+    const target = this._holdAt;
+    const toTarget = (target - this.phase + 1) % 1;
+    const step = (next - this.phase + 1) % 1;
+    if (this.holding || toTarget <= step) {
+      this.phase = target;
+      this.holding = true;
+    } else {
+      this.phase = next;
+    }
+  }
+
+  /**
+   * Hold the beat at one moment, for looking — presentation only: the solved
+   * rate, and everything computed from it, are unchanged; only the drawing's
+   * clock waits. `'end-systole'` is the end of this condition's ejection,
+   * where "left behind" is what is on screen. `null` lets it run on.
+   *
+   * @param {'end-systole' | null} moment
+   */
+  setBeatHold(moment) {
+    this._holdMoment = moment;
+    this._holdAt = moment === 'end-systole' ? this.state.ejectionEndPhase : null;
+    if (this._holdAt == null) this.holding = false;
+  }
+
+  /** The residual body: this condition's ESV, where the chamber puts it at the end of the beat. */
+  _applyResidual() {
+    const shape = ventricleShape({
+      cavityVolumeMl: this.state.esvMl,
+      myocardialVolumeMl: this.myocardialVolumeMl,
+      longToShortAxisRatio: REFERENCE_GEOMETRY.longToShortAxisRatio,
+    });
+    this.residual.position.y = (shape.outerSemiLength - this.edShape.outerSemiLength) * APEX_PINNING;
+    this.residual.setShape({ ...shape, baseY: ANATOMY.baseY });
+    this.residualShape = shape;
+    // A held moment follows the condition it is held in.
+    if (this._holdMoment) this.setBeatHold(this._holdMoment);
+  }
+
+  /** The gauge: the volume in the ventricle at this moment, start and now, at the same phase. */
+  _applyGauge(moved) {
+    const reading = (metrics, cycle) => ({
+      volumeMl: cavityVolumeAt(this.phase, { cycle }),
+      esvMl: metrics.esvMl,
+      edvMl: metrics.edvMl,
+    });
+    this.gauge.setVolumes(
+      reading(this.state, this.session.view.cycle),
+      moved ? reading(this.session.baseline.metrics, this.session.baseline.cycle) : null
+    );
+  }
+
+  /**
+   * Point at parts of the model — presentation only: it brightens what is
+   * there and changes no size, no colour of a value, and no number.
+   *
+   * @param {string[]} ids any of `myocardium`, `cavity`, `residual`,
+   *   `ejection`, `arterial`, `bed`, `venous`
+   */
+  setHighlight(ids = []) {
+    this._highlight = new Set(ids);
+  }
+
+  _applyHighlight(dt) {
+    const wanted = this._highlight ?? new Set();
+    this._highlightLevel ??= {};
+    const pulse = 0.75 + 0.25 * Math.sin(this._presentationClock * 5);
+    for (const id of HIGHLIGHT_PARTS) {
+      const target = wanted.has(id) ? 1 : 0;
+      const level = this._highlightLevel[id] ?? 0;
+      // Eased, so a pointer arrives and leaves rather than blinking.
+      this._highlightLevel[id] = level + (target - level) * Math.min(1, dt * 6);
+    }
+    const at = (id) => this._highlightLevel[id] * pulse;
+    this.residual.setHighlight(Math.max(at('residual'), at('cavity') * 0.5));
+    this.gauge.setHighlight({ residual: at('residual'), eject: at('ejection') });
+    this.circuit.setHighlight({ arterial: at('arterial'), bed: at('bed'), venous: at('venous'), ejection: at('ejection') });
+    const muscle = at('myocardium');
+    for (const material of this.ventricle.material) {
+      if (!material.emissive) continue;
+      // The material's own glow, as colour × intensity, plus the pointer's
+      // colour: so a wall that glows nothing of its own still lights up.
+      material.userData.baseEmissive ??= material.emissive.clone().multiplyScalar(material.emissiveIntensity);
+      material.emissive.copy(material.userData.baseEmissive).lerp(MYOCARDIUM_HIGHLIGHT, muscle * 0.32);
+      material.emissiveIntensity = 1;
+    }
+    this.blood.setEmphasis({
+      ...this._beatEmphasis,
+      ejection: Math.max(this._beatEmphasis?.ejection ?? 0, at('ejection')),
+    });
+  }
+
+  /**
+   * Where a tag about a part hangs, in world space, now. Parts that move with
+   * the beat (the residual body) are read from where they are drawn.
+   *
+   * @param {string} id see `calloutSequence`
+   * @returns {THREE.Vector3 | null}
+   */
+  getCalloutAnchor(id) {
+    const world = (object, local) => object.localToWorld(local.clone());
+    switch (id) {
+      case 'myocardium':
+        // The outer wall on the reader's left, level with the cavity's middle.
+        // Fixed: across the whole filling range the wall there moves by about
+        // a tenth of a unit (measured, 2026-09-28), so a fixed point stays on it.
+        return world(this.primary, new THREE.Vector3(-3.1, -2.2, 1.2));
+      case 'cavity':
+        return world(this.primary, new THREE.Vector3(0.5, -1.0, 1.6));
+      case 'residual': {
+        const shape = this.residualShape;
+        const y = this.residual.position.y - (shape ? shape.cavitySemiLength * 0.45 : 2.5);
+        return world(this.primary, new THREE.Vector3(0.3, y, 1.1));
+      }
+      case 'outflow':
+        return ARTERIAL_PATH.getPointAt(0.16);
+      case 'arterial':
+        // On the run towards the body, past the arch, where the flow is.
+        return ARTERIAL_PATH.getPointAt(0.62);
+      case 'bed':
+        return this.circuit.anchors.resistance.clone();
+      case 'downstream':
+        return VENOUS_PATH.getPointAt(0.18);
+      case 'venous':
+        return VENOUS_PATH.getPointAt(0.5);
+      case 'gauge':
+        return this.gauge.anchor('residual');
+      case 'gauge-top':
+        return this.gauge.anchor('top');
+      case 'gauge-now':
+        return this.gauge.anchor('now-base');
+      // Only while there is a start column to name.
+      case 'gauge-before':
+        return this.session.moved ? this.gauge.anchor('before-base') : null;
+      default:
+        return null;
+    }
+  }
+
+  /**
+   * Everything a writer can change — the preset, where the condition came
+   * from, and the four inputs — as one string. A tag, a sentence or a player
+   * that was said for one key is about a different model under another.
+   */
+  getModelStateKey() {
+    const input = this.session.input;
+    return [this.session.presetId, this.session.origin, ...CONTROLS.map((control) => input[control.id])].join('|');
+  }
+
+  /**
+   * For a file (the reel, a PNG): the gauge and the start's sleeve are
+   * measured drawings whose names are page text, which a file does not carry.
+   * Unnamed columns in a video would be unexplained shapes, so they are left
+   * out of it; the heart and the blood that stays are anatomy and stay in.
+   *
+   * @param {boolean} on
+   */
+  setExportMode(on) {
+    this._exporting = Boolean(on);
+    this.gauge.visible = !this._exporting;
+    this.circuit.setShowBefore(!this._exporting);
+  }
+
+  /**
+   * Points around the outside of the chamber at its fullest, in world space:
+   * what a tag must not be put over (`SceneCallouts` projects them).
+   *
+   * @returns {THREE.Vector3[]}
+   */
+  getCalloutObstacle() {
+    if (!this._obstaclePoints || this._obstacleFor !== this.edShape) {
+      const shape = { ...this.edShape, baseY: ANATOMY.baseY };
+      const points = [];
+      for (const t of [0, 0.25, 0.5, 0.75, 1]) {
+        for (let k = 0; k < 12; k += 1) {
+          points.push(epicardialSurfacePoint(shape, t, (k / 12) * Math.PI * 2, new THREE.Vector3()));
+        }
+      }
+      this._obstaclePoints = points;
+      this._obstacleFor = this.edShape;
+    }
+    this.primary.updateWorldMatrix(true, false);
+    return this._obstaclePoints.map((point) => point.clone().applyMatrix4(this.primary.matrixWorld));
+  }
+
+  /** Names that stay beside the model: the gauge's title and its two columns. */
+  getCalloutFixed() {
+    return [
+      { id: 'gauge-title', anchor: 'gauge-top', side: 'center', title: GAUGE_LABELS.title },
+      // Each name to the outer side of its own column, so the two never meet
+      // on a phone, where the columns are twenty pixels apart.
+      { id: 'gauge-now', anchor: 'gauge-now', side: 'right', title: GAUGE_LABELS.now },
+      { id: 'gauge-before', anchor: 'gauge-before', side: 'left', title: GAUGE_LABELS.before },
+    ];
+  }
+
+  /**
+   * What to say beside the model about the change on screen, in order
+   * (`calloutSequence.js`). From the start to now, both solved; empty at the start.
+   */
+  getCalloutSequence() {
+    return calloutSequence({
+      baseline: this.session.baseline.input,
+      shown: this.session.view.input,
+      before: this.session.baseline.metrics,
+      now: this.state,
+    });
   }
 
   /**
@@ -328,8 +603,8 @@ export class CardiacOutputScene {
    * it has faded, negative when there is none on screen. It leaves with the
    * solved ejection and is gone before the next one.
    */
-  bolusTravel() {
-    const since = this.phase - this.state.ejectionStartPhase;
+  bolusTravel(metrics = this.state) {
+    const since = this.phase - metrics.ejectionStartPhase;
     const t = since - Math.floor(since);
     const visibleFor = 0.62;
     return t <= visibleFor ? t / visibleFor : -1;
@@ -530,6 +805,18 @@ export class CardiacOutputScene {
    * everything about the circulation is here, and every change goes through
    * `setModelControl`, as a reader's would.
    */
+  /**
+   * The first-visit introduction and the one change it suggests: lowering
+   * contractility to the value the explanation lowers it to, so the two tell
+   * the same story with the same solved numbers.
+   */
+  getIntro() {
+    return {
+      copy: INTRO_COPY,
+      tryIt: { id: 'contractilityEesMmHgPerMl', value: EXPLAINER_CONTRACTILITY.to },
+    };
+  }
+
   getExplainer() {
     return {
       copy: EXPLAINER_COPY,
@@ -552,20 +839,28 @@ export class CardiacOutputScene {
         if (changed) this.setModelControl('contractilityEesMmHgPerMl', value, { op });
         const { emphasis } = stageAt(t);
         this.setBeatEmphasis({ residual: emphasis.residual ?? 0, ejection: emphasis.ejection ?? 0 });
+        // Point first, then show (`presentationAt`): what is pointed at and
+        // whether the beat is held are this scene's drawing.
+        const shown = presentationAt(t);
+        this.setHighlight(shown.highlight);
+        if (shown.hold !== (this._holdMoment ?? null)) this.setBeatHold(shown.hold);
         return changed;
       },
+      /** Whether the start's lines are drawn at `t` (the shell owns the comparison). */
+      compareAt: (t) => presentationAt(t).compare && this.canCompare(),
       /**
        * Everything a writer can change: the preset, where the condition came
        * from, and the four inputs. The player compares it with what its own
        * last drive left, so a lesson, the reel or a reset that moves the model
        * some other way stops the playback too.
        */
-      stateKey: () => {
-        const input = this.session.input;
-        return [this.session.presetId, this.session.origin, ...CONTROLS.map((control) => input[control.id])].join('|');
+      stateKey: () => this.getModelStateKey(),
+      /** Leave no emphasis, pointer or held beat behind when it stops. */
+      end: () => {
+        this.setBeatEmphasis({ residual: 0, ejection: 0 });
+        this.setHighlight([]);
+        this.setBeatHold(null);
       },
-      /** Leave no emphasis behind when it stops. */
-      end: () => this.setBeatEmphasis({ residual: 0, ejection: 0 }),
       caption: (stageId) =>
         captionFor(stageId, {
           before: this.session.baseline.metrics,
@@ -595,9 +890,8 @@ export class CardiacOutputScene {
     const at = (x, y, z, distance) => ({ target: new THREE.Vector3(x, y, z), direction: VIEW_DIRECTION.clone(), distance });
     return {
       overview: at(-0.4, -1.6, 0.2, 30),
-      heart: at(0.1, -2.2, 0.4, 20),
-      cavity: at(0.3, -2.0, 0.9, 15.5),
-      outflow: at(-2.2, 0.8, -0.8, 19),
+      heart: at(1.3, -2.3, 0.2, 22),
+      outflow: at(-1.8, -1.3, 0, 24),
     };
   }
 
@@ -665,9 +959,11 @@ export class CardiacOutputScene {
       /** Hand the beat to the sequence, and hand it back on the way out. */
       onEnter: (scene) => {
         scene.setCardiacPhaseDriven(true);
+        scene.setExportMode(true);
       },
       onExit: (scene) => {
         scene.setCardiacPhaseDriven(false);
+        scene.setExportMode(false);
         scene.setBeatEmphasis({ residual: 0 });
       },
     };
@@ -682,6 +978,7 @@ export class CardiacOutputScene {
    * @param {{ ejection?: number, residual?: number }} emphasis
    */
   setBeatEmphasis(emphasis) {
+    this._beatEmphasis = { ...emphasis };
     this.blood?.setEmphasis(emphasis);
   }
 
@@ -1074,7 +1371,7 @@ export class CardiacOutputScene {
     // The explanation may look closer (`setFramingFocus`): the same fit,
     // into the same band, of a smaller box. Fixed per focus, never per input.
     const focus = FOCUS_BOXES[this._framingFocus];
-    const min = focus ? focus.min.clone() : new THREE.Vector3(-9.3, -7.1, -3.8);
+    const min = focus ? focus.min.clone() : new THREE.Vector3(-9.3, -7.6, -3.8);
     const max = focus ? focus.max.clone() : new THREE.Vector3(7.1, portrait ? 2.6 : 4.4, 3.8);
     const corners = [];
     for (const x of [min.x, max.x]) {
@@ -1114,15 +1411,11 @@ export class CardiacOutputScene {
   dispose() {
     this._offResize?.();
     this.beforeOutline?.dispose();
+    this.residual?.dispose();
+    this.gauge?.dispose();
     this.apparatus?.dispose();
     this.circuit?.dispose();
     disposeObject(this.root);
   }
 }
 
-/** Rounding a control's value for display, at the precision the model has. */
-function formatControl(id, value) {
-  if (id === 'systemicResistanceMmHgSPerMl') return value.toFixed(2);
-  if (id === 'contractilityEesMmHgPerMl') return value.toFixed(2);
-  return String(Math.round(value));
-}

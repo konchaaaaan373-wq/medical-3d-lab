@@ -210,6 +210,46 @@ for (const slug of SLUGS) {
   await page.waitForTimeout(300);
 
   const problems = [];
+
+  // --- the first-visit introduction ----------------------------------------
+  //
+  // A scene that has one opens it on a first visit, over the dimmed page
+  // (owner's review, 2026-09-27). Checked here because it is the first thing a
+  // reader meets and because everything below has to get past it: that it
+  // opens by itself, that its whole card fits the window with the suggested
+  // change and "skip" in reach, that Escape and "skip" close it, and that the
+  // button on the title line brings it back. Remembered in this browser, so
+  // every later visit in this run starts without it.
+  if (await page.locator('.scene-intro').count()) {
+    const opened = await page
+      .waitForSelector('.scene-intro:not([hidden])', { timeout: 10000 })
+      .then(() => true)
+      .catch(() => false);
+    if (!opened) problems.push('introduction: it did not open on a first visit');
+    else {
+      await page.screenshot({ path: join(outDir, `${slug}-intro.png`) });
+      const fit = await page.evaluate(() => {
+        const card = document.querySelector('.scene-intro-card').getBoundingClientRect();
+        const within = (node) => {
+          const rect = node.getBoundingClientRect();
+          return rect.top >= 0 && rect.bottom <= innerHeight && rect.left >= 0 && rect.right <= innerWidth && rect.height >= 44;
+        };
+        return {
+          card: card.top >= 0 && card.bottom <= innerHeight + 1,
+          buttons: [...document.querySelectorAll('.scene-intro-try, .scene-intro-skip')].every(within),
+        };
+      });
+      if (!fit.card) problems.push('introduction: the card does not fit the window');
+      if (!fit.buttons) problems.push('introduction: "try" or "skip" is out of reach (outside the window, or under 44 px)');
+      await page.keyboard.press('Escape');
+      if (!(await page.locator('.scene-intro').isHidden())) problems.push('introduction: Escape did not close it');
+      await page.locator('.scene-intro-reopen').click();
+      if (await page.locator('.scene-intro').isHidden()) problems.push('introduction: "How to read" did not bring it back');
+      await page.locator('.scene-intro-skip').click();
+      if (!(await page.locator('.scene-intro').isHidden())) problems.push('introduction: "skip" did not close it');
+    }
+  }
+
   // Read before touching anything: the baseline is the state the scene opens
   // in, not a state this script put it into.
   const baseline = await state();
@@ -567,6 +607,48 @@ for (const slug of SLUGS) {
       await page.setViewportSize({ width, height });
       await page.waitForTimeout(1500);
       const where = `${width}x${height}`;
+
+      // The introduction at every size: brought back from its button, the
+      // two buttons in the window and at least 44 px tall, then skipped. At
+      // 320×568 "skip" was below the fold and under the build marker, and the
+      // only size this was measured at was 1440×900 (review, 2026-09-28).
+      if (await page.locator('.scene-intro-reopen').count()) {
+        await page.locator('.scene-intro-reopen').click();
+        await page.waitForSelector('.scene-intro:not([hidden])', { timeout: 5000 }).catch(() => {});
+        const reach = await page.evaluate(() => {
+          const intro = document.querySelector('.scene-intro');
+          const card = document.querySelector('.scene-intro-card').getBoundingClientRect();
+          const introZ = Number(getComputedStyle(intro).zIndex) || 0;
+          // Anything the shell floats — fixed or sticky, outside the
+          // introduction — that paints above it. Asked of the styles, not of
+          // a hit test: the build marker lets taps through
+          // (`pointer-events: none`), so `elementFromPoint` never saw it
+          // sitting on "skip" (L-139).
+          const floating = [...document.querySelectorAll('body *')].filter((node) => {
+            if (intro.contains(node) || node.contains(intro)) return false;
+            const style = getComputedStyle(node);
+            if (style.position !== 'fixed' || style.visibility === 'hidden' || style.display === 'none') return false;
+            return (Number(style.zIndex) || 0) >= introZ;
+          });
+          return [...document.querySelectorAll('.scene-intro-try, .scene-intro-skip')].map((node) => {
+            const rect = node.getBoundingClientRect();
+            const inside = rect.top >= 0 && rect.bottom <= innerHeight && rect.left >= 0 && rect.right <= innerWidth && rect.height >= 44;
+            // Inside the card's own visible box: a card that scrolls clips
+            // what runs past its bottom edge, whatever the window says.
+            const unclipped = rect.top >= card.top - 1 && rect.bottom <= card.bottom + 1;
+            const covered = floating.some((other) => {
+              const box = other.getBoundingClientRect();
+              return box.width > 0 && box.left < rect.right && box.right > rect.left && box.top < rect.bottom && box.bottom > rect.top;
+            });
+            return { name: node.className, inside: inside && unclipped, onTop: !covered };
+          });
+        });
+        for (const button of reach) {
+          if (!button.inside) problems.push(`introduction ${where}: ${button.name} is outside the window or under 44 px`);
+          else if (!button.onTop) problems.push(`introduction ${where}: ${button.name} is covered by something else`);
+        }
+        await page.locator('.scene-intro-skip').click();
+      }
 
       // The screen a reader arrives at: both cards closed.
       if (hasCards) {
@@ -932,6 +1014,82 @@ for (const slug of SLUGS) {
     }
   }
 
+  // --- the first change, said on the model ------------------------------------
+  //
+  // What the introduction suggests, the way a reader takes it: its button
+  // lowers contractility, and the chain is said beside the parts — cause,
+  // blood left behind, what is sent out, the output — each tag inside the
+  // window and none stacked on another, with the beat held while the blood
+  // left behind is being pointed at (owner's review, 2026-09-27). Waited for
+  // by state, not by time.
+  if (await page.locator('.scene-intro-reopen').count()) {
+    await page.locator('.scene-intro-reopen').click();
+    await page.locator('.scene-intro-try').click();
+    const heldDuringResidual = page
+      .waitForFunction(() => document.querySelector('.scene-callout[data-callout="esv"]')?.dataset.state === 'current' && window.__app.scene.holding, null, { timeout: 30000 })
+      .then(() => true)
+      .catch(() => false);
+    const said = await page
+      .waitForFunction(() => document.querySelector('.scene-callouts')?.dataset.state === 'said', null, { timeout: 60000 })
+      .then(() => true)
+      .catch(() => false);
+    if (!(await heldDuringResidual)) problems.push('tags: the beat was not held while the blood left behind was pointed at');
+    if (!said) problems.push('tags: the chain was not said beside the model after the suggested change');
+    else {
+      await page.screenshot({ path: join(outDir, `${slug}-tags.png`) });
+      const tags = await page.evaluate(() =>
+        [...document.querySelectorAll('.scene-callout.is-step')].map((node) => {
+          const rect = node.querySelector('.scene-callout-box').getBoundingClientRect();
+          return {
+            id: node.dataset.callout,
+            crowded: node.dataset.crowded === 'true',
+            inside: rect.left >= 0 && rect.right <= innerWidth && rect.top >= 0 && rect.bottom <= innerHeight && rect.width > 0,
+            text: node.innerText.replace(/\s+/g, ' ').trim(),
+          };
+        })
+      );
+      // Nothing may cover the model: no tag box over the heart's own drawn
+      // outline (its vertices projected), at this desktop size.
+      const onHeart = await page.evaluate(() => {
+        const { viewer, scene } = window.__app;
+        const probe = viewer.camera.position.clone();
+        scene.ventricle.updateWorldMatrix(true, false);
+        const position = scene.ventricle.geometry.attributes.position;
+        const points = [];
+        for (let i = 0; i < position.count; i += 5) {
+          probe.fromBufferAttribute(position, i).applyMatrix4(scene.ventricle.matrixWorld).project(viewer.camera);
+          points.push([((probe.x + 1) / 2) * innerWidth, ((1 - probe.y) / 2) * innerHeight]);
+        }
+        return [...document.querySelectorAll('.scene-callout.is-step .scene-callout-box')]
+          .filter((box) => {
+            const rect = box.getBoundingClientRect();
+            return points.filter(([x, y]) => x > rect.left && x < rect.right && y > rect.top && y < rect.bottom).length > 3;
+          })
+          .map((box) => box.innerText.replace(/\s+/g, ' ').trim());
+      });
+      for (const text of onHeart) problems.push(`tags: “${text}” is drawn over the heart`);
+      const order = tags.map((tag) => tag.id).join(' → ');
+      if (order !== 'cause-contractilityEesMmHgPerMl → esv → sv → co') problems.push(`tags: said in the order ${order}`);
+      for (const tag of tags) {
+        if (!tag.inside) problems.push(`tags: “${tag.text}” is outside the window`);
+        if (tag.crowded) problems.push(`tags: “${tag.text}” found no place clear of the others`);
+      }
+      console.log(`  ${slug}: said on the model — ${tags.map((tag) => tag.text).join(' / ')}`);
+    }
+    // Another writer — a lesson, the walk-through, a return from the reel —
+    // moves the model without the reader's controls. Tags said for the old
+    // condition quote numbers that are no longer on screen, so they go.
+    await page.evaluate(() => window.__app.scene.setModelControl('heartRatePerMin', 90));
+    await page
+      .waitForFunction(() => !document.querySelector('.scene-callout.is-step'), null, { timeout: 10000 })
+      .catch(() => problems.push('tags: the model moved under them (not by the reader) and they stayed, quoting the old condition'));
+    await pressConsoleControl(page, '.model-control-reset');
+    await page
+      .waitForFunction(() => !document.querySelector('.scene-callout.is-step'), null, { timeout: 10000 })
+      .catch(() => problems.push('tags: a reset back to the start left tags on the model'));
+    await page.evaluate(() => window.__app.scene.comparing && document.querySelector('button[data-control="compare"]')?.click());
+  }
+
   // --- the explanation animation -------------------------------------------
   //
   // A played sequence is content, and like a lesson it can only be proved
@@ -977,7 +1135,38 @@ for (const slug of SLUGS) {
       });
       if (!/\d+→\d+/.test(at.caption)) problems.push(`explanation: the sentence carries no solved numbers (${at.caption.slice(0, 60)})`);
       if (!(at.contractility < at.start)) problems.push('explanation: contractility did not fall');
-      if (!at.comparing) problems.push('explanation: the "before" lines are not drawn inside the heart');
+      if (!at.comparing) {
+        // The lines follow the stage's cue, a moment after it starts.
+        const drawn = await page.waitForFunction(() => window.__app.scene.comparing, null, { timeout: 10000 }).then(() => true).catch(() => false);
+        if (!drawn) problems.push('explanation: the "before" lines are not drawn inside the heart');
+      }
+      // A closer look never crops the heart: every drawn point of the chamber
+      // inside the window and clear of the panels (owner's review, 2026-09-27).
+      const cropped = await page.evaluate(() => {
+        const { viewer, scene } = window.__app;
+        const probe = viewer.camera.position.clone();
+        const points = [];
+        scene.ventricle.updateWorldMatrix(true, false);
+        const position = scene.ventricle.geometry.attributes.position;
+        for (let i = 0; i < position.count; i += 7) {
+          probe.fromBufferAttribute(position, i).applyMatrix4(scene.ventricle.matrixWorld).project(viewer.camera);
+          points.push([((probe.x + 1) / 2) * innerWidth, ((1 - probe.y) / 2) * innerHeight]);
+        }
+        const out = points.filter(([x, y]) => x < 0 || x > innerWidth || y < 0 || y > innerHeight).length;
+        const under = [];
+        for (const selector of ['.metrics', '.console', '.title-card']) {
+          const rect = document.querySelector(selector)?.getBoundingClientRect();
+          if (!rect?.width) continue;
+          const n = points.filter(([x, y]) => x > rect.left + 4 && x < rect.right - 4 && y > rect.top + 4 && y < rect.bottom - 4).length;
+          if (n) under.push(`${selector} ${n}`);
+        }
+        return { out, under, total: points.length };
+      });
+      if (cropped.out) problems.push(`explanation: the close-up crops the heart (${cropped.out} of ${cropped.total} points outside the window)`);
+      if (cropped.under.length) problems.push(`explanation: the close-up puts the heart under ${cropped.under.join(', ')}`);
+      // Its sentence is beside the model, not only in the card.
+      const onModel = await page.evaluate(() => document.querySelector('.scene-callout.is-caption[data-callout="explainer-inside"]')?.innerText ?? '');
+      if (!/\d+→\d+/.test(onModel)) problems.push(`explanation: the stage's sentence is not beside the model (${onModel.slice(0, 40)})`);
       console.log(`  ${slug}: explanation reached "inside the heart" — camera at ${at.distance.toFixed(1)}`);
       // A reader's change stops it, and the model is theirs from there.
       await pressConsoleControl(page, '.exp-step[data-direction="up"]:visible, .pad-step[data-direction="up"]:visible');

@@ -34,18 +34,27 @@ export const EXPLAINER_CONTRACTILITY = {
 };
 
 /**
- * The stages, contiguous by construction. `framing` names one of the scene's
- * guide framings; `emphasis` is presentation only (it tints blood, it moves
- * no value); `compare` draws the starting condition's cavity inside the
- * chamber, as the reader's own comparison does.
+ * The stages, contiguous by construction.
+ *
+ * Each one **points, then shows, then waits** (owner's review, 2026-09-27:
+ * 注目部位を示してから変化を見せ、理解する間を置く). For its first moments only
+ * the part is pointed at (`highlight`) and its sentence is beside it
+ * (`anchor`); then what it is about happens — contractility falls
+ * (`fall`, seconds into the stage), the start's lines appear (`compareFrom`)
+ * — and the rest of the stage is left to look at.
+ *
+ * `framing` names a scene framing whose box holds the **whole** heart (or the
+ * whole circuit): a closer look never crops the thing it is looking at.
+ * `hold` stops the drawing's beat at a moment (presentation only; the solved
+ * rate is unchanged). `emphasis` tints blood and moves no value.
  */
 export const EXPLAINER_STAGES = [
-  { id: 'start', at: 0, until: 4, framing: 'overview', emphasis: {}, compare: false },
-  { id: 'cause', at: 4, until: 9, framing: 'heart', emphasis: {}, compare: false },
-  { id: 'inside', at: 9, until: 15, framing: 'cavity', emphasis: { residual: 1 }, compare: true },
-  { id: 'ejection', at: 15, until: 20, framing: 'outflow', emphasis: { ejection: 1 }, compare: true },
-  { id: 'circulation', at: 20, until: 25, framing: 'overview', emphasis: {}, compare: false },
-  { id: 'limits', at: 25, until: 30, framing: 'overview', emphasis: {}, compare: false },
+  { id: 'start', at: 0, until: 5, framing: 'overview', anchor: 'cavity', highlight: [], emphasis: {}, compare: false },
+  { id: 'cause', at: 5, until: 13, framing: 'heart', anchor: 'myocardium', highlight: ['myocardium'], emphasis: {}, compare: false, fall: { from: 2.5, to: 6 } },
+  { id: 'inside', at: 13, until: 21, framing: 'heart', anchor: 'residual', highlight: ['residual'], emphasis: { residual: 1 }, compare: true, compareFrom: 1.8, hold: 'end-systole', holdFrom: 0.4 },
+  { id: 'ejection', at: 21, until: 28, framing: 'outflow', anchor: 'outflow', highlight: ['ejection'], emphasis: { ejection: 1 }, compare: false },
+  { id: 'circulation', at: 28, until: 35, framing: 'overview', anchor: 'arterial', highlight: ['arterial'], emphasis: {}, compare: false },
+  { id: 'limits', at: 35, until: 40, framing: 'overview', anchor: 'myocardium', highlight: [], emphasis: {}, compare: false },
 ];
 
 export const EXPLAINER_DURATION = EXPLAINER_STAGES.at(-1).until;
@@ -56,12 +65,30 @@ export function stageAt(t) {
 }
 
 /**
- * Contractility at `t`: held through the first stage, falling through the
- * second, held low after it. Rounded to the control's grid (×5).
+ * What is shown at `t` beyond the model's value: which parts are pointed at,
+ * whether the start's lines are drawn, and whether the beat is held.
+ * Presentation only.
+ *
+ * @returns {{ highlight: string[], compare: boolean, hold: string|null }}
+ */
+export function presentationAt(t) {
+  const stage = stageAt(t);
+  const into = t - stage.at;
+  return {
+    highlight: stage.highlight ?? [],
+    compare: Boolean(stage.compare) && into >= (stage.compareFrom ?? 0),
+    hold: stage.hold && into >= (stage.holdFrom ?? 0) ? stage.hold : null,
+  };
+}
+
+/**
+ * Contractility at `t`: held through the first stage and the pointing part
+ * of the second, falling through the second's `fall` window, held low after
+ * it. Rounded to the control's grid (×5).
  */
 export function contractilityAt(t) {
   const cause = EXPLAINER_STAGES.find((stage) => stage.id === 'cause');
-  const k = Math.min(1, Math.max(0, (t - cause.at) / (cause.until - cause.at - 1)));
+  const k = Math.min(1, Math.max(0, (t - cause.at - cause.fall.from) / (cause.fall.to - cause.fall.from)));
   // Exactly the start before the fall and exactly the target after it: the
   // grid would otherwise round 2.74 to 2.7, and the first stage would already
   // be a changed condition.
@@ -101,9 +128,16 @@ export function captionFor(stageId, { before, now, input = {} }) {
     map: whole(now.meanArterialPressureMmHg),
     hr: whole(now.heartRatePerMin),
   };
-  const fill = (text) => text.replace(/\{(\w+)\}/g, (_, key) => values[key] ?? '');
+  const fill = (text) => (text ?? '').replace(/\{(\w+)\}/g, (_, key) => values[key] ?? '');
+  // A stage that points before it shows says so until its value has moved,
+  // rather than "2.74 → 2.74".
+  const pending = Boolean(copy.pending) && values.ees === values.eesBefore;
   return {
     heading: { en: copy.heading, ja: copy.headingJa },
-    text: { en: fill(copy.text), ja: fill(copy.textJa) },
+    text: pending ? { en: copy.pending, ja: copy.pendingJa } : { en: fill(copy.text), ja: fill(copy.textJa) },
+    // The line said on the model where there is no room for the sentence.
+    brief: pending
+      ? { en: copy.briefPending, ja: copy.briefPendingJa }
+      : { en: fill(copy.brief ?? copy.heading), ja: fill(copy.briefJa ?? copy.headingJa) },
   };
 }

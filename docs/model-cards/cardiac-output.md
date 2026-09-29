@@ -293,6 +293,39 @@ supports is refusing to publish the reduction.
 
 **Catalog status:** `alpha`
 
+### Screen, 2026-09-27 (2) — said on the model, and the blood that stays made visible
+
+Not a model revision: the solver, its inputs and their ranges are unchanged.
+The owner's bar: a first-time reader can say what was changed, what the heart
+did and what the output did **without reading the table**. Implemented and
+checked in headless Chromium; not yet tried with a first-time reader, which is
+the bar itself (F-235).
+
+- **A first-visit introduction** over the dimmed page: the four things that can
+  be changed, where to look (the dark red body, the bright length leaving the
+  valve, the columns, the figures), and one change to try — lowering
+  contractility to the value the explanation lowers it to. Skip, Escape, and
+  "How to read" on the title line to bring it back. Seen-or-not is kept in
+  this browser only.
+- **Tags on the model after a change** (`calloutSequence.js`): the cause where
+  it acts, the blood left behind, what is sent out, the output — each part
+  pointed at while its tag is current, the beat held at end-systole while the
+  blood left behind is. Resistance is said at the small arteries first, then
+  the arterial pressure, then the heart, then the flow downstream of the bed.
+  Only steps whose displayed value moved; the numbers are the read-out's.
+- **The blood that stays is a body**: the end-systolic cavity, solid dark red,
+  inside the chamber; and beside the heart the same volumes on a **linear**
+  scale — start and now, at the same moment of the beat — because a volume
+  half as large again is a radius only 15% larger. The start's stroke is a
+  faint sleeve around the bright one.
+- **The explanation** points, then shows, then waits at each stage — cause,
+  inside the heart, what leaves, the circulation — with its sentence beside the
+  part (a short line on a phone, the whole sentence in the card). Its close-ups
+  are fitted to boxes that hold the whole chamber at its largest; the earlier
+  "cavity" box cropped the heart it looked into.
+
+What these do not say is in `docs/medical-notes.md` (「残る血液と送り出す血液を、見て分かる形に」).
+
 ### Screen, 2026-09-27 — the 3D answers each input; operating and the explanation apart
 
 Not a model revision: the solver, its inputs and their ranges are unchanged.
