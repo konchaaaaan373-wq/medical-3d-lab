@@ -615,15 +615,34 @@ for (const slug of SLUGS) {
       if (await page.locator('.scene-intro-reopen').count()) {
         await page.locator('.scene-intro-reopen').click();
         await page.waitForSelector('.scene-intro:not([hidden])', { timeout: 5000 }).catch(() => {});
-        const reach = await page.evaluate(() =>
-          [...document.querySelectorAll('.scene-intro-try, .scene-intro-skip')].map((node) => {
+        const reach = await page.evaluate(() => {
+          const intro = document.querySelector('.scene-intro');
+          const card = document.querySelector('.scene-intro-card').getBoundingClientRect();
+          const introZ = Number(getComputedStyle(intro).zIndex) || 0;
+          // Anything the shell floats — fixed or sticky, outside the
+          // introduction — that paints above it. Asked of the styles, not of
+          // a hit test: the build marker lets taps through
+          // (`pointer-events: none`), so `elementFromPoint` never saw it
+          // sitting on "skip" (L-139).
+          const floating = [...document.querySelectorAll('body *')].filter((node) => {
+            if (intro.contains(node) || node.contains(intro)) return false;
+            const style = getComputedStyle(node);
+            if (style.position !== 'fixed' || style.visibility === 'hidden' || style.display === 'none') return false;
+            return (Number(style.zIndex) || 0) >= introZ;
+          });
+          return [...document.querySelectorAll('.scene-intro-try, .scene-intro-skip')].map((node) => {
             const rect = node.getBoundingClientRect();
             const inside = rect.top >= 0 && rect.bottom <= innerHeight && rect.left >= 0 && rect.right <= innerWidth && rect.height >= 44;
-            // What a tap at its middle would land on.
-            const hit = document.elementFromPoint(rect.left + rect.width / 2, rect.top + rect.height / 2);
-            return { name: node.className, inside, onTop: Boolean(hit && node.contains(hit)) };
-          })
-        );
+            // Inside the card's own visible box: a card that scrolls clips
+            // what runs past its bottom edge, whatever the window says.
+            const unclipped = rect.top >= card.top - 1 && rect.bottom <= card.bottom + 1;
+            const covered = floating.some((other) => {
+              const box = other.getBoundingClientRect();
+              return box.width > 0 && box.left < rect.right && box.right > rect.left && box.top < rect.bottom && box.bottom > rect.top;
+            });
+            return { name: node.className, inside: inside && unclipped, onTop: !covered };
+          });
+        });
         for (const button of reach) {
           if (!button.inside) problems.push(`introduction ${where}: ${button.name} is outside the window or under 44 px`);
           else if (!button.onTop) problems.push(`introduction ${where}: ${button.name} is covered by something else`);
