@@ -55,7 +55,8 @@ export const INTRO_COPY = {
     { swatch: PALETTE.residualBody, en: 'Heart: the dark red body inside is the blood left after each beat', ja: '心臓：中の濃い赤は、収縮したあとに残る血液' },
     { swatch: PALETTE.flow, en: 'Blood: the bright length leaving the valve is one beat’s output', ja: '血流：弁から出ていく明るい部分が、1回に送り出す血液' },
     { swatch: PALETTE.before, en: 'Columns beside the heart: the blood in the ventricle, at the start and now, at the same moment of the beat', ja: '右下の柱：心室の血液。開始時といまを、拍動の同じ瞬間で比べます' },
-    { en: 'Figures (right): cardiac output and blood pressure', ja: '数値（右）：心拍出量と血圧' },
+    // No "right": on a phone the figures are under the heart.
+    { en: 'Figures: cardiac output and blood pressure', ja: '数値：心拍出量と血圧' },
   ],
   tryIt: { en: 'Try lowering contractility', ja: '収縮力を下げてみる' },
   skip: { en: 'Skip', ja: 'スキップ' },

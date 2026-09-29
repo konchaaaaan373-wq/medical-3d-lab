@@ -339,6 +339,7 @@ export function buildCircuit({ compact = false } = {}) {
   let bedBase = bedMaterial.emissiveIntensity;
   const venousBase = venousMaterial.emissiveIntensity;
   let highlight = { arterial: 0, bed: 0, venous: 0, ejection: 0 };
+  let showBefore = true;
   const paintHighlight = () => {
     arterialMaterial.emissiveIntensity = arterialBase + highlight.arterial * 0.55;
     bedMaterial.emissiveIntensity = bedBase + highlight.bed * 0.7;
@@ -424,8 +425,14 @@ export function buildCircuit({ compact = false } = {}) {
      */
     setBolus(travel, before = null) {
       bolus.set(travel, bolusLengthFor(strokeVolumeMl), 1 + highlight.ejection * 0.4);
-      if (before) beforeBolus.set(before.travel, bolusLengthFor(before.strokeVolumeMl), 1);
+      if (before && showBefore) beforeBolus.set(before.travel, bolusLengthFor(before.strokeVolumeMl), 1);
       else beforeBolus.set(-1, 0, 1);
+    },
+
+    /** Whether the start's sleeve may be drawn at all (off in a file: see the scene's `setExportMode`). */
+    setShowBefore(on) {
+      showBefore = Boolean(on);
+      if (!showBefore) beforeBolus.mesh.visible = false;
     },
 
     /**

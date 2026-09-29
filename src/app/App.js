@@ -732,6 +732,7 @@ export async function createApp({ stage, ui, onRetryModel = null }) {
         viewer,
         getAnchor: (id) => scene.getCalloutAnchor(id),
         getInsets: () => safeAreaInsets(),
+        getObstacle: () => scene.getCalloutObstacle?.() ?? null,
         onStep: (step) => {
           scene.setHighlight?.(step?.highlight ?? []);
           scene.setBeatHold?.(step?.hold ?? null);
@@ -754,7 +755,7 @@ export async function createApp({ stage, ui, onRetryModel = null }) {
     calloutTimer = setTimeout(() => {
       calloutTimer = null;
       if (explainerPlayer?.state === 'playing' || explainerPlayer?.state === 'paused') return;
-      callouts.play(scene.getCalloutSequence());
+      callouts.play(scene.getCalloutSequence(), scene.getModelStateKey?.() ?? null);
     }, CALLOUT_SETTLE_MS);
   }
   const sceneInspectionViews = scene.getInspectionViews?.() ?? scene.getAnatomyViews?.();
@@ -886,7 +887,14 @@ export async function createApp({ stage, ui, onRetryModel = null }) {
     onReset: resetMedicalState,
     onResetView: resetView,
     onCapture: (preset) => {
-      capture(viewer, meta, stageReadout.stage, playback.value, preset);
+      // A file carries none of the page's text: drawings that are named only
+      // by it are left out of the frame (`setExportMode`).
+      scene.setExportMode?.(true);
+      try {
+        capture(viewer, meta, stageReadout.stage, playback.value, preset);
+      } finally {
+        scene.setExportMode?.(false);
+      }
       // The SNS layer's only measurable outcome: a file the user chose to keep.
       emitAppEvent('reel:export', { format: 'png', preset: preset?.id ?? 'view' });
     },
@@ -1427,6 +1435,8 @@ export async function createApp({ stage, ui, onRetryModel = null }) {
         /** The stage whose sentence is beside the model, and what it last said. */
         let explainedStage = null;
         let saidKey = null;
+        /** What the storyboard last asked of the comparison. */
+        let cuedCompare = false;
         /** The stage's sentence, beside the part it is about (`SceneCallouts.say`). */
         const sayStage = (stage) => {
           explainedStage = stage;
@@ -1443,7 +1453,9 @@ export async function createApp({ stage, ui, onRetryModel = null }) {
               onBegin: () => {
                 // The reader's own tags make way for the explanation's sentence.
                 clearTimeout(calloutTimer);
+                calloutTimer = null;
                 callouts?.clear();
+                cuedCompare = false;
                 explainer.begin();
                 if (comparing) setComparison(false, { byReader: false });
                 modelControls.sync(scene.getModelControls());
@@ -1461,9 +1473,15 @@ export async function createApp({ stage, ui, onRetryModel = null }) {
                 applyGuideFraming(stage.framing);
                 sayStage(stage);
               },
+              // On the storyboard's cue only — when what it wants changes —
+              // so a reader who turns the lines on or off while it plays is
+              // not overruled on the next frame.
               onTick: (t) => {
                 const wanted = Boolean(explainer.compareAt?.(t));
-                if (wanted !== comparing) setComparison(wanted, { byReader: false });
+                if (wanted !== cuedCompare) {
+                  cuedCompare = wanted;
+                  if (wanted !== comparing) setComparison(wanted, { byReader: false });
+                }
               },
               onFrame: () => {
                 modelControls.sync(scene.getModelControls());
@@ -1608,14 +1626,30 @@ export async function createApp({ stage, ui, onRetryModel = null }) {
           // show it open beside the model.
           if (consoleCards?.conditions && window.innerWidth > PHONE_WIDTH) consoleCards.conditions.open = true;
           explainChange();
+          // Where a keyboard reader goes on from: the control that made the
+          // change, if it is showing, else the card that holds it.
+          const card = consoleCards?.conditions?.element;
+          const control = card?.open ? card.querySelector('.exp-step[data-direction="down"]') : null;
+          (control ?? card?.querySelector('summary') ?? introReopen)?.focus?.({ preventScroll: true });
         },
+        // While it is open, the page behind it is out of reach — to a pointer
+        // (the dimmed layer), to Tab and to a screen reader (inert).
+        onOpen: () => setIntroBackdrop(true),
         // Skipped: focus goes where the introduction can be found again.
-        // Tried: it stays with the page, where the change is happening.
         onClose: (how) => {
+          setIntroBackdrop(false);
           if (how === 'skip') introReopen?.focus?.({ preventScroll: true });
         },
       })
     : null;
+  /** Everything in the shell but the introduction, made inert while it is open. */
+  function setIntroBackdrop(on) {
+    for (const child of ui.children) {
+      if (child === intro?.element) continue;
+      if (on) child.setAttribute('inert', '');
+      else child.removeAttribute('inert');
+    }
+  }
   const introReopen = intro
     ? el('button', {
         type: 'button',
@@ -1899,6 +1933,10 @@ export async function createApp({ stage, ui, onRetryModel = null }) {
     playback.update(dt);
     explainerPlayer?.tick(dt);
     scene.update(dt, elapsed);
+    // Tags said for one condition are not about another. A lesson, the
+    // walk-through, a return from the reel all move the model without the
+    // reader's controls; whatever moved it, tags whose condition is gone go.
+    if (callouts?.playedKey != null && !calloutTimer && callouts.playedKey !== scene.getModelStateKey?.()) callouts.clear();
     callouts?.update(dt);
     if (learning) {
       learningPanel.tick();

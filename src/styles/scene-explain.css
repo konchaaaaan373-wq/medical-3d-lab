@@ -198,7 +198,9 @@
 .scene-intro {
   position: fixed;
   inset: 0;
-  z-index: 40;
+  /* Above everything the shell floats, the build marker (40) included: it
+     sat on "skip" at 320×568. */
+  z-index: 60;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -324,11 +326,50 @@
   }
 
   .scene-intro-card {
-    padding: 16px 16px 12px;
+    padding: 16px 16px 0;
   }
 
   .scene-intro-columns {
     grid-template-columns: 1fr;
+  }
+
+  /* The two buttons stay on the card's bottom edge however far its text
+     runs: on the smallest phones the card scrolls, and "skip" is never the
+     thing that scrolled away. */
+  .scene-intro-actions {
+    position: sticky;
+    bottom: 0;
+    margin: 12px -16px 0;
+    padding: 10px 16px 12px;
+    background: var(--panel-strong);
+    border-top: 1px solid var(--border);
+  }
+
+  .scene-intro-again {
+    display: none;
+  }
+}
+
+@media (max-width: 560px) and (max-height: 700px) {
+  .scene-intro-title {
+    font-size: 17px;
+  }
+
+  .scene-intro-lead {
+    margin-bottom: 8px;
+    font-size: 13px;
+    line-height: 1.45;
+  }
+
+  .scene-intro-change,
+  .scene-intro-look {
+    gap: 3px;
+    font-size: 12.5px;
+    line-height: 1.4;
+  }
+
+  .scene-intro-columns {
+    gap: 8px;
   }
 }
 

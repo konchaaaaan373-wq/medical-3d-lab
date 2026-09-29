@@ -185,3 +185,71 @@ test('the tags are said one after another, each pointing at its part, and cleare
     restore();
   }
 });
+
+test('a tag is put beside the model, not on it, and is not re-placed while nothing moves', () => {
+  const restore = installFakeDocument();
+  try {
+    const camera = new THREE.PerspectiveCamera(50, 800 / 600, 0.1, 100);
+    camera.position.set(0, 0, 10);
+    camera.lookAt(0, 0, 0);
+    camera.updateMatrixWorld();
+    let anchorReads = 0;
+    // The "model": a box two units across around the origin, the part's point at its centre.
+    const obstacle = [];
+    for (const x of [-1, 1]) for (const y of [-1, 1]) obstacle.push(new THREE.Vector3(x, y, 0));
+    const callouts = createSceneCallouts({
+      viewer: { camera, container: { clientWidth: 800, clientHeight: 600 } },
+      getAnchor: () => {
+        anchorReads += 1;
+        return new THREE.Vector3(0, 0, 0);
+      },
+      getObstacle: () => obstacle,
+    });
+    const steps = sequenceFor(solved({ contractilityEesMmHgPerMl: EXPLAINER_CONTRACTILITY.to }));
+    callouts.play(steps, 'key-a');
+    assert.equal(callouts.playedKey, 'key-a', 'it knows which condition it was said for');
+    const [node] = findByClass(callouts.element, 'scene-callout');
+    const [x, y] = node.children[2].style.transform.match(/-?\d+/g).map(Number);
+    // The model's box on screen, projected the same way.
+    const project = (v) => {
+      const p = v.clone().project(camera);
+      return [(p.x * 0.5 + 0.5) * 800, (-p.y * 0.5 + 0.5) * 600];
+    };
+    const [left] = project(new THREE.Vector3(-1, 0, 0));
+    const [right] = project(new THREE.Vector3(1, 0, 0));
+    assert.ok(x + 120 <= left || x >= right, `the tag at x=${x} sits on the model (${left}–${right})`);
+    assert.equal(node.dataset.crowded, 'false');
+    assert.ok(Number.isFinite(y));
+    // Nothing moved: no anchor is read again.
+    const reads = anchorReads;
+    callouts.update(0.01);
+    callouts.update(0.01);
+    assert.equal(anchorReads, reads, 'placed once, not every frame');
+    camera.position.x = 1;
+    camera.updateMatrixWorld();
+    callouts.update(0.01);
+    assert.ok(anchorReads > reads, 'and again when the camera moves');
+    // A part near the edge of a wide model: its own side has no room, so
+    // the tag goes to the other side rather than being clamped onto it.
+    obstacle.length = 0;
+    for (const x of [-6, 1]) for (const yy of [-1, 1]) obstacle.push(new THREE.Vector3(x, yy, 0));
+    camera.position.x = 0;
+    camera.updateMatrixWorld();
+    const edge = createSceneCallouts({
+      viewer: { camera, container: { clientWidth: 800, clientHeight: 600 } },
+      getAnchor: () => new THREE.Vector3(-5.5, 0, 0),
+      getObstacle: () => obstacle,
+    });
+    edge.play(steps.slice(0, 1), 'k');
+    const [edgeNode] = findByClass(edge.element, 'scene-callout');
+    const [ex, ey] = edgeNode.children[2].style.transform.match(/-?\d+/g).map(Number);
+    const [modelLeft, modelTop] = project(new THREE.Vector3(-6, 1, 0));
+    const [modelRight, modelBottom] = project(new THREE.Vector3(1, -1, 0));
+    const onModel = ex < modelRight && ex + 120 > modelLeft && ey < modelBottom && ey + 34 > modelTop;
+    assert.equal(onModel, false, `clamped onto the model at ${ex},${ey}`);
+    callouts.say({ id: 'caption', anchor: 'x', title: { en: 't', ja: 't' } });
+    assert.equal(callouts.playedKey, null, "the explanation's sentence is not a reader's tag");
+  } finally {
+    restore();
+  }
+});

@@ -608,6 +608,29 @@ for (const slug of SLUGS) {
       await page.waitForTimeout(1500);
       const where = `${width}x${height}`;
 
+      // The introduction at every size: brought back from its button, the
+      // two buttons in the window and at least 44 px tall, then skipped. At
+      // 320×568 "skip" was below the fold and under the build marker, and the
+      // only size this was measured at was 1440×900 (review, 2026-09-28).
+      if (await page.locator('.scene-intro-reopen').count()) {
+        await page.locator('.scene-intro-reopen').click();
+        await page.waitForSelector('.scene-intro:not([hidden])', { timeout: 5000 }).catch(() => {});
+        const reach = await page.evaluate(() =>
+          [...document.querySelectorAll('.scene-intro-try, .scene-intro-skip')].map((node) => {
+            const rect = node.getBoundingClientRect();
+            const inside = rect.top >= 0 && rect.bottom <= innerHeight && rect.left >= 0 && rect.right <= innerWidth && rect.height >= 44;
+            // What a tap at its middle would land on.
+            const hit = document.elementFromPoint(rect.left + rect.width / 2, rect.top + rect.height / 2);
+            return { name: node.className, inside, onTop: Boolean(hit && node.contains(hit)) };
+          })
+        );
+        for (const button of reach) {
+          if (!button.inside) problems.push(`introduction ${where}: ${button.name} is outside the window or under 44 px`);
+          else if (!button.onTop) problems.push(`introduction ${where}: ${button.name} is covered by something else`);
+        }
+        await page.locator('.scene-intro-skip').click();
+      }
+
       // The screen a reader arrives at: both cards closed.
       if (hasCards) {
         if (await cardIsOpen('conditions')) await pressCardHead('conditions');
@@ -1006,6 +1029,26 @@ for (const slug of SLUGS) {
           };
         })
       );
+      // Nothing may cover the model: no tag box over the heart's own drawn
+      // outline (its vertices projected), at this desktop size.
+      const onHeart = await page.evaluate(() => {
+        const { viewer, scene } = window.__app;
+        const probe = viewer.camera.position.clone();
+        scene.ventricle.updateWorldMatrix(true, false);
+        const position = scene.ventricle.geometry.attributes.position;
+        const points = [];
+        for (let i = 0; i < position.count; i += 5) {
+          probe.fromBufferAttribute(position, i).applyMatrix4(scene.ventricle.matrixWorld).project(viewer.camera);
+          points.push([((probe.x + 1) / 2) * innerWidth, ((1 - probe.y) / 2) * innerHeight]);
+        }
+        return [...document.querySelectorAll('.scene-callout.is-step .scene-callout-box')]
+          .filter((box) => {
+            const rect = box.getBoundingClientRect();
+            return points.filter(([x, y]) => x > rect.left && x < rect.right && y > rect.top && y < rect.bottom).length > 3;
+          })
+          .map((box) => box.innerText.replace(/\s+/g, ' ').trim());
+      });
+      for (const text of onHeart) problems.push(`tags: “${text}” is drawn over the heart`);
       const order = tags.map((tag) => tag.id).join(' → ');
       if (order !== 'cause-contractilityEesMmHgPerMl → esv → sv → co') problems.push(`tags: said in the order ${order}`);
       for (const tag of tags) {
@@ -1014,6 +1057,13 @@ for (const slug of SLUGS) {
       }
       console.log(`  ${slug}: said on the model — ${tags.map((tag) => tag.text).join(' / ')}`);
     }
+    // Another writer — a lesson, the walk-through, a return from the reel —
+    // moves the model without the reader's controls. Tags said for the old
+    // condition quote numbers that are no longer on screen, so they go.
+    await page.evaluate(() => window.__app.scene.setModelControl('heartRatePerMin', 90));
+    await page
+      .waitForFunction(() => !document.querySelector('.scene-callout.is-step'), null, { timeout: 10000 })
+      .catch(() => problems.push('tags: the model moved under them (not by the reader) and they stayed, quoting the old condition'));
     await pressConsoleControl(page, '.model-control-reset');
     await page
       .waitForFunction(() => !document.querySelector('.scene-callout.is-step'), null, { timeout: 10000 })

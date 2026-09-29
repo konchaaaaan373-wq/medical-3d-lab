@@ -26,10 +26,11 @@ import { el } from '../utils/dom.js';
  *   },
  *   storageKey: string,
  *   onTry: () => void,
+ *   onOpen?: () => void,
  *   onClose?: (how: 'try'|'skip') => void,
  * }} options
  */
-export function createSceneIntro({ copy, storageKey, onTry, onClose = () => {} }) {
+export function createSceneIntro({ copy, storageKey, onTry, onOpen = () => {}, onClose = () => {} }) {
   const pair = (text) => [
     el('span', { class: 'lang-en', text: text?.en ?? '' }),
     el('span', { class: 'lang-ja', text: text?.ja ?? '' }),
@@ -56,6 +57,11 @@ export function createSceneIntro({ copy, storageKey, onTry, onClose = () => {} }
     'aria-labelledby': titleId,
     hidden: true,
     on: {
+      // A press on the dimmed layer keeps focus in the card: otherwise it
+      // falls to the page behind, where Escape and Tab no longer reach it.
+      mousedown: (event) => {
+        if (!event.target.closest?.('.scene-intro-card')) event.preventDefault?.();
+      },
       keydown: (event) => {
         if (event.key === 'Escape') {
           event.stopPropagation();
@@ -111,6 +117,7 @@ export function createSceneIntro({ copy, storageKey, onTry, onClose = () => {} }
   function open() {
     element.hidden = false;
     element.dataset.state = 'open';
+    onOpen();
     // Where a keyboard reader starts: the one thing it suggests.
     tryButton.focus?.({ preventScroll: true });
   }

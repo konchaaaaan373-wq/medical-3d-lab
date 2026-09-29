@@ -55,8 +55,8 @@ export function calloutSequence({ baseline, shown, before, now }) {
       direction: entry.direction,
       title: { en: `${entry.short} ${arrow(entry.direction)}`, ja: `${entry.shortJa}${arrow(entry.direction)}` },
       detail: {
-        en: `${input.detail.en} ${fmt(entry.id, baseline[entry.id])}→${fmt(entry.id, shown[entry.id])}${input.unit?.en ?? ''}`,
-        ja: `${input.detail.ja} ${fmt(entry.id, baseline[entry.id])}→${fmt(entry.id, shown[entry.id])}${input.unit?.ja ?? ''}`,
+        en: `${input.detail.en} ${formatControl(entry.id, baseline[entry.id])}→${formatControl(entry.id, shown[entry.id])}${input.unit?.en ?? ''}`,
+        ja: `${input.detail.ja} ${formatControl(entry.id, baseline[entry.id])}→${formatControl(entry.id, shown[entry.id])}${input.unit?.ja ?? ''}`,
       },
     };
   });
@@ -159,8 +159,11 @@ const CAUSES = {
   },
 };
 
-/** An input's value at the precision its control shows it. */
-function fmt(id, value) {
+/**
+ * An input's value at the precision its control shows it — the one rounding
+ * the controls, the tags and the scene's read-outs share.
+ */
+export function formatControl(id, value) {
   if (id === 'systemicResistanceMmHgSPerMl' || id === 'contractilityEesMmHgPerMl') return Number(value).toFixed(2);
   return String(Math.round(value));
 }

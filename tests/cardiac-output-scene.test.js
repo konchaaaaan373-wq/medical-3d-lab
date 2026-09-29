@@ -1121,3 +1121,54 @@ test('pointing at a part changes nothing the model says', async () => {
   assert.equal(JSON.stringify(scene.getMetrics()), metrics);
   assert.equal(JSON.stringify(scene.circuit.presentationState()), drawn, 'no calibre, speed or length moves with a pointer');
 });
+
+test('a file leaves out what only the page names: the gauge and the start sleeve', async () => {
+  const scene = await buildScene();
+  scene.setModelControl('contractilityEesMmHgPerMl', 1.4);
+  scene.setExportMode(true);
+  for (let i = 0; i < 40; i += 1) scene.update(1 / 30);
+  assert.equal(scene.gauge.visible, false);
+  assert.equal(scene.circuit.bolusLengths().before, null, 'no start sleeve in a file');
+  assert.equal(scene.residual.visible, true, 'the blood that stays is anatomy, and stays');
+  scene.setExportMode(false);
+  for (let i = 0; i < 40; i += 1) scene.update(1 / 30);
+  assert.equal(scene.gauge.visible, true);
+});
+
+test('pointing at the heart muscle lights the outer wall, which has no glow of its own', async () => {
+  const scene = await buildScene();
+  const [epicardium] = scene.ventricle.material;
+  const before = epicardium.emissive.clone().multiplyScalar(epicardium.emissiveIntensity);
+  scene.setHighlight(['myocardium']);
+  for (let i = 0; i < 30; i += 1) scene.update(1 / 30);
+  const lit = epicardium.emissive.clone().multiplyScalar(epicardium.emissiveIntensity);
+  assert.ok(lit.r > before.r + 0.05, `the outer wall did not light (${before.r} → ${lit.r})`);
+  scene.setHighlight([]);
+  for (let i = 0; i < 60; i += 1) scene.update(1 / 30);
+  const back = epicardium.emissive.clone().multiplyScalar(epicardium.emissiveIntensity);
+  assert.ok(Math.abs(back.r - before.r) < 0.01, 'and goes back when the pointer does');
+});
+
+test('the heart-muscle tag hangs on the wall at any filling', async () => {
+  const scene = await buildScene();
+  // On the wall: within a few tenths of a drawn vertex of the chamber —
+  // not merely inside its bounding box, which a point in the air beside a
+  // small heart can also be.
+  const onWall = () => {
+    scene.update(0);
+    scene.root.updateMatrixWorld(true);
+    const anchor = scene.getCalloutAnchor('myocardium');
+    const position = scene.ventricle.geometry.attributes.position;
+    const vertex = new THREE.Vector3();
+    let nearest = Infinity;
+    for (let i = 0; i < position.count; i += 1) {
+      vertex.fromBufferAttribute(position, i).applyMatrix4(scene.ventricle.matrixWorld);
+      nearest = Math.min(nearest, vertex.distanceTo(anchor));
+    }
+    return nearest < 0.3;
+  };
+  scene.setModelControl('fillingVolumeMl', CONTROL_DOMAIN.fillingVolumeMl.min);
+  assert.ok(onWall(), 'at the least filling');
+  scene.setModelControl('fillingVolumeMl', CONTROL_DOMAIN.fillingVolumeMl.max);
+  assert.ok(onWall(), 'at the most');
+});
