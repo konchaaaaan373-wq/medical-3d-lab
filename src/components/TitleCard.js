@@ -4,7 +4,7 @@ import { statusById } from '../catalog/taxonomy.js';
 import { clinicalReviewPresentation } from '../catalog/clinicalReview.js';
 import { relatedScenesFor, sceneById, sceneRoute } from '../catalog/index.js';
 import { anatomyChecksFor } from '../catalog/anatomyLinks.js';
-import { foldsAboutThisModel, modelLocation } from '../app/modelLocation.js';
+import { foldsAboutThisModel, titleTrailFor } from '../app/modelLocation.js';
 import { sceneOpen } from '../app/releaseGate.js';
 import '../styles/clinical-review.css';
 import '../styles/scene-pairing.css';
@@ -155,13 +155,14 @@ function anatomyCheck(meta) {
 }
 
 /**
- * Where the model sits, above its name: 「病態モデル / 循環」 on a disease model,
- * 「解剖 / 心臓」 on an anatomy one. The first part is the way back to the
- * others of that kind (`#/models`, `#/anatomy`); the second says the system or
- * organ. The title that follows is the current place, so it is not repeated.
+ * Where the model sits, above its name: 「病態モデル / 循環」 on a disease model.
+ * The first part is the way back to the others of that kind (`#/models`); the
+ * second says the system. The title that follows is the current place, so it
+ * is not repeated. An anatomy model has none — its header's organ strip says
+ * where it is, and a second line here covers the model (`titleTrailFor`).
  */
 function categoryTrail(meta) {
-  const location = modelLocation(sceneById(meta.id));
+  const location = titleTrailFor(sceneById(meta.id));
   if (!location) return null;
   const { kind, parent, where } = location;
   return el('nav', { class: `title-trail is-${kind}`, 'aria-label': inLanguage('Breadcrumb', '現在地') }, [

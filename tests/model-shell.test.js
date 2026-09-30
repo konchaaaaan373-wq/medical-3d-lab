@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 
-import { foldsAboutThisModel, modelLocation } from '../src/app/modelLocation.js';
+import { foldsAboutThisModel, modelLocation, titleTrailFor } from '../src/app/modelLocation.js';
 import { anatomyChecksFor } from '../src/catalog/anatomyLinks.js';
 import { SCENES, sceneById } from '../src/catalog/index.js';
 import { isSceneReleased } from '../src/catalog/release.js';
@@ -37,6 +37,20 @@ test('model shell: an anatomy model says 解剖 / its organ, and goes back to #/
   assert.equal(location.parent.href, '#/anatomy');
   assert.equal(location.where.ja, '心臓');
   assert.equal(modelLocation(null), null);
+});
+
+test('model shell: only a disease model\'s title card carries the trail — an anatomy card stays the height it was', () => {
+  // An anatomy scene's header names its organ already (the organ strip). A
+  // trail on its title card said it twice and covered the brain's front-top
+  // corner at 1280x800: the card is not a band the camera frames around, so a
+  // taller one lies over the model instead of moving it (verify:anatomy's tour
+  // is what caught it).
+  for (const scene of SCENES) {
+    const trail = titleTrailFor(scene);
+    if (isPathologyModelScene(scene)) assert.equal(trail?.kind, 'disease', scene.id);
+    else assert.equal(trail, null, `${scene.id}: an anatomy title card with a trail`);
+  }
+  assert.match(read('src/components/TitleCard.js'), /const location = titleTrailFor\(sceneById\(meta\.id\)\);/);
 });
 
 test('model shell: every disease model folds its trust into 「このモデルについて」; anatomy keeps its row', () => {
