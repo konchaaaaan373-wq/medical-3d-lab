@@ -14,69 +14,25 @@ html[data-route='legal'] {
 
 /* Landing ---------------------------------------------------------------- */
 
-.landing-nav {
-  border-radius: 5px;
-  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
-}
-
-.landing-brand-mark {
-  background: transparent;
-  box-shadow: none;
-  font-weight: var(--weight-bold);
-}
-
-.landing-brand-mark i,
-.landing-eyebrow::before,
 .landing-demo-state.is-selected::before {
   box-shadow: none;
 }
 
-.landing-brand-name,
-.landing-nav-link,
 .landing-button,
 .landing-model-info-link,
-.landing-method-link,
-.landing-external-link,
-.landing-neco-operator,
-.landing-footer-operator,
 .landing-demo-title,
 .landing-demo-controls legend,
 .landing-demo-state-label,
-.landing-demo-metric-label,
-.landing-demo-metric-value,
-.landing-demo-retry,
-.landing-method-heading h2,
-.landing-neco-heading h2,
-.landing-contact h2 {
+.landing-demo-retry {
   font-weight: var(--weight-semibold);
 }
 
-.landing-eyebrow,
-.landing-section-kicker,
 .landing-demo-kicker {
   color: var(--ink-dim);
   font-size: 13px;
   font-weight: var(--weight-semibold);
   letter-spacing: 0.015em;
   text-transform: none;
-}
-
-.landing-eyebrow::before {
-  width: 18px;
-  background: var(--landing-blood);
-}
-
-.landing-title {
-  max-width: 11em;
-  font-size: clamp(42px, 4.3vw, 64px);
-  font-weight: var(--weight-semibold);
-  letter-spacing: -0.045em;
-}
-
-.landing-hero-summary,
-.landing-method-copy,
-.landing-neco-copy {
-  font-size: 16px;
 }
 
 .landing-button:hover,
@@ -99,8 +55,7 @@ html[data-route='legal'] {
 }
 
 .landing-demo-state,
-.landing-demo-retry,
-.landing-demo-detail {
+.landing-demo-retry {
   border-radius: 3px;
 }
 
@@ -492,7 +447,6 @@ html[data-route='legal'] #ui {
   color: #9f3030;
 }
 
-.landing-title .lang-ja,
 .public-models-header .title .lang-ja,
 .trust-hero h1 .lang-ja,
 .legal-title .lang-ja {
@@ -555,16 +509,9 @@ html[data-route='explorer'] .public-models .landing-demo :focus-visible {
 }
 
 @media (max-width: 720px) {
-  .landing-title {
-    font-size: clamp(30px, 9.4vw, 36px);
-    letter-spacing: -0.03em;
-  }
+  
 
-  .landing-hero-summary,
-  .landing-method-copy,
-  .landing-neco-copy {
-    font-size: 15px;
-  }
+  
 
   .public-models-appbar {
     margin-bottom: 18px;

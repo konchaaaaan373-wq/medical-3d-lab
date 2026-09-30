@@ -34,18 +34,15 @@
  * named, in `PHONE_TARGET.exemptions`, because it is block-level and the inline
  * rule does not reach it.
  *
- * `.landing-footer-operator` looks like the first of those and is not: it is a
- * whole line of its own in the footer identity block, not a link inside a
- * sentence, so it is raised with everything else.
+ * The old landing page's nav and footer (`.landing-nav-link`,
+ * `.landing-footer-link`, `.landing-footer-operator`) left this list with the
+ * page (BYOKI MOTION, 2026-09-30); the shared footer's links took their place.
  */
 
 @media (max-width: 430px) {
   /* ---------- headers, footers, navigation, account, language ---------- */
 
   #ui .skip-link,
-  #ui .landing-brand,
-  #ui .landing-nav-link,
-  #ui .landing-footer-link,
   #ui .landing-model-info-link,
   #ui .global-nav-brand,
   #ui .public-models-brand,
@@ -62,7 +59,17 @@
   #ui .trust-footer-links a,
   #ui .locked-brand,
   #ui .locked-link,
-  #ui .landing-footer-operator,
+  /* BYOKI MOTION's shared footer, the anatomy page's breadcrumb and the model
+     title's way to its anatomy (2026-09-30). */
+  #ui .site-footer-link,
+  #ui .site-footer-operator-link,
+  #ui .site-footer-brand,
+  #ui .bm-trail-parent,
+  #ui .title-trail-parent,
+  #ui .title-anatomy-link,
+  /* 「? 見方」 beside a disease model's title: squeezed to 29 px at 320 once
+     the title line gained its system (「病態モデル / 循環」). */
+  #ui .scene-intro-reopen,
   #ui .account-trigger,
   #ui .ui-toggle {
     /* `inline-flex`, not `flex`: most of these are anchors inside a row that
@@ -76,6 +83,19 @@
        140 px wide costs nothing. */
     min-height: 44px;
     min-width: 44px;
+  }
+
+  /* 「他の指標」 on the disease model's read-out: 64×22 at 390 px, measured
+     once a disease model joined the matrix (2026-09-30). The layout's own
+     rule is `#ui[data-layout='experiment'] .metrics .metrics-more`, so this
+     one names the same path. The negative block margin keeps the strip the
+     height it was: the box grows to 44, the row it sits in does not. */
+  #ui[data-layout='experiment'] .metrics .metrics-more {
+    display: inline-flex;
+    align-items: center;
+    min-height: 44px;
+    min-width: 44px;
+    margin-block: -11px;
   }
 
   /* ---------- the anatomy title card's rail ---------- */

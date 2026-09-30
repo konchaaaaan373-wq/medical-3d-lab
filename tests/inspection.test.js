@@ -188,7 +188,7 @@ test('fixed dark instruments retain their own contrast on pale renderer backgrou
   );
   // The stage's own ink and orange (BYOKI MOTION, 2026-09-30), declared as
   // values — a token that names itself (`--accent: var(--accent)`) is invalid
-  // at computed-value time and silently drops the colour (L-141).
+  // at computed-value time and silently drops the colour (L-153).
   for (const block of [navigationTokens, tactileTokens]) {
     assert.match(block, /--ink:\s*#f1eee8/);
     assert.match(block, /--ink-dim:\s*#bcb6ac/);

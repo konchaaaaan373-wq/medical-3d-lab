@@ -261,7 +261,8 @@ function measureInPage({ tolerance, floor, intent, exemptions, inlineLinks, inte
   function englishOnlyAttributes() {
     if (document.getElementById('ui')?.dataset?.lang !== 'ja') return [];
     // Proper nouns and file formats are the same word in both languages.
-    const SAME_IN_BOTH = /^(PNG|JPEG|JPG|SVG|WebP|GLB|CSV|Medical 3D Lab)$/i;
+    // The product's name is one of them (`src/data/brand.js`).
+    const SAME_IN_BOTH = /^(PNG|JPEG|JPG|SVG|WebP|GLB|CSV|BYOKI MOTION)$/i;
     const found = [];
     const seen = new Set();
     for (const element of document.querySelectorAll('[aria-label], [title], [placeholder]')) {
@@ -1904,6 +1905,21 @@ try {
             .catch(() => notes.push(`${where}: the loading veil never cleared`));
         }
         await page.waitForTimeout(surface.needsRenderer ? 800 : 300);
+        // A first-visit introduction makes everything behind it inert until it
+        // is closed (`SceneIntro`), so every later press here timed out on the
+        // disease model — the first scene in this matrix that has one. Closed
+        // the way a reader closes it; the introduction itself is
+        // `verify:disease`'s to measure.
+        if (surface.needsRenderer) {
+          const opened = await page
+            .waitForSelector('.scene-intro:not([hidden])', { timeout: 1500 })
+            .then(() => true, () => false);
+          if (opened) {
+            await page.locator('.scene-intro-skip').first().click({ timeout: 5_000 })
+              .catch(() => problems.push(`${where}: the first-visit introduction could not be skipped`));
+            await page.waitForSelector('.scene-intro', { state: 'hidden', timeout: 5_000 }).catch(() => {});
+          }
+        }
         await lifecycleTrace?.snapshot('surface-ready-for-measurement');
 
         // A route that declares a correction has to have made it, in the

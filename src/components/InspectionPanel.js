@@ -117,7 +117,10 @@ export function createInspectionPanel({
   const closeButton = el('button', {
     class: 'inspection-close',
     type: 'button',
-    title: 'Close inspection controls',
+    // Both languages in both: a tooltip in English alone read as untranslated
+    // on the Japanese interface (measured by `verify:ui` once a disease model
+    // joined its matrix, 2026-09-30).
+    title: 'Close inspection controls / 観察設定を閉じる',
     'aria-label': 'Close inspection controls / 観察設定を閉じる',
     text: '×',
     on: { click: () => onClose?.() },

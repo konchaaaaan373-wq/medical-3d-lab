@@ -96,7 +96,7 @@ test('brand: no custom property is defined as itself', () => {
   // \`--accent: var(--accent)\` is a cycle: invalid at computed-value time, so
   // the element silently loses the colour and inherits nothing. A bulk swap of
   // a literal for its token wrote exactly that into the model header during
-  // the rebrand (L-141). Stylesheets only; the check is cheap and total.
+  // the rebrand (L-153). Stylesheets only; the check is cheap and total.
   const offenders = [];
   for (const path of filesUnder('src/styles', ['.css'])) {
     const text = stripComments(read(path));

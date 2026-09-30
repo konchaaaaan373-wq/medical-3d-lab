@@ -78,7 +78,23 @@ export function createLanding({
       // English on both sides: it is the product's one-line definition, and
       // the Japanese reader is shown it as the name's gloss.
       el('p', { class: 'bm-hero-definition', lang: 'en', text: BRAND.description }),
-      el('a', { class: 'bm-cta', href: MODELS_ROUTE }, [
+      // The models are the next thing on this page, so the action goes there
+      // rather than to another page: arriving → a model is one press and a
+      // card. The href is still the model index, for a new tab or no script.
+      el('a', {
+        class: 'bm-cta',
+        href: MODELS_ROUTE,
+        on: {
+          click: (event) => {
+            if (event.metaKey || event.ctrlKey || event.shiftKey || event.button === 1) return;
+            const target = document.getElementById('bm-models');
+            if (!target) return;
+            event.preventDefault();
+            target.scrollIntoView?.({ block: 'start', behavior: prefersReducedMotionSafe() ? 'auto' : 'smooth' });
+            target.focus?.({ preventScroll: true });
+          },
+        },
+      }, [
         ...dual('See the models', 'モデルを見る'),
         el('span', { class: 'bm-cta-arrow', 'aria-hidden': 'true', text: '→' }),
       ]),
@@ -93,7 +109,7 @@ export function createLanding({
       models,
     }),
     hero,
-    el('section', { class: 'bm-section bm-models', 'aria-labelledby': 'bm-models-title' }, [
+    el('section', { class: 'bm-section bm-models', id: 'bm-models', tabindex: '-1', 'aria-labelledby': 'bm-models-title' }, [
       el('header', { class: 'bm-section-head' }, [
         el('h2', { class: 'bm-section-title', id: 'bm-models-title' }, dual('Disease models', '病態モデル')),
         diseaseModels.length > 1
@@ -216,6 +232,15 @@ function audienceSection(patientScenes) {
       ]),
     ]),
   ]);
+}
+
+/** `node --test` has no `matchMedia`; no preference is "motion is fine". */
+function prefersReducedMotionSafe() {
+  try {
+    return Boolean(globalThis.matchMedia?.('(prefers-reduced-motion: reduce)').matches);
+  } catch {
+    return false;
+  }
 }
 
 /** The hero's field, or nothing where a canvas cannot be made (tests, old browsers). */

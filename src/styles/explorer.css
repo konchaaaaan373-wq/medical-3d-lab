@@ -811,7 +811,6 @@ html[data-route='explorer'] .public-models-actions .landing-model-action {
   color: var(--explorer-accent-strong);
 }
 
-
 /* B1 public anatomy route --------------------------------------------------
    The beta has one product, so the public route shows that product instead of
    search, filters and a one-card catalogue. Lab keeps the catalogue above. */

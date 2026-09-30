@@ -21,7 +21,7 @@
  * 文言」. It is shown only where the model offers patient explanation, which
  * requires a current medical review (`patientPurpose.js`); this model has none
  * yet, so the patient voice is written and tested but not on the released
- * product (F-237).
+ * product (F-248).
  *
  * Input ids are the model's (`CONTROL_IDS`); result keys are
  * `changeSignature`'s (`changeSummary.js`).

@@ -161,7 +161,10 @@ html[data-route='explorer'] body {
   overflow: hidden;
 }
 
-.bm-hero:focus { outline: none; }
+.bm-hero:focus,
+.bm-models:focus { outline: none; }
+
+.bm-models { scroll-margin-top: 12px; }
 
 .bm-hero-motion {
   position: absolute;
@@ -448,7 +451,10 @@ html[data-route='explorer'] .public-models-actions .landing-demo-info {
 .bm-anatomy-link {
   display: inline-flex;
   align-items: center;
+  justify-content: center;
   min-height: 44px;
+  /* 「脳」 is one character: the word is not the target, the box is. */
+  min-width: 44px;
   text-decoration: underline;
   text-underline-offset: 4px;
   text-decoration-thickness: 1px;
@@ -788,6 +794,18 @@ html[data-route='explorer'] .public-models-actions .landing-demo-info {
   background: var(--control-bg);
 }
 
+/* On a phone the experiment layout opens 「空間を観察」 over the read-out strip,
+   so the strip's 「他の指標」 was painted over by the panel's own buttons —
+   measured once a disease model joined `verify:ui` (2026-09-30). While the
+   panel is open it takes the strip's place; the figures come back with it
+   closed. `visibility`, so the strip keeps its box and the camera's safe
+   area does not move. */
+@media (max-width: 720px) {
+  #ui[data-layout='experiment'].is-inspecting .rail {
+    visibility: hidden;
+  }
+}
+
 /* The phone header is a grid (site-header.css, ≤ 720 px); the product links
    take the place the organ row takes on an anatomy model. */
 @media (max-width: 720px) {
@@ -1077,6 +1095,14 @@ html[data-route='explorer'] .public-models-actions .landing-demo-info {
   .title-about-close { min-height: 44px; }
 
   .global-nav-product-link { padding: 0 8px; }
+}
+
+/* The narrowest phones: mark, Models, About and the menu fill the model
+   header at 320 px, and the name overlapped 「モデル」 (verify:ui). Under 375
+   the mark alone is the way home, as it is beside an organ row. */
+@media (max-width: 374px) {
+  .global-scene-nav .global-nav-brand-name { display: none; }
+  .global-scene-nav .global-nav-brand { padding: 0; justify-content: center; }
 }
 
 @media (prefers-reduced-motion: reduce) {

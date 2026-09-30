@@ -13,6 +13,13 @@ const dual = (en, ja, className = '') => [
   el('span', { class: `${className} lang-ja`.trim(), text: ja }),
 ];
 
+/** `?section=` of an About address, or null. */
+function sectionOf(hash) {
+  const [route, query] = String(hash).split('?');
+  if (!/^#\/?about$/.test(route.trim()) || !query) return null;
+  return new URLSearchParams(query).get('section');
+}
+
 /** The sections `?section=` may open on. */
 export const ABOUT_SECTIONS = Object.freeze(['what', 'rule', 'evidence', 'readers', 'operator']);
 
@@ -143,17 +150,25 @@ export function createAbout({ ui, accountButton = null, focusId = null }) {
   document.title = pageTitle(inLanguage('About', 'About'));
 
   // Only a section this page has: the value comes from the address bar.
-  const target = ABOUT_SECTIONS.includes(focusId) ? element.querySelector(`#about-${focusId}`) : null;
-  if (target) {
+  const openSection = (id) => {
+    const target = ABOUT_SECTIONS.includes(id) ? element.querySelector(`#about-${id}`) : null;
+    if (!target) return;
     globalThis.requestAnimationFrame?.(() => {
       target.scrollIntoView?.({ block: 'start' });
       target.focus?.({ preventScroll: true });
     });
-  }
+  };
+  openSection(focusId);
+  // The footer's "Evidence" pressed on this page changes only the query, which
+  // the shell treats as the same page (`sameRoute`) and does not rebuild — so
+  // the page answers it itself.
+  const onHash = () => openSection(sectionOf(globalThis.location?.hash ?? ''));
+  globalThis.addEventListener?.('hashchange', onHash);
 
   return {
     element,
     destroy() {
+      globalThis.removeEventListener?.('hashchange', onHash);
       element.remove();
     },
   };

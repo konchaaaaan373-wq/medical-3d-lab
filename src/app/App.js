@@ -787,6 +787,9 @@ export async function createApp({ stage, ui, onRetryModel = null }) {
     inspectionOpen = Boolean(enabled);
     inspectionPanel?.setOpen(inspectionOpen);
     controlPanel?.setInspection(inspectionOpen);
+    // The stylesheet's hook: on a phone the experiment layout's panel opens
+    // where the read-out stands (experiment-layout / brand.css).
+    ui.classList.toggle('is-inspecting', inspectionOpen);
   }
 
   function inspectionPoseFor(id) {
