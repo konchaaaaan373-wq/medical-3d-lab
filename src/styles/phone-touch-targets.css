@@ -102,6 +102,7 @@
      scannable. `PHONE_TARGET.exemptions` records that decision so the check
      enforces the rest of the sheet rather than being switched off for it. */
   #ui .anatomy-panel-action,
+  #ui .anatomy-scope-switch,
   #ui .anatomy-panel-tab,
   #ui .anatomy-panel-close,
   #ui .anatomy-search-input {

@@ -27,6 +27,33 @@ test('inspection backgrounds are a small calibrated set with a safe fallback', (
   }
 });
 
+test('a light backdrop never blooms into the model in front of it', () => {
+  // Bloom thresholds the *rendered* frame, backdrop included. On a light preset
+  // the backdrop itself sat above the one shared threshold (0.72), so it bloomed
+  // into every edge of the model — and into the whole of a model framed small:
+  // the heart with its aorta, a tenth of the frame wide, came out washed pink
+  // where the heart alone was dark red. Measured by turning bloom off on the
+  // same frame. Each preset now carries a threshold above its own brightest
+  // backdrop colour, so only genuinely emissive things bloom on any ground.
+  const linear = (hex) => new THREE.Color(hex); // ColorManagement: hex is sRGB, components are linear
+  const luminance = (color) => 0.2126 * color.r + 0.7152 * color.g + 0.0722 * color.b;
+  for (const preset of BACKGROUND_PRESETS) {
+    assert.ok(Number.isFinite(preset.bloomThreshold), `${preset.id} states its bloom threshold`);
+    const { top, bottom, accent, halo } = preset.backdrop;
+    // The brightest the backdrop shader can paint: the lighter ground colour
+    // with the whole halo added on top (`color += uAccent * halo * uHalo`, and
+    // the shader's halo term peaks at 1).
+    const ground = [top, bottom].map(linear).sort((a, b) => luminance(b) - luminance(a))[0];
+    const brightest = ground.clone().add(linear(accent).multiplyScalar(halo));
+    assert.ok(
+      preset.bloomThreshold > Math.max(luminance(ground), luminance(brightest)),
+      `${preset.id}: threshold ${preset.bloomThreshold} is above its backdrop (${luminance(brightest).toFixed(3)})`
+    );
+  }
+  // The dark ground keeps the threshold it was tuned at, so nothing changes there.
+  assert.equal(backgroundPresetById('graphite').bloomThreshold, 0.72);
+});
+
 test('generated views are reproducible camera moves, not invented anatomy', () => {
   const pose = {
     position: new THREE.Vector3(8, 4, 12),

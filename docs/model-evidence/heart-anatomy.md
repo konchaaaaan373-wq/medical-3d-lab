@@ -21,6 +21,31 @@ is one.
 * U.S. National Library of Medicine, Visible Human Project — the imaging the
   reference organ was segmented from. Terms recorded, not discharged.
 * Measurements made here: `docs/asset-qa/heart-hubmap-vh-m-heart.md`.
+* **For the aorta and its branches (2026-09-29): the standard adult pattern as
+  the major gross-anatomy texts describe it** — Gray's Anatomy (Standring, ed.),
+  Moore's *Clinically Oriented Anatomy*, Netter's *Atlas of Human Anatomy*. **Said
+  plainly: these were applied from the implementer's knowledge of them and were
+  not re-read page by page for this change**; the open references that could
+  have been cited (en.wikipedia.org, teachmeanatomy.info) were refused by this
+  environment's network policy when tried. What was taken from them is only the
+  order, side and direction of each branch and where the brachiocephalic trunk
+  and the aorta divide — every *position* is the source file's own, measured
+  (`docs/asset-qa/heart-hubmap-vh-m-blood-vasculature.md`, "Re-derived
+  2026-09-29"). Variants are not covered: this is one specimen with the usual
+  three-branch arch.
+* **For the descriptions of the aorta and its branches (2026-09-30): the same
+  texts, on the same footing** — applied from knowledge, not re-read page by
+  page, and with no web source reachable to check against. What they supply is
+  wider this time and is said so: each vessel's typical vertebral level, the
+  lengths of the ascending aorta, brachiocephalic trunk and common iliac
+  arteries, the territories of the three ventral branches (foregut, midgut,
+  hindgut), the course relations (the right renal artery behind the inferior
+  vena cava, the superior mesenteric artery in front of the left renal vein and
+  the third part of the duodenum), and two variants named without a
+  prevalence (a shared trunk at the arch; more than one renal artery). **These
+  are the typical account, not this specimen's**, and nothing in them is
+  measured here (claim 20). Japanese terms follow the site's own abdomen scene
+  (腹部大動脈), with the anatomical terms 胸大動脈・腹大動脈 given once.
 
 ## Claim → Source → Implementation → Assumption → Validation
 
@@ -129,14 +154,14 @@ is one.
 | **Assumption** | The frames agree because those relationships come out of the files unaltered. **This is not a claim of sub-millimetre registration.** The one figure taken across the two files is `nearestSampledVertexMm`, a sampled-vertex distance and a frame diagnostic; no surface-to-surface distance is computed, and nothing asserts that a vessel's cut end and a chamber are joined, continuous or watertight. Neither file is warped, non-uniformly scaled or bent to fit the other. |
 | **Validation** | `tests/heart-anatomy.test.js` — adding the vessels does not move the heart; the ascending aorta is above the aortic valve and the inferior vena cava below the right atrium after the shared transform; the transform is uniform and its scale is the one the heart alone would get. |
 
-### 9. Only the subtree the source calls the vessels of the heart is taken
+### 9. The subtree the source calls the vessels of the heart is taken, and five aortic branches by name
 
 | | |
 | --- | --- |
-| **Claim** | 37 meshes of the vasculature file's 104 are adopted, chosen by the source's own grouping rather than by a box round the heart. |
-| **Source** | The file's node hierarchy: `VH_M_blood_vasculature_of_heart` with `VH_M_arteries_of_heart` and `VH_M_veins_of_heart` under it. |
-| **Implementation** | `VESSEL_SUBTREE` in the scene names that node; nothing outside it is reparented, and the count left behind is reported in the status (`vesselsNotTaken`). |
-| **Assumption** | The publisher's grouping is trusted as the answer to "which vessels belong to the heart". A different reading of that boundary would be an anatomical judgement, and none is made here. |
+| **Claim** | 37 meshes of the vasculature file's 104 are adopted, chosen by the source's own grouping rather than by a box round the heart — and, since 2026-09-29, the five arteries leaving the abdominal aorta, by node name (claim 15). |
+| **Source** | The file's node hierarchy: `VH_M_blood_vasculature_of_heart` with `VH_M_arteries_of_heart` and `VH_M_veins_of_heart` under it; the five branches under the liver, kidney and large-intestine groups. |
+| **Implementation** | `VESSEL_SUBTREE` and `VESSEL_NODES_OUTSIDE_SUBTREE` in the scene name them; nothing else is reparented, and the count left behind is reported in the status (`vesselsNotTaken`). |
+| **Assumption** | The publisher's grouping is trusted as the answer to "which vessels belong to the heart". The five branches are added because the aorta in that grouping has an opening for each of them, not because of a different reading of the boundary. |
 | **Validation** | `tests/heart-anatomy.test.js` — a fixture with a mesh outside the subtree is not adopted and is counted. |
 
 ### 10. Where the source contradicts itself, both readings are kept
@@ -188,3 +213,63 @@ is one.
 | **Implementation** | `identity: 'source-conflict'` travels with the structure. The panel marks the pinned heading, a search result row carries it, and the 3D label gets a short second line — "name unverified" / 「名称要確認」 — never the paragraph, which stays in the detail tab. The node name, `sourceLabel` and `ontologyId` are untouched and searching by the source's own wording still finds it. |
 | **Assumption** | **Nothing here decides which record is right.** The mark says the question is open; it does not answer it. |
 | **Validation** | `tests/heart-anatomy.test.js` — the original three fields are unchanged, the mark is present and short, every other structure is explicitly settled, and the label carries the mark rather than the explanation. (B4-R5.) |
+
+### 15. The aorta is drawn with the branches the source gives it, where the source puts them
+
+| | |
+| --- | --- |
+| **Claim** | With the aorta shown, the arch gives off the brachiocephalic trunk, the left common carotid and the left subclavian, and the abdominal aorta gives off the coeliac trunk, the superior mesenteric artery, both renal arteries and the inferior mesenteric artery — each from the opening the source's own aorta has for it, in the standard order from above. |
+| **Source** | `VH_M_Blood_Vasculature.glb`: the five abdominal branches are separate meshes the publisher filed under the liver, the kidney and the large intestine. Boundary loops, measured in the source's millimetres: the descending aorta's openings for the SMA (12.5, 317.7, 10.7; r 6.9), the IMA (15.2, 198.8, 27.9; r 5.0) and one renal artery (21.2, 300.1, 6.0; r 4.1) are the same rings as those branches' own; the coeliac trunk's (12.5, 331.7) and the other renal artery's (3.2, 302.9) sit on openings 1–2 mm away. Origins top to bottom: coeliac 332, SMA 318, renal 303 and 300, IMA 199, aortic end 187 mm. |
+| **Implementation** | `scripts/repair-candidate-gltf.mjs` keeps them (`keepAlso`), with their ancestor groups, names and extras; `HEART_VESSELS` names them; `HEART_VESSEL_NODES_OUTSIDE_SUBTREE` is what the scene takes beside the heart subtree. |
+| **Assumption** | The publisher's segmentation of each branch, and its identity, is trusted — except where its own geometry contradicts its name (claim 16). The specimen's inferior mesenteric artery arises about 1.2 cm above the end of its aorta, where 3–4 cm is usual; left as it is. |
+| **Validation** | `tests/heart-anatomy.test.js` — the order of origins, the forward course of the gut arteries and the outward-and-backward course of the renal arteries, and the right renal artery longer than the left; `npm run assets:repair:verify` (positions of every kept mesh byte-identical to the publisher's); renders from the front, back and both sides. |
+
+### 16. The renal arteries are named by where they go
+
+| | |
+| --- | --- |
+| **Claim** | The mesh the source calls `VH_M_left_renal_artery` is the **right** renal artery, and `VH_M_right_renal_artery` the left. |
+| **Source** | The file's own axes (+x is the patient's left: its left atrium, left ophthalmic veins and left renal vein are all at +x). The mesh called left leaves the aorta's −x side at (3.2, 302.9, 9.2) and ends at (−50.6, 313.1, −10.2), beside the right renal vein (x −62…−33) and behind the inferior vena cava; the one called right leaves at (21.2, 300.1, 6.0) and ends at x +53…+55. |
+| **Implementation** | `HEART_VESSELS` keeps the node names as ids (an id is opaque) and names the structures by position; `sideSwapped` puts "named by position" / 「位置で命名」 beside the name and a note with the source's own label and term on the card (`sourceLabel`, `sourceOntologyId`). |
+| **Assumption** | That the file's axes hold throughout the file — which three independent left/right pairs in it support. |
+| **Validation** | `tests/heart-anatomy.test.js` — each renal artery runs to the side it is named for, in `HEART_AXES`, and keeps the source's label. |
+
+### 17. Four arterial segments are schematic, and say so
+
+| | |
+| --- | --- |
+| **Claim** | The start of the right common carotid, the right subclavian and both common iliac arteries is drawn **schematically**: where it starts is measured, how it runs is not. |
+| **Source** | The source has none of the four. Its brachiocephalic trunk ends in a rounded tip at (−27.0, 606.8, 25.0), at the level where the trunk divides; its aorta ends at y 187 with two openings, (5.2, 190.8, 25.0; r 3.6) on the right and (14.9, 188.0, 23.1; r 2.6) on the left, and its pelvic vessels are veins only. Direction and course from the standard pattern (Sources consulted). |
+| **Implementation** | `HEART_SCHEMATIC`: a centreline starting on the parent's measured centreline, inside it, calibre from the opening (iliac) or from the source's left carotid and subclavian at the same height, routed clear of the source's vessels — measured clearances: right common carotid 8.1 mm from the right brachiocephalic vein, right subclavian 3.0 mm (passing behind it), right common iliac 0.49 mm from the inferior vena cava at the aorta's own opening, left common iliac 2.6 mm from the inferior mesenteric artery. Built only when the parent is where the table says (`buildSchematicVessels`). |
+| **Assumption** | **Their length, angle and course are not this specimen's.** No ontology id is quoted for them. |
+| **Validation** | `tests/heart-anatomy.test.js` — each is drawn only beside its parent, is selectable and labelled, says "schematic" / 「模式」 on its card, carries no ontology id, starts inside its parent and tapers and fades before its own end. |
+
+### 18. A branch fades at the end of its display range, and the fade is one rule
+
+| | |
+| --- | --- |
+| **Claim** | Every branch shown for its first centimetres fades out rather than ending; with only the heart shown the roots do the same just outside the heart; and a faded part takes no click, carries no label and does not stretch the camera's frame. |
+| **Source** | A presentation choice, not a source claim. |
+| **Implementation** | `displayRange.js`: `displayRangeAlpha` (JavaScript) and the shader chunk are the same arithmetic; `_firstDrawnHit`, `_anchorFor` and `getSubjectBounds` all ask it. |
+| **Assumption** | "Drawn" at a point means at least half drawn there (`RANGE_DRAWN`). |
+| **Validation** | `tests/heart-display-range.test.js` evaluates the shader's formula on the **uniform values the renderer is handed** and holds it to the JavaScript for every combination of reach and trim — written after the two disagreed on screen (`docs/verification-lessons.md`). `tests/heart-anatomy.test.js` — a ray through the trimmed end of the vena cava selects nothing there. |
+
+### 19. The heart on its own keeps the heart's own vessels and the roots, and nothing beyond
+
+| | |
+| --- | --- |
+| **Claim** | Switching the aorta off keeps the heart, its coronary arteries and cardiac veins, and the roots of the great vessels; it takes the aorta beyond its root, every aortic branch and the brachiocephalic veins; it clears a selection or isolation on what it takes; and the camera turns about the heart. |
+| **Source** | A presentation choice; the extents are listed per structure (`extent` in the adapter). |
+| **Implementation** | `setDisplayScope` / `getDisplayScope` / `onDisplayScope`; the panel's switch; `reframeForSubject` in `App.js`, which keeps the reader's direction and refits to `getSubjectBounds`. |
+| **Assumption** | None about anatomy. The trim margin is a composition (`HEART_ONLY_TRIM`). |
+| **Validation** | `tests/heart-anatomy.test.js` (extents, clearing, click-through while fading, no drift of the subject), `tests/anatomy-scope-switch.test.js` (the switch), and `npm run verify:anatomy` in a browser at 1280×800 and 390×844 (selection cleared, heart filling the frame and turning about itself, the same two frames after repeated switching, the reader's direction kept, "Reset display" returning the aorta). |
+
+### 20. The aorta and its branches are described in textbook anatomy, first
+
+| | |
+| --- | --- |
+| **Claim** | The ascending aorta, the arch, the descending aorta and the twelve branches each open their description with standard anatomy — where the vessel leaves its parent, its typical level, how the sides differ, what it supplies, its commonest variant — before the account of what this model does with it. |
+| **Source** | Gray's Anatomy; Moore, *Clinically Oriented Anatomy*; Netter, *Atlas of Human Anatomy* — applied from knowledge (Sources consulted, 2026-09-30). **Not this specimen**: no level, length or territory is measured from the Visible Human. |
+| **Implementation** | `ANATOMY` / `heartAnatomyNote` in `src/data/heartAnatomy.js`, prepended by `heartStructureInfo` as its own paragraph; the scope panel's caution that these are the typical account; two more entries in `HEART_MISSING` (the aorta's smaller branches, the ligamentum arteriosum), both checked absent from the source's node names. |
+| **Assumption** | A level is written "typically" / 「典型的には」 wherever one is given. The renal paragraphs follow the names given by position (claim 16), not the source's. |
+| **Validation** | `tests/heart-anatomy.test.js` — all fifteen have both languages, the anatomy comes first and the model's account is kept whole after it, every vertebral level is said to be typical, the renal paragraphs name the kidney each one goes to, and the two absences are listed. Removing the paragraph from `heartStructureInfo` turns it red. **No anatomist has read these paragraphs.** |

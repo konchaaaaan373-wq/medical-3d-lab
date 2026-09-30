@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-09-15",
+  "generatedAt": "2026-09-29",
   "dryRun": false,
   "files": [
     {
@@ -21,6 +21,7 @@
       "removedZeroAreaTriangles": 820,
       "removedDuplicateFaces": 4,
       "keptSubtree": null,
+      "keptAlso": [],
       "removedUndrawnNodes": 0,
       "removedUndrawnMeshes": 0,
       "meshesTouched": {
@@ -54,7 +55,7 @@
       },
       "derived": {
         "path": "dev-assets/derived/heart/VH_M_Blood_Vasculature.glb",
-        "sha256": "a95ff0825431953d8fff210cf29d9e65aeed5da55f623717ab613864a9435502"
+        "sha256": "de4cc2e4d3a45f229e13caa30a4d486779bee7c29f5f7298e486e5c44f6911ab"
       },
       "degenerateNormals": 33,
       "repaired": 16,
@@ -64,8 +65,15 @@
       "removedZeroAreaTriangles": 24,
       "removedDuplicateFaces": 5,
       "keptSubtree": "VH_M_blood_vasculature_of_heart",
-      "removedUndrawnNodes": 101,
-      "removedUndrawnMeshes": 67,
+      "keptAlso": [
+        "VH_M_celiac_trunk",
+        "VH_M_superior_mesenteric_artery",
+        "VH_M_left_renal_artery",
+        "VH_M_right_renal_artery",
+        "VH_M_inferior_mesenteric_artery"
+      ],
+      "removedUndrawnNodes": 88,
+      "removedUndrawnMeshes": 62,
       "meshesTouched": {
         "VH_M_left_coronary_artery": 11,
         "VH_M_superior_vena_cava": 5
@@ -83,10 +91,10 @@
         "vertices": 182788
       },
       "derivedCounts": {
-        "nodes": 52,
-        "meshes": 37,
-        "triangles": 153476,
-        "vertices": 77551
+        "nodes": 65,
+        "meshes": 42,
+        "triangles": 161077,
+        "vertices": 81550
       }
     }
   ]

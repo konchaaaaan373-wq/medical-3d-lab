@@ -5,20 +5,37 @@ import { buildAnatomyTree } from '../../../../app/anatomyContract.js';
 import { createStudioLights } from '../../../shared/lighting.js';
 import { disposeObject } from '../../../../utils/dispose.js';
 import { damp } from '../../../../utils/math.js';
+import { TubeSurface, smoothCurve } from '../../../shared/geometry/tube.js';
 import {
   HEART_ANATOMY_META,
   HEART_AXES,
   HEART_COLOR_MODES,
   HEART_DEFAULT_HIDDEN,
+  HEART_DEFAULT_SCOPE,
   HEART_MISSING,
+  HEART_ONLY_TRIM,
   HEART_PALETTE,
   HEART_PARTS,
   HEART_RECIPES,
+  HEART_SCHEMATIC,
+  HEART_SCOPE_SWITCH,
+  HEART_SCOPES,
+  HEART_VESSEL_NODES_OUTSIDE_SUBTREE,
+  HEART_VESSEL_SUBTREE,
   heartColor,
   heartMeshOwner,
   heartPartById,
   heartStructureInfo,
+  heartReadingRank,
 } from '../../../../data/heartAnatomy.js';
+import {
+  createDisplayRange,
+  displayRangeAlpha,
+  installDisplayRange,
+  RANGED_RENDER_ORDER,
+  setReach,
+  setTrim,
+} from './displayRange.js';
 
 /**
  * How much of the usable band the organ itself should take.
@@ -66,6 +83,31 @@ const HEART_SUBJECT_COVERAGE = 0.7;
 const HEART_SUBJECT_COVERAGE_PORTRAIT = 0.83;
 
 /**
+ * The same share when the subject is the heart **and its aorta**.
+ *
+ * That subject is a column — about 48 cm of aorta and vena cava under a 10 cm
+ * heart — so on a wide frame it is the height that runs out, and there is
+ * nothing leaving the sides to be cut off flush with an edge: it may take more
+ * of the band than the heart alone does. On a portrait frame the column is
+ * the shape of the frame. Measured from pictures at 1280x800 and 390x844, the
+ * same kind of value as the two above and carrying the same warning.
+ */
+const AORTA_SUBJECT_COVERAGE = 0.9;
+const AORTA_SUBJECT_COVERAGE_PORTRAIT = 0.92;
+
+/**
+ * How much of a ranged vessel has to be drawn at a point for that point to
+ * count as drawn — by a click, a label or a bound.
+ *
+ * Half. The fade is a dissolve: at 0.5 half the fragments are there, which is
+ * where the eye stops reading it as vessel and starts reading it as gap.
+ */
+const RANGE_DRAWN = 0.5;
+
+/** How fast the roots are trimmed back and let out again, per second. */
+const TRIM_RATE = 7;
+
+/**
  * Where "portrait" starts. The same threshold the shared framing already uses
  * for the aspect it gives back (`distanceScaleForAspect`), so a scene and the
  * framing around it do not disagree about what shape the window is.
@@ -103,13 +145,16 @@ const VESSEL_URL = `${BASE_URL}assets/heart/VH_M_Blood_Vasculature.glb`;
 const DRACO_URL = `${BASE_URL}assets/brain/draco/`;
 
 /**
- * The subtree of the vasculature file this scene takes.
+ * What this scene takes from the vasculature file.
  *
  * The source's own grouping, not a box drawn round the heart: everything under
- * `VH_M_blood_vasculature_of_heart` and nothing else. The rest of the file is
- * the head, the abdomen and the pelvis, and it is left in the file.
+ * `VH_M_blood_vasculature_of_heart` — and, since 2026-09-29, the five arteries
+ * that leave the abdominal aorta, by name, from where the publisher filed them.
+ * The aorta in the subtree has an opening for each of them; without them it was
+ * drawn as a tube with five holes and nothing leaving it.
  */
-const VESSEL_SUBTREE = 'VH_M_blood_vasculature_of_heart';
+const VESSEL_SUBTREE = HEART_VESSEL_SUBTREE;
+const VESSEL_NODES_OUTSIDE_SUBTREE = HEART_VESSEL_NODES_OUTSIDE_SUBTREE;
 /**
  * The radius the model is scaled to.
  *
@@ -212,6 +257,27 @@ export class HeartAnatomyScene {
     this.statusListeners = new Set();
     this.isolationListeners = new Set();
     this.visibilityListeners = new Set();
+    this.scopeListeners = new Set();
+
+    /**
+     * Which of the two ways of looking is on (`HEART_SCOPES`): the heart with
+     * its aorta, or the heart on its own. One value, owned here; the panel's
+     * switch, the camera's subject and every visibility rule read it.
+     */
+    this.scope = HEART_DEFAULT_SCOPE;
+    /** How far the roots are trimmed back right now, easing towards the scope's. */
+    this.trimStrength = 0;
+    /** The box round the fourteen heart parts, in world space. The trim is measured from it. */
+    this.heartBox = null;
+    /** Bounds of what is drawn, cached per display state — see `getSubjectBounds`. */
+    this.subjectCache = null;
+    /**
+     * What a display recipe frames the camera on, when it is not everything
+     * drawn: the heart and these structures (`HEART_RECIPES[].frame`). Null
+     * whenever no recipe's framing stands — a reader's own switch and "reset
+     * display" both end it.
+     */
+    this.recipeFrame = null;
 
     this.pageLeaving = false;
     this._pageHide = () => { this.pageLeaving = true; };
@@ -322,28 +388,40 @@ export class HeartAnatomyScene {
      * the move that destroys exactly the thing that makes them combinable, and
      * it is not made here.
      *
-     * The scale is taken from the **heart**, not from the pair. The vessel
-     * subtree is half a metre tall against the heart's ten centimetres, so
-     * fitting the pair would put the heart in a fifth of the frame; the
-     * far-reaching vessels start hidden instead, and are one click away.
+     * The scale is taken from the **heart**, not from the pair. The vessels
+     * reach half a metre against the heart's ten centimetres, so the scale
+     * that makes the heart readable is the heart's; what the camera frames is
+     * a separate question, answered per way of looking by `getSubjectBounds`.
      */
     this.modelRoot.add(scene);
     const vesselScene = vessels ? (vessels.scene ?? vessels) : null;
     const vesselRoot = vesselScene ? findByName(vesselScene, VESSEL_SUBTREE) : null;
+    // The five abdominal branches, found by name wherever the publisher filed
+    // them. Looked up before anything is moved, because moving the subtree
+    // out of the file does not move these.
+    const outside = vesselScene
+      ? VESSEL_NODES_OUTSIDE_SUBTREE.map((name) => findByName(vesselScene, name)).filter(Boolean)
+      : [];
     // How much of that file is deliberately not taken. Counted rather than left
     // implicit: "we take the subtree the source calls the vessels of the heart"
     // is a claim about a number, and this is the number.
     const vesselsInFile = vesselScene ? countMeshes(vesselScene) : 0;
-    const vesselsTaken = vesselRoot ? countMeshes(vesselRoot) : 0;
-    if (vesselRoot) {
+    const taken = [vesselRoot, ...outside].filter(Boolean);
+    const vesselsTaken = taken.reduce((sum, node) => sum + countMeshes(node), 0);
+    for (const node of taken) node.updateMatrixWorld(true);
+    for (const node of taken) {
       // Detached from its own file's root and reparented **with its world
       // matrix applied**, so its position in the body is what survives rather
       // than its position under a node we are not keeping.
-      vesselRoot.updateMatrixWorld(true);
-      const matrix = vesselRoot.matrixWorld.clone();
-      this.modelRoot.add(vesselRoot);
-      matrix.decompose(vesselRoot.position, vesselRoot.quaternion, vesselRoot.scale);
+      const matrix = node.matrixWorld.clone();
+      this.modelRoot.add(node);
+      matrix.decompose(node.position, node.quaternion, node.scale);
     }
+    // What the source does not contain and the scene draws schematically, in
+    // the same millimetres, beside the vessels they continue.
+    this.modelRoot.updateMatrixWorld(true);
+    const schematic = vesselRoot ? buildSchematicVessels(this.modelRoot) : null;
+    if (schematic) this.modelRoot.add(schematic);
     this.modelRoot.updateMatrixWorld(true);
 
     scene.updateMatrixWorld(true);
@@ -354,6 +432,13 @@ export class HeartAnatomyScene {
     this.modelRoot.position.copy(centre).multiplyScalar(-scale);
     this.modelRoot.scale.setScalar(scale);
     this.root.updateMatrixWorld(true);
+    // The heart's own box, in world space: what "the heart on its own" frames
+    // and what the roots are trimmed back towards. Taken from the heart file
+    // alone, which is the fourteen parts and nothing else.
+    this.heartBox = new THREE.Box3().setFromObject(scene);
+    this.scope = HEART_DEFAULT_SCOPE;
+    this.trimStrength = this._trimTarget();
+    this.subjectCache = null;
 
     let unknown = 0;
     let vesselMeshes = 0;
@@ -374,7 +459,7 @@ export class HeartAnatomyScene {
       this._registerMesh(object, entry);
     });
 
-    // The far-reaching vessels start out of the way. Seeded through the same
+    // The brachiocephalic veins start out of the way. Seeded through the same
     // hidden set a reader's own "hide" writes to, so "Unhide all" brings them
     // back and nothing needs a second mechanism to explain.
     for (const id of HEART_DEFAULT_HIDDEN) {
@@ -391,9 +476,13 @@ export class HeartAnatomyScene {
       vesselsInFile,
       vesselsNotTaken: vesselsInFile - vesselsTaken,
       vessels: vesselRoot ? 'loaded' : (this.vesselError ? 'failed' : 'absent'),
+      // Drawn here because the source does not contain them. Counted apart
+      // from the vessels, so neither number is taken for the other.
+      schematicMeshes: schematic ? countMeshes(schematic) : 0,
       missing: HEART_MISSING.length,
     });
     this._emitVisibility();
+    this._emitScope();
   }
 
   _registerMesh(mesh, entry) {
@@ -415,11 +504,26 @@ export class HeartAnatomyScene {
     });
     mesh.castShadow = false;
     mesh.receiveShadow = false;
+    // A range for everything that can end on screen short of where it ends in
+    // the body: a branch, which fades at its reach, and a root, which is
+    // trimmed back when only the heart is shown. Nothing else gets one, so the
+    // heart itself keeps the plain material it always had.
+    const range = entry.reach || entry.extent === 'root' ? createDisplayRange() : null;
+    if (range) {
+      if (entry.reach) setReach(range, this._worldReach(entry.reach));
+      if (entry.extent === 'root' && this.heartBox && !this.heartBox.isEmpty()) {
+        setTrim(range, this._heartTrim());
+      }
+      installDisplayRange(mesh.material, range);
+      mesh.renderOrder = RANGED_RENDER_ORDER;
+    }
     mesh.userData = {
       ...mesh.userData,
       structureId: entry.id,
       ontologyId: entry.ontologyId,
       group: entry.group,
+      extent: entry.extent ?? 'heart',
+      range,
       baseColor: color.clone(),
       idleEmissiveIntensity: 0.02,
       currentOpacity: 1,
@@ -430,6 +534,31 @@ export class HeartAnatomyScene {
     const existing = this.meshesById.get(entry.id);
     if (existing) existing.push(mesh);
     else this.meshesById.set(entry.id, [mesh]);
+  }
+
+  /** A reach from the part table, in world space. */
+  _worldReach(reach) {
+    const perMetre = this.modelRoot.getWorldScale(new THREE.Vector3()).x;
+    const from = this.modelRoot.localToWorld(new THREE.Vector3(...reach.from).multiplyScalar(0.001));
+    const toward = this.modelRoot.localToWorld(new THREE.Vector3(...reach.toward).multiplyScalar(0.001));
+    return {
+      from,
+      axis: toward.sub(from),
+      visible: (reach.visibleMm / 1000) * perMetre,
+      fade: (reach.fadeMm / 1000) * perMetre,
+    };
+  }
+
+  /** The heart-only trim, in world space, at the strength it is at now. */
+  _heartTrim() {
+    const perMetre = this.modelRoot.getWorldScale(new THREE.Vector3()).x;
+    return {
+      centre: this.heartBox.getCenter(new THREE.Vector3()),
+      half: this.heartBox.getSize(new THREE.Vector3()).multiplyScalar(0.5),
+      margin: (HEART_ONLY_TRIM.marginMm / 1000) * perMetre,
+      fade: (HEART_ONLY_TRIM.fadeMm / 1000) * perMetre,
+      strength: this.trimStrength,
+    };
   }
 
   // --- picking -------------------------------------------------------------
@@ -512,12 +641,55 @@ export class HeartAnatomyScene {
       -((event.clientY - rect.top) / rect.height) * 2 + 1
     );
     this.raycaster.setFromCamera(this.pointer, this.viewer.camera);
-    return this.raycaster.intersectObjects(this._drawnMeshes(), false)[0] ?? null;
+    return this._firstDrawnHit(this.raycaster);
   }
 
-  /** The meshes a ray may see: what is drawn, by the one rule everything reads. */
+  /**
+   * The meshes a ray may see: what is drawn, by the one rule everything reads.
+   *
+   * Drawn **and staying drawn**. A mesh easing out — a vessel the reader has
+   * just switched off with the aorta — is still faintly on screen for a few
+   * frames, and a click in those frames must go through it to what is behind,
+   * not select the thing that was just taken away.
+   */
   _drawnMeshes() {
-    return this.selectables.filter((mesh) => mesh.visible && mesh.userData.currentOpacity > DRAWN_OPACITY);
+    return this.selectables.filter(
+      (mesh) => mesh.visible && mesh.userData.currentOpacity > DRAWN_OPACITY && this._targetOpacityFor(mesh) > DRAWN_OPACITY
+    );
+  }
+
+  /**
+   * The first hit a ray makes on something actually drawn **at the point it
+   * hits**.
+   *
+   * A ray tests triangles, and a faded-out branch still has all of its
+   * triangles. Without this the end of a vessel the shader has dissolved would
+   * take the click and hide the label of whatever is behind it — the same trap
+   * the contract names for isolation, one level down.
+   */
+  _firstDrawnHit(raycaster) {
+    for (const hit of raycaster.intersectObjects(this._drawnMeshes(), false)) {
+      if (this._rangeAlpha(hit.object, hit.point) >= RANGE_DRAWN) return hit;
+    }
+    return null;
+  }
+
+  /**
+   * How much of a mesh is drawn at a world point, as the shader draws it.
+   *
+   * `target` asks about the display the scope is heading to rather than the
+   * one the trim is easing through — what a bound or an anchor should be
+   * computed for, since the camera is heading there too.
+   */
+  _rangeAlpha(mesh, point, { target = false } = {}) {
+    const range = mesh.userData.range;
+    if (!range) return 1;
+    if (!target || !range.trim) return displayRangeAlpha(range, point);
+    const eased = range.trim.strength;
+    range.trim.strength = this._trimTarget();
+    const alpha = displayRangeAlpha(range, point);
+    range.trim.strength = eased;
+    return alpha;
   }
 
   // --- selection and hover -------------------------------------------------
@@ -598,6 +770,8 @@ export class HeartAnatomyScene {
     this.manualHidden.clear();
     this.hiddenVersion += 1;
     this.displayBeforeReveal = null;
+    this.recipeFrame = null;
+    this.subjectCache = null;
     if (!notify || !(had || hadHidden)) return;
     for (const listener of this.listeners) listener(null);
     for (const listener of this.hoverListeners) listener(null);
@@ -623,7 +797,11 @@ export class HeartAnatomyScene {
   // --- the parts, as a list and as an inventory ----------------------------
 
   getAnatomyInventory() {
-    return [...this.meshesById.keys()].map((id) => heartStructureInfo(id));
+    // In the order a reader meets them, not the order the files happen to
+    // hold them in (`HEART_READING_ORDER`).
+    return [...this.meshesById.keys()]
+      .sort((a, b) => heartReadingRank(a) - heartReadingRank(b))
+      .map((id) => heartStructureInfo(id));
   }
 
   getAnatomyTree() {
@@ -685,6 +863,7 @@ export class HeartAnatomyScene {
    */
   _visibilityChanged(droppedIsolation) {
     this.hiddenVersion += 1;
+    this.subjectCache = null;
     this.displayBeforeReveal = null;
     this._applyVisibility(1 / 60, true);
     this._emitVisibility();
@@ -695,6 +874,13 @@ export class HeartAnatomyScene {
     const meshes = this._meshesFor(id);
     if (!meshes.length) return false;
     const key = meshes[0].userData.structureId;
+    // Showing something the heart-only view leaves out is asking for the view
+    // that draws it: the switch goes back on, and the panel's switch with it.
+    if (!hidden && !this._inScope(key)) {
+      this.manualHidden.delete(key);
+      this.setDisplayScope('aorta');
+      return true;
+    }
     if (this.manualHidden.has(key) === Boolean(hidden)) return false;
     let droppedIsolation = false;
     if (hidden) {
@@ -730,10 +916,12 @@ export class HeartAnatomyScene {
   setStructuresHidden(ids, hidden) {
     let changed = false;
     let droppedIsolation = false;
+    let widen = false;
     for (const id of ids) {
       const meshes = this._meshesFor(id);
       if (!meshes.length) continue;
       const key = meshes[0].userData.structureId;
+      if (!hidden && !this._inScope(key)) widen = true;
       if (this.manualHidden.has(key) === Boolean(hidden)) continue;
       if (hidden) {
         if (this.isolatedId === key) {
@@ -746,20 +934,47 @@ export class HeartAnatomyScene {
       }
       changed = true;
     }
-    if (!changed) return false;
+    // Same rule as the single setter: showing a group the heart-only view
+    // leaves out switches the aorta back on.
+    if (widen) this._switchScope('aorta');
+    if (!changed && !widen) return false;
     this._visibilityChanged(droppedIsolation);
+    if (widen) this._emitScope();
     return true;
   }
 
   showAllHiddenStructures() {
-    if (!this.manualHidden.size) return false;
+    const widen = !this._everythingInScope();
+    if (!this.manualHidden.size && !widen) return false;
     this.manualHidden.clear();
+    // "Unhide all" means all: what the heart-only view leaves out is reported
+    // as hidden, so it comes back too, with the switch.
+    if (widen) this._switchScope('aorta');
     // No isolation to drop: showing never ends one.
     this._visibilityChanged(false);
+    if (widen) this._emitScope();
     return true;
   }
 
-  getAnatomyVisibility() { return { hidden: [...this.manualHidden] }; }
+  _everythingInScope() {
+    return this.scope === 'aorta';
+  }
+
+  /**
+   * What is not drawn, **for any reason the reader can undo from the list**:
+   * hidden by hand, or left out by the heart-only view.
+   *
+   * Both are reported as hidden because both are, to the part tree and to the
+   * card: a row for the renal artery must not show an open eye while the
+   * artery is not on screen. `outOfScope` says which of them the switch took
+   * and `byHand` which the reader (or a way of looking) hid, for a caller that
+   * needs the difference; a structure can be in both.
+   */
+  getAnatomyVisibility() {
+    const outOfScope = [...this.meshesById.keys()].filter((id) => !this._inScope(id));
+    const hidden = new Set([...this.manualHidden, ...outOfScope]);
+    return { hidden: [...hidden], outOfScope, byHand: [...this.manualHidden] };
+  }
 
   onAnatomyVisibility(listener) {
     this.visibilityListeners.add(listener);
@@ -768,7 +983,7 @@ export class HeartAnatomyScene {
 
   _emitVisibility() {
     const state = this.getAnatomyVisibility();
-    for (const listener of this.visibilityListeners) listener({ hidden: [...state.hidden] });
+    for (const listener of this.visibilityListeners) listener({ ...state });
   }
 
   isStructureVisible(id) {
@@ -793,6 +1008,12 @@ export class HeartAnatomyScene {
     if (this.manualHidden.delete(key)) {
       this.hiddenVersion += 1;
       changed.push('hidden');
+    }
+    // A structure the heart-only view leaves out is revealed by the view that
+    // draws it. The way back restores the switch as well.
+    if (!this._inScope(key)) {
+      this._switchScope('aorta');
+      changed.push('scope');
     }
     if (this.isolatedId != null && this.isolatedId !== key) {
       this.isolatedId = null;
@@ -822,7 +1043,8 @@ export class HeartAnatomyScene {
 
     if (changed.length) {
       this.displayBeforeReveal = before;
-      if (changed.includes('hidden')) this._emitVisibility();
+      if (changed.includes('hidden') || changed.includes('scope')) this._emitVisibility();
+      if (changed.includes('scope')) this._emitScope();
       this._emitIsolation();
     }
     // Asked of the viewpoint this reveal is *going to*, not of wherever the
@@ -878,7 +1100,7 @@ export class HeartAnatomyScene {
     const distance = direction.length();
     if (!distance) return null;
     this._annotationRay.set(eye, direction.divideScalar(distance));
-    const first = this._annotationRay.intersectObjects(this._drawnMeshes(), false)[0];
+    const first = this._firstDrawnHit(this._annotationRay);
     return Boolean(first) && meshes.includes(first.object);
   }
 
@@ -935,7 +1157,7 @@ export class HeartAnatomyScene {
     const distance = direction.length();
     if (!distance) return null;
     this._annotationRay.set(spec.position, direction.divideScalar(distance));
-    const first = this._annotationRay.intersectObjects(this._drawnMeshes(), false)[0];
+    const first = this._firstDrawnHit(this._annotationRay);
     if (!first || meshes.includes(first.object)) return null;
     return first.object.userData.structureId;
   }
@@ -1011,6 +1233,17 @@ export class HeartAnatomyScene {
     const released = this.isolatedId != null;
     if (released) this.isolatedId = null;
     const turned = recipe.view && recipe.view !== this.activeView && this.setAnatomyView(recipe.view);
+    // A way of looking says which range it is framed on: the coronary vessels
+    // and the chambers' interior are the heart's own, and are shown on the
+    // heart on its own rather than as a few pixels under a whole aorta.
+    const rescoped = Boolean(recipe.scope) && recipe.scope !== this.scope;
+    if (rescoped) this._switchScope(recipe.scope);
+    // …and what the camera is framed on inside that range. The great vessels
+    // are looked at where they meet the heart; framed on everything drawn they
+    // were a few pixels across under a whole aorta.
+    const frame = recipe.frame ?? null;
+    const reframed = frame !== this.recipeFrame;
+    this.recipeFrame = frame;
 
     /**
      * What the reader ends up with, against what they had — not what this
@@ -1027,10 +1260,12 @@ export class HeartAnatomyScene {
     const shown = [...wasHidden].filter((structureId) => !this.manualHidden.has(structureId));
     if (hid.length || shown.length) this.hiddenVersion += 1;
     this._applyVisibility(1 / 60, true);
-    const changed = hid.length > 0 || shown.length > 0 || turned || released;
+    const changed = hid.length > 0 || shown.length > 0 || turned || released || rescoped || reframed;
     if (changed) this.displayBeforeReveal = before;
+    this.subjectCache = null;
     this._emitVisibility();
     this._emitIsolation();
+    if (rescoped) this._emitScope();
 
     // What was observed, split three ways rather than two.
     //
@@ -1053,6 +1288,7 @@ export class HeartAnatomyScene {
       ok: true,
       hid,
       view: this.activeView,
+      scope: this.scope,
       /** Anchors observed unobstructed from `view`. Not "seen on screen". */
       anchorsClear: clear,
       anchorsBlocked: blocked,
@@ -1067,18 +1303,23 @@ export class HeartAnatomyScene {
     const before = this.displayBeforeReveal;
     if (!before) return { ok: false };
     this.displayBeforeReveal = null;
+    const rescoped = before.scope !== this.scope;
+    if (rescoped) this._switchScope(before.scope);
+    this.recipeFrame = before.frame ?? null;
     this.isolatedId = before.isolatedId;
     this.manualHidden = new Set(before.hidden);
     this.hiddenVersion += 1;
+    this.subjectCache = null;
     this.setAnatomyView(before.view);
-    this._applyVisibility(1 / 60, true);
+    this._applyVisibility(1 / 60, !rescoped);
     this._emitVisibility();
     this._emitIsolation();
-    return { ok: true, layer: null, view: this.activeView };
+    if (rescoped) this._emitScope();
+    return { ok: true, layer: null, view: this.activeView, scope: this.scope };
   }
 
   _displaySnapshot() {
-    return { view: this.activeView, isolatedId: this.isolatedId, hidden: [...this.manualHidden] };
+    return { view: this.activeView, isolatedId: this.isolatedId, hidden: [...this.manualHidden], scope: this.scope, frame: this.recipeFrame };
   }
 
   /**
@@ -1090,7 +1331,22 @@ export class HeartAnatomyScene {
     const id = mesh.userData.structureId;
     if (this.isolatedId != null) return id === this.isolatedId ? 1 : 0;
     if (this.manualHidden.has(id)) return 0;
+    // Third, and after the reader's own hides: what the way of looking does
+    // not draw. Isolation still wins over it, as it wins over a hide — asking
+    // for "only this one" of a structure the heart-only view leaves out shows
+    // that structure rather than a blank frame.
+    if (!this._inScope(id)) return 0;
     return 1;
+  }
+
+  /** Whether the current way of looking draws this structure at all. */
+  _inScope(id) {
+    return this.scope === 'aorta' || heartPartById(id)?.extent !== 'beyond';
+  }
+
+  /** How far the roots should be trimmed in the current way of looking. */
+  _trimTarget() {
+    return this.scope === 'heart' ? 1 : 0;
   }
 
   _applyVisibility(dt, snap) {
@@ -1102,6 +1358,13 @@ export class HeartAnatomyScene {
       mesh.material.depthWrite = opacity > 0.94;
       mesh.visible = opacity > 0.012;
     }
+    const trimTarget = this._trimTarget();
+    this.trimStrength = snap ? trimTarget : damp(this.trimStrength, trimTarget, TRIM_RATE, dt);
+    if (Math.abs(this.trimStrength - trimTarget) < 1e-3) this.trimStrength = trimTarget;
+    for (const mesh of this.selectables) {
+      const trim = mesh.userData.range?.trim;
+      if (trim) trim.strength = this.trimStrength;
+    }
   }
 
   setProgress() { /* No progression: this is a still model. */ }
@@ -1109,6 +1372,97 @@ export class HeartAnatomyScene {
   update(dt) {
     if (!this.selectables.length) return;
     this._applyVisibility(dt, false);
+  }
+
+  // --- the two ways of looking ----------------------------------------------
+
+  /**
+   * Which way of looking is on, and the switch that changes it, as the panel
+   * shows it. `on` is the heart with its aorta.
+   */
+  getDisplayScope() {
+    return {
+      id: this.scope,
+      on: this.scope === HEART_SCOPE_SWITCH.on,
+      label: HEART_SCOPE_SWITCH.label,
+      labelJa: HEART_SCOPE_SWITCH.labelJa,
+      hint: HEART_SCOPE_SWITCH.hint,
+      hintJa: HEART_SCOPE_SWITCH.hintJa,
+      scope: { ...HEART_SCOPES[this.scope] },
+    };
+  }
+
+  onDisplayScope(listener) {
+    this.scopeListeners.add(listener);
+    return () => this.scopeListeners.delete(listener);
+  }
+
+  _emitScope() {
+    const state = this.getDisplayScope();
+    for (const listener of this.scopeListeners) listener(state);
+  }
+
+  /**
+   * Switch between the heart with its aorta and the heart on its own.
+   *
+   * What the new way of looking does not draw stops being **anything** at
+   * once: a selection on it is cleared, a hover dropped, an isolation of it
+   * ended, and it stops taking clicks and labels before it has finished
+   * fading. What it does draw keeps everything — a coronary artery that was
+   * selected stays selected, a chamber hidden by hand stays hidden, and the
+   * colour mode and viewpoint are not touched. The camera is the caller's:
+   * the app refits to `getSubjectBounds`, which now answers for the new
+   * subject.
+   *
+   * @param {'aorta'|'heart'} id
+   * @param {{byReader?: boolean}} [options] `byReader: false` when a display
+   *   recipe or a restore is switching on the reader's behalf; those keep their
+   *   own way back, and a reader's own switch invalidates it as a hide does.
+   * @returns {{ok: boolean, changed: boolean, clearedSelection?: boolean, droppedIsolation?: boolean}}
+   */
+  setDisplayScope(id, { byReader = true } = {}) {
+    if (!HEART_SCOPES[id]) return { ok: false, changed: false };
+    if (id === this.scope) return { ok: true, changed: false };
+    const result = this._switchScope(id);
+    // A way of looking the reader chose is framed on all of itself.
+    this.recipeFrame = null;
+    if (byReader) this.displayBeforeReveal = null;
+    this._applyVisibility(1 / 60, false);
+    this._emitScope();
+    this._emitVisibility();
+    if (result.droppedIsolation) this._emitIsolation();
+    return { ok: true, changed: true, ...result };
+  }
+
+  /** The switch itself, with no announcement — shared by every path that changes scope. */
+  _switchScope(id) {
+    this.scope = id;
+    let clearedSelection = false;
+    if (this.selection && !this._inScope(this.selection.id)) {
+      this.clearSelection();
+      clearedSelection = true;
+    }
+    if (this.hoveredMeshes.length && !this._inScope(this.hoveredMeshes[0].userData.structureId)) this._setHovered(null);
+    let droppedIsolation = false;
+    if (this.isolatedId != null && !this._inScope(this.isolatedId)) {
+      this.isolatedId = null;
+      droppedIsolation = true;
+    }
+    // Labels and sight lines are cached per display, and anchors per range.
+    this.hiddenVersion += 1;
+    this.structureAnchors.clear();
+    this._annotationSight.clear();
+    this.subjectCache = null;
+    return { clearedSelection, droppedIsolation };
+  }
+
+  /** Back to the way the scene opens. What "reset display" does. */
+  resetDisplayScope() {
+    // A recipe's framing ends here even when the range does not change: the
+    // view this resets to is the opening one, framed on all it draws.
+    this.recipeFrame = null;
+    this.subjectCache = null;
+    return this.setDisplayScope(HEART_DEFAULT_SCOPE);
   }
 
   // --- viewpoints and colour ------------------------------------------------
@@ -1187,34 +1541,76 @@ export class HeartAnatomyScene {
   // --- bounds and labels ----------------------------------------------------
 
   /**
-   * What the camera frames: **the heart**, not everything drawn.
+   * What the camera frames, **for the way of looking that is on**.
    *
-   * The vessels reach far past the chest — the inferior vena cava alone runs to
-   * the renal level — so framing every drawn mesh would answer "show me the
-   * heart" with a heart a fifth of the frame high and a long tube beside it.
-   * The subject of this scene is the organ; the vessels arrive at it and run out
-   * of shot, which is what they do in a body. A reader who wants one of them
-   * framed asks for it by name, and `getStructureBounds` answers that.
+   * - **The heart on its own** frames the fourteen parts of the heart file,
+   *   and nothing else. The roots are trimmed to just outside that box, so
+   *   nothing drawn leaves the frame by much, and the orbit centre is the
+   *   heart's own centre.
+   * - **The heart and its aorta** frames the heart together with everything
+   *   drawn beyond it — the aorta down to its bifurcation, the vena cava, the
+   *   first centimetres of each branch — measured on what the shader draws,
+   *   not on the triangles: a branch faded out at its reach does not stretch
+   *   the frame to where its mesh would have gone.
+   *
+   * This used to be the heart in both cases, with the vessels "running out of
+   * shot", which is right for a heart and wrong for a heart and its aorta: the
+   * aorta was then never on screen as a whole.
+   *
+   * It used to ask whether a structure had `meshNames`, which marks only the
+   * five vessels the source splits in two — so thirty-two vessels counted as
+   * "the heart", and the camera framed a 51 cm subtree to show a 10 cm organ.
+   * Asking for the heart parts by id is what keeps that from coming back.
    */
   getSubjectBounds() {
-    // **The fourteen parts of the heart file, and nothing else.**
-    //
-    // This used to ask whether a structure had `meshNames`, which marks only
-    // the five vessels the source splits in two — so thirty-two vessels
-    // counted as "the heart", and the camera framed a 51 cm subtree to show a
-    // 10 cm organ. The heart came out small with the inferior vena cava
-    // running off the bottom of the frame, which is exactly what this method
-    // exists to prevent.
-    const heart = this._drawnMeshes().filter((mesh) => HEART_PART_IDS.has(mesh.userData.structureId));
-    const bounds = boundsOf(heart.length ? heart : this._drawnMeshes());
     const aspect = this.viewer?.camera?.aspect;
-    const coverage = Number.isFinite(aspect) && aspect < PORTRAIT_ASPECT
-      ? HEART_SUBJECT_COVERAGE_PORTRAIT
-      : HEART_SUBJECT_COVERAGE;
-    return bounds && { ...bounds, coverage };
+    const portrait = Number.isFinite(aspect) && aspect < PORTRAIT_ASPECT;
+    const key = `${this.scope}|${this.hiddenVersion}|${this.isolatedId}|${this.recipeFrame?.join() ?? ''}`;
+    if (this.subjectCache?.key !== key) this.subjectCache = { key, bounds: this._measureSubject() };
+    const bounds = this.subjectCache.bounds;
+    if (!bounds) return null;
+    const coverage = this.scope === 'aorta' && bounds.withVessels
+      ? (portrait ? AORTA_SUBJECT_COVERAGE_PORTRAIT : AORTA_SUBJECT_COVERAGE)
+      : (portrait ? HEART_SUBJECT_COVERAGE_PORTRAIT : HEART_SUBJECT_COVERAGE);
+    return { centre: bounds.centre.clone(), corners: bounds.corners.map((corner) => corner.clone()), coverage };
   }
 
-  getStructureBounds(id) { return boundsOf(this._meshesFor(id)); }
+  _measureSubject() {
+    // Asked of the display the scene is heading to, not of the frames it is
+    // easing through: the camera is heading there too.
+    const drawn = this.selectables.filter((mesh) => this._targetOpacityFor(mesh) > DRAWN_OPACITY);
+    const heart = drawn.filter((mesh) => HEART_PART_IDS.has(mesh.userData.structureId));
+    const box = new THREE.Box3();
+    for (const mesh of heart.length ? heart : drawn) box.expandByObject(mesh);
+    let withVessels = false;
+    if (this.recipeFrame) {
+      // The heart and what the recipe names, each as drawn; everything else
+      // drawn may run out of frame, as vessels leaving an organ do.
+      for (const mesh of drawn) {
+        if (!this.recipeFrame.includes(mesh.userData.structureId)) continue;
+        expandByDrawnVertices(box, mesh, (point) => this._rangeAlpha(mesh, point, { target: true }));
+      }
+    } else if (this.scope === 'aorta') {
+      for (const mesh of drawn) {
+        if (HEART_PART_IDS.has(mesh.userData.structureId)) continue;
+        withVessels = expandByDrawnVertices(box, mesh, (point) => this._rangeAlpha(mesh, point, { target: true })) || withVessels;
+      }
+    }
+    if (box.isEmpty()) return null;
+    return { ...cornersOf(box), withVessels };
+  }
+
+  /**
+   * One structure's bounds, **as drawn** — so "go to it" on the left common
+   * carotid frames the part of it on screen, not the neck it was faded out of.
+   */
+  getStructureBounds(id) {
+    const meshes = this._meshesFor(id);
+    if (!meshes.some((mesh) => mesh.userData.range)) return boundsOf(meshes);
+    const box = new THREE.Box3();
+    for (const mesh of meshes) expandByDrawnVertices(box, mesh, (point) => this._rangeAlpha(mesh, point, { target: true }));
+    return box.isEmpty() ? boundsOf(meshes) : cornersOf(box);
+  }
 
   /**
    * A label for a part, anchored on its outside and hidden when it cannot be
@@ -1261,9 +1657,12 @@ export class HeartAnatomyScene {
   _anchorFor(key, id, meshes) {
     const cached = this.structureAnchors.get(key);
     if (cached) return cached;
-    const point = outwardSurfacePoint(meshes, this.modelRoot);
+    // On the part of the structure that is drawn: a label on the dissolved
+    // end of a branch would name empty space.
+    const drawnAt = (mesh, vertex) => this._rangeAlpha(mesh, vertex, { target: true }) >= RANGE_DRAWN;
+    const point = outwardSurfacePoint(meshes, this.modelRoot, drawnAt);
     if (!point) return null;
-    const centre = boundsOf(meshes)?.centre ?? point;
+    const centre = this.getStructureBounds(id)?.centre ?? point;
     const anchor = { point, sight: point.clone().lerp(centre, 0.04) };
     this.structureAnchors.set(key, anchor);
     return anchor;
@@ -1273,7 +1672,7 @@ export class HeartAnatomyScene {
     if (!point || !camera || !meshes?.length) return false;
     camera.updateMatrixWorld();
     const key = `${camera.matrixWorld.elements.map((n) => n.toFixed(4)).join(',')}|` +
-      `${this.isolatedId}|${this.hiddenVersion}`;
+      `${this.isolatedId}|${this.hiddenVersion}|${this.scope}`;
     const cached = this._annotationSight.get(cacheKey);
     if (cached?.key === key) return cached.visible;
     this._annotationDirection.copy(point).sub(camera.position);
@@ -1281,7 +1680,7 @@ export class HeartAnatomyScene {
     let visible = false;
     if (distance > 0) {
       this._annotationRay.set(camera.position, this._annotationDirection.divideScalar(distance));
-      const first = this._annotationRay.intersectObjects(this._drawnMeshes(), false)[0];
+      const first = this._firstDrawnHit(this._annotationRay);
       visible = Boolean(first) && meshes.includes(first.object);
     }
     this._annotationSight.set(cacheKey, { key, visible });
@@ -1336,6 +1735,11 @@ function boundsOf(meshes) {
   const box = new THREE.Box3();
   for (const mesh of meshes) box.expandByObject(mesh);
   if (box.isEmpty()) return null;
+  return cornersOf(box);
+}
+
+/** A box as the fit reads one: its centre and its eight corners. */
+function cornersOf(box) {
   const corners = [];
   for (const x of [box.min.x, box.max.x]) {
     for (const y of [box.min.y, box.max.y]) {
@@ -1345,8 +1749,32 @@ function boundsOf(meshes) {
   return { centre: box.getCenter(new THREE.Vector3()), corners };
 }
 
+/**
+ * Grow a box by the vertices of a mesh that `drawn` says are drawn.
+ *
+ * @returns {boolean} whether any vertex was taken
+ */
+function expandByDrawnVertices(box, mesh, drawn) {
+  if (!mesh.userData.range) {
+    box.expandByObject(mesh);
+    return true;
+  }
+  const position = mesh.geometry?.getAttribute?.('position');
+  if (!position) return false;
+  mesh.updateWorldMatrix(true, false);
+  const vertex = new THREE.Vector3();
+  let any = false;
+  for (let i = 0; i < position.count; i += 1) {
+    vertex.fromBufferAttribute(position, i).applyMatrix4(mesh.matrixWorld);
+    if (drawn(vertex) < RANGE_DRAWN) continue;
+    box.expandByPoint(vertex);
+    any = true;
+  }
+  return any;
+}
+
 /** The outermost vertex of a structure, so a label sits on it rather than in it. */
-function outwardSurfacePoint(meshes, root) {
+function outwardSurfacePoint(meshes, root, drawnAt = () => true) {
   const box = new THREE.Box3();
   for (const mesh of meshes) box.expandByObject(mesh);
   if (box.isEmpty()) return null;
@@ -1365,7 +1793,7 @@ function outwardSurfacePoint(meshes, root) {
     for (let i = 0; i < position.count; i += 1) {
       vertex.fromBufferAttribute(position, i).applyMatrix4(mesh.matrixWorld);
       const reach = vertex.dot(outward);
-      if (reach > bestReach) {
+      if (reach > bestReach && drawnAt(mesh, vertex)) {
         bestReach = reach;
         best = vertex.clone();
       }
@@ -1407,6 +1835,51 @@ async function loadHeart() {
 async function loadVessels() {
   if (!VESSEL_URL) throw new Error('no candidate vasculature asset is registered');
   return loadCompressed(VESSEL_URL);
+}
+
+/**
+ * The four arteries the source does not contain, as tubes in its millimetres.
+ *
+ * Each is built only where the vessel it continues actually is: its start has
+ * to lie within a few millimetres of that vessel's drawn geometry. A file that
+ * moved, or a fixture that puts the aorta somewhere else, gets no schematic
+ * segment floating where the aorta used to be — it gets none at all.
+ *
+ * @param {THREE.Object3D} modelRoot the root the source files hang under
+ * @returns {THREE.Group|null}
+ */
+function buildSchematicVessels(modelRoot) {
+  const group = new THREE.Group();
+  group.name = 'heart-schematic';
+  const perMetre = modelRoot.getWorldScale(new THREE.Vector3()).x;
+  const tolerance = 0.005 * perMetre;
+  for (const entry of HEART_SCHEMATIC) {
+    const parentMeshes = [];
+    const names = new Set(heartPartById(entry.parent)?.meshNames ?? []);
+    modelRoot.traverse((object) => { if (object.isMesh && names.has(object.name)) parentMeshes.push(object); });
+    if (!parentMeshes.length) continue;
+    const box = new THREE.Box3();
+    for (const mesh of parentMeshes) box.expandByObject(mesh);
+    const leaves = modelRoot.localToWorld(new THREE.Vector3(...entry.reach.from).multiplyScalar(0.001));
+    if (box.distanceToPoint(leaves) > tolerance) continue;
+    const curve = smoothCurve(entry.path.map((point) => point.map((mm) => mm / 1000)));
+    const { start, body, end, flareMm } = entry.radiusMm;
+    // Flared over its first `flareMm`, then tapering from body to end.
+    const flareSpan = Math.min(1, flareMm / (curve.getLength() * 1000));
+    const radius = (u) => {
+      const t = Math.min(1, u / flareSpan);
+      const flare = 1 - t * t * (3 - 2 * t);
+      return (body + (end - body) * u + (start - body) * flare) / 1000;
+    };
+    // Open at both ends: the start is inside the vessel it leaves, and the end
+    // is past where it has faded out. A cap at either would be a surface
+    // nobody sees or a rounded tip that says the vessel ends.
+    const tube = new TubeSurface(curve, { radius, steps: 48, radial: 20, caps: false });
+    const mesh = new THREE.Mesh(tube.geometry, new THREE.MeshBasicMaterial());
+    mesh.name = entry.id;
+    group.add(mesh);
+  }
+  return group.children.length ? group : null;
 }
 
 /** How many meshes are under an object, itself included. */

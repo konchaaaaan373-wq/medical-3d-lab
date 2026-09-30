@@ -163,6 +163,72 @@
   cursor: pointer;
 }
 
+/* The switch between the heart with its aorta and the heart on its own.
+   Shaped like the actions beside it so the row reads as one row, and drawn as a
+   switch because it holds a state: the track fills with the accent when the
+   aorta is on. */
+.anatomy-scope-switch {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  min-height: 32px;
+  padding: 4px 10px 4px 7px;
+  border: 1px solid color-mix(in srgb, currentColor 24%, transparent);
+  border-radius: 6px;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  /* The product's type floor, not the 10 px of the older actions beside it:
+     a new control is not allowed under 12 (`npm run type-floor`). */
+  font-size: 12px;
+  font-weight: 650;
+  line-height: 1.2;
+  text-align: left;
+  cursor: pointer;
+}
+
+.anatomy-scope-track {
+  position: relative;
+  flex: none;
+  width: 26px;
+  height: 15px;
+  border-radius: 999px;
+  background: color-mix(in srgb, currentColor 26%, transparent);
+  transition: background-color 0.15s ease;
+}
+
+.anatomy-scope-thumb {
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  width: 11px;
+  height: 11px;
+  border-radius: 50%;
+  background: #ffffff;
+  box-shadow: 0 1px 2px rgb(0 0 0 / 0.35);
+  transition: transform 0.15s ease;
+}
+
+.anatomy-scope-switch[aria-checked='true'] .anatomy-scope-track {
+  background: var(--accent, #006b74);
+}
+
+.anatomy-scope-switch[aria-checked='true'] .anatomy-scope-thumb {
+  transform: translateX(11px);
+}
+
+.anatomy-scope-switch:focus-visible {
+  outline: 2px solid currentColor;
+  outline-offset: 1px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .anatomy-scope-track,
+  .anatomy-scope-thumb {
+    transition: none;
+  }
+}
+
 .anatomy-panel-action[aria-pressed='true'] {
   background: color-mix(in srgb, currentColor 18%, transparent);
   font-weight: 700;
@@ -281,6 +347,32 @@
   display: flex;
   flex-direction: column;
   gap: 12px;
+}
+
+/* ---------- the selected structure's description
+
+   The selection card was a floating card on a dark scene once, and three of
+   its rules still say so: `ui.css` hides its description below 720 px and
+   caps its width to stay small, and writes its note in a fixed pale amber at
+   9.5 px. Embedded in this panel on a light ground, the first two left a
+   phone's Detail tab with a count and a credit line and **no description at
+   all** — the only place a phone reader could have read what a structure is —
+   and the third made the note that says "the source names this the other
+   way round" almost invisible. Inside the panel the card takes the full
+   width, shows its description, keeps the paragraph break between what a
+   structure is and what this model does with it, and writes its note in the
+   theme's caution ink at the type floor. */
+.anatomy-panel-body .anatomy-copy { white-space: pre-line; }
+
+.anatomy-panel-body .anatomy-note {
+  border-left-color: var(--caution-ink);
+  color: var(--caution-ink);
+  font-size: 12px;
+}
+
+@media (max-width: 720px) {
+  .anatomy-panel-body .anatomy-info { width: auto; }
+  .anatomy-panel-body .anatomy-copy { display: block; font-size: 12px; }
 }
 
 /* ---------- fixed ways of looking
@@ -462,6 +554,52 @@
   }
 }
 
+/* The switch rides on the name's row inside the phone sheet, as it does in the
+   closed card. In the row of actions it wrapped them onto a second line, the
+   summary grew from 94 px to about 150, and at 375x667 with a structure
+   selected the list under it was left **13 px** — the search box covered it
+   and no row could be pressed (`verify:anatomy`, the deep-row step). Beside
+   the name, the four actions fit on one row as they do without a switch.
+   Only where there is a switch: every other scene keeps its summary as it was. */
+@media (max-width: 520px) {
+  .anatomy-panel[data-layout='sheet'][data-sheet='open'] .anatomy-panel-summary:has(.anatomy-scope-switch) {
+    flex-direction: row;
+    flex-wrap: wrap;
+    align-items: center;
+    column-gap: 8px;
+    /* The switch's 44 px touch target sets the name row's height, 13 px more
+       than a name alone; the spacing gives it back so the list keeps the
+       height it has in a scene without a switch. */
+    row-gap: 2px;
+    padding-bottom: 4px;
+  }
+
+  .anatomy-panel[data-layout='sheet'][data-sheet='open'] .anatomy-panel-summary:has(.anatomy-scope-switch) > .anatomy-panel-heading {
+    flex: 1 1 calc(100% - 200px);
+    min-width: 0;
+  }
+
+  .anatomy-panel[data-layout='sheet'][data-sheet='open'] .anatomy-panel-summary:has(.anatomy-scope-switch) > .anatomy-panel-actions {
+    display: contents;
+  }
+
+  .anatomy-panel[data-layout='sheet'][data-sheet='open'] .anatomy-panel-summary:has(.anatomy-scope-switch) .anatomy-scope-switch {
+    flex: none;
+    order: 1;
+  }
+
+  .anatomy-panel[data-layout='sheet'][data-sheet='open'] .anatomy-panel-summary:has(.anatomy-scope-switch) > .anatomy-panel-status,
+  .anatomy-panel[data-layout='sheet'][data-sheet='open'] .anatomy-panel-summary:has(.anatomy-scope-switch) > .anatomy-panel-retry {
+    flex-basis: 100%;
+    order: 2;
+  }
+
+  .anatomy-panel[data-layout='sheet'][data-sheet='open'] .anatomy-panel-summary:has(.anatomy-scope-switch) .anatomy-panel-action,
+  .anatomy-panel[data-layout='sheet'][data-sheet='open'] .anatomy-panel-summary:has(.anatomy-scope-switch) .anatomy-panel-open {
+    order: 3;
+  }
+}
+
 @media (prefers-reduced-motion: reduce) {
   .anatomy-tree-chevron { transition: none; }
 }
@@ -582,6 +720,32 @@
 
 .anatomy-search-hit[data-identity='source-conflict'] .anatomy-search-where .lang-en::after {
   content: ' · name unverified';
+}
+
+/* Two more states a name can be in, marked the same quiet way. The renal
+   arteries are named by where they go because the source names them the
+   other way round; four arteries are not in the source at all and are drawn
+   schematically. Neither may read as an ordinary measured structure. */
+.anatomy-panel[data-selection-identity='side-corrected'] .anatomy-panel-where::after,
+.anatomy-search-hit[data-identity='side-corrected'] .anatomy-search-where::after {
+  content: ' · 位置で命名（出典は左右逆の表記）';
+  opacity: 0.85;
+}
+
+.anatomy-panel[data-selection-identity='side-corrected'] .anatomy-panel-where.lang-en::after,
+.anatomy-search-hit[data-identity='side-corrected'] .anatomy-search-where .lang-en::after {
+  content: ' · named by position (the source labels the other side)';
+}
+
+.anatomy-panel[data-selection-identity='schematic'] .anatomy-panel-where::after,
+.anatomy-search-hit[data-identity='schematic'] .anatomy-search-where::after {
+  content: ' · 模式（出典に無い区間）';
+  opacity: 0.85;
+}
+
+.anatomy-panel[data-selection-identity='schematic'] .anatomy-panel-where.lang-en::after,
+.anatomy-search-hit[data-identity='schematic'] .anatomy-search-where .lang-en::after {
+  content: ' · schematic (not in the source)';
 }
 
 /* Where the keyboard is, which is not what is selected: arrowing through the

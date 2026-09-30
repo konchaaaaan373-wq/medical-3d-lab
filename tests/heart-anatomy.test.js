@@ -9,13 +9,16 @@ import {
   HEART_DEFAULT_HIDDEN,
   HEART_MISSING,
   HEART_PARTS,
+  HEART_READING_ORDER,
   HEART_RECIPES,
+  HEART_SCHEMATIC,
   HEART_STRUCTURES,
   HEART_VESSELS,
   heartColor,
   heartMeshOwner,
   heartPartById,
   heartStructureInfo,
+  heartAnatomyNote,
 } from '../src/data/heartAnatomy.js';
 import { ANATOMY_CONTRACT_METHODS, treeLeaves } from '../src/app/anatomyContract.js';
 import { fitPoseToSafeArea, orbitLimitsForSubject } from '../src/app/framing.js';
@@ -611,6 +614,8 @@ function vesselFixture() {
 
   const at = {
     VH_M_ascending_aorta: [-0.5, 0.35, 0.25],
+    // Above the heart, as the arch is: what the great-vessels view frames on.
+    VH_M_aortic_arch: [-0.5, 0.75, 0.1],
     VH_M_pulmonary_trunk: [-0.35, 0.4, 0.3],
     VH_M_superior_vena_cava: [-0.95, 0.45, 0.25],
     VH_M_inferior_vena_cava_a: [-0.95, -0.25, 0.15],
@@ -638,7 +643,7 @@ const pair = () => {
 };
 
 test('heart: the vessel table bundles split meshes and keeps distinct vessels distinct', () => {
-  assert.equal(HEART_STRUCTURES.length, HEART_PARTS.length + HEART_VESSELS.length);
+  assert.equal(HEART_STRUCTURES.length, HEART_PARTS.length + HEART_VESSELS.length + HEART_SCHEMATIC.length);
   assert.equal(new Set(HEART_STRUCTURES.map((entry) => entry.id)).size, HEART_STRUCTURES.length);
 
   // One structure, two meshes — the same shape the brain's split gyri have.
@@ -718,21 +723,25 @@ test('heart: only the subtree the source calls the vessels of the heart is taken
   built.dispose();
 });
 
-test('heart: the far-reaching vessels start hidden, and unhiding shows them', () => {
+test('heart: the scene opens on the heart and its aorta, and only the brachiocephalic veins start hidden', () => {
+  // The opening view is the heart **and** its aorta. The descending aorta and
+  // the arch branches used to start hidden, which opened the scene on an arch
+  // with three holes in its top and no aorta below it.
   const built = pair();
+  assert.equal(built.getDisplayScope().id, 'aorta');
+  assert.equal(built.getDisplayScope().on, true);
   const hidden = built.getAnatomyVisibility().hidden;
-  for (const id of ['VH_M_descending_aorta', 'VH_M_brachiocephalic_vein_L']) {
-    assert.ok(HEART_DEFAULT_HIDDEN.includes(id));
-    assert.ok(hidden.includes(id), `${id} starts out of the way`);
-    assert.equal(built.isStructureVisible(id), false);
+  assert.deepEqual([...HEART_DEFAULT_HIDDEN].sort(), ['VH_M_brachiocephalic_vein_L', 'VH_M_brachiocephalic_vein_R']);
+  assert.ok(hidden.includes('VH_M_brachiocephalic_vein_L'), 'the veins in front of the arch start out of the way');
+  assert.equal(built.isStructureVisible('VH_M_brachiocephalic_vein_L'), false);
+  for (const id of ['VH_M_descending_aorta', 'VH_M_ascending_aorta', 'VH_M_heart_left_ventricle']) {
+    assert.ok(!hidden.includes(id), `${id} is part of the opening view`);
+    assert.equal(built.isStructureVisible(id), true, id);
   }
-  // Nothing near the heart is hidden by default.
-  assert.ok(!hidden.includes('VH_M_ascending_aorta'));
-  assert.ok(!hidden.includes('VH_M_heart_left_ventricle'));
 
   built.showAllHiddenStructures();
   assert.deepEqual(built.getAnatomyVisibility().hidden, []);
-  assert.equal(built.isStructureVisible('VH_M_descending_aorta'), true);
+  assert.equal(built.isStructureVisible('VH_M_brachiocephalic_vein_L'), true);
   built.dispose();
 });
 
@@ -757,10 +766,14 @@ test('heart: the mesh whose source record disagrees with itself says so', () => 
   assert.match(info.note, /neither is corrected/);
   assert.ok(info.noteJa?.trim());
 
-  // And it is the only one: every other structure's name and source label agree
-  // on what kind of thing it is, or carry no note at all.
-  const flagged = HEART_VESSELS.filter((entry) => entry.note);
-  assert.deepEqual(flagged.map((entry) => entry.id), ['VH_M_left_anterior_descending_artery']);
+  // And it is the only one whose name is left unsettled. Two more carry a
+  // note, for the opposite reason: the renal arteries' names **are** settled
+  // here — by where they go — and the note says the source labels them the
+  // other way round. Every other vessel carries no note at all.
+  const unsettled = HEART_VESSELS.filter((entry) => entry.identityConflict);
+  assert.deepEqual(unsettled.map((entry) => entry.id), ['VH_M_left_anterior_descending_artery']);
+  const flagged = HEART_VESSELS.filter((entry) => entry.note).map((entry) => entry.id).sort();
+  assert.deepEqual(flagged, ['VH_M_left_anterior_descending_artery', 'VH_M_left_renal_artery', 'VH_M_right_renal_artery']);
 });
 
 test('heart: natural colour reports the source\'s artery/vein assignment and says it is not oxygenation', () => {
@@ -803,13 +816,16 @@ test('heart: the fixed view hides and turns, and never cuts', () => {
   assert.match(recipe.note, /not a section/);
   assert.ok(recipe.noteJa?.trim());
 
-  const before = built.getAnatomyVisibility().hidden.length;
+  const before = built.getAnatomyVisibility().byHand.length;
   const result = built.applyDisplayRecipe('inside-the-chambers');
   assert.equal(result.ok, true);
   assert.equal(result.view, 'anterior');
 
   // The four chambers are hidden, and nothing else the recipe did not name.
-  const hidden = new Set(built.getAnatomyVisibility().hidden);
+  // The interior is the heart's own, so the view is framed on the heart alone:
+  // what that leaves out is reported apart, as the switch's and not a hide.
+  assert.equal(result.scope, 'heart');
+  const hidden = new Set(built.getAnatomyVisibility().byHand);
   for (const id of [
     'VH_M_heart_left_ventricle',
     'VH_M_heart_right_ventricle',
@@ -840,8 +856,10 @@ test('heart: the fixed view hides and turns, and never cuts', () => {
     'and in only one'
   );
 
-  // Nothing was cut, thinned or sectioned: the only change is hides and a view.
+  // Nothing was cut, thinned or sectioned: the only change is hides, a view
+  // and which of the two ways of looking it is framed on.
   built.restoreDisplay();
+  assert.equal(built.getDisplayScope().id, 'aorta', 'and the way back puts the aorta back');
   assert.equal(built.getAnatomyVisibility().hidden.length, before);
   for (const id of recipe.hide) assert.equal(built.isStructureVisible(id), true);
   built.dispose();
@@ -1051,13 +1069,26 @@ test('heart: an unsettled name is marked wherever the structure is named', () =>
   assert.ok(info.identityNote.length < 24 && info.identityNoteJa.length < 12, 'short enough to sit beside a name');
   assert.match(info.note, /neither is corrected/);
 
-  // It is the only one, and every other structure is explicitly settled rather
-  // than merely missing the field.
+  // It is the only one left unsettled. Two other states a name can be in are
+  // marked the same short way and are not this one: named by position against
+  // the source (the renal arteries) and schematic (not in the source at all).
+  // Every other structure is explicitly settled rather than merely missing the
+  // field.
+  const expected = {
+    VH_M_left_anterior_descending_artery: 'source-conflict',
+    VH_M_left_renal_artery: 'side-corrected',
+    VH_M_right_renal_artery: 'side-corrected',
+    ...Object.fromEntries(HEART_SCHEMATIC.map((entry) => [entry.id, 'schematic'])),
+  };
   for (const entry of HEART_STRUCTURES) {
     const other = heartStructureInfo(entry.id);
-    if (entry.id === 'VH_M_left_anterior_descending_artery') continue;
-    assert.equal(other.identity, null, entry.id);
-    assert.equal(other.identityNote, null, entry.id);
+    assert.equal(other.identity, expected[entry.id] ?? null, entry.id);
+    if (expected[entry.id]) {
+      assert.ok(other.identityNote && other.identityNoteJa, `${entry.id} carries the short mark in both languages`);
+      assert.ok(other.identityNote.length < 24 && other.identityNoteJa.length < 12, entry.id);
+    } else {
+      assert.equal(other.identityNote, null, entry.id);
+    }
   }
 });
 
@@ -1273,12 +1304,14 @@ test('heart: a hand-hidden structure is cleared by choosing a way of looking', (
   built.dispose();
 });
 
-test('heart: the camera frames the organ, not the vessels running out of shot', () => {
+test('heart: the heart on its own frames the organ, not the vessels running out of shot', () => {
   // `getSubjectBounds` decides what "show me the heart" means. It used to test
   // for `meshNames`, which marks only the five vessels the source splits in two
   // — so the other thirty-two counted as heart, and the frame was fitted to a
-  // 51 cm vascular subtree to show a 10 cm organ.
+  // 51 cm vascular subtree to show a 10 cm organ. With the aorta switched off
+  // that is still exactly the question.
   const built = pair();
+  built.setDisplayScope('heart');
   const span = (bounds) => {
     const ys = bounds.corners.map((corner) => corner.y);
     return Math.max(...ys) - Math.min(...ys);
@@ -1318,6 +1351,9 @@ test('heart: the shared orbit floor stood between the framing and the camera', (
   // built scene, so if the model is rebuilt at a different scale this test says
   // so rather than going quietly stale.
   const built = pair();
+  // The organ, which is what this is about: with the aorta on, the subject is
+  // the aorta too (the test above).
+  built.setDisplayScope('heart');
   const bounds = built.getSubjectBounds();
   const aspect = 1280 / 720;
   const fovDegrees = 42;
@@ -1418,4 +1454,391 @@ test('heart: the model can be asked what is at a point, without a pointer', () =
     'function',
     'the heart cannot be asked what is at a point, so the hero keyboard does nothing on its day'
   );
+});
+
+// ---------------------------------------------------------------------------
+// The two ways of looking: the heart with its aorta, and the heart on its own
+
+const beyondIds = (built) =>
+  [...built.meshesById.keys()].filter((id) => heartPartById(id)?.extent === 'beyond');
+
+test('heart: every structure is in exactly one extent, and the switch is one switch', () => {
+  for (const entry of HEART_STRUCTURES) {
+    assert.ok(['heart', 'root', 'beyond'].includes(entry.extent), `${entry.id}: ${entry.extent}`);
+  }
+  // The heart's own parts, its coronary arteries and its cardiac veins stay
+  // with the heart: a coronary artery switched off with the aorta would be a
+  // heart with its own blood supply missing.
+  for (const entry of HEART_STRUCTURES.filter((e) => ['chamber', 'valve', 'papillary', 'coronary', 'cardiacVein'].includes(e.group))) {
+    assert.equal(entry.extent, 'heart', entry.id);
+  }
+  // Every root is a great vessel the heart itself is joined to; the aorta
+  // beyond its root, every branch of it and the veins beyond the vena cava go.
+  assert.deepEqual(
+    HEART_STRUCTURES.filter((e) => e.extent === 'root').map((e) => e.id).sort(),
+    [
+      'VH_M_ascending_aorta', 'VH_M_inferior_vena_cava', 'VH_M_pulmonary_artery_L', 'VH_M_pulmonary_artery_R',
+      'VH_M_pulmonary_trunk', 'VH_M_pulmonary_vein_L_inf', 'VH_M_pulmonary_vein_L_sup', 'VH_M_pulmonary_vein_R_inf',
+      'VH_M_pulmonary_vein_R_sup', 'VH_M_superior_vena_cava',
+    ]
+  );
+  for (const id of ['VH_M_aortic_arch', 'VH_M_descending_aorta', 'VH_M_celiac_trunk', 'VH_M_brachiocephalic_vein_L']) {
+    assert.equal(heartPartById(id).extent, 'beyond', id);
+  }
+});
+
+test('heart: switching the aorta off draws the heart, its coronary vessels and the roots, and nothing beyond', () => {
+  const built = pair();
+  const scopes = [];
+  built.onDisplayScope((state) => scopes.push(state.id));
+  const result = built.setDisplayScope('heart');
+  assert.equal(result.changed, true);
+  assert.deepEqual(scopes, ['heart'], 'announced once');
+  assert.equal(built.getDisplayScope().on, false, 'the switch reads off');
+  for (const id of ['VH_M_heart_left_ventricle', 'VH_M_left_coronary_artery', 'VH_M_ascending_aorta', 'VH_M_inferior_vena_cava']) {
+    assert.equal(built.isStructureVisible(id), true, `${id} stays`);
+  }
+  assert.equal(built.isStructureVisible('VH_M_descending_aorta'), false, 'the aorta beyond its root goes');
+  const visibility = built.getAnatomyVisibility();
+  assert.ok(visibility.hidden.includes('VH_M_descending_aorta'), 'and the part tree is told it is hidden');
+  assert.ok(visibility.outOfScope.includes('VH_M_descending_aorta'), 'by the switch, not by hand');
+  assert.ok(!visibility.byHand.includes('VH_M_descending_aorta'));
+
+  // Not clickable, **from the moment of the switch** — before it has faded.
+  const aorta = built.meshesById.get('VH_M_descending_aorta');
+  assert.ok(aorta.some((mesh) => mesh.userData.currentOpacity > 0.5), 'it is still fading out');
+  const drawn = built._drawnMeshes();
+  for (const mesh of aorta) assert.ok(!drawn.includes(mesh), `${mesh.name} no longer takes a ray`);
+  built.dispose();
+});
+
+test('heart: what the switch takes away stops being selected, hovered or isolated; the heart keeps its selection', () => {
+  const built = pair();
+  const selections = [];
+  const isolations = [];
+  built.onAnatomySelection((value) => selections.push(value?.id ?? null));
+  built.onAnatomyIsolation((value) => isolations.push(value));
+
+  built.selectStructure('VH_M_descending_aorta');
+  built.isolateStructure('VH_M_descending_aorta');
+  const off = built.setDisplayScope('heart');
+  assert.equal(off.clearedSelection, true);
+  assert.equal(off.droppedIsolation, true);
+  assert.equal(built.getAnatomySelection(), null);
+  assert.equal(built.getAnatomyIsolation(), null);
+  assert.equal(selections.at(-1), null, 'the card is told');
+  assert.equal(isolations.at(-1), null, 'the tree is told');
+
+  built.setDisplayScope('aorta');
+  built.selectStructure('VH_M_left_coronary_artery');
+  built.setStructureHidden('VH_M_mitral_valve', true);
+  const again = built.setDisplayScope('heart');
+  assert.equal(again.clearedSelection, false);
+  assert.equal(built.getAnatomySelection()?.id, 'VH_M_left_coronary_artery', 'a coronary artery is the heart\'s own');
+  assert.ok(built.getAnatomyVisibility().byHand.includes('VH_M_mitral_valve'), 'and a hide the reader made is left alone');
+  assert.equal(built.getAnatomyColorMode(), 'natural', 'and so is the colour mode');
+  built.dispose();
+});
+
+test('heart: asking to show something the heart-only view leaves out switches the aorta back on', () => {
+  const built = pair();
+  const scopes = [];
+  built.onDisplayScope((state) => scopes.push(state.id));
+  built.setDisplayScope('heart');
+  assert.equal(built.setStructureHidden('VH_M_descending_aorta', false), true);
+  assert.equal(built.getDisplayScope().id, 'aorta');
+
+  built.setDisplayScope('heart');
+  built.setStructuresHidden(['VH_M_descending_aorta'], false);
+  assert.equal(built.getDisplayScope().id, 'aorta', 'a group shown from the tree does the same');
+
+  built.setDisplayScope('heart');
+  built.showAllHiddenStructures();
+  assert.equal(built.getDisplayScope().id, 'aorta', '"Unhide all" means all');
+  assert.deepEqual(built.getAnatomyVisibility().hidden, []);
+
+  built.setDisplayScope('heart');
+  const reveal = built.revealStructure('VH_M_descending_aorta');
+  assert.ok(reveal.changed.includes('scope'), '"Show it" reports what it changed');
+  assert.equal(built.getDisplayScope().id, 'aorta');
+  built.restoreDisplay();
+  assert.equal(built.getDisplayScope().id, 'heart', 'and the way back puts the switch back');
+  assert.deepEqual(scopes, ['heart', 'aorta', 'heart', 'aorta', 'heart', 'aorta', 'heart', 'aorta', 'heart']);
+  built.dispose();
+});
+
+test('heart: the camera subject is the heart with its aorta, or the heart alone, and switching does not drift', () => {
+  const built = pair();
+  const span = (bounds) => {
+    const ys = bounds.corners.map((corner) => corner.y);
+    return Math.max(...ys) - Math.min(...ys);
+  };
+  const withAorta = built.getSubjectBounds();
+  built.setDisplayScope('heart');
+  const heartOnly = built.getSubjectBounds();
+  assert.ok(span(withAorta) > span(heartOnly) * 1.2, `the aorta makes the subject taller (${span(withAorta).toFixed(2)} > ${span(heartOnly).toFixed(2)})`);
+
+  // Heart only is the heart's own box, which is what the orbit turns about.
+  const heartBox = new THREE.Box3();
+  for (const id of HEART_PARTS.map((part) => part.id)) for (const mesh of built.meshesById.get(id)) heartBox.expandByObject(mesh);
+  assert.ok(heartOnly.centre.distanceTo(heartBox.getCenter(new THREE.Vector3())) < 1e-9, 'the orbit centre is the heart\'s centre');
+
+  // On and off and on again: the same two subjects, to the last digit.
+  for (let i = 0; i < 3; i += 1) {
+    built.setDisplayScope('aorta');
+    assert.deepEqual(built.getSubjectBounds().centre.toArray(), withAorta.centre.toArray());
+    built.setDisplayScope('heart');
+    assert.deepEqual(built.getSubjectBounds().centre.toArray(), heartOnly.centre.toArray());
+  }
+  built.dispose();
+});
+
+test('heart: the aorta and its branches say what they are, as textbook anatomy, before what the model does with them', () => {
+  // Found on the real screen: the coeliac trunk's card said where the mesh came
+  // from and what is still being checked, and nothing about the vessel.
+  const aorta = HEART_STRUCTURES.filter(
+    (entry) => entry.id === 'VH_M_ascending_aorta' || (entry.vesselType === 'artery' && entry.extent === 'beyond')
+  );
+  assert.equal(aorta.length, 15, 'the ascending aorta, the arch, the descending aorta and twelve branches');
+  for (const entry of aorta) {
+    const note = heartAnatomyNote(entry.id);
+    assert.ok(note?.en && note?.ja, `${entry.id} has its anatomy in both languages`);
+    const info = heartStructureInfo(entry.id);
+    // The anatomy first, and the account of the model kept whole after it.
+    assert.ok(info.description.startsWith(note.en) && info.descriptionJa.startsWith(note.ja), `${entry.id}: anatomy first`);
+    assert.match(info.descriptionJa, /\n\n/, `${entry.id}: two paragraphs`);
+    assert.ok(info.descriptionJa.length > note.ja.length + 40, `${entry.id}: what the model does is still said`);
+    // A level is the textbook's typical one, and says so.
+    if (/\bvertebrae?\b/.test(note.en)) assert.match(note.en, /typically/, `${entry.id}: a level is said to be typical`);
+    if (/胸椎|腰椎/.test(note.ja)) assert.match(note.ja, /典型的には/, `${entry.id}: 高さは典型として書く`);
+  }
+  // The renal arteries are described by where they go, as they are named.
+  assert.match(heartAnatomyNote('VH_M_left_renal_artery').en, /right kidney/);
+  assert.match(heartAnatomyNote('VH_M_right_renal_artery').en, /left kidney/);
+  // Nothing about the heart itself is claimed here; a chamber keeps its own account.
+  assert.equal(heartAnatomyNote('VH_M_heart_left_ventricle'), null);
+
+  // What the source lacks along the aorta is listed, not implied away.
+  const missing = HEART_MISSING.map((entry) => entry.id);
+  assert.ok(missing.includes('aortic-small-branches') && missing.includes('ligamentum-arteriosum'));
+});
+
+test('heart: the parts tree reads in the order a reader meets the anatomy, not the order of the file', () => {
+  // Found on the real screen: the tree followed the file, so the coronary
+  // arteries began "left anterior descending, right marginal, posterior
+  // descending, diagonal, left coronary…" and the schematic right-sided arch
+  // branches came after the left ones.
+  assert.equal(new Set(HEART_READING_ORDER).size, HEART_STRUCTURES.length, 'every structure, once');
+  const names = (group) => HEART_READING_ORDER.filter((id) => heartPartById(id).group === group);
+  assert.deepEqual(names('chamber').slice(0, 4), [
+    'VH_M_right_cardiac_atrium', 'VH_M_heart_right_ventricle', 'VH_M_left_cardiac_atrium', 'VH_M_heart_left_ventricle',
+  ], 'the chambers in the order blood passes through them');
+  assert.deepEqual(names('valve'), ['VH_M_tricuspid_valve', 'VH_M_pulmonary_valve', 'VH_M_mitral_valve', 'VH_M_aortic_valve']);
+  assert.equal(names('coronary')[0], 'VH_M_left_coronary_artery', 'a coronary tree starts at its trunk');
+  assert.equal(names('coronary')[5], 'VH_M_right_coronary_artery');
+  assert.deepEqual(names('archBranch'), [
+    'VH_M_brachiocephalic_artery',
+    'schematic_right_common_carotid_artery',
+    'schematic_right_subclavian_artery',
+    'VH_M_left_common_carotid_artery',
+    'VH_M_left_subclavian_artery',
+  ], 'right to left along the arch, the trunk followed by what it divides into');
+  assert.deepEqual(names('abdominalBranch'), [
+    'VH_M_celiac_trunk',
+    'VH_M_superior_mesenteric_artery',
+    'VH_M_left_renal_artery',
+    'VH_M_right_renal_artery',
+    'VH_M_inferior_mesenteric_artery',
+    'schematic_right_common_iliac_artery',
+    'schematic_left_common_iliac_artery',
+  ], 'top to bottom');
+
+  // And the tree the panel draws is that order, whatever order the file had.
+  const built = pair();
+  const leaves = treeLeaves(built.getAnatomyTree()).map((leaf) => leaf.structureId);
+  assert.deepEqual(leaves, HEART_READING_ORDER.filter((id) => built.meshesById.has(id)));
+  built.dispose();
+});
+
+test('heart: the great vessels are framed where they meet the heart, not under the whole aorta', () => {
+  // Found on the real screen: with the aorta on, "The great vessels" framed
+  // everything drawn — the aorta down to its bifurcation — and the pulmonary
+  // trunk, the venae cavae and the pulmonary veins it is about were a few
+  // pixels across. It keeps the aorta on (the arch is among what it shows) and
+  // frames the heart and the arch.
+  const built = pair();
+  const span = (bounds) => {
+    const ys = bounds.corners.map((corner) => corner.y);
+    return [Math.min(...ys), Math.max(...ys)];
+  };
+  const whole = built.getSubjectBounds();
+  const result = built.applyDisplayRecipe('great-vessels');
+  assert.equal(result.scope, 'aorta', 'the arch stays drawn');
+  const framed = built.getSubjectBounds();
+  const [low, high] = span(framed);
+  const [wholeLow] = span(whole);
+  assert.ok(low > wholeLow + 0.1, `the descending aorta runs out of frame (${low.toFixed(2)} > ${wholeLow.toFixed(2)})`);
+  for (const id of ['VH_M_aortic_arch', 'VH_M_heart_left_ventricle', 'VH_M_right_cardiac_atrium']) {
+    const [partLow, partHigh] = span(built.getStructureBounds(id));
+    assert.ok(partLow >= low - 1e-6 && partHigh <= high + 1e-6, `${id} is inside the frame`);
+  }
+
+  // A way of looking the reader chooses is framed on all of itself…
+  built.setDisplayScope('heart');
+  built.setDisplayScope('aorta');
+  assert.deepEqual(built.getSubjectBounds().centre.toArray(), whole.centre.toArray(), 'the reader\'s switch ends the recipe\'s framing');
+  // …and so is "reset display", even when the range it resets to is the one on.
+  built.applyDisplayRecipe('great-vessels');
+  built.resetDisplayScope();
+  assert.deepEqual(built.getSubjectBounds().centre.toArray(), whole.centre.toArray(), '"reset display" ends it too');
+  // The way back puts back the framing it left, not only the hides.
+  built.applyDisplayRecipe('great-vessels');
+  built.restoreDisplay();
+  assert.deepEqual(built.getSubjectBounds().centre.toArray(), whole.centre.toArray(), '"back to how it was" frames what it was');
+  built.dispose();
+
+  // What a recipe frames on is something it shows, drawn in its own range.
+  for (const recipe of HEART_RECIPES) {
+    for (const id of recipe.frame ?? []) {
+      assert.ok(recipe.shows.includes(id), `${recipe.id} frames on ${id}, which it says it shows`);
+      assert.ok(recipe.scope === 'aorta' || heartPartById(id)?.extent !== 'beyond', `${recipe.id} frames on ${id}, which its range draws`);
+    }
+  }
+});
+
+test('heart: with only the heart shown the roots are trimmed back, and the trim eases rather than jumps', () => {
+  const built = pair();
+  const cava = built.meshesById.get('VH_M_inferior_vena_cava');
+  const lowest = cava.find((mesh) => mesh.name.endsWith('_b'));
+  // The vena cava also fades at its lower end with the aorta shown, and that
+  // reach is in the source's millimetres, which this fixture is not in. Taken
+  // off so the trim is what is measured.
+  for (const mesh of cava) mesh.userData.range.reach = null;
+  // Well outside the heart's box, as the lower vena cava is in the source —
+  // the fixture's box is moved there, since the fixture heart would hold it.
+  lowest.position.y -= 2;
+  lowest.updateMatrixWorld(true);
+  const far = new THREE.Box3().setFromObject(lowest).getCenter(new THREE.Vector3());
+  assert.equal(built._rangeAlpha(lowest, far), 1, 'drawn whole with the aorta');
+
+  built.setDisplayScope('heart');
+  assert.ok(built._rangeAlpha(lowest, far) > 0.5, 'not yet: the trim eases in rather than cutting');
+  assert.ok(built._rangeAlpha(lowest, far, { target: true }) < 0.5, 'but a bound or an anchor is already asked of where it is going');
+  for (let frame = 0; frame < 120; frame += 1) built.update(1 / 60);
+  assert.ok(built._rangeAlpha(lowest, far) < 0.02, 'trimmed once it has settled');
+
+  // A ray that meets only the trimmed part does not select it.
+  const ray = new THREE.Raycaster(far.clone().add(new THREE.Vector3(0, 0, 5)), new THREE.Vector3(0, 0, -1));
+  const hit = built._firstDrawnHit(ray);
+  assert.ok(!hit || hit.object !== lowest, 'the trimmed end of the vena cava takes no click');
+  built.dispose();
+});
+
+test('heart: the ways of looking carry their range, and "reset display" returns to the heart with its aorta', () => {
+  const built = pair();
+  const coronary = built.applyDisplayRecipe('coronary-vessels');
+  assert.equal(coronary.scope, 'heart', 'the heart\'s own vessels are framed on the heart');
+  assert.equal(built.getDisplayScope().id, 'heart');
+  built.applyDisplayRecipe('whole-heart');
+  assert.equal(built.getDisplayScope().id, 'aorta', 'the opening view is the heart with its aorta');
+  built.setDisplayScope('heart');
+  built.resetDisplayScope();
+  assert.equal(built.getDisplayScope().id, 'aorta');
+  assert.deepEqual(built.setDisplayScope('no-such-scope'), { ok: false, changed: false });
+  built.dispose();
+});
+
+/**
+ * A fixture that puts the brachiocephalic trunk and the end of the aorta where
+ * the source has them, in the source's own metres, so the schematic segments
+ * have something real to begin inside.
+ */
+function schematicFixture() {
+  const file = new THREE.Group();
+  const subtree = new THREE.Group();
+  subtree.name = 'VH_M_blood_vasculature_of_heart';
+  file.add(subtree);
+  const box = (name, [x0, y0, z0], [x1, y1, z1]) => {
+    const mesh = new THREE.Mesh(new THREE.BoxGeometry((x1 - x0) / 1000, (y1 - y0) / 1000, (z1 - z0) / 1000), new THREE.MeshBasicMaterial());
+    mesh.name = name;
+    mesh.position.set((x0 + x1) / 2000, (y0 + y1) / 2000, (z0 + z1) / 2000);
+    subtree.add(mesh);
+  };
+  // Extents measured from the source (docs/model-evidence/heart-anatomy.md).
+  box('VH_M_brachiocephalic_artery_a', [-13, 561, 17], [1, 579, 27]);
+  box('VH_M_brachiocephalic_artery_b', [-28, 577, 19], [-7, 607, 29]);
+  box('VH_M_descending_aorta_b', [2, 187, -30], [22, 403, 30]);
+  return file;
+}
+
+test('heart: a schematic segment is drawn only where the vessel it continues actually is', () => {
+  // The ordinary fixture puts the aorta somewhere the source does not, and so
+  // gets no schematic segment floating where the aorta would have been.
+  const elsewhere = pair();
+  assert.equal(elsewhere.getAnatomyStatus().schematicMeshes, 0);
+  elsewhere.dispose();
+
+  const built = new HeartAnatomyScene({ model: fixture(), vessels: schematicFixture(), vesselLoader: null });
+  built.build();
+  assert.equal(built.getAnatomyStatus().schematicMeshes, HEART_SCHEMATIC.length, 'all four, where their parents are');
+  for (const entry of HEART_SCHEMATIC) {
+    const info = heartStructureInfo(entry.id);
+    assert.equal(built.selectStructure(entry.id), true, `${entry.id} is selectable`);
+    assert.equal(built.getAnatomySelection().identity, 'schematic', 'and says it is schematic when selected');
+    assert.equal(info.side, 'Schematic');
+    assert.equal(info.ontologyId, null, 'no borrowed ontology id for a structure the source does not have');
+    assert.match(info.description, /Not in the source file/);
+    assert.match(info.descriptionJa, /出典ファイルには含まれていません/);
+    assert.ok(built.getStructureAnnotation(entry.id), 'labelled like any other part');
+  }
+  built.setDisplayScope('heart');
+  for (const entry of HEART_SCHEMATIC) assert.equal(built.isStructureVisible(entry.id), false, `${entry.id} goes with the aorta`);
+  built.dispose();
+});
+
+test('heart: the aorta\'s branches leave it in the order and on the sides the anatomy gives', () => {
+  const at = (id) => {
+    const entry = heartPartById(id);
+    return { from: entry.reach.from, toward: entry.reach.toward };
+  };
+  const [celiac, sma, rightRenal, leftRenal, ima] = [
+    'VH_M_celiac_trunk', 'VH_M_superior_mesenteric_artery', 'VH_M_left_renal_artery', 'VH_M_right_renal_artery', 'VH_M_inferior_mesenteric_artery',
+  ].map(at);
+  const bifurcation = Math.max(...HEART_SCHEMATIC.filter((e) => /iliac/.test(e.id)).map((e) => e.reach.from[1]));
+  // Top to bottom: coeliac trunk, superior mesenteric, the renal arteries, the
+  // inferior mesenteric, the bifurcation. The source's own levels, in mm.
+  assert.ok(celiac.from[1] > sma.from[1], 'coeliac above the superior mesenteric');
+  assert.ok(sma.from[1] > Math.max(rightRenal.from[1], leftRenal.from[1]), 'superior mesenteric above the renals');
+  assert.ok(Math.min(rightRenal.from[1], leftRenal.from[1]) > ima.from[1], 'renals above the inferior mesenteric');
+  assert.ok(ima.from[1] > bifurcation, 'inferior mesenteric above the bifurcation');
+  // The gut arteries run forward (+z anterior); the renal arteries run out to
+  // their own sides (+x is the patient's left, HEART_AXES) and backwards.
+  assert.ok(sma.toward[2] > sma.from[2], 'the superior mesenteric runs forward');
+  const [leftX] = HEART_AXES.left;
+  assert.ok((rightRenal.toward[0] - rightRenal.from[0]) * leftX < 0, 'the right renal artery runs to the right');
+  assert.ok((leftRenal.toward[0] - leftRenal.from[0]) * leftX > 0, 'the left renal artery runs to the left');
+  assert.ok(rightRenal.toward[2] < rightRenal.from[2] && leftRenal.toward[2] < leftRenal.from[2], 'both run backwards to the kidneys');
+  // Named by where they go, with the source's own label kept beside the name.
+  assert.equal(heartPartById('VH_M_left_renal_artery').name, 'Right renal artery');
+  assert.equal(heartPartById('VH_M_left_renal_artery').sourceLabel, 'left renal artery');
+  assert.equal(heartStructureInfo('VH_M_left_renal_artery').sourceOntologyId, 'UBERON:0001186');
+  assert.equal(heartPartById('VH_M_right_renal_artery').name, 'Left renal artery');
+  // The right renal artery is the longer, because it crosses behind the vena cava.
+  const length = ({ from, toward }) => Math.hypot(...from.map((v, i) => toward[i] - v));
+  assert.ok(length(rightRenal) > length(leftRenal));
+});
+
+test('heart: the schematic segments start inside the vessel they leave, and fade before they end', () => {
+  for (const entry of HEART_SCHEMATIC) {
+    const [start] = entry.path;
+    const end = entry.path.at(-1);
+    // The reach begins where the segment leaves its parent, a few millimetres
+    // along from where the tube itself starts, inside the parent.
+    const inside = Math.hypot(...start.map((v, i) => entry.reach.from[i] - v));
+    assert.ok(inside > 1 && inside < 20, `${entry.id}: starts ${inside.toFixed(1)} mm inside its parent`);
+    const length = Math.hypot(...entry.reach.from.map((v, i) => end[i] - v));
+    assert.ok(entry.reach.visibleMm <= length + 1, `${entry.id}: fully faded by its own end`);
+    assert.ok(entry.reach.fadeMm >= 8, `${entry.id}: fades rather than stops`);
+    assert.ok(entry.radiusMm.start >= entry.radiusMm.body && entry.radiusMm.body >= entry.radiusMm.end, `${entry.id}: tapers`);
+  }
 });

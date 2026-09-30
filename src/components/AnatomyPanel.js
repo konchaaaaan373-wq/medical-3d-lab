@@ -65,7 +65,7 @@ import { createAnatomyPartsFinder } from './AnatomyPartsFinder.js';
  */
 export function createAnatomyPanel({
   scene, tree, display, legend = null, detail, onLayout, onFocusStructure, onLayerChange, onViewChange,
-  onRetryModel = null,
+  onRetryModel = null, onSheetClosed = null,
 }) {
   /**
    * The Parts tab is the tree with a way into it.
@@ -304,6 +304,53 @@ export function createAnatomyPanel({
     el('span', { class: 'lang-ja', text: '非表示を解除' }),
   ]);
 
+  /**
+   * The switch between a scene's two ways of looking, when it has two — the
+   * heart with its aorta, or the heart on its own.
+   *
+   * **In the summary, beside the way into the list**, not in the Display tab:
+   * it is the one display choice that changes what the model *is* rather than
+   * how it is shown, and on a phone the tabs are behind "More" while this row
+   * is on screen the whole time. A switch rather than a button, because it has
+   * a state and the state is the question — is the aorta on or off.
+   *
+   * It asks the scene and does nothing else. The scene clears what the change
+   * leaves out (a selection, an isolation, a hover) and announces it; the app
+   * owns the camera and re-fits it to the new subject.
+   */
+  const scopeLabelEn = el('span', { class: 'lang-en' });
+  const scopeLabelJa = el('span', { class: 'lang-ja' });
+  const scopeSwitch = scene.getDisplayScope
+    ? el('button', {
+        class: 'anatomy-scope-switch',
+        type: 'button',
+        role: 'switch',
+        'aria-checked': 'true',
+        dataset: { action: 'scope' },
+        on: {
+          click: () => {
+            const state = scene.getDisplayScope();
+            scene.setDisplayScope?.(state.on ? 'heart' : 'aorta');
+          },
+        },
+      }, [
+        el('span', { class: 'anatomy-scope-track', 'aria-hidden': 'true' }, [
+          el('span', { class: 'anatomy-scope-thumb' }),
+        ]),
+        el('span', { class: 'anatomy-scope-label' }, [scopeLabelEn, scopeLabelJa]),
+      ])
+    : null;
+
+  function paintScope() {
+    if (!scopeSwitch) return;
+    const state = scene.getDisplayScope();
+    scopeSwitch.setAttribute('aria-checked', String(Boolean(state?.on)));
+    scopeSwitch.dataset.scope = state?.id ?? '';
+    scopeLabelEn.textContent = state?.label ?? '';
+    scopeLabelJa.textContent = state?.labelJa ?? '';
+    scopeSwitch.title = state ? `${state.hintJa} / ${state.hint}` : '';
+  }
+
   const partsButton = el('button', {
     class: 'anatomy-panel-open',
     type: 'button',
@@ -433,9 +480,10 @@ export function createAnatomyPanel({
     statusLine,
     retryButton,
     el('div', { class: 'anatomy-panel-actions' }, [
+      scopeSwitch,
       focusButton, revealButton, isolateButton, hideButton,
       showAllButton, restoreDisplayButton, showHiddenButton, partsButton,
-    ]),
+    ].filter(Boolean)),
   ]);
   paintStatus(scene.getAnatomyStatus?.() ?? { state: 'ready', selectableCount: 0 });
   const unsubscribeSummaryStatus = scene.onAnatomyStatus?.(paintStatus);
@@ -694,6 +742,10 @@ export function createAnatomyPanel({
     // not at the top of the document.
     (opener ?? partsButton).focus?.();
     opener = null;
+    // The summary is back on the page and takes its band again. Anything the
+    // reader did in the sheet that framed the model — "Reset display", a
+    // viewpoint — was fitted to the band the sheet left, which is not this one.
+    onSheetClosed?.();
   }
 
   /**
@@ -899,6 +951,10 @@ export function createAnatomyPanel({
   const unsubscribeHover = scene.onAnatomyHover?.(paint);
   const unsubscribeIsolation = scene.onAnatomyIsolation(paint);
   const unsubscribeVisibility = scene.onAnatomyVisibility?.(paint);
+  const unsubscribeScope = scene.onDisplayScope?.(() => {
+    paintScope();
+    paint();
+  });
   /**
    * A new atlas means a new inventory, and a search index built over the old one
    * — or over no atlas at all, if the reader typed while it was still loading —
@@ -912,6 +968,7 @@ export function createAnatomyPanel({
 
   setTab('parts');
   applyLayout();
+  paintScope();
   paint();
 
   return {
@@ -963,6 +1020,7 @@ export function createAnatomyPanel({
       unsubscribeHover?.();
       unsubscribeIsolation?.();
       unsubscribeVisibility?.();
+      unsubscribeScope?.();
       unsubscribeStatus?.();
       unsubscribeSummaryStatus?.();
       element.remove();

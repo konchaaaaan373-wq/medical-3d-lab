@@ -9,7 +9,8 @@
 | **Adoption decision** | [`docs/decisions/HEART-ASSET-ADOPTION.md`](../decisions/HEART-ASSET-ADOPTION.md) |
 | **Metadata adapter** | [`src/data/heartAnatomy.js`](../../src/data/heartAnatomy.js) |
 | **Selection behaviour** | [`src/scenes/cardiovascular/scenes/heartAnatomy/HeartAnatomyScene.js`](../../src/scenes/cardiovascular/scenes/heartAnatomy/HeartAnatomyScene.js) |
-| **Tests** | [`tests/heart-anatomy.test.js`](../../tests/heart-anatomy.test.js) |
+| **Display ranges** | [`src/scenes/cardiovascular/scenes/heartAnatomy/displayRange.js`](../../src/scenes/cardiovascular/scenes/heartAnatomy/displayRange.js) — where a vessel fades out, the same arithmetic for the shader and for every click, label and bound |
+| **Tests** | [`tests/heart-anatomy.test.js`](../../tests/heart-anatomy.test.js), [`tests/heart-display-range.test.js`](../../tests/heart-display-range.test.js), [`tests/anatomy-scope-switch.test.js`](../../tests/anatomy-scope-switch.test.js) |
 | **Evidence** | [`docs/model-evidence/heart-anatomy.md`](../model-evidence/heart-anatomy.md) |
 | **Asset inspection** | [`docs/asset-qa/heart-hubmap-vh-m-heart.md`](../asset-qa/heart-hubmap-vh-m-heart.md), [`docs/asset-qa/heart-hubmap-vh-m-blood-vasculature.md`](../asset-qa/heart-hubmap-vh-m-blood-vasculature.md) |
 | **Real renders** | [`docs/screenshots/heart/`](../screenshots/heart/) |
@@ -18,7 +19,9 @@
 
 **Where is a named part of the heart — a chamber, the septum, a valve, a
 papillary muscle, a great vessel, a coronary artery, a cardiac vein — relative
-to the rest of the heart, and what is it called in English and Japanese?**
+to the rest of the heart, and what is it called in English and Japanese?** And,
+since 2026-09-29, **where does the heart sit on the aorta it empties into, and
+where do the aorta's major branches leave it?**
 
 ## 2. What it is
 
@@ -57,12 +60,133 @@ stay pinned in [`src/catalog/devAssets.js`](../../src/catalog/devAssets.js):
 adopting a derivative does not delete the record of what was examined.
 
 
-**Forty-six structures from fifty-one meshes, out of two files of one reference
-release.** Fourteen are the heart itself: four chambers, the interventricular
-septum, four valves and five papillary-muscle bodies. Thirty-two are vessels:
-the great vessels, the coronary arteries, the cardiac veins and the branches of
-the aortic arch. Every one is a mesh the source named and gave an ontology id
-(UBERON or FMA).
+**Fifty-five structures: fifty-one from fifty-six meshes of two files of one
+reference release, and four drawn schematically.** Fourteen are the heart
+itself: four chambers, the interventricular septum, four valves and five
+papillary-muscle bodies. Thirty-seven are vessels: the great vessels, the
+coronary arteries, the cardiac veins, the branches of the aortic arch and —
+since 2026-09-29 — the five arteries that leave the abdominal aorta. Every one
+of those fifty-one is a mesh the source named and gave an ontology id (UBERON or
+FMA). **The other four are not in the source at all** and are marked
+"schematic" wherever they are named — see *The aorta and its branches* below.
+
+### Two ways of looking, one switch
+
+The scene opens on **the heart and its aorta**: the heart, the roots of its
+great vessels, and the whole aorta the source draws — ascending, the arch with
+its three branches, and the descending aorta down to where it divides, with the
+five abdominal branches and the first centimetres of both common iliac
+arteries. The camera frames all of that and turns about its middle.
+
+One switch in the panel's summary — **大動脈・主要分枝を表示 / Aorta and main
+branches**, on at opening, on screen on a phone without opening anything —
+shows **the heart on its own** instead:
+
+| Kept | Taken away |
+| --- | --- |
+| the fourteen heart parts; all eight coronary arteries and seven cardiac veins | the arch, the descending aorta, every branch of the aorta (source and schematic) |
+| the **roots** of the ascending aorta, pulmonary trunk and arteries, both venae cavae and the four pulmonary veins — drawn to just outside the heart's box and faded out there | the two brachiocephalic veins |
+
+The roots are what keeps the base of the heart from being left with holes where
+the vessels leave it, and what keeps the coronary arteries arising from an aorta
+rather than from nothing. They are **trimmed**, not hidden: the inferior vena
+cava, which the source draws down to the pelvis, is otherwise the tallest thing
+in a frame meant for the heart. The trim is one rule for all of them
+(`HEART_ONLY_TRIM`: 4 mm past the heart's box, fading over 10 mm), a
+composition choice and not anatomy.
+
+What the switch takes away stops being anything at once: a selection on it is
+cleared, an isolation of it ended, and it stops taking clicks and labels before
+it has finished fading. What it keeps keeps everything — a coronary artery
+selected before the switch is still selected after it, a chamber the reader hid
+stays hidden, and the colour mode and viewpoint are not touched. The camera
+refits to the new subject **from the direction the reader was already looking**,
+with the heart's own centre as the orbit centre, and switching back returns the
+frame it left; switching back and forth lands on the same two frames. "Reset
+display" returns the aorta with its frame. Showing a structure the heart-only
+view leaves out — from the part tree, by "Unhide all" or by "Show it" — switches
+the aorta back on rather than showing a vessel floating beside a heart. The
+fixed views carry their own range: *the heart and the aorta* is framed on the
+whole aorta; *the great vessels* keeps the aorta drawn but is framed on the heart
+and the arch, where those vessels meet it — framed on everything drawn they were
+a few pixels across under an aorta forty centimetres long; *the coronary
+vessels* and *inside the chambers* are shown on the heart alone. A reader's own
+switch, and "Reset display", end a view's framing along with its range.
+
+### The aorta and its branches
+
+**The arch** gives off, from the source, the brachiocephalic trunk, the left
+common carotid and the left subclavian. The trunk ends where it divides; the
+source has no right common carotid or right subclavian artery, and draws the
+trunk's end as a rounded tip. **The abdominal aorta** gives off, from the
+source, the coeliac trunk, the superior mesenteric artery, both renal arteries
+and the inferior mesenteric artery, in that order from above (measured; the
+evidence dossier has the levels). Those five were in the publisher's file all
+along, filed under the organs they supply, and the descending aorta in the
+same file has **an opening for each of them** — ring for ring for three of
+them. The derivative used to drop them with the rest of the abdomen, which left
+the aorta drawn as a tube with five holes and nothing leaving it. It keeps them
+now, with the publisher's own names, ids and grouping. **The aorta ends** at
+the level of its bifurcation with two openings and no iliac artery in the file
+(its pelvic vessels are veins only).
+
+**The source names its two renal arteries the wrong way round.** The mesh it
+calls the left renal artery leaves the right side of the aorta, passes behind
+the inferior vena cava and ends at the right kidney's hilum, beside the file's
+own right renal vein — in the file's own axes, the ones that put its left
+atrium, its left ophthalmic veins and its left renal vein on the left. It is
+named here by where it goes, marked "named by position" beside the name, and
+the source's own label and term are kept on its card. This is the one place the
+adapter departs from a source name, and it does so on the file's geometry, not
+on an anatomical opinion.
+
+**Four segments are schematic**: the start of the right common carotid and the
+right subclavian arteries from the end of the brachiocephalic trunk, and the
+start of both common iliac arteries from the two openings the aorta ends with.
+Each begins inside the vessel it continues, on that vessel's measured
+centreline, with its calibre taken from the opening or from the source's
+left-sided counterpart at the same height, and each is routed clear of the
+source's own vessels (the right subclavian behind the right brachiocephalic
+vein; the right common iliac in front of the inferior vena cava; measured
+clearance at least 0.49 mm, at the aorta's own opening). **Their length, angle
+and course follow textbook anatomy, not this specimen.** None carries an
+ontology id, because the term would be ours and would look like the source's.
+
+**Every branch fades out where the display range ends** rather than stopping.
+A rounded tip reads as a vessel that ends, and none of these do; a cut ring
+reads as a pipe. Each branch is drawn for its first few centimetres along its
+own direction (`reach` in the adapter) and dissolves over the last of them. The
+left common carotid, which the source draws a further five centimetres up the
+neck, is faded at the height the schematic right one ends, so the two sides are
+drawn to the same range; the brachiocephalic trunk's rounded tip is faded where
+the two schematic branches have already begun inside it; the inferior vena cava
+fades where the source's iliac-vein openings are. The fade is one function,
+written once for the shader and once for every click, label and bound
+(`displayRange.js`), and a test reads the uniforms the GPU is handed to hold the
+two to each other.
+
+**Each of the fifteen says what it is before it says what the model does with
+it.** Selecting the coeliac trunk used to give where its mesh came from and what
+is still being checked, and not one word about the vessel. The ascending aorta,
+the arch, the descending aorta and the twelve branches now open with a short
+paragraph of **textbook** anatomy — where the vessel leaves its parent, its
+typical vertebral level, how the two sides differ, what it supplies, and the
+commonest variants — and then the account of the model, unchanged. **Those
+paragraphs are statements of standard anatomy, not measurements of this
+specimen**: a level is written as "typically" wherever one is given, and the
+scope panel says so once for all of them. Where a sentence names something the
+source lacks (the ligamentum arteriosum, the vertebral artery, the intercostal
+and lumbar arteries) it says the source lacks it, and "What is still absent"
+lists the aorta's smaller branches and the ligamentum arteriosum by name, so an
+aorta drawn with its major branches is not read as an aorta with only those.
+The heart's own parts do not have such a paragraph yet (`docs/follow-ups.md`
+F-237).
+
+**The parts tree reads in anatomical order**, not in the order the files hold
+the meshes: the chambers and valves in the order blood passes through them, the
+coronary arteries from their trunks, and the aorta from the valve down, with
+each schematic segment straight after the vessel it continues. The tables'
+own order is unchanged, because the colours are spread along it.
 
 **A structure is not a mesh.** Five vessels arrive split in two — the descending
 aorta, the inferior vena cava, the brachiocephalic artery, the left common
@@ -110,12 +234,18 @@ mesh named "circumflex" in the left coronary system. Nothing on that list is
 invented to fill the gap.
 
 **The vessels are a second file, not a second opinion.** They come from
-`VH_M_Blood_Vasculature.glb` of the same release, and specifically from the
-subtree the source itself groups as `VH_M_blood_vasculature_of_heart` — 37
-meshes of that file's 104. That is the source's own answer to "which vessels
-belong to the heart", not a box drawn round the heart here. The other 67 meshes
-are the eye, the abdomen and the pelvis; the scene counts them and leaves them
-in the file.
+`VH_M_Blood_Vasculature.glb` of the same release: the subtree the source itself
+groups as `VH_M_blood_vasculature_of_heart` — 37 meshes of that file's 104 — and
+the five abdominal aortic branches by name. That is the source's own answer to
+"which vessels belong to the heart", plus the five its aorta has openings for,
+not a box drawn round the heart here. The other 62 meshes are the eye, the
+liver, spleen and gut vessels beyond those branches, the renal veins and the
+pelvis; the derivative does not carry them.
+
+**It is not an arterial tree.** Each aortic branch is drawn for its first few
+centimetres; what lies beyond — the hepatic and splenic arteries, the carotid
+bifurcation, the arm, the kidneys and gut they supply — is not part of this
+scene's range, and `HEART_MISSING` says so.
 
 **There is no interior view, and what a chamber mesh represents is still open.**
 Each chamber mesh is a surface the source recorded under that chamber's name;
@@ -219,12 +349,13 @@ What was measured in this repository, and is therefore a fact about the files:
   0.02 mm — two in the last printed digit.
 * **One display transform, applied once to the pair.** The offset and uniform
   scale live on the single model root, so they cannot separate the two files.
-  The scale is taken from the heart, because the vessel subtree is half a metre
-  tall against the heart's ten centimetres and fitting the pair would put the
-  heart in a fifth of the frame. The far-reaching vessels — the descending
-  aorta, the arch branches, the brachiocephalic veins — start hidden for the
-  same reason, through the same hidden set the reader's own "Hide" writes to, so
-  "Unhide all" brings them back and nothing is removed.
+  The scale is taken from the heart. What the camera frames is a separate
+  question since 2026-09-29, answered per way of looking: the heart with its
+  aorta, or the heart alone. The descending aorta and the arch branches used to
+  start hidden so the frame stayed a heart; they are part of the opening view
+  now, and only the two brachiocephalic veins start hidden, through the same
+  hidden set the reader's own "Hide" writes to, so "Unhide all" brings them
+  back.
 * **The source disagrees with itself about one mesh.**
   `VH_M_left_anterior_descending_artery` is labelled "anterior descending branch
   of left pulmonary artery" with FMA:8636 on the same node. Both are kept, the
@@ -277,12 +408,45 @@ What was measured in this repository, and is therefore a fact about the files:
   cannot be the other way round in a normal heart. Note this is *not* the brain
   atlas's convention, which is why each scene declares its own.
 
+* **The aortic branches were checked against the file, and against standard
+  anatomy, by this repository and nobody else.** The order they leave the aorta
+  (coeliac trunk, superior mesenteric, the renal arteries, inferior mesenteric,
+  bifurcation), the sides and directions they run (the gut arteries forward, the
+  renal arteries out and back, the right one behind the inferior vena cava and
+  longer), and that each one sits in an opening of the aorta, are measured from
+  the source and held by `tests/heart-anatomy.test.js`. That the specimen's
+  inferior mesenteric artery arises about 1.2 cm above the end of its aorta,
+  where 3–4 cm is usual, is the specimen's and is left as it is.
+* **The schematic segments are not measured anatomy.** Their start is measured
+  (the vessel they leave); their length, angle and course are drawn from
+  standard descriptions and are not claims about this specimen.
+
 What has not been established: no anatomist and no clinician has looked at this
-geometry or these labels; the boundaries the source drew are trusted as drawn;
-the Japanese names are deliberate but unreviewed.
+geometry or these labels — including the aortic branches, the renal naming and
+the schematic segments added on 2026-09-29; the boundaries the source drew are
+trusted as drawn; the Japanese names are deliberate but unreviewed.
 
 ## 6. Presentation choices
 
+* **The switch is in the summary, not in the Display tab** (2026-09-29). It is
+  the one display choice that changes what the model *is* rather than how it is
+  drawn, and on a phone the tabs are behind "More" while the summary row is on
+  screen the whole time. A switch rather than a button, because the state is
+  the question.
+* **A fade is how a vessel says "this continues"** (2026-09-29). The branches
+  dissolve at the end of their display range, and with only the heart shown
+  the roots of the great vessels do the same just past the heart. The fade is
+  blended, and every faded mesh is drawn after the parts without a range, so a
+  root fading out in front of an atrium blends over it rather than leaving a
+  hole in it; a hashed dissolve was tried first and read as noise.
+* **The heart and its aorta is framed small, and that is the point of the
+  switch.** The subject is a column about 48 cm tall with a 10 cm heart at its
+  top, so the heart is a fifth of the frame there. On a light background that
+  used to wash out: the backdrop itself was above the shared bloom threshold
+  and bloomed into a subject that small, so the opening view came out pink.
+  Each background now carries a threshold above its own brightest paint
+  (`src/app/inspection.js`), a change to every scene on a light background and
+  one that only removes a halo nobody asked for.
 * **The legend follows the mode** (2026-09-21). It returned the Parts hue
   bands whatever was on screen, which nobody saw while Parts was the only mode
   anybody started in. Opening in Natural made it a cyan "Chambers" swatch
@@ -296,8 +460,9 @@ the Japanese names are deliberate but unreviewed.
   sources' own materials and is not a claim about the colour of living tissue.
 * **Parts** colours give each group its own hue band — chambers teal, valves
   amber, papillary muscles violet, great vessels ochre, coronary arteries red,
-  cardiac veins indigo, arch branches green, brachiocephalic veins cyan —
-  spread evenly inside the band by position so that all forty-six are distinct. Reds are deliberately left out of
+  cardiac veins indigo, arch branches green, abdominal branches a deeper
+  green, brachiocephalic veins cyan —
+  spread evenly inside the band by position so that all fifty-five are distinct. Reds are deliberately left out of
   the chamber band: a red chamber beside a blue one is an oxygenation map, and
   this mode does not draw one.
 * **Natural** reproduces **the sources' own materials**, and that is all the

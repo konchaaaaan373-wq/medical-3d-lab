@@ -99,6 +99,29 @@ const CANDIDATES = [
     // abdomen and the pelvis — loaded and never shown, at 5.24 MB gzipped that
     // every reader who opens the heart pays for and never sees.
     keepSubtree: 'VH_M_blood_vasculature_of_heart',
+    /**
+     * The five arteries that leave the abdominal aorta, kept from outside that
+     * subtree since 2026-09-29.
+     *
+     * The descending aorta in the subtree has **an opening for each of them**:
+     * the SMA's, the IMA's and one renal artery's boundary loops are the same
+     * rings, vertex for vertex, as the openings in the aorta, and the coeliac
+     * trunk's and the other renal artery's sit on theirs. Trimming them left
+     * the aorta drawn with five holes in it and nothing leaving it — "a long
+     * tube with no branches" — while the publisher had drawn the branches all
+     * along, filed under the organs they supply (liver, kidney, large
+     * intestine). Kept by node name, **with their ancestors**, so every name,
+     * extra and group the publisher gave them is still where it was; nothing
+     * is renamed or re-filed. Their siblings — the hepatic, splenic, colic and
+     * renal branches further out, and every vein — are still removed.
+     */
+    keepAlso: Object.freeze([
+      'VH_M_celiac_trunk',
+      'VH_M_superior_mesenteric_artery',
+      'VH_M_left_renal_artery',
+      'VH_M_right_renal_artery',
+      'VH_M_inferior_mesenteric_artery',
+    ]),
   },
 ];
 
@@ -244,11 +267,39 @@ for (const candidate of CANDIDATES) {
 
     // The subtree to keep, and the meshes and accessors it reaches.
     const keptNodes = new Set();
-    (function walk(index) {
+    const walk = (index) => {
       if (keptNodes.has(index)) return;
       keptNodes.add(index);
       for (const child of nodes[index].children ?? []) walk(child);
-    })(rootIndex);
+    };
+    walk(rootIndex);
+
+    // Named nodes kept from outside it, each with its whole ancestry, so the
+    // publisher's grouping above them survives rather than being flattened. An
+    // ancestor that carries a transform would move its child once its other
+    // children are gone — it would not, since nothing is re-parented — but it
+    // is refused anyway: "every kept position is the publisher's" is the claim,
+    // and a transform we did not look at is how it would stop being true.
+    const parentOf = new Map();
+    nodes.forEach((node, index) => (node.children ?? []).forEach((child) => parentOf.set(child, index)));
+    const moved = (node) => node.matrix || node.translation || node.rotation || node.scale;
+    const alsoKept = [];
+    for (const name of candidate.keepAlso ?? []) {
+      const index = nodes.findIndex((node) => node.name === name);
+      if (index < 0) throw new Error(`${candidate.file}: no node named ${name}`);
+      walk(index);
+      alsoKept.push(name);
+      for (let up = parentOf.get(index); up != null; up = parentOf.get(up)) {
+        if (moved(nodes[up])) throw new Error(`${candidate.file}: ${nodes[up].name} carries a transform`);
+        keptNodes.add(up);
+      }
+    }
+    if (alsoKept.length) {
+      for (let up = parentOf.get(rootIndex); up != null; up = parentOf.get(up)) {
+        if (moved(nodes[up])) throw new Error(`${candidate.file}: ${nodes[up].name} carries a transform`);
+        keptNodes.add(up);
+      }
+    }
 
     removedNodes = nodes.length - keptNodes.size;
     if (removedNodes > 0) {
@@ -322,8 +373,14 @@ for (const candidate of CANDIDATES) {
       json.accessors = accessors;
       json.bufferViews = views;
       json.buffers = [{ byteLength: rebuilt.length }];
-      // The kept subtree becomes the scene's own root, keeping its transform.
-      for (const scene of json.scenes ?? []) scene.nodes = [nodeMap.get(rootIndex)];
+      // The kept subtree becomes the scene's own root, keeping its transform —
+      // unless nodes from outside it were kept too, in which case the file's
+      // own roots stay the roots and the hierarchy is the publisher's, pruned.
+      for (const scene of json.scenes ?? []) {
+        scene.nodes = candidate.keepAlso?.length
+          ? (scene.nodes ?? []).filter((index) => keptNodes.has(index)).map((index) => nodeMap.get(index))
+          : [nodeMap.get(rootIndex)];
+      }
       removedMeshes = meshCountBefore - keptMeshes.size;
       bin = rebuilt;
     }
@@ -532,6 +589,7 @@ for (const candidate of CANDIDATES) {
     // The branches the scene never draws, and what they cost. Zero for a file
     // that declares no subtree to keep.
     keptSubtree: candidate.keepSubtree,
+    keptAlso: candidate.keepAlso ?? [],
     removedUndrawnNodes: removedNodes,
     removedUndrawnMeshes: removedMeshes,
     meshesTouched: Object.fromEntries(touched),

@@ -856,6 +856,10 @@ export async function createApp({ stage, ui, onRetryModel = null }) {
     applyInspectionBackground(defaultBackground.id);
     setInspectionLabels(true);
     if (initialInspectionMode) applyInspectionMode(initialInspectionMode);
+    // "Reset display" is the display the scene opens with, and a scene that
+    // can be looked at two ways opens in one of them. Before the camera, so
+    // the view it resets to is fitted to that subject.
+    scene.resetDisplayScope?.();
     resetView();
   }
 
@@ -1155,6 +1159,43 @@ export async function createApp({ stage, ui, onRetryModel = null }) {
     return true;
   };
 
+  /**
+   * Re-fit the camera to a subject that has changed what it is.
+   *
+   * A scene that can be looked at two ways — the heart with its aorta, or the
+   * heart on its own — changes its subject when it switches, and the subject
+   * is what the whole framing is fitted to. So a switch re-fits: the new
+   * subject's centre becomes the orbit centre, the distance is the one that
+   * fits it in the band the panels leave, and the zoom goes back to 1, because
+   * a zoom chosen for a heart in a 48 cm column is not a zoom for the heart
+   * alone.
+   *
+   * **The direction is kept.** A reader who turned the model to look from the
+   * left and then switched the aorta off is still looking from the left. Taken
+   * from where the camera is heading if it is still moving — the last switch's
+   * tween — so pressing the switch repeatedly lands on the same two poses
+   * rather than drifting with wherever the tween happened to be.
+   *
+   * Once, at the moment of the switch. Nothing here runs while the reader is
+   * turning or zooming, and the pose is theirs again the moment they do.
+   */
+  function reframeForSubject() {
+    Object.assign(viewer.controls, orbitLimitsForSubject(scene.getSubjectBounds?.(), viewer.controls));
+    if (sequenceOwnsCamera()) return;
+    const from = view.active
+      ? shot
+      : { position: viewer.camera.position, target: viewer.controls.target };
+    userZoom = 1;
+    readerOwnsCamera = false;
+    setShot({ position: from.position.clone(), target: from.target.clone() });
+    view.active = true;
+    view.resumeAutoRotate = false;
+    viewer.controls.autoRotate = false;
+    syncZoomLimits();
+    anatomyPanel?.noteDisplayChanged?.();
+  }
+  scene.onDisplayScope?.(() => reframeForSubject());
+
   anatomyPanel = isAnatomyScene
     ? createAnatomyPanel({
         scene,
@@ -1180,6 +1221,18 @@ export async function createApp({ stage, ui, onRetryModel = null }) {
         // question on screen a 320 px phone leaves the rail 92 px, and a rail
         // that clips instead of scrolling puts the Parts button out of reach.
         onLayout: (layout) => railElement?.classList.toggle('is-anatomy-docked', layout === 'docked'),
+        // On a phone "Reset display" and the viewpoints are pressed inside the
+        // sheet, where the summary has moved into the dialog and the top band
+        // is not the one the reader will look through once it closes. Measured
+        // on the heart at 390x844: reset in the sheet, close it, and the tops
+        // of the arch branches were under the summary card. So closing the
+        // sheet re-fits the framing to the band that is actually there — only
+        // while the camera is still the framing's, never over the reader's own.
+        onSheetClosed: () => requestAnimationFrame(() => {
+          if (readerOwnsCamera || sequenceOwnsCamera()) return;
+          setShot(shotSource);
+          view.active = true;
+        }),
       })
     : null;
 

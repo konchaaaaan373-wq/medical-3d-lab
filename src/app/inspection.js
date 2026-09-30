@@ -20,6 +20,7 @@ export const BACKGROUND_PRESETS = Object.freeze([
     environmentIntensity: 0.45,
     exposure: 1.05,
     bloomStrength: 0.32,
+    bloomThreshold: 0.72,
   }),
   Object.freeze({
     id: 'studio',
@@ -33,6 +34,10 @@ export const BACKGROUND_PRESETS = Object.freeze([
     environmentIntensity: 0.62,
     exposure: 0.94,
     bloomStrength: 0.2,
+    // Above the backdrop's own brightest paint (about 0.96 linear, halo
+    // included): at the shared 0.72 the backdrop bloomed into the model, which
+    // washed a small subject out entirely. See `tests/inspection.test.js`.
+    bloomThreshold: 1.0,
   }),
   Object.freeze({
     id: 'paper',
@@ -46,6 +51,8 @@ export const BACKGROUND_PRESETS = Object.freeze([
     environmentIntensity: 0.7,
     exposure: 0.9,
     bloomStrength: 0.14,
+    // The same rule; this backdrop reaches about 1.03 with its halo.
+    bloomThreshold: 1.1,
   }),
 ]);
 
