@@ -15,6 +15,7 @@ import {
   INTERVENTION_PROFILES,
   applyIntervention,
 } from '../src/models/cardiacInterventions.js';
+import { INTERVENTION_OPTIONS, INTERVENTION_SCOPE } from '../src/data/cardiacOutputInterventions.js';
 import {
   LESSON_CLAIM_TOLERANCES,
   LESSON_CONDITIONS,
@@ -84,9 +85,31 @@ test('the vasoconstrictor action is refused, not clamped, where it would leave t
   assert.ok(applied.problems.some((problem) => /systemicResistance/.test(problem)));
 });
 
-test('the detailed experiment’s menu does not gain the vasopressor', () => {
-  // A decision about that screen, not made here (F-237).
-  assert.ok(!INTERVENTION_LIST.includes(INTERVENTION_IDS.VASOCONSTRICTION));
+test('the detailed experiment offers the vasoconstrictor action — as the action, on both presets, never refused', () => {
+  // The owner's decision of 2026-09-30 (F-237): the full model's menu gains it,
+  // under the lesson's name — the action, schematic, resistance only — and
+  // never as noradrenaline (F-182).
+  assert.ok(INTERVENTION_LIST.includes(INTERVENTION_IDS.VASOCONSTRICTION));
+  const option = INTERVENTION_OPTIONS.find((entry) => entry.value === INTERVENTION_IDS.VASOCONSTRICTION);
+  assert.match(option.labelJa, /血管収縮作用/);
+  assert.match(option.labelJa, /模式/);
+  assert.match(option.labelJa, /抵抗のみ/);
+  for (const words of [option.label, option.labelJa, option.short, option.shortJa]) {
+    assert.doesNotMatch(words, /noradrenaline|norepinephrine|ノルアドレナリン/i, `"${words}" names a drug`);
+  }
+  assert.match(INTERVENTION_SCOPE.map((entry) => entry.textJa).join('\n'), /ノルアドレナリンではなく/);
+
+  // The full model applies an intervention to a preset's starting condition,
+  // and on both it stays inside the verified range: offered, never refused.
+  for (const presetId of Object.values(PRESET_IDS)) {
+    const base = presetInput(presetId);
+    const applied = applyIntervention(base, INTERVENTION_IDS.VASOCONSTRICTION);
+    assert.ok(applied.input, `${presetId}: ${applied.problems.join('; ')}`);
+    const before = solveCardiacOutput(base).metrics;
+    const after = solveCardiacOutput(applied.input).metrics;
+    assert.ok(after.meanArterialPressureMmHg > before.meanArterialPressureMmHg, `${presetId}: the pressure rises`);
+    assert.equal(after.heartRatePerMin, before.heartRatePerMin, `${presetId}: the rate is held`);
+  }
 });
 
 // ---------------------------------------------------------------------------

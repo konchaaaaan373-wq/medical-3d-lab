@@ -19,13 +19,42 @@ rather than left to be inferred from the fact that the page opens.
 | **Decided by** | Repository owner's decision to publish this scene and to stop the beta being anatomy-only; carried out and recorded by Claude Code (AI engineering agent) |
 | **Role** | `engineering` — software behaviour and agreement with the model, not physiological or clinical judgement |
 | **Assets** | none. The geometry is **procedural**, so there is no external file, no licence obligation and no hash to pin |
-| **Scene revision** | model card revision **10**, source digest `2760e907f47f8ef6` (re-taken on 2026-09-29 for the introductory lesson — see below; earlier pins: 7 and 9 on 2026-09-22) |
+| **Scene revision** | model card revision **11**, source digest `774fbda2f939e076` (re-taken on 2026-09-30 when the vasoconstrictor action joined the full model's menu, and on 2026-09-29 for the introductory lesson — see below; earlier pins: 7 and 9 on 2026-09-22) |
 
 The decision is pinned to that scene revision in
 [`src/catalog/release.js`](../../src/catalog/release.js). Change what the model
 solves or what a control does and `npm run revisions:check` fails until the card
 is revised, which moves the revision and closes this record until it is taken
 again.
+
+## Re-taken on 2026-09-30 — the vasoconstrictor action in the full model's menu (revision 11)
+
+**What changed.** On the owner's decision of 2026-09-30 (F-237) the full model
+at `?view=detail` offers the lesson's intervention as a fourth choice in its
+menu: 「昇圧薬の血管収縮作用の模式例（抵抗のみ）」 — systemic resistance ×1.5,
+the other three inputs held, applied to the preset's starting condition like
+the other two. The intervention is revision 10's, unchanged; only the menu's
+list moved, which is a model source, so the digest moved. Nothing already
+solved moved.
+
+**Where the site opens is unchanged.** The site opens on an anatomy model
+(`DEFAULT_SCENE_ID` is `brain-anatomy`), and the header's heart goes to
+`heart-anatomy` first, because the navigation puts the anatomy layer ahead of
+the mechanism layer. `#/cardiac-output` is reached from 「病態モデル › 心拍出量」;
+revision 10 changed what that route shows first, not what the site shows first
+(the owner's reading, 2026-09-30).
+
+**What was checked**: on both presets' starting conditions the action stays
+inside the verified range, raises the pressure and holds the rate
+(`tests/cardiac-output-lesson.test.js`); no label on it names a drug; the scope
+panel says it is not noradrenaline or any vasopressor's whole action.
+`npm run verify:disease` presses it in the full model's menu and reads back
+that the resistance alone moved, and up, that the screen names it, and that
+「介入なし」 returns to the preset's start.
+
+**What was not checked**: the same as revision 10 — no clinician (F-240), no
+real device (F-238). The full model's own menu has not been seen by a
+first-time reader either.
 
 ## Re-taken on 2026-09-29 — the route opens an introductory lesson (revision 10)
 

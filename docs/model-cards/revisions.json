@@ -62,9 +62,9 @@
       "src/models/cardiacMechanics.js",
       "src/models/cardiacOutputLesson.js"
     ],
-    "cardRevision": 10,
-    "modelDigest": "2760e907f47f8ef6",
-    "cardUpdatedAt": "2026-09-29"
+    "cardRevision": 11,
+    "modelDigest": "774fbda2f939e076",
+    "cardUpdatedAt": "2026-09-30"
   },
   {
     "sceneId": "copd-hyperinflation",

@@ -58,17 +58,17 @@ intervention, a lesson or the video sequence.
 ### Interventions
 
 Three, each a change to the inputs above rather than a multiplier on anything
-below them. The full model's menu offers the first two, mutually exclusive;
-the third is used by the introductory lesson only (§9.6) and is not in that
-menu (F-237).
+below them. The full model's menu offers all three, mutually exclusive; the
+third is also the introductory lesson's one intervention (§9.6), and joined the
+full model's menu in revision 11 (F-237).
 
 | Intervention | Changes | Deliberately does not change |
 | --- | --- | --- |
 | More circulating filling | stressed volume, +120 mL | resistance, elastance, rate |
 | Dobutamine, a schematic example (rate held) | elastance ×1.5 **and** resistance ×0.85, together | **rate**, filling |
-| The vasoconstrictor action of a vasopressor, taken out on its own (lesson only) | resistance ×1.5 | elastance, rate, filling |
+| The vasoconstrictor action of a vasopressor, schematic (resistance only) | resistance ×1.5 | elastance, rate, filling |
 
-Both are computed from the preset's starting condition, so choosing the same
+All three are computed from the preset's starting condition, so choosing the same
 one twice produces the same condition twice, and clearing one returns there.
 **Moving one input after an intervention changes that input only**: the others
 keep the values the intervention gave them, and the screen says 「ドブタミン
@@ -291,6 +291,15 @@ conclusion stops at "the pressure alone cannot tell you whether the circulation
 is keeping up". An intervention that *is* noradrenaline still needs the
 venous side first (F-182).
 
+**In the full model's menu (revision 11) it keeps the same name and the same
+limits.** Its label says "schematic (resistance only)", and the scope panel
+says, beside the dobutamine entries, that it is not noradrenaline or any
+vasopressor's whole action. On both presets' starting conditions the model
+gives a rise in pressure and a fall in output (reference 89.2 → 118.6 mmHg and
+4.74 → 4.23 L/min; reduced contractility 70.6 → 87.6 mmHg and 3.75 → 3.13
+L/min). That both fall is a consequence of what is left out — the heart, the
+veins and the reflexes — and the screen does not state it as a rule.
+
 ## 13. Uncertainty
 
 - **Systolic duration is a fixed fraction of the cycle.** The activation
@@ -363,6 +372,25 @@ venous side first (F-182).
 ## 15. Review status
 
 **Catalog status:** `alpha`
+
+### Revision 11 — the vasoconstrictor action joins the full model's menu
+
+**A model revision** because a model source changed: `INTERVENTION_LIST` in
+`cardiacInterventions.js` gains `VASOCONSTRICTION`, on the owner's decision of
+2026-09-30 (F-237). The intervention itself is revision 10's, unchanged —
+resistance ×1.5, the other three inputs held — and nothing already solved moved.
+
+- **Offered on both presets and never refused**: the full model applies an
+  intervention to a preset's starting condition, and both start at a resistance
+  of 1.1, so ×1.5 lands at 1.65, inside the verified range (to 1.8).
+  `tests/cardiac-output-lesson.test.js` holds that, and that the pressure rises
+  and the rate is held on both.
+- **Named as the action, never the drug**: 「昇圧薬の血管収縮作用の模式例（抵抗のみ）」
+  / 「血管収縮（模式）」. No label names noradrenaline (the same test), and the
+  scope panel's fourth entry says what is not there (§12, F-182).
+- **Implemented / checked**: implemented; driven in headless Chromium by
+  `verify:disease` at the full model's windows; **not checked on a real device**
+  (F-238); **no medical review** (F-240).
 
 ### Revision 10 — the introductory lesson: one question, one intervention, a different circulation beside it
 

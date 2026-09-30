@@ -131,11 +131,13 @@ export const INTERVENTION_PROFILES = Object.freeze({
    *
    * `requiresPreset` is null: the direction is not a finding about one
    * population, as dobutamine's is. Applied to a condition whose resistance is
-   * already above 1.2 mmHg·s/mL it leaves the verified domain and is refused.
+   * already above 1.2 mmHg·s/mL it leaves the verified domain and is refused;
+   * the detailed experiment applies it to a preset's starting condition, and
+   * both presets start at 1.1, so there it is always offered.
    *
-   * **Not in `INTERVENTION_LIST`.** That list is the detailed experiment's
-   * menu, and adding a vasopressor to it is a decision about that screen
-   * which this change does not make (`docs/follow-ups.md` F-237).
+   * **In the detailed experiment's menu since 2026-09-30** (owner's decision,
+   * F-237), under the same name: the action, not the drug. Noradrenaline
+   * itself is still not offered (F-182).
    */
   [INTERVENTION_IDS.VASOCONSTRICTION]: Object.freeze({
     id: INTERVENTION_IDS.VASOCONSTRICTION,
@@ -145,14 +147,12 @@ export const INTERVENTION_PROFILES = Object.freeze({
   }),
 });
 
-/**
- * The detailed experiment's intervention menu, in the order it offers them.
- * `VASOCONSTRICTION` is deliberately absent — see its profile.
- */
+/** The detailed experiment's intervention menu, in the order it offers them. */
 export const INTERVENTION_LIST = Object.freeze([
   INTERVENTION_IDS.NONE,
   INTERVENTION_IDS.VOLUME_LOADING,
   INTERVENTION_IDS.DOBUTAMINE,
+  INTERVENTION_IDS.VASOCONSTRICTION,
 ]);
 
 /**

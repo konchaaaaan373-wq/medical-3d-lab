@@ -1,5 +1,5 @@
 /**
- * What the two interventions are called, and what is and is not claimed about
+ * What the interventions are called, and what is and is not claimed about
  * them.
  *
  * The transformation itself is in `src/models/cardiacInterventions.js` and has
@@ -52,6 +52,19 @@ export const INTERVENTION_OPTIONS = [
     effect: 'elastance up and resistance down together · rate held',
     effectJa: 'エラスタンス ↑ と血管抵抗 ↓ を同時に・心拍数は固定',
   },
+  {
+    // The action, never the drug: the same name the introductory lesson uses,
+    // and "resistance only" in the name itself, because the assumption most
+    // likely to be read as a fact about a vasopressor is that it does nothing
+    // else (F-182: noradrenaline also acts on the heart and the veins).
+    value: INTERVENTION_IDS.VASOCONSTRICTION,
+    label: 'The vasoconstrictor action of a vasopressor, schematic (resistance only)',
+    labelJa: '昇圧薬の血管収縮作用の模式例（抵抗のみ）',
+    short: 'Vasoconstriction (schematic)',
+    shortJa: '血管収縮（模式）',
+    effect: 'systemic resistance up alone · heart, filling and rate held',
+    effectJa: '体血管抵抗だけを上げる・心臓・充満量・心拍数はそのまま',
+  },
 ];
 
 /**
@@ -90,6 +103,13 @@ export const INTERVENTION_SCOPE = [
       '**The response sizes were chosen for this scene.** The directions come from the cited source; ×1.5 on elastance and ×0.85 on resistance do not — they are not derived from any dose-response relationship and no coefficient is fitted to the study. The figures the model then produces are model outputs, not predictions about a person given a drug.',
     textJa:
       '**反応の大きさは、このシーンのために選んだ値です。** 向きは出典に基づきますが、エラスタンス ×1.5・抵抗 ×0.85 は違います——用量反応から導いたものではなく、引用研究に係数を較正してもいません。そこからモデルが出す数値は**モデルの計算値**であって、実際に投与された人についての予測ではありません。',
+  },
+  {
+    // The action, not the drug — said beside the drug it is not (F-182).
+    text:
+      '**“The vasoconstrictor action” is not noradrenaline, and not any vasopressor’s whole action.** It raises the systemic resistance alone. A real vasopressor also acts on the heart and on the veins, and in a person the reflexes answer the rise in pressure — none of which is here. Whether output then falls, holds or rises is whatever this model gives for the condition it is applied to; it is not a rule about vasopressors. ×1.5 is chosen for the scene, not a dose.',
+    textJa:
+      '**「血管収縮作用」はノルアドレナリンではなく、どの昇圧薬の全作用でもありません。** 体血管抵抗だけを上げます。実際の昇圧薬は心臓や静脈にも作用し、人では血圧の上昇に反射も応えます——そのどれもここにはありません。そのとき拍出が下がるか、保たれるか、上がるかは、適用した条件でこのモデルが出す結果であって、昇圧薬についての決まりではありません。×1.5 はこのシーンのために選んだ値で、用量ではありません。',
   },
 ];
 

@@ -590,6 +590,48 @@ for (const slug of SLUGS) {
       if ((await origin()) !== 'dobutamine') problems.push('pads: the condition adjusted after dobutamine no longer says where it came from');
       await choose('reference');
       await page.waitForTimeout(800);
+
+      // The vasoconstrictor action (F-237, revision 11), pressed in the menu a
+      // reader uses: the resistance alone moves, and up; the screen names it as
+      // the action; clearing it returns to the preset's start. Waited on the
+      // session's own state, not on a time.
+      const intervention = (id) =>
+        page
+          .waitForFunction((want) => window.__app.scene.session.interventionId === want, id, { timeout: 20000 })
+          .then(() => true)
+          .catch(() => false);
+      const beforeAction = await inputs();
+      await choose('vasoconstriction');
+      if (!(await intervention('vasoconstriction'))) problems.push('the vasoconstrictor action: pressing it in the menu did not apply it');
+      const onAction = await inputs();
+      const movedByAction = movedKeys(beforeAction, onAction);
+      if (JSON.stringify(movedByAction) !== JSON.stringify(['systemicResistanceMmHgSPerMl'])) {
+        problems.push(`the vasoconstrictor action moved ${movedByAction.join(', ') || 'nothing'}, not the resistance alone`);
+      } else if (!(onAction.systemicResistanceMmHgSPerMl > beforeAction.systemicResistanceMmHgSPerMl)) {
+        problems.push('the vasoconstrictor action did not raise the resistance');
+      }
+      // What the screen commits to, for this intervention as for the others: its
+      // own button in the menu stands pressed, under its schematic name, and
+      // the "what changed" row names the one input it moved. (After the menu
+      // closes no intervention is named by name — dobutamine neither — so a
+      // check for the name in the page's text measured a promise the screen
+      // never made.)
+      const said = await page.evaluate(() => {
+        const button = document.querySelector('.model-controls-advanced button.model-choice-button[data-value="vasoconstriction"]');
+        return {
+          pressed: button?.getAttribute('aria-pressed') === 'true' || button?.classList.contains('is-selected') === true,
+          // textContent: inside the closed menu the button is not rendered, and
+          // `innerText` of what is not rendered is empty (L-150).
+          name: button?.textContent ?? '',
+          page: document.getElementById('ui').innerText,
+        };
+      });
+      if (!said.pressed) problems.push('the vasoconstrictor action: its button does not stand pressed');
+      if (!/血管収縮/.test(said.name) || !/模式/.test(said.name)) problems.push(`the vasoconstrictor action: its button reads “${said.name.replace(/\s+/g, ' ')}”, not the schematic action`);
+      if (!/血管抵抗\s*↑/.test(said.page)) problems.push('the vasoconstrictor action: nothing says the resistance went up');
+      await choose('none');
+      if (!(await intervention('none'))) problems.push('the vasoconstrictor action: 「介入なし」 did not clear it');
+      if (JSON.stringify(await inputs()) !== JSON.stringify(beforeAction)) problems.push('clearing the vasoconstrictor action did not return to the preset’s start');
     }
 
     // Covering and stability at every size. The heart may be drawn small; it

@@ -717,7 +717,13 @@ export const BETA_PUBLICATION_DECISIONS = Object.freeze([
     // lesson puts on screen was driven in a browser at three windows, and the
     // record says what was not checked (`docs/beta-publication/cardiac-output.md`).
     // It takes effect when the owner merges the change that carries it.
-    sceneRevision: Object.freeze({ cardRevision: 10, modelDigest: '2760e907f47f8ef6' }),
+    //
+    // **Revision 11 (2026-09-30)**: the same intervention joins the full
+    // model's menu (F-237, the owner's decision). Only the menu's list moved;
+    // the full model's drive presses it and reads back that the resistance
+    // alone moved. The site still opens on anatomy — this route is reached
+    // from the disease models.
+    sceneRevision: Object.freeze({ cardRevision: 11, modelDigest: '774fbda2f939e076' }),
     scope: Object.freeze({
       structures: Object.freeze([
         'the left ventricle, built from the solved end-diastolic and end-systolic volumes rather than posed',
@@ -735,7 +741,7 @@ export const BETA_PUBLICATION_DECISIONS = Object.freeze([
       interactions: Object.freeze([
         'the lesson\'s explanation played, paused, stepped back and forward and restarted; left for the buttons half way through the change; the vasoconstrictor action added and taken away; C shown and hidden; start over',
         'each of the four controls moved across its declared range and reset',
-        'both presets, and both interventions, including clearing one',
+        'both presets, and all three interventions (the vasoconstrictor action pressed in the menu and read back), including clearing one',
         'the lesson walked end to end, with its before/after table read on screen',
         'model reset returning the scene to the state it opened in',
       ]),
