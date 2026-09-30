@@ -101,3 +101,25 @@ test('model shell: inside 「このモデルについて」 the scope opens with
     restore();
   }
 });
+
+test('menu: the published models are listed disease models first, then the anatomy', async () => {
+  const { modelShelfList } = await import('../src/components/SiteMenu.js');
+  const restore = installFakeDocument();
+  try {
+    const list = modelShelfList(PUBLIC_MANIFEST.models, { systemOf: (id) => modelLocation(sceneById(id)).where });
+    const shelves = findByClass(list, 'site-menu-shelf');
+    assert.deepEqual(
+      shelves.map((shelf) => findByClass(findByClass(shelf, 'site-menu-shelf-title')[0], 'lang-ja')[0].textContent),
+      ['病態モデル', '解剖']
+    );
+    const hrefs = (shelf) => findByClass(shelf, 'site-menu-model').map((link) => link.getAttribute('href'));
+    const disease = PUBLIC_MANIFEST.models.filter((model) => model.layer !== 'anatomy').map((model) => model.route);
+    const anatomy = PUBLIC_MANIFEST.models.filter((model) => model.layer === 'anatomy').map((model) => model.route);
+    assert.deepEqual(hrefs(shelves[0]), disease);
+    assert.deepEqual(hrefs(shelves[1]), anatomy);
+    // Every published model once, no more.
+    assert.equal(hrefs(list).length, PUBLIC_MANIFEST.count);
+  } finally {
+    restore();
+  }
+});

@@ -5,10 +5,11 @@ import { betaUnlocked } from '../app/releaseGate.js';
 import { PURPOSE, purposeById } from '../app/purpose.js';
 import { patientExplanationScenes } from '../access/patientPurpose.js';
 import { registerHeaderDock } from '../app/headerDock.js';
-import { organLayerNavigation } from '../app/modelNavigation.js';
+import { SHOWCASE_SYSTEM_LABELS } from '../data/modelShowcase.js';
+import { sceneById } from '../catalog/index.js';
 import { el } from '../utils/dom.js';
 import { inLanguage } from '../utils/language.js';
-import { createSiteHeaderMenu, organLayerList } from './SiteMenu.js';
+import { createSiteHeaderMenu, modelShelfList } from './SiteMenu.js';
 import { brandIcon } from './brandIcon.js';
 import { createWordmark } from './Wordmark.js';
 
@@ -139,6 +140,9 @@ export function purposeDestinations(labOffered) {
   ]);
 }
 
+/** The system a disease model sits in, as the model cards name it (循環). */
+const systemLabelOf = (sceneId) => SHOWCASE_SYSTEM_LABELS[sceneById(sceneId)?.system] ?? null;
+
 const dual = (en, ja) => [
   el('span', { class: 'lang-en', text: en }),
   el('span', { class: 'lang-ja', text: ja }),
@@ -239,7 +243,7 @@ export function createShellHeader({
   // the one place in this header that does — no second door.
   const site = createSiteHeaderMenu({
     id: 'site-menu',
-    models: models.length ? [organLayerList(organLayerNavigation(models))] : null,
+    models: models.length ? [modelShelfList(models, { systemOf: systemLabelOf })] : null,
   });
   // The class the stylesheets and `check-departure` already address.
   site.utilities.classList.add('shell-actions');

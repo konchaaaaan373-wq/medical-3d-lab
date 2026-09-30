@@ -369,6 +369,62 @@ html[data-route='explorer'] body {
   .model-card.is-feature .model-card-text { padding-bottom: 8px; gap: 10px; }
 }
 
+/* ------------------------------------------ the anatomy page (#/anatomy) */
+
+/* The organ chooser was the landing hero and, in the beta, `#/organs` was
+   redirected to it — so this page, with the shared header on it, had never
+   been drawn. Its grid placed the header in a free cell. The header and the
+   footer take whole rows; the rest keeps its places one row down. */
+.public-models > .shell-header,
+.public-models > .site-footer {
+  width: 100%;
+}
+
+@media (max-width: 899px) {
+  .public-models-header { padding-top: 28px; }
+}
+
+@media (min-width: 900px) {
+  .public-models {
+    grid-template-rows: auto auto 1fr auto;
+  }
+
+  .public-models > .shell-header { grid-column: 1 / -1; grid-row: 1; }
+  .public-models-header { grid-row: 2; padding-top: 48px; }
+  .public-models-focus { grid-row: 2 / span 2; margin-top: 24px; }
+  .public-models-actions { grid-row: 3; }
+  .public-models > .site-footer { grid-column: 1 / -1; grid-row: 4; }
+}
+
+.bm-trail {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 14px;
+  letter-spacing: 0;
+  text-transform: none;
+  color: var(--reading-muted);
+}
+
+.bm-trail-parent {
+  color: var(--reading-ink);
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+.bm-trail-separator { color: var(--reading-faint); }
+
+html[data-route='explorer'] .public-models-actions .landing-model-action {
+  background: var(--reading-ink);
+  border-color: var(--reading-ink);
+  color: var(--reading-bg);
+}
+
+html[data-route='explorer'] .public-models-actions .landing-model-info-link,
+html[data-route='explorer'] .public-models-actions .landing-demo-info {
+  color: var(--reading-ink);
+}
+
 /* ------------------------------------------------- anatomy, as a shelf */
 
 .bm-anatomy-line {
@@ -677,6 +733,17 @@ html[data-route='explorer'] body {
 }
 
 .site-footer-external { margin-left: 4px; }
+
+/* --------------------------------------------------------- the menu */
+
+.site-menu-shelf + .site-menu-shelf { margin-top: 12px; }
+
+.site-menu-shelf-title {
+  margin: 0 0 2px;
+  padding: 0 10px;
+  font-size: 12px;
+  color: var(--menu-muted);
+}
 
 /* -------------------------------------------------- the model's header */
 

@@ -44,7 +44,8 @@
   --menu-hover: color-mix(in srgb, var(--shell-ink) 7%, transparent);
 }
 
-html[data-route='landing'] .shell-header.has-site-menu,
+/* The locked surface is the one dark reading ground left; the landing page
+   moved to paper with the rest (BYOKI MOTION, 2026-09-30). */
 html[data-route='locked'] .shell-header.has-site-menu {
   --menu-surface: #191816;
   --menu-on-accent: #191816;

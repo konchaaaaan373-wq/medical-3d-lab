@@ -107,3 +107,22 @@ test('the shell declares every colour the header reads, so no route falls back t
     assert.match(darkBlock.body, new RegExp(`${token}:`), `${token} is missing from the dark block`);
   }
 });
+
+test('the menu opens on the same ground as the header it hangs from', () => {
+  // BYOKI MOTION (2026-09-30) moved the landing page to paper and left a
+  // dark `--menu-surface` keyed on `data-route='landing'` in site-header.css:
+  // the menu opened as a near-black panel with the reading surface's dark ink
+  // on it — unreadable, and green everywhere, because the header's own
+  // contrast was fine and nothing measured the open menu. The routes that
+  // darken the menu must be exactly the routes that darken the header.
+  const siteHeader = read('src/styles/site-header.css');
+  const routesIn = (css, test) =>
+    new Set(
+      [...rulesOf(css)]
+        .filter((rule) => test(rule))
+        .flatMap((rule) => [...rule.selectors.matchAll(/data-route='([a-z-]+)'/g)].map((match) => match[1]))
+    );
+  const darkMenu = routesIn(siteHeader, (rule) => /\.shell-header/.test(rule.selectors) && /--menu-surface:/.test(rule.body));
+  const darkHeader = routesIn(shell, (rule) => /--shell-ink:/.test(rule.body) && /data-route=/.test(rule.selectors));
+  assert.deepEqual([...darkMenu].sort(), [...darkHeader].sort());
+});
