@@ -934,6 +934,26 @@ html[data-route='explorer'] .public-models-actions .landing-demo-info {
   border-top: 1px solid var(--border);
 }
 
+/* The fold's line, the same on every layout: the experiment layout styled it
+   and the others showed the browser's ▶ at body size (heart failure). */
+.title-about > .title-trust-summary {
+  list-style: none;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 28px;
+  font-size: 13px;
+  font-weight: 400;
+  color: var(--ink-dim);
+  white-space: nowrap;
+}
+
+.title-about > .title-trust-summary::-webkit-details-marker { display: none; }
+.title-about > .title-trust-summary::after { content: '＋'; font-size: 12px; opacity: 0.7; }
+.title-about[open] > .title-trust-summary::after { content: '−'; }
+.title-about > .title-trust-summary:hover { color: var(--ink); }
+
 /* The scope inside the sheet reads as part of it: no box of its own, no
    height of its own — the sheet scrolls, once. */
 .title-about .model-scope.is-embedded,
