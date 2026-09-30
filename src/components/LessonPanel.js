@@ -1,4 +1,5 @@
 import { el } from '../utils/dom.js';
+import { inLanguage, onLanguageChange } from '../utils/language.js';
 
 /**
  * The introductory lesson's page: everything around the model, and nothing
@@ -28,6 +29,23 @@ export function createLessonPanel({ titleCard, copy, detailHref, on }) {
     el('span', { class: 'lang-en', text: text?.en ?? '' }),
     el('span', { class: 'lang-ja', text: text?.ja ?? '' }),
   ];
+  // An attribute holds one language where the DOM text holds both, so every
+  // `aria-label` and `title` here is painted from its pair, and painted again
+  // when the interface language flips.
+  const attributes = new Map();
+  const paintAttributes = (node) => {
+    const { text, title } = attributes.get(node);
+    const said = inLanguage(text?.en ?? '', text?.ja ?? '');
+    node.setAttribute('aria-label', said);
+    if (title) node.title = said;
+  };
+  const labelled = (node, text, { title = false } = {}) => {
+    attributes.set(node, { text, title });
+    paintAttributes(node);
+    return node;
+  };
+  onLanguageChange(() => attributes.forEach((_, node) => paintAttributes(node)));
+
   const button = (key, className, text, handler, extra = {}) =>
     el('button', { type: 'button', class: `lesson-button ${className}`, dataset: { lesson: key }, on: { click: handler }, ...extra }, pair(text));
 
@@ -37,7 +55,7 @@ export function createLessonPanel({ titleCard, copy, detailHref, on }) {
   const top = el('div', { class: 'lesson-top' }, [titleCard, question, guide]);
 
   // --- bottom: results --------------------------------------------------------
-  const readout = el('div', { class: 'lesson-readout', role: 'group', 'aria-label': 'Results / 計算結果' });
+  const readout = labelled(el('div', { class: 'lesson-readout', role: 'group' }), copy.readout.group);
 
   // --- bottom: the two ways in -------------------------------------------------
   const entries = el('div', { class: 'lesson-entries' }, [
@@ -69,18 +87,23 @@ export function createLessonPanel({ titleCard, copy, detailHref, on }) {
   ]);
   heading.id = 'lesson-caption-heading';
   const playerButton = (key, glyph, label, handler) =>
-    el('button', { type: 'button', class: 'lesson-button is-icon', dataset: { lesson: key }, on: { click: handler }, 'aria-label': label.ja, title: label.ja }, [
-      el('span', { class: 'lesson-glyph', 'aria-hidden': 'true', text: glyph }),
-      el('span', { class: 'lesson-icon-label' }, pair(label)),
-    ]);
+    labelled(
+      el('button', { type: 'button', class: 'lesson-button is-icon', dataset: { lesson: key }, on: { click: handler } }, [
+        el('span', { class: 'lesson-glyph', 'aria-hidden': 'true', text: glyph }),
+        el('span', { class: 'lesson-icon-label' }, pair(label)),
+      ]),
+      label,
+      { title: true }
+    );
   const toggle = playerButton('toggle', '❚❚', copy.actions.player.pause, on.togglePlay);
-  const player = el('div', { class: 'lesson-player', role: 'group', 'aria-label': '説明の再生 / Explanation player' }, [
+  const player = labelled(el('div', { class: 'lesson-player', role: 'group' }), copy.actions.player.group);
+  player.append(
     playerButton('restart', '↺', copy.actions.player.restart, on.restart),
     playerButton('previous', '⏮', copy.actions.player.previous, on.previous),
     toggle,
     playerButton('next', '⏭', copy.actions.player.next, on.next),
-    button('try-from-player', 'is-secondary', copy.actions.tryIt, on.tryIt),
-  ]);
+    button('try-from-player', 'is-secondary', copy.actions.tryIt, on.tryIt)
+  );
   const explaining = el('div', { class: 'lesson-explaining' }, [caption, player]);
 
   const detail = el('a', { class: 'lesson-detail', href: detailHref, dataset: { lesson: 'detail' } }, pair(copy.actions.detail));
@@ -138,8 +161,7 @@ export function createLessonPanel({ titleCard, copy, detailHref, on }) {
       const label = state.player.playing ? copy.actions.player.pause : state.player.atEnd ? copy.actions.replay : copy.actions.player.resume;
       toggle.querySelector('.lesson-glyph').textContent = state.player.playing ? '❚❚' : '▶';
       toggle.querySelector('.lesson-icon-label').replaceChildren(...pair(label));
-      toggle.setAttribute('aria-label', label.ja);
-      toggle.title = label.ja;
+      labelled(toggle, label, { title: true });
     }
   }
 
@@ -216,7 +238,11 @@ export function createLessonPanel({ titleCard, copy, detailHref, on }) {
       }
     }
     currentTags = wanted;
-    const placed = [];
+    // In three passes, so the page is laid out once a frame rather than once
+    // a tag: show or hide every tag (writes), measure them all (one read),
+    // then place them (writes). Reading a size between two placements made
+    // the browser lay the page out again for each one, every frame.
+    const shown = [];
     for (const item of wanted) {
       let entry = tagNodes.get(item.key);
       if (!entry) {
@@ -228,13 +254,15 @@ export function createLessonPanel({ titleCard, copy, detailHref, on }) {
       const places = (item.places?.length ? item.places : [{ side: item.side ?? 'up', points: item.points }])
         .map((place) => ({ side: place.side, points: (place.points ?? []).map(project).filter(Boolean) }))
         .filter((place) => place.points.length);
-      if (!places.length) {
-        entry.node.hidden = true;
-        continue;
-      }
-      entry.node.hidden = false;
-      const width = entry.box.offsetWidth;
-      const height = entry.box.offsetHeight;
+      entry.node.hidden = !places.length;
+      if (places.length) shown.push({ item, entry, places });
+    }
+    for (const one of shown) {
+      one.width = one.entry.box.offsetWidth;
+      one.height = one.entry.box.offsetHeight;
+    }
+    const placed = [];
+    for (const { item, entry, places, width, height } of shown) {
       const gap = item.kind === 'chip' ? 6 : 16;
       const boxFor = (points, side, penalty, choice) => {
         const xs = points.map((p) => p.x);

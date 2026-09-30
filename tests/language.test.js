@@ -183,3 +183,15 @@ test('language: the scene chrome has no label that exists in only one language',
     );
   }
 });
+
+test('language: the lesson panel paints its labels in the language on screen, and repaints them', () => {
+  // Shipped with the player's buttons labelled and titled in Japanese whatever
+  // the interface said, and the two groups labelled in both languages at once
+  // ("Results / 計算結果") — which a screen reader reads out in full.
+  const source = read('src/components/LessonPanel.js');
+  assert.ok(!/'aria-label':\s*label\.ja/.test(source), 'a player button is labelled in Japanese regardless of the interface language');
+  assert.ok(!/title:\s*label\.ja/.test(source), 'a player button is titled in Japanese regardless of the interface language');
+  assert.ok(!/\.title = label\.ja|setAttribute\('aria-label', label\.ja\)/.test(source), 'the play/pause button relabels itself in Japanese only');
+  assert.ok(!/'aria-label':\s*'[^']*\/[^']*'/.test(source), 'a group is labelled in both languages at once');
+  assert.match(source, /onLanguageChange\(/);
+});

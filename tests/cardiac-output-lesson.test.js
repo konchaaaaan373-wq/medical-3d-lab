@@ -376,8 +376,20 @@ test('guide: one line for each state, and an interrupted explanation says what t
   assert.match(stoppedWalking.ja, /いま：B/);
 });
 
-test('tags: the change in one beat’s output is said as the solver has it', () => {
+test('tags: the change in one beat’s output is said as the solver has it, and as the caption says it', () => {
   const direction = directionOf(metrics('A').strokeVolumeMl, metrics('B').strokeVolumeMl, 1);
   const expected = { down: LESSON_TAGS.ejectedLess, up: LESSON_TAGS.ejectedMore, same: LESSON_TAGS.ejectedSame }[direction];
   assert.equal(tagWords('ejectedChange', solved), expected);
+  // One direction on one screen: the tag beside the arch and the caption under
+  // the model are read from the same comparison at the same precision.
+  const caption = { down: 'ejectedLess', up: 'ejectedMore', same: 'ejectedSame' }[outputDirection(solved)];
+  assert.equal(tagWords('ejectedChange', solved), LESSON_TAGS[caption]);
+  // And where a beat's volume and a minute's output would round differently —
+  // one mL less per beat, the same 3.5 L/min — the tag follows the caption.
+  const near = {
+    A: { metrics: { strokeVolumeMl: 50, cardiacOutputLMin: 3.5 } },
+    B: { metrics: { strokeVolumeMl: 49, cardiacOutputLMin: 3.45 } },
+  };
+  assert.equal(outputDirection(near), 'same');
+  assert.equal(tagWords('ejectedChange', near), LESSON_TAGS.ejectedSame);
 });

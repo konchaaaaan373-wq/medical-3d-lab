@@ -7,6 +7,7 @@ import {
   sceneBySlug,
 } from '../catalog/index.js';
 import { LEGAL_SLUGS } from '../data/legalRoutes.js';
+import { hashWithParam } from './hashQuery.js';
 
 /**
  * Everything the URL can point at.
@@ -125,15 +126,7 @@ export function viewOf(hash = '') {
  * @param {string|null} view
  */
 export function hashWithView(hash, view) {
-  const value = String(hash ?? '');
-  const at = value.indexOf('?');
-  const route = at < 0 ? value : value.slice(0, at);
-  const query = at < 0 ? '' : value.slice(at + 1);
-  const kept = query
-    .split('&')
-    .filter((part) => part && decodeURIComponent(part.split('=')[0].replace(/\+/g, ' ')) !== 'view');
-  if (view) kept.push(`view=${encodeURIComponent(view)}`);
-  return kept.length ? `${route}?${kept.join('&')}` : route;
+  return hashWithParam(hash, 'view', view || null);
 }
 
 /**

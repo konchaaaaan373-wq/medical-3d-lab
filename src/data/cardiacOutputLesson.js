@@ -62,6 +62,7 @@ export const LESSON_READOUT = {
   map: { label: { en: 'Mean blood pressure', ja: '平均血圧' }, abbr: 'MAP', unit: { en: 'mmHg', ja: 'mmHg' } },
   co: { label: { en: 'Cardiac output', ja: '心拍出量' }, abbr: 'CO', unit: { en: 'L/min', ja: 'L/分' } },
   changing: { en: 'changing…', ja: '変化中…' },
+  group: { en: 'Results', ja: '計算結果' },
 };
 
 export const LESSON_ACTIONS = {
@@ -75,6 +76,7 @@ export const LESSON_ACTIONS = {
   reset: { en: 'Start over', ja: '最初に戻す' },
   detail: { en: 'Full model — four conditions, all figures, sources →', ja: '詳しいモデルへ（4つの条件・数表・根拠と限界）→' },
   player: {
+    group: { en: 'Explanation player', ja: '説明の再生' },
     restart: { en: 'From the start', ja: '最初から' },
     previous: { en: 'Previous scene', ja: '前の場面' },
     pause: { en: 'Pause', ja: '一時停止' },

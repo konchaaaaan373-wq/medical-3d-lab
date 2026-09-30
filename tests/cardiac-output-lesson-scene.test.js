@@ -7,7 +7,9 @@ import {
   BLOOD_UNITS_PER_ML,
   LESSON_VIEW_DIRECTION,
   gaugeAngle,
+  pointOnArtery,
 } from '../src/scenes/cardiovascular/scenes/cardiacOutput/lessonCirculation.js';
+import { ANATOMY } from '../src/scenes/cardiovascular/scenes/heartFailure/anatomy.js';
 import { LESSON_TIMELINE } from '../src/scenes/cardiovascular/scenes/cardiacOutput/lessonStoryboard.js';
 
 /**
@@ -70,7 +72,7 @@ test('the route opens the lesson; the full model is one view away, unchanged', a
   assert.equal(module.default.meta.layout, 'lesson');
   assert.equal(module.default.meta.id, 'cardiac-output');
   const { CardiacOutputScene } = await import('../src/scenes/cardiovascular/scenes/cardiacOutput/CardiacOutputScene.js');
-  assert.equal(module.views.detail, CardiacOutputScene, 'the detailed model is the same class it always was');
+  assert.equal(await module.views.detail(), CardiacOutputScene, 'the detailed model is the same class it always was');
   assert.equal(CardiacOutputScene.meta.layout, 'experiment');
 });
 
@@ -164,6 +166,35 @@ test('the same view of both: equidistant from the camera, and seen from the same
       assert.ok(local.angleTo(LESSON_VIEW_DIRECTION) < 1e-3, `${arrangement}: ${unit.name} is seen along the lesson's view`);
     }
   }
+});
+
+test('a new arrangement is drawn facing the camera from its first frame', async () => {
+  // The shell refits — and so re-arranges — in the frame the pair appears. An
+  // arrangement that left the circulations turned away until the next update
+  // drew that one frame wrong, and a frame-stepped recording keeps it.
+  const { scene, camera, frame } = await buildScene();
+  scene.session.setShowOther(true);
+  frame();
+  scene.update(1 / 30);
+  for (const arrangement of ['column', 'row']) {
+    scene.setArrangement(arrangement);
+    for (const unit of [scene.primary, scene.other]) {
+      const centre = new THREE.Box3().setFromPoints(unit.worldCorners()).getCenter(new THREE.Vector3());
+      const local = camera.position.clone().sub(centre).normalize().applyQuaternion(unit.quaternion.clone().invert());
+      assert.ok(local.angleTo(LESSON_VIEW_DIRECTION) < 1e-3, `${arrangement}: ${unit.name} faces the camera before any update`);
+    }
+  }
+});
+
+test('the places named on the artery are where their names say (architecture rule 1)', () => {
+  // A fraction of the curve means nothing once the curve is reshaped; a name
+  // means what this test holds it to.
+  const valve = new THREE.Vector3(ANATOMY.aorticValve.x, ANATOMY.aorticValve.y, ANATOMY.aorticValve.z);
+  assert.ok(pointOnArtery('root').distanceTo(valve) < 0.6, 'the root is just past the aortic valve');
+  const over = pointOnArtery('overTheHeart');
+  assert.ok(Math.abs(over.x) < 1 && Math.abs(over.z) < 1, `"over the heart" is over its middle (${over.x.toFixed(2)}, ${over.z.toFixed(2)})`);
+  assert.ok(over.y > valve.y + 2.5, 'and well above the heart’s base, on the arch');
+  assert.ok(pointOnArtery('end').x > 4, 'the end is on the right, where the small vessels begin');
 });
 
 test('the hold is only a pause: the model is the same while the beat stands still', async () => {

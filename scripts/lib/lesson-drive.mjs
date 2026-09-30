@@ -36,6 +36,8 @@ import { spawn } from 'node:child_process';
 import { existsSync, readdirSync, rmSync } from 'node:fs';
 import { join } from 'node:path';
 
+import { waitForCameraToSettle } from './camera.mjs';
+
 export const LESSON_WINDOWS = Object.freeze([
   Object.freeze({ width: 1440, height: 900 }),
   Object.freeze({ width: 390, height: 844 }),
@@ -103,6 +105,29 @@ const arrive = (page, { primaryId, showOther }) =>
     )
     .then(() => true)
     .catch(() => false);
+
+/**
+ * Wait for what the lesson says to be true — never for a time. Resolves true
+ * or false; the checks that follow say what was wrong.
+ */
+const until = (page, predicate, arg) =>
+  page
+    .waitForFunction(predicate, arg, { timeout: 20000 })
+    .then(() => true)
+    .catch(() => false);
+
+/**
+ * The camera at rest before anything is measured: showing or hiding C refits
+ * and tweens it, and a band, a tag or a pixel read mid-tween is a reading of
+ * nothing (CLAUDE.md, the 124 px vs 0 px example). A camera that never
+ * settles is reported, not waited through.
+ */
+async function settled(page, where, problems) {
+  const ok = await waitForCameraToSettle(page)
+    .then(() => true)
+    .catch(() => false);
+  if (!ok) problems.push(`${where}: the camera never came to rest, so nothing here was measured at rest`);
+}
 
 const inside = (box, width, height) => box && box.top >= 0 && box.left >= 0 && box.bottom <= height + 1 && box.right <= width + 1;
 
@@ -206,8 +231,8 @@ export async function driveLesson(browser, { url, slug, outDir, record = false, 
     page.on('pageerror', (error) => errors.push(String(error?.message ?? error)));
     await page.goto(url, { waitUntil: 'networkidle' });
     await ready(page);
-    await page.waitForTimeout(1200);
     const where = (moment) => `${width}×${height} ${moment}`;
+    await settled(page, where('first screen'), problems);
 
     // --- the first screen -----------------------------------------------------
     let seen = await read(page);
@@ -227,22 +252,30 @@ export async function driveLesson(browser, { url, slug, outDir, record = false, 
 
     // --- the explanation, scene by scene ---------------------------------------
     await page.click('[data-lesson="play"]');
-    await page.waitForTimeout(400);
+    await until(page, () => window.__app.lesson.state().mode === 'explaining');
     seen = await read(page);
     if (seen.state.mode !== 'explaining' || !seen.state.playing) problems.push(where('play: the explanation did not start'));
     const timeline = await page.evaluate(() => window.__app.lesson.timeline);
     for (const [index, step] of timeline.entries()) {
-      await page.evaluate((at) => window.__app.lesson.seek(at), step.until - 1);
-      await page.waitForTimeout(1600);
+      // Held a second before the scene ends: its change has happened and its
+      // words have been up for most of their time.
       await page.evaluate((at) => {
         window.__app.lesson.seek(at);
         window.__app.lesson.pause();
       }, step.until - 1);
-      await page.waitForTimeout(700);
+      const pair = ['other', 'conclusion'].includes(step.id);
+      await until(
+        page,
+        ({ id, primaryId, showOther }) => {
+          const state = window.__app.lesson.state();
+          return state.step === id && state.primaryId === primaryId && state.showOther === showOther;
+        },
+        { id: step.id, primaryId: step.id === 'start' ? 'A' : 'B', showOther: pair }
+      );
+      await settled(page, where(`scene ${index + 1}`), problems);
       seen = await read(page);
       if (seen.state.step !== step.id) problems.push(where(`scene ${index + 1}: showed "${seen.state.step}", expected "${step.id}"`));
       if (!seen.caption) problems.push(where(`scene ${index + 1}: no words under the model`));
-      const pair = ['other', 'conclusion'].includes(step.id);
       if (seen.state.showOther !== pair) problems.push(where(`scene ${index + 1}: C ${pair ? 'missing' : 'shown too early'}`));
       if (pair && !seen.rows.includes('C')) problems.push(where(`scene ${index + 1}: C has no row in the results`));
       if (step.id === 'result' && !seen.rows.includes('before')) problems.push(where('scene 3: B is not read against "before (A)"'));
@@ -277,7 +310,8 @@ export async function driveLesson(browser, { url, slug, outDir, record = false, 
       window.__app.lesson.seek(at);
       window.__app.lesson.pause();
     }, constrict.at + 3.1);
-    await page.waitForTimeout(300);
+    // Half way through the walk: between A and B, which is the point of the check.
+    await until(page, () => window.__app.lesson.state().step === 'constrict' && window.__app.lesson.state().primaryId === null);
     await page.click('[data-lesson="try-from-player"]');
     await arrive(page, { primaryId: 'B' });
     seen = await read(page);
@@ -288,12 +322,12 @@ export async function driveLesson(browser, { url, slug, outDir, record = false, 
 
     // --- the reader's buttons ---------------------------------------------------
     await page.click('[data-lesson="reset"]');
-    await page.waitForTimeout(400);
+    await arrive(page, { primaryId: 'A', showOther: false });
     seen = await read(page);
     if (seen.state.primaryId !== 'A' || seen.state.showOther) problems.push(where('start over: not back at A alone'));
     await page.click('[data-lesson="constrict"]');
     await arrive(page, { primaryId: 'B' });
-    await page.waitForTimeout(400);
+    await settled(page, where('buttons, B'), problems);
     seen = await read(page);
     if (seen.state.primaryId !== 'B') problems.push(where('buttons: the vasoconstrictor action did not arrive at B'));
     if (!seen.rows.includes('before')) problems.push(where('buttons: B alone is not read against "before (A)"'));
@@ -302,7 +336,7 @@ export async function driveLesson(browser, { url, slug, outDir, record = false, 
     await page.screenshot({ path: join(outDir, `${tag}-3-B.png`) });
     await page.click('[data-lesson="other"]');
     await arrive(page, { primaryId: 'B', showOther: true });
-    await page.waitForTimeout(1500);
+    await settled(page, where('buttons, B and C'), problems);
     seen = await read(page);
     if (!seen.state.showOther || !seen.rows.includes('C')) problems.push(where('buttons: C did not appear'));
     if (seen.rows.includes('before')) problems.push(where('buttons: "before (A)" is shown beside C'));
@@ -318,7 +352,7 @@ export async function driveLesson(browser, { url, slug, outDir, record = false, 
     await page.click('[data-lesson="reset"]');
     await page.evaluate(() => document.querySelector('[data-lesson="play-from-manual"]').focus());
     await page.keyboard.press('Enter');
-    await page.waitForTimeout(300);
+    await until(page, () => window.__app.lesson.state().mode === 'explaining');
     state = (await read(page)).state;
     if (state.mode !== 'explaining') problems.push(where('keyboard: Enter on "play" did not start the explanation'));
 
@@ -425,7 +459,7 @@ export async function recordLesson(browser, { url, width, height, file, part }) 
   try {
     await page.goto(url, { waitUntil: 'networkidle' });
     await ready(page);
-    await page.waitForTimeout(800);
+    await waitForCameraToSettle(page).catch(() => {});
     // Take the clock: the viewer's own loop stops, and each frame is stepped by
     // exactly 1/30 s.
     await page.evaluate((fps) => {

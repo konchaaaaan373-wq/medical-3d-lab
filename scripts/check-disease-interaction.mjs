@@ -262,7 +262,15 @@ for (const slug of SLUGS) {
       continue;
     }
     await page.goto(`${base}?preview=1#/${slug}?view=detail`, { waitUntil: 'networkidle' });
-    await page.waitForSelector('canvas');
+    // A change of view leaves this document for a new one (`departure.js`),
+    // and the lesson had a canvas too: wait for the full model's own screen,
+    // not for "a canvas", which the outgoing page answers at once.
+    const arrived = await page
+      .waitForFunction(() => window.__app?.meta?.layout === 'experiment' && !document.getElementById('boot-veil'), null, { timeout: 60000 })
+      .then(() => true)
+      .catch(() => false);
+    if (!arrived) problems.push(`?view=detail did not open the full model (layout: ${await page.evaluate(() => window.__app?.meta?.layout ?? 'none')})`);
+    // The same settling pause every scene gets after its first load, above.
     await page.waitForTimeout(2600);
   }
 

@@ -172,9 +172,12 @@ export class CardiacOutputLessonScene {
     // the unit's box centre stands; `_faceCamera` turns the unit about it.
     this.primary.userData.slot = this.arrangement === 'row' ? offset.clone().negate() : offset.clone();
     this.other.userData.slot = this.arrangement === 'row' ? offset.clone() : offset.clone().negate();
+    // Set in its slot and turned to the camera at once, so no frame is ever
+    // drawn with a circulation in its new place but facing the old way.
     for (const unit of [this.primary, this.other]) {
       unit.quaternion.identity();
       unit.position.copy(unit.userData.slot).sub(UNIT_CENTRE);
+      this._faceCamera(unit);
     }
   }
 

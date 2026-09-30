@@ -43,6 +43,23 @@ AORTA_LANDMARKS.ascendingAortaMid.position
 AORTA_SEGMENTS.arch.endT            // 描画側が曲線を sample するときだけ
 ```
 
+### 例: 名前の無い 0.42 がまた書かれた（2026-09-29）
+
+心拍出量の入門教材は、1 本の動脈（`lessonCirculation.js` の `ARTERY`）に
+「送り出した血液」のタグの点を `ARTERY.getPointAt(0.42)` で、1 拍の血液の始点を
+`0.03` で、心腔の血液が流れ出る範囲を `[0.02, 0.28]` で書いていました。上の表と
+同じ `0.42` です。弓の頂点は 0.57 で、0.42 は「心臓の真ん中の上」——名前を付けようと
+して初めて、それが頂点ではないと分かりました。コードレビューで見つかり、
+テストはどれも赤くなっていません。
+
+**やったこと**: 曲線のそばに `ON_ARTERY`（`root` / `outflow` / `overTheHeart` /
+`end`）を置き、利用側は名前で引く。`tests/cardiac-output-lesson-scene.test.js` の
+「the places named on the artery are where their names say」が、`root` は大動脈弁の
+すぐ先、`overTheHeart` は心臓の中央の上、`end` は右の細い血管の入口にあることを
+測ります（値を 0.72 や 0.2 にすると赤）。1 モジュールに閉じた短い曲線なので
+`buildSegmentedPath()` までは使っていません。**名前が意味を持つのは、テストがその
+意味を測っているときだけ**です。
+
 ---
 
 ## Rule 2 — Local coordinates
@@ -143,6 +160,29 @@ zoom のアンカー 4 件で、**両方を同時に緑にしないと意味が�
 「誰が書いたら消す」を呼び出し側に数えさせない（L-133 と同じ形）。
 `scripts/check-disease-interaction.mjs` が、操作欄を通らずにモデルを動かして
 文が消えることを確かめます。
+
+### 例: 1 フレームの中で 2 人が向きを書き、後に書いた方が勝っていた（2026-09-29）
+
+入門教材の 2 つの循環は、`_faceCamera` が毎フレームカメラへ向け、`setArrangement`
+（並べ方の切替）が位置と向きを初期化します。シェルは同じフレームの中で
+`scene.update()`（向ける）→ `refit()`（→ `setArrangement`、向きを消す）の順に呼んで
+いたので、**C が現れたフレームだけ、2 つとも向きを失ったまま描かれて**いました。
+コマ送りの録画はそのフレームを残します。コードレビューで見つかりました。
+
+同じレビューで、**1 つの事実を 2 か所が別々に言っていた**ことも見つかっています。
+「1回に送り出す量↓」のタグは 1 回拍出量を 1 mL 単位で、その下の説明文は心拍出量を
+0.1 L/分単位で比べて向きを決めていました。今の値では両方「減った」ですが、
+1 mL 減って 3.5 L/分のまま、のような条件ではタグが「↓」、説明文が「ほとんど
+変わらない」になります。
+
+**やること**: 描画の最終値（ここでは向き）を書く場所は、1 フレームの中でも 1 か所に
+なるようにする——`setArrangement` は置いたその場で向け、シェルは refit を update の
+前に呼ぶ。画面上で同じ事実を言う文は、同じ比較を同じ精度で 1 回だけ行って派生させる
+（タグも説明文も `outputDirection`）。ガードは
+`tests/cardiac-output-lesson-scene.test.js` の「a new arrangement is drawn facing the
+camera from its first frame」と、`tests/cardiac-output-lesson.test.js` の
+「tags: … and as the caption says it」（1 mL 減・3.5 L/分の合成例）。どちらも
+修正を戻すと赤。
 
 ## Rule 4 — Physiology vs presentation
 

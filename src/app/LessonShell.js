@@ -290,8 +290,11 @@ export function mountLessonShell({ viewer, scene, SceneClass, meta, entry, ui })
       explained = null;
       if (mode === 'manual') lesson.manualFrame();
     }
-    scene.update(dt);
+    // Framed before the scene is updated: a refit sets the arrangement, and
+    // the update then turns each circulation to the camera — the other way
+    // round, the frame after a refit was drawn with both turned away.
     if (framedFor !== frameKey()) refit();
+    scene.update(dt);
     tween(dt);
     panel.render(stateForPanel());
     // Chips name circulations, and are needed when there are two to tell

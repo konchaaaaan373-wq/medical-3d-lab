@@ -76,8 +76,35 @@ const ARTERY = smoothCurve([
   [4.55, 3.3, -0.4],
 ]);
 
+/**
+ * Places on the artery, by name, as fractions of its length — kept here with
+ * the curve, so what uses them says what it means rather than a number that
+ * moves when the curve is reshaped (architecture rule 1).
+ */
+const ON_ARTERY = Object.freeze({
+  /** Just past the aortic valve: where a beat's blood starts along the artery. */
+  root: 0.03,
+  /** The artery leaving the heart, which the blood in the cavity streams into. */
+  outflow: Object.freeze([0.02, 0.28]),
+  /** The arch over the middle of the heart (its top is further on, at 0.57). */
+  overTheHeart: 0.42,
+  /** The end of the artery, where the small vessels begin. */
+  end: 1,
+});
+
+/**
+ * A named place on the artery, in the unit's frame — for a test to hold each
+ * name to what it says.
+ *
+ * @param {keyof typeof ON_ARTERY} name
+ */
+export function pointOnArtery(name) {
+  const at = ON_ARTERY[name];
+  return typeof at === 'number' ? ARTERY.getPointAt(at) : null;
+}
+
 /** Where the artery ends and the bed begins, and where the bed ends. */
-const BED_INLET = ARTERY.getPointAt(1);
+const BED_INLET = ARTERY.getPointAt(ON_ARTERY.end);
 const BED_OUTLET = new THREE.Vector3(4.75, -4.1, -0.45);
 const BED_VESSELS = 8;
 /** Resting radius of one small vessel, before the calibre scale. */
@@ -206,7 +233,7 @@ export function strokeOnArtery(phase, metrics, cycle, arteryLength) {
   const end = metrics.ejectionEndPhase;
   const since = (((phase - start) % 1) + 1) % 1;
   const ejection = (((end - start) % 1) + 1) % 1;
-  const origin = 0.03;
+  const origin = ON_ARTERY.root;
   const toLength = (volumeMl) => (BLOOD_UNITS_PER_ML * volumeMl) / arteryLength;
   if (since <= ejection) {
     const ejected = Math.max(0, metrics.edvMl - cavityVolumeAt(phase, { cycle }));
@@ -243,7 +270,7 @@ export class LessonCirculation extends THREE.Group {
     this.apparatus = new ValveApparatus({ variant: 'disease' });
     this._bloodBuffers = buildCavityBlood(compact ? 320 : 480, 90210, {
       exitCurve: ARTERY,
-      exitRange: [0.02, 0.28],
+      exitRange: ON_ARTERY.outflow,
       entryCurve: smoothCurve([
         [ANATOMY.mitralValve.x + 0.1, ANATOMY.mitralValve.y + 1.1, ANATOMY.mitralValve.z - 0.2],
         [ANATOMY.mitralValve.x, ANATOMY.mitralValve.y + 0.2, ANATOMY.mitralValve.z],
@@ -439,7 +466,7 @@ export class LessonCirculation extends THREE.Group {
       // on a phone, settle on the dial beside the rising artery. On the top of
       // A's sleeve rather than the arch's centre line, so a tag above it
       // clears the sleeve when the sleeve is drawn.
-      return this.localToWorld(ARTERY.getPointAt(0.42).clone().add(new THREE.Vector3(0, STROKE_BEFORE_RADIUS, 0)));
+      return this.localToWorld(ARTERY.getPointAt(ON_ARTERY.overTheHeart).add(new THREE.Vector3(0, STROKE_BEFORE_RADIUS, 0)));
     }
     const local = ANCHORS[part];
     return local ? this.localToWorld(local.clone()) : null;

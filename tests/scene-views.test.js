@@ -60,3 +60,12 @@ test('the loader opens the view a module offers, and its default screen for any 
   const brain = await loadScene('brain-anatomy');
   assert.equal(await loadScene('brain-anatomy', { view: 'detail' }), brain);
 });
+
+test('a malformed escape elsewhere in the address does not stop a view or a purpose being written', () => {
+  // `decodeURIComponent` on every key threw here, while the full model's
+  // breadcrumb was being built, and the model never opened.
+  assert.equal(viewOf('#/cardiac-output?view=detail&%E0=1'), 'detail');
+  assert.equal(hashWithView('#/cardiac-output?view=detail&%E0=1', null), '#/cardiac-output?%E0=1');
+  assert.equal(hashWithView('#/cardiac-output?%E0=1', 'detail'), '#/cardiac-output?%E0=1&view=detail');
+  assert.equal(hashWithPurpose('#/cardiac-output?%E0=1', 'patient'), '#/cardiac-output?%E0=1&purpose=patient');
+});

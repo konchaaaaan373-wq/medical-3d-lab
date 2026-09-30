@@ -28,6 +28,8 @@
  * Pure: no `window`, no DOM — `node --test` holds it.
  */
 
+import { hashWithParam } from './hashQuery.js';
+
 export const PURPOSE = Object.freeze({
   PATIENT: 'patient',
   EDUCATION: 'education',
@@ -97,15 +99,8 @@ export function requestedPurpose(hash = '') {
  * @param {'patient'|'education'} purpose
  */
 export function hashWithPurpose(hash, purpose) {
-  const [route, query] = split(hash);
-  // Every other part kept **as written**: re-serialising through
-  // `URLSearchParams` would turn `left%20atrium` into `left+atrium` and a bare
-  // flag into `flag=`, and write the changed link into history.
-  const kept = query
-    .split('&')
-    .filter((part) => part && decodeURIComponent(part.split('=')[0].replace(/\+/g, ' ')) !== PURPOSE_PARAM);
-  if (purpose !== DEFAULT_PURPOSE && purposeById(purpose)) kept.push(`${PURPOSE_PARAM}=${purpose}`);
-  return kept.length ? `${route}?${kept.join('&')}` : route;
+  // Every other part kept as written (`hashQuery.js`).
+  return hashWithParam(hash, PURPOSE_PARAM, purpose !== DEFAULT_PURPOSE && purposeById(purpose) ? purpose : null);
 }
 
 /**

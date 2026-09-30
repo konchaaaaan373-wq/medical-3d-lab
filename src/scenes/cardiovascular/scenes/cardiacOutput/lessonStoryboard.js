@@ -206,7 +206,12 @@ export function captionFor(stepId, solved) {
  */
 export function tagWords(words, solved) {
   if (words === 'ejectedChange') {
-    const direction = directionOf(solved.A.metrics.strokeVolumeMl, solved.B.metrics.strokeVolumeMl, 1);
+    // The same direction the caption and the guide say, at the same
+    // precision: read per beat and per minute at two resolutions, the tag
+    // could say "less" beside a caption saying "about the same". A and B share
+    // a heart rate (`lessonClaimProblems` holds it), so the two directions are
+    // one.
+    const direction = outputDirection(solved);
     return LESSON_TAGS[direction === 'down' ? 'ejectedLess' : direction === 'up' ? 'ejectedMore' : 'ejectedSame'];
   }
   return LESSON_TAGS[words];
