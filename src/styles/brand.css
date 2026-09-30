@@ -962,6 +962,9 @@ html[data-route='explorer'] .public-models-actions .landing-demo-info {
   color: var(--ink-dim);
 }
 
+/* The copy of 「解剖を確認」 inside the sheet is for phones (below). */
+.title-about-anatomy { display: none; }
+
 /* 「今、何が起きた？」 under the chain: the why, marked as the change it is. */
 .change-explanation {
   margin-top: 8px;
@@ -1083,15 +1086,23 @@ html[data-route='explorer'] .public-models-actions .landing-demo-info {
   .global-scene-nav.is-anatomy .global-nav-brand { padding: 0; justify-content: center; }
   .title-anatomy-link { min-height: 44px; }
 
-  /* One row under the title on a phone: 「心臓の解剖を確認」 at the left,
-     「このモデルについて」 at the right — not a row each over the model. */
-  #ui[data-layout='experiment'] .title-card.has-trail > .title-anatomy-check {
-    flex-basis: auto;
-    order: 1;
+  /* One row over the model on a phone, as before the rebrand: the camera
+     frames the model into the room under the title card, and two extra rows
+     here cost the ventricle a quarter of its height while the pad is in use
+     (verify:disease: 141 px against a 150 px floor at 430×932). So the
+     system (「/ 循環」) stays on wide windows and on the model's card, and
+     「解剖を確認」 moves into 「このモデルについて」's sheet. */
+  #ui[data-layout='experiment'] .title-card.has-trail > .title-anatomy-check,
+  #ui[data-layout='experiment'] .title-card .title-trail-separator,
+  #ui[data-layout='experiment'] .title-card .title-trail-system {
+    display: none;
   }
 
-  #ui[data-layout='experiment'] .title-card.has-trail > .title-trust-fold {
-    order: 2;
+  #ui[data-layout='experiment'] .title-about-anatomy {
+    display: block;
+    margin: 12px 0 0;
+    padding-top: 10px;
+    border-top: 1px solid var(--border);
   }
 
   #ui[data-layout='experiment'] .title-card.has-trail > .title-trust-fold[open],

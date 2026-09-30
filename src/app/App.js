@@ -1693,7 +1693,9 @@ export async function createApp({ stage, ui, onRetryModel = null }) {
     const host = trustFold.querySelector('.title-about-body') ?? trustFold;
     const badges = host.querySelector('.title-trust-badges');
     const close = host.querySelector('.title-about-close');
+    const anatomy = host.querySelector('.title-about-anatomy');
     scopePanel.embedIn(trustFold, host);
+    if (anatomy) host.append(anatomy);
     if (badges) host.append(badges);
     if (close) host.append(close);
   }

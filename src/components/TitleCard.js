@@ -63,7 +63,7 @@ function pairedSceneLinks(meta) {
  *
  * It was 「根拠と限界」; the contents are the same records.
  */
-function aboutFold(status, badges, { lead = true } = {}) {
+function aboutFold(status, badges, { lead = true, anatomy = null } = {}) {
   // The contents are one body that lies over the model rather than pushing it
   // down: the camera frames the model into the room the title card leaves, and
   // a reference the reader opened must not zoom the heart to make room for
@@ -85,6 +85,10 @@ function aboutFold(status, badges, { lead = true } = {}) {
           }),
         ])
       : null,
+    // On a phone the title line has room for one row over the model, so the
+    // way to the anatomy moves in here (brand.css); on a wide window this copy
+    // is hidden and the one under the title shows.
+    anatomy ? el('div', { class: 'title-about-anatomy' }, [anatomy]) : null,
     badges,
     close,
   ]);
@@ -262,7 +266,7 @@ export function createTitleCard(meta) {
     trail,
     el('h1', { class: 'title lang-en', text: meta.title }),
     el('p', { class: 'title-ja lang-ja', text: meta.titleJa }),
-    fold && trustBadges ? aboutFold(status, trustBadges) : trustBadges,
+    fold && trustBadges ? aboutFold(status, trustBadges, { anatomy: anatomyCheck(meta) }) : trustBadges,
     el('p', { class: 'subtitle' }, [
       el('span', { class: 'lang-ja', text: meta.subtitleJa }),
       el('span', { class: 'lang-en', text: meta.subtitle }),
