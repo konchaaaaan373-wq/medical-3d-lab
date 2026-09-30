@@ -29,7 +29,7 @@
   --menu-rule: var(--border);
   --menu-accent: var(--accent);
   --menu-accent-soft: var(--accent-soft);
-  --menu-surface: rgba(8, 13, 23, 0.98);
+  --menu-surface: rgba(21, 20, 18, 0.98);
   --menu-hover: rgba(255, 255, 255, 0.06);
 }
 
@@ -46,14 +46,14 @@
 
 html[data-route='landing'] .shell-header.has-site-menu,
 html[data-route='locked'] .shell-header.has-site-menu {
-  --menu-surface: #0b111c;
-  --menu-on-accent: #0b111c;
+  --menu-surface: #191816;
+  --menu-on-accent: #191816;
 }
 
 /* Text on an accent ground: dark on the scene's cyan and the landing's coral,
    white on the reading pages' teal. */
 .global-scene-nav.has-site-menu {
-  --menu-on-accent: #04121a;
+  --menu-on-accent: #161513;
 }
 
 .shell-header.has-site-menu {
@@ -117,7 +117,7 @@ html[data-route='locked'] .shell-header.has-site-menu {
 .global-scene-nav.has-site-menu {
   height: auto;
   min-height: 52px;
-  background: rgba(6, 11, 20, 0.86);
+  background: rgba(18, 17, 15, 0.86);
   backdrop-filter: none;
   -webkit-backdrop-filter: none;
   isolation: isolate;
@@ -442,7 +442,7 @@ html[data-route='locked'] .shell-header.has-site-menu {
   position: fixed;
   inset: 0;
   z-index: 1;
-  background: rgba(1, 4, 10, 0.4);
+  background: rgba(11, 10, 8, 0.4);
 }
 
 .site-menu-backdrop[hidden],
@@ -457,7 +457,7 @@ html[data-route='locked'] .shell-header.has-site-menu {
    every page's stacking as well; the fallback element is for browsers without
    popovers, where it sits in the header's stacking context. */
 .site-menu-panel::backdrop {
-  background: rgba(1, 4, 10, 0.4);
+  background: rgba(11, 10, 8, 0.4);
 }
 
 @supports selector(:popover-open) {
@@ -494,7 +494,7 @@ html[data-route='locked'] .shell-header.has-site-menu {
 }
 
 .shell-header .site-menu-panel {
-  box-shadow: 0 18px 50px rgba(8, 20, 30, 0.22);
+  box-shadow: 0 18px 50px rgba(25, 24, 22, 0.22);
 }
 
 /* Where the panel cannot use the top layer (`SiteMenu.js` opens it there when

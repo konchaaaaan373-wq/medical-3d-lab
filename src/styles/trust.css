@@ -60,17 +60,17 @@
   min-height: 44px;
   margin-top: 20px;
   padding: 0 16px;
-  border: 1px solid rgba(28, 37, 40, 0.22);
+  border: 1px solid rgba(41, 40, 38, 0.22);
   border-radius: 999px;
   background: #ffffff;
-  color: #1c2528;
+  color: #292826;
   font-size: 0.92rem;
   font-weight: 620;
   text-decoration: none;
 }
 
 .trust-back-to-model:hover {
-  border-color: rgba(28, 37, 40, 0.4);
+  border-color: rgba(41, 40, 38, 0.4);
 }
 
 .trust-back-to-model:focus-visible {
@@ -91,7 +91,7 @@
   max-width: 1040px;
   margin: 0 auto;
   padding: 26px 28px 0;
-  border-top: 1px solid rgba(28, 37, 40, 0.14);
+  border-top: 1px solid rgba(41, 40, 38, 0.14);
   font-size: 1.05rem;
   font-weight: 620;
   letter-spacing: -0.01em;
@@ -118,7 +118,7 @@
 .trust-list,
 .trust-drift-body,
 .trust-review-note { overflow-wrap: anywhere; }
-.trust-card { background: #fff; border: 1px solid rgba(28, 37, 40, 0.14); border-radius: 8px; box-shadow: 0 1px 0 rgba(28, 37, 40, 0.04); }
+.trust-card { background: #fff; border: 1px solid rgba(41, 40, 38, 0.14); border-radius: 8px; box-shadow: 0 1px 0 rgba(41, 40, 38, 0.04); }
 /* The summary is the whole card's disclosure control — closed, it is the
    only part of the card a reader (or `verify:ui`) can actually reach. See
    L-31 in docs/verification-lessons.md: a closed `<details>` body is
@@ -161,7 +161,7 @@
 .trust-source { color: #425b60; font: 0.76rem ui-monospace, SFMono-Regular, Menlo, monospace; text-decoration: none; overflow-wrap: anywhere; }
 .trust-source:hover { text-decoration: underline; }
 .trust-error { max-width: 984px; margin: 0 auto 18px; padding: 14px 18px; border: 1px solid #b49172; background: #fff8ef; }
-.trust-footer { max-width: 1040px; margin: 40px auto 0; padding: 24px 28px 0; border-top: 1px solid rgba(28, 37, 40, 0.14); color: #687377; font-size: 0.8rem; }
+.trust-footer { max-width: 1040px; margin: 40px auto 0; padding: 24px 28px 0; border-top: 1px solid rgba(41, 40, 38, 0.14); color: #687377; font-size: 0.8rem; }
 
 @media (max-width: 720px) {
   .trust-hero { padding: 46px 18px 34px; }

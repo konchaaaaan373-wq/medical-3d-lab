@@ -85,7 +85,7 @@ html[data-route='locked'] #ui {
   padding: 10px 16px;
   border-radius: 0 0 10px 0;
   background: var(--accent);
-  color: #04060c;
+  color: #0d0c0a;
   font-size: 13px;
   font-weight: 650;
   text-decoration: none;
@@ -114,7 +114,7 @@ html[data-route='trust'] :focus-visible,
 html[data-route='legal'] :focus-visible {
   /* These reading pages are light surfaces; the luminous scene accent
      disappears on them. */
-  outline-color: #1c2528;
+  outline-color: #292826;
 }
 
 html[data-route='explorer'] :focus-visible {

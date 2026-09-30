@@ -40,7 +40,7 @@ const INK_DIM = TOKENS['ink-dim'];
 const INK_FAINT = TOKENS['ink-faint'];
 const CARD_INK = ['#7fe8f5', '#ff8a9c'];
 const CARD_LABEL_INK = [INK_DIM, '#ffb0bc'];
-const SCRIM = 'rgba(4, 6, 12, 0.72)';
+const SCRIM = 'rgba(13, 12, 10, 0.72)';
 /**
  * The backing the card row gets where the frame is too short to clear the model.
  *
@@ -49,11 +49,11 @@ const SCRIM = 'rgba(4, 6, 12, 0.72)';
  * stops are in `reel.css`, and `tests/video-export.test.js` compares them.
  */
 export const CARD_BACKDROP_STOPS = Object.freeze([
-  [0, 'rgba(4, 6, 12, 0.78)'],
-  [0.55, 'rgba(4, 6, 12, 0.62)'],
-  [1, 'rgba(4, 6, 12, 0)'],
+  [0, 'rgba(13, 12, 10, 0.78)'],
+  [0.55, 'rgba(13, 12, 10, 0.62)'],
+  [1, 'rgba(13, 12, 10, 0)'],
 ]);
-const FOOTER_BACKGROUND = 'rgba(4, 6, 12, 0.86)';
+const FOOTER_BACKGROUND = 'rgba(13, 12, 10, 0.86)';
 
 const FONT_STACK = '"Helvetica Neue", Helvetica, Arial, "Hiragino Sans", "Noto Sans JP", sans-serif';
 

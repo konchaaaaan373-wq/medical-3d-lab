@@ -113,6 +113,6 @@ test('mixed light and dark model surfaces keep small text and focus visible', ()
   );
   assert.match(
     css,
-    /html\[data-route='explorer'\] \.public-models \.landing-demo :focus-visible\s*\{[^}]*outline-color:\s*#38e1ef;/s
+    /html\[data-route='explorer'\] \.public-models \.landing-demo :focus-visible\s*\{[^}]*outline-color:\s*var\(--accent\);/s
   );
 });

@@ -15,7 +15,7 @@
   transform: translate(-50%, -50%);
   width: min(100vw, calc(100vh * var(--reel-aspect, 0.5625)));
   height: min(100vh, calc(100vw / var(--reel-aspect, 0.5625)));
-  box-shadow: 0 0 0 1px rgba(140, 175, 225, 0.14);
+  box-shadow: 0 0 0 1px rgba(241, 238, 232, 0.105);
 }
 
 /* Clean mode: nothing but the video and the out-of-frame controls. */
@@ -43,7 +43,7 @@
   position: absolute;
   inset: 0;
   /* Centred on the headline, not on the hearts, so they stay visible behind it. */
-  background: radial-gradient(58% 30% at 50% 34%, rgba(4, 6, 12, 0.9) 0%, rgba(4, 6, 12, 0.55) 55%, rgba(4, 6, 12, 0) 100%);
+  background: radial-gradient(58% 30% at 50% 34%, rgba(13, 12, 10, 0.9) 0%, rgba(13, 12, 10, 0.55) 55%, rgba(13, 12, 10, 0) 100%);
   opacity: 0;
   transition: opacity 120ms linear;
 }
@@ -144,7 +144,7 @@
   gap: 0.1em;
   padding: 0.5em 1.4em;
   border-radius: 999px;
-  background: rgba(6, 11, 20, 0.72);
+  background: rgba(18, 17, 15, 0.72);
   border: 1px solid var(--border);
   backdrop-filter: blur(6px);
 }
@@ -171,7 +171,7 @@
   max-width: 52%;
   padding: 0.55em 1.1em;
   border-radius: 0.9em;
-  background: rgba(6, 11, 20, 0.74);
+  background: rgba(18, 17, 15, 0.74);
   border: 1px solid var(--border);
   text-align: right;
 }
@@ -284,7 +284,7 @@
   gap: 8px;
   padding: 5px;
   border-radius: 999px;
-  background: rgba(8, 13, 24, 0.9);
+  background: rgba(21, 20, 18, 0.9);
   border: 1px solid var(--border);
   pointer-events: auto;
 }
@@ -313,7 +313,7 @@
 }
 
 .reel-chip.is-current {
-  color: #04121a;
+  color: #161513;
   background: var(--accent);
 }
 
@@ -353,7 +353,7 @@
   /* Faded at the foot rather than cut off there. A flat band ends in a hard
      horizontal seam across the subject — measured, on both surfaces, and worse
      than the overlap it fixes. The hook's scrim fades for the same reason. */
-  background: linear-gradient(to bottom, rgba(4, 6, 12, 0.78) 0%, rgba(4, 6, 12, 0.62) 55%, rgba(4, 6, 12, 0) 100%);
+  background: linear-gradient(to bottom, rgba(13, 12, 10, 0.78) 0%, rgba(13, 12, 10, 0.62) 55%, rgba(13, 12, 10, 0) 100%);
   padding: 0.7em 0.9em 2.2em;
 }
 

@@ -35,6 +35,7 @@ import { markScrollable, publishHeight } from '../utils/scrollHint.js';
 import { createTitleCard } from '../components/TitleCard.js';
 import { createConsoleCard, createConsoleCards } from '../components/ConsoleCards.js';
 import { createEffectChain } from '../components/EffectChain.js';
+import { createChangeExplanation } from '../components/ChangeExplanation.js';
 import { createExplainerPlayer } from '../components/ExplainerPlayer.js';
 import { createSceneCallouts } from '../components/SceneCallouts.js';
 import { createSceneIntro } from '../components/SceneIntro.js';
@@ -1424,12 +1425,16 @@ export async function createApp({ stage, ui, onRetryModel = null }) {
         const effectChain = scene.getEffectSummary && meta.console.effect
           ? createEffectChain({ copy: meta.console.effect })
           : null;
+        // 「今、何が起きた？」 under the chain: input → state → figures → why.
+        const changeExplanation = scene.getChangeSignature && meta.console.explanations
+          ? createChangeExplanation({ rules: meta.console.explanations, copy: meta.console.explanationCopy })
+          : null;
         const compareButton = controlPanel.element.querySelector('[data-control="compare"]');
         const operateTools = compareButton ? el('div', { class: 'operate-tools' }, [compareButton]) : null;
         const conditions = createConsoleCard({
           id: 'conditions',
           copy: cardCopy.conditions,
-          body: [modelControls.element, effectChain?.element, operateTools],
+          body: [modelControls.element, effectChain?.element, operateTools, changeExplanation?.element],
         });
         const explainer = scene.getExplainer?.();
         /** The stage whose sentence is beside the model, and what it last said. */
@@ -1527,6 +1532,7 @@ export async function createApp({ stage, ui, onRetryModel = null }) {
           conditions,
           shown,
           effectChain,
+          changeExplanation,
           player,
         };
       })()
@@ -1562,6 +1568,7 @@ export async function createApp({ stage, ui, onRetryModel = null }) {
       setCardState(consoleCards.conditions, 'conditions', null, null);
     }
     consoleCards.effectChain?.update(scene.getEffectSummary());
+    consoleCards.changeExplanation?.update(scene.getChangeSignature());
     const playing = consoleCards.player?.state;
     if (playing === 'playing') setCardState(consoleCards.shown, 'view', viewCopy.playing, viewCopy.playingJa);
     else if (playing === 'paused') setCardState(consoleCards.shown, 'view', viewCopy.paused, viewCopy.pausedJa);
@@ -1676,7 +1683,17 @@ export async function createApp({ stage, ui, onRetryModel = null }) {
   // that line too — one place for "sources and limits", not two.
   const trustFold = titleCard.querySelector('.title-trust-fold');
   const scopeInFold = Boolean(trustFold && scopePanel);
-  if (scopeInFold) trustFold.append(scopePanel.element);
+  // Inside 「このモデルについて」 the scope is part of what the fold opens,
+  // not a second disclosure inside the first. The review row goes after it:
+  // what the model shows, then how far it has been checked.
+  if (scopeInFold) {
+    const host = trustFold.querySelector('.title-about-body') ?? trustFold;
+    const badges = host.querySelector('.title-trust-badges');
+    const close = host.querySelector('.title-about-close');
+    scopePanel.embedIn(trustFold, host);
+    if (badges) host.append(badges);
+    if (close) host.append(close);
+  }
   const topLeft = el('div', { class: 'top-left' }, [
     titleCard,
     pvPanel?.element,

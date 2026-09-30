@@ -74,7 +74,11 @@
 .wordmark.is-xl { font-size: clamp(32px, 8.4vw, 92px); }
 /* At display size a 600 reads as shouting; the contrast with MOTION is enough. */
 .wordmark.is-xl .wordmark-first,
-.wordmark.is-lg .wordmark-first { font-weight: 500; }
+.wordmark.is-lg .wordmark-first { font-weight: 600; }
+/* The second word a shade lighter as well as a weight lighter, so the name
+   keeps its two parts where a system font has no 500 to step through. */
+.wordmark.is-xl .wordmark-second,
+.wordmark.is-lg .wordmark-second { color: var(--reading-muted, currentColor); }
 
 /* ------------------------------------------------------------ the shell */
 
@@ -148,10 +152,12 @@ html[data-route='explorer'] body {
   position: relative;
   width: var(--bm-page);
   margin: 0 auto;
-  min-height: min(76vh, 720px);
+  /* Short enough that the first model shows above the fold on a laptop: the
+     distance from arriving to touching a model is the thing to keep small. */
+  min-height: min(58vh, 540px);
   display: grid;
   align-items: center;
-  padding: clamp(40px, 8vh, 96px) 0 clamp(40px, 7vh, 80px);
+  padding: clamp(32px, 6vh, 72px) 0 clamp(32px, 5vh, 56px);
   overflow: hidden;
 }
 
@@ -674,10 +680,20 @@ html[data-route='explorer'] body {
 
 /* -------------------------------------------------- the model's header */
 
-.global-nav-brand {
-  gap: 10px;
+/* The home link was a 44 px square holding the icon alone (2026-09-27); it
+   now holds the mark and the name. */
+.global-scene-nav .global-nav-brand {
+  width: auto;
+  min-width: 44px;
+  gap: 9px;
+  padding: 0 10px 0 6px;
   color: var(--ink);
   text-decoration: none;
+}
+
+.global-scene-nav .global-nav-brand-mark {
+  width: 28px;
+  height: 28px;
 }
 
 .global-nav-brand .wordmark.is-sm { font-size: 14px; }
@@ -703,6 +719,193 @@ html[data-route='explorer'] body {
 .global-nav-product-link:hover {
   color: var(--ink);
   background: var(--control-bg);
+}
+
+/* The phone header is a grid (site-header.css, ≤ 720 px); the product links
+   take the place the organ row takes on an anatomy model. */
+@media (max-width: 720px) {
+  .global-scene-nav.has-site-menu > .global-nav-product {
+    grid-area: where;
+    justify-self: end;
+    margin-right: 0;
+  }
+}
+
+/* ------------------------------------------- the model's title card */
+
+/* 「病態モデル / 循環」: the kind of model (a link back to the others) and the
+   system, above the name. */
+.title-trail-system {
+  color: var(--ink-dim);
+}
+
+/* 「心臓の解剖を確認 →」: quiet, one line, under the title. */
+.title-anatomy-check {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0 14px;
+  flex-basis: 100%;
+}
+
+.title-anatomy-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 32px;
+  font-size: 13px;
+  color: var(--ink-dim);
+  text-decoration: underline;
+  text-decoration-color: color-mix(in srgb, currentColor 35%, transparent);
+  text-underline-offset: 3px;
+}
+
+.title-anatomy-link:hover,
+.title-anatomy-link:focus-visible {
+  color: var(--ink);
+  text-decoration-color: currentColor;
+}
+
+.title-anatomy-arrow { text-decoration: none; }
+
+/* 「このモデルについて」: a reading panel over the model, out of the flow so
+   the camera does not reframe for it (the framing measures the title card). */
+.title-about {
+  position: relative;
+}
+
+.title-about-body {
+  position: fixed;
+  z-index: 40;
+  top: 140px;
+  left: 16px;
+  width: min(460px, calc(100vw - 32px));
+  max-height: min(64vh, 580px);
+  overflow: auto;
+  overscroll-behavior: contain;
+  padding: 14px 16px 12px;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: var(--panel-sheet);
+  box-shadow: 0 18px 40px rgba(0, 0, 0, 0.45);
+  white-space: normal;
+}
+
+.title-about-close {
+  display: inline-flex;
+  align-items: center;
+  min-height: 40px;
+  margin-top: 10px;
+  padding: 0 14px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--control-bg);
+  color: var(--ink);
+  font: inherit;
+  font-size: 13px;
+  cursor: pointer;
+}
+
+.title-about-close:hover { background: var(--control-hover); }
+
+.title-about .title-trust-badges {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px 10px;
+  margin-top: 12px;
+  padding-top: 10px;
+  border-top: 1px solid var(--border);
+}
+
+/* The scope inside the sheet reads as part of it: no box of its own, no
+   height of its own — the sheet scrolls, once. */
+.title-about .model-scope.is-embedded,
+.title-about .model-scope.is-embedded .scope-body {
+  width: auto;
+  max-width: none;
+  max-height: none;
+  overflow: visible;
+}
+
+#ui .title-about .scope-question,
+#ui .title-about .scope-item {
+  font-size: 13px;
+  line-height: 1.65;
+}
+
+#ui .title-about .scope-section-title {
+  font-size: 12px;
+  color: var(--ink-dim);
+}
+
+/* 「このモデルについて」: what kind of model, before what it shows. */
+.title-about-lead {
+  margin: 8px 0 6px;
+  max-width: 52ch;
+  font-size: 13px;
+  line-height: 1.65;
+  color: var(--ink);
+}
+
+.title-about .model-scope.is-embedded {
+  margin-top: 4px;
+}
+
+.title-review-date {
+  font-size: 12px;
+  color: var(--ink-dim);
+}
+
+/* 「今、何が起きた？」 under the chain: the why, marked as the change it is. */
+.change-explanation {
+  margin-top: 8px;
+  padding: 8px 12px 10px;
+  border-left: 2px solid var(--accent);
+  background: rgba(241, 238, 232, 0.035);
+  border-radius: 0 8px 8px 0;
+}
+
+.change-explanation[hidden] { display: none; }
+
+/* On a phone the operate card is a two-column grid (the chain beside
+   "before, over now"); the why takes the whole width under both. */
+#ui[data-layout='experiment'] .console-card[data-card='conditions'] > .console-card-body > .change-explanation {
+  grid-column: 1 / -1;
+}
+
+.change-explanation-heading {
+  margin: 0 0 4px;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--ink-dim);
+}
+
+.change-explanation-text {
+  margin: 0;
+  font-size: 14px;
+  line-height: 1.7;
+  color: var(--ink);
+}
+
+/* ------------------------------------------------ orange means change */
+
+/* The stage's accent is the product's orange, and orange is kept for what is
+   operated, selected or changing. A model's figures are its state, not a
+   change, so they are the stage's ink; the difference from the start — the
+   change the reader made — is what turns orange. Headings are not controls. */
+#ui .metric.is-key .metric-value {
+  color: var(--ink);
+}
+
+#ui[data-layout='experiment'] .metrics .metric:not([data-quiet='true']) .metric-delta {
+  color: var(--accent);
+}
+
+.scene-intro-heading,
+.learn-kicker,
+.story-part,
+#ui .eyebrow {
+  color: var(--ink-dim);
 }
 
 /* ---------------------------------------------------------------- phone */
@@ -771,6 +974,40 @@ html[data-route='explorer'] body {
 
   /* On a phone with an organ row, the name gives its room back to the row. */
   .global-scene-nav.is-anatomy .global-nav-brand-name { display: none; }
+  .global-scene-nav.is-anatomy .global-nav-brand { padding: 0; justify-content: center; }
+  .title-anatomy-link { min-height: 44px; }
+
+  /* One row under the title on a phone: 「心臓の解剖を確認」 at the left,
+     「このモデルについて」 at the right — not a row each over the model. */
+  #ui[data-layout='experiment'] .title-card.has-trail > .title-anatomy-check {
+    flex-basis: auto;
+    order: 1;
+  }
+
+  #ui[data-layout='experiment'] .title-card.has-trail > .title-trust-fold {
+    order: 2;
+  }
+
+  #ui[data-layout='experiment'] .title-card.has-trail > .title-trust-fold[open],
+  #ui[data-layout='experiment'] .title-card > .title-trust-fold[open] {
+    flex-basis: auto;
+  }
+
+  /* A sheet from the bottom on a phone: over the console, not under the title
+     where it would cover the model it is about. */
+  .title-about-body {
+    position: fixed;
+    top: auto;
+    left: max(10px, env(safe-area-inset-left));
+    right: max(10px, env(safe-area-inset-right));
+    bottom: max(10px, env(safe-area-inset-bottom));
+    width: auto;
+    max-height: 72vh;
+    z-index: 60;
+    font-size: 15px;
+  }
+
+  .title-about-close { min-height: 44px; }
 
   .global-nav-product-link { padding: 0 8px; }
 }

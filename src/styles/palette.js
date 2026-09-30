@@ -47,7 +47,7 @@ export const SURFACES = {
 
 /** Ink used only on the light Trust surface. */
 export const TRUST_INK = {
-  body: '#1c2528',
+  body: '#292826',
   muted: '#425054',
   faint: '#657176',
   /** A review whose model has since changed. */

@@ -18,7 +18,7 @@
   overflow: auto;
   background:
     radial-gradient(circle at 50% 35%, color-mix(in srgb, var(--accent) 7%, transparent), transparent 46%),
-    rgba(3, 7, 13, 0.94);
+    rgba(14, 13, 11, 0.94);
 }
 
 .scene-fallback-card {
@@ -137,7 +137,7 @@
 }
 
 .scene-fallback-link.primary {
-  color: #031015;
+  color: #131210;
   border-color: var(--accent);
   background: var(--accent);
 }
@@ -149,7 +149,7 @@
 }
 
 .scene-fallback-link.primary:hover {
-  color: #031015;
+  color: #131210;
 }
 
 .scene-fallback-retry:disabled {

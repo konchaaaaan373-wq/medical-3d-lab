@@ -5,6 +5,7 @@ import { PATIENT_ROUTE } from '../catalog/index.js';
 import { patientExplanationAvailable } from '../access/patientPurpose.js';
 import { PURPOSE, hashWithPurpose, purposeById, requestedPurpose, resolvePurpose } from './purpose.js';
 import { sameRoute } from './router.js';
+import { setAudience } from './audience.js';
 
 /**
  * Puts a model into the purpose its address asks for, and keeps it there.
@@ -153,6 +154,9 @@ export async function installPurpose({ app, ui, sceneId, modes, win = window }) 
     current = next;
     ui.dataset.purpose = next;
     app.header?.setPurpose?.({ current: next, question });
+    // The reader's side, for everything that words itself for them
+    // (「今、何が起きた？」 and whatever follows it — `audience.js`).
+    setAudience(next === PURPOSE.PATIENT ? 'patient' : 'medical');
 
     if (next === PURPOSE.PATIENT) {
       // What only education offers does not come along.

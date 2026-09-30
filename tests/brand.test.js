@@ -91,3 +91,18 @@ test('brand: no pictorial logo — the mark is two states and a change, not an o
   assert.equal((icon.match(/<path /g) ?? []).length, 1);
   assert.doesNotMatch(icon, /<text/);
 });
+
+test('brand: no custom property is defined as itself', () => {
+  // \`--accent: var(--accent)\` is a cycle: invalid at computed-value time, so
+  // the element silently loses the colour and inherits nothing. A bulk swap of
+  // a literal for its token wrote exactly that into the model header during
+  // the rebrand (L-141). Stylesheets only; the check is cheap and total.
+  const offenders = [];
+  for (const path of filesUnder('src/styles', ['.css'])) {
+    const text = stripComments(read(path));
+    for (const match of text.matchAll(/--([a-z0-9-]+)\s*:\s*var\(\s*--([a-z0-9-]+)\s*[,)]/gi)) {
+      if (match[1] === match[2]) offenders.push(`${path}: --${match[1]}`);
+    }
+  }
+  assert.deepEqual(offenders, []);
+});

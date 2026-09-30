@@ -2,8 +2,9 @@ import { el } from '../utils/dom.js';
 import { inLanguage } from '../utils/language.js';
 import { statusById } from '../catalog/taxonomy.js';
 import { clinicalReviewPresentation } from '../catalog/clinicalReview.js';
-import { PATHOLOGY_ROUTE, relatedScenesFor, sceneById, sceneRoute } from '../catalog/index.js';
-import { PATHOLOGY_CATEGORY, isPathologyModelScene } from '../catalog/pathologyModels.js';
+import { relatedScenesFor, sceneById, sceneRoute } from '../catalog/index.js';
+import { anatomyChecksFor } from '../catalog/anatomyLinks.js';
+import { foldsAboutThisModel, modelLocation } from '../app/modelLocation.js';
 import { sceneOpen } from '../app/releaseGate.js';
 import '../styles/clinical-review.css';
 import '../styles/scene-pairing.css';
@@ -49,48 +50,128 @@ function pairedSceneLinks(meta) {
 }
 
 /**
- * The trust row folded into one quiet line, for a scene that asks for it.
+ * 「このモデルについて」 — About this model — folded into one quiet line.
  *
- * Everything in the row is still there — maturity, clinical review, the link to
- * the full record — and the scene's scope panel is put inside it by the shell,
- * so "sources and limits" is one place rather than a card and a panel beside
- * it saying the same thing. What changes is that two amber badges and a
- * bordered link are no longer the loudest thing above a model whose subject is
- * a circulation. The maturity stays on the closed line in plain text: a model
- * that has not been through review keeps saying so without being opened.
+ * Everything a reader is owed about how far to trust the figures is inside it
+ * (ADR 2026-09-30): what kind of model this is and what it is not for, what it
+ * shows and does not (the scene's scope panel, put inside by the shell), its
+ * maturity, its medical-review state and date, and the link to its own record.
+ * It is closed by default because it is a reference, not the first thing to
+ * read — and it is one press away because a reader deciding whether to believe
+ * a number wants to know now. The maturity stays on the closed line in plain
+ * text: a model that has not been through review keeps saying so unopened.
+ *
+ * It was 「根拠と限界」; the contents are the same records.
  */
-function trustFold(status, badges) {
-  return el('details', { class: 'title-trust-fold' }, [
-    el('summary', { class: 'title-trust-summary' }, [
-      el('span', { class: 'lang-en', text: 'Sources & limits' }),
-      el('span', { class: 'lang-ja', text: '根拠と限界' }),
-      status?.badge
-        ? el('span', { class: 'title-trust-maturity' }, [
-            el('span', { class: 'lang-en', text: status.label }),
-            el('span', { class: 'lang-ja', text: status.labelJa }),
-          ])
-        : null,
-    ]),
-    badges,
+function aboutFold(status, badges, { lead = true } = {}) {
+  // The contents are one body that lies over the model rather than pushing it
+  // down: the camera frames the model into the room the title card leaves, and
+  // a reference the reader opened must not zoom the heart to make room for
+  // itself. A sheet on a phone, a panel under the line on a wide window.
+  const close = el('button', { class: 'title-about-close', type: 'button' }, [
+    el('span', { class: 'lang-en', text: 'Close' }),
+    el('span', { class: 'lang-ja', text: '閉じる' }),
   ]);
+  const body = el('div', { class: 'title-about-body' }, [
+    lead
+      ? el('p', { class: 'title-about-lead' }, [
+          el('span', {
+            class: 'lang-en',
+            text: 'An educational model of the mechanism. It does not predict any individual patient’s circulation or condition, and is not for diagnosis or treatment decisions.',
+          }),
+          el('span', {
+            class: 'lang-ja',
+            text: '病態生理の概念を理解するための教育用モデルです。個々の患者の状態を定量的に予測するものではなく、診断・治療の判断には使えません。',
+          }),
+        ])
+      : null,
+    badges,
+    close,
+  ]);
+  const summary = el('summary', { class: 'title-trust-summary' }, [
+    el('span', { class: 'lang-en', text: 'About this model' }),
+    el('span', { class: 'lang-ja', text: 'このモデルについて' }),
+    status?.badge
+      ? el('span', { class: 'title-trust-maturity' }, [
+          el('span', { class: 'lang-en', text: status.label }),
+          el('span', { class: 'lang-ja', text: status.labelJa }),
+        ])
+      : null,
+  ]);
+  const fold = el('details', { class: 'title-trust-fold title-about' }, [summary, body]);
+  const shut = () => {
+    fold.open = false;
+    summary.focus?.({ preventScroll: true });
+  };
+  close.addEventListener('click', shut);
+  // On a wide window the panel hangs from the line that opened it. It is
+  // fixed rather than absolute because the column it sits in scrolls, and a
+  // scroll box clips what hangs out of it; so its place is read off the
+  // summary when it opens. A phone's sheet is placed by the stylesheet.
+  const place = () => {
+    const wide = globalThis.matchMedia?.('(min-width: 721px)').matches ?? true;
+    if (!fold.open || !wide) {
+      body.style.top = '';
+      body.style.left = '';
+      return;
+    }
+    const rect = summary.getBoundingClientRect?.();
+    if (!rect) return;
+    body.style.top = `${Math.round(rect.bottom + 6)}px`;
+    body.style.left = `${Math.round(Math.max(12, rect.left))}px`;
+  };
+  fold.addEventListener('toggle', place);
+  globalThis.addEventListener?.('resize', place, { passive: true });
+  body.addEventListener('keydown', (event) => {
+    if (event.key !== 'Escape') return;
+    event.preventDefault();
+    event.stopPropagation();
+    shut();
+  });
+  return fold;
 }
 
 /**
- * "病態モデル ›" before the title: which kind of model this is, and the way
- * back to the others of that kind (`#/pathology`). The title that follows is
- * the current place, so it is not repeated here.
+ * 「心臓の解剖を確認」 — the anatomy this disease model is about, one press away.
  *
- * Only for scenes the catalogue puts in the category; an anatomy scene keeps
- * its eyebrow.
+ * Read off the catalogue (`anatomyLinks.js`) and filtered by the release gate
+ * like every other link: an organ whose anatomy is not open has no link rather
+ * than a link to a "to be updated" page.
+ */
+function anatomyCheck(meta) {
+  const checks = anatomyChecksFor(sceneById(meta.id)).filter((check) => sceneOpen(check.scene));
+  if (checks.length === 0) return null;
+  return el('nav', { class: 'title-anatomy-check', 'aria-label': inLanguage('Anatomy', '解剖') }, checks.map(({ scene, organ }) =>
+    el('a', { class: 'title-anatomy-link', href: sceneRoute(scene) }, [
+      el('span', { class: 'lang-en', text: `Check the ${(organ?.label ?? scene.titleEn).toLowerCase()} anatomy` }),
+      el('span', { class: 'lang-ja', text: `${organ?.labelJa ?? scene.titleJa}の解剖を確認` }),
+      el('span', { class: 'title-anatomy-arrow', 'aria-hidden': 'true', text: '→' }),
+    ])
+  ));
+}
+
+/**
+ * Where the model sits, above its name: 「病態モデル / 循環」 on a disease model,
+ * 「解剖 / 心臓」 on an anatomy one. The first part is the way back to the
+ * others of that kind (`#/models`, `#/anatomy`); the second says the system or
+ * organ. The title that follows is the current place, so it is not repeated.
  */
 function categoryTrail(meta) {
-  if (!isPathologyModelScene(sceneById(meta.id))) return null;
-  return el('nav', { class: 'title-trail', 'aria-label': inLanguage('Breadcrumb', '現在地') }, [
-    el('a', { class: 'title-trail-parent', href: PATHOLOGY_ROUTE }, [
-      el('span', { class: 'lang-en', text: PATHOLOGY_CATEGORY.en }),
-      el('span', { class: 'lang-ja', text: PATHOLOGY_CATEGORY.ja }),
+  const location = modelLocation(sceneById(meta.id));
+  if (!location) return null;
+  const { kind, parent, where } = location;
+  return el('nav', { class: `title-trail is-${kind}`, 'aria-label': inLanguage('Breadcrumb', '現在地') }, [
+    el('a', { class: 'title-trail-parent', href: parent.href }, [
+      el('span', { class: 'lang-en', text: parent.en }),
+      el('span', { class: 'lang-ja', text: parent.ja }),
     ]),
-    el('span', { class: 'title-trail-separator', 'aria-hidden': 'true', text: '›' }),
+    where ? el('span', { class: 'title-trail-separator', 'aria-hidden': 'true', text: '/' }) : null,
+    where
+      ? el('span', { class: 'title-trail-system' }, [
+          el('span', { class: 'lang-en', text: where.en }),
+          el('span', { class: 'lang-ja', text: where.ja }),
+        ])
+      : null,
   ]);
 }
 
@@ -145,8 +226,18 @@ export function createTitleCard(meta) {
       // arrived at a ledger of seventy — the same words appeared four times on
       // the landing page pointing at the same ledger, which is how the label
       // came to mean nothing in particular.
-      el('span', { class: 'lang-en', text: 'Sources & limits of this model →' }),
-      el('span', { class: 'lang-ja', text: 'このモデルの根拠と限界 →' }),
+      el('span', { class: 'lang-en', text: 'This model’s evidence record →' }),
+      el('span', { class: 'lang-ja', text: 'このモデルの根拠の記録 →' }),
+    ]);
+
+  // The date the model was last signed, or that it has not been — said in
+  // words, because a blank reads as "recently".
+  const reviewedAt = review?.record?.reviewedAt ?? null;
+  const reviewDate =
+    review &&
+    el('span', { class: 'title-review-date' }, [
+      el('span', { class: 'lang-en', text: reviewedAt ? `Last reviewed ${reviewedAt}` : 'Not yet reviewed' }),
+      el('span', { class: 'lang-ja', text: reviewedAt ? `最終レビュー ${reviewedAt}` : '医学レビュー未実施' }),
     ]);
 
   const trustBadges =
@@ -154,6 +245,7 @@ export function createTitleCard(meta) {
       ? el('div', { class: 'title-trust-badges', 'aria-label': 'Model trust status' }, [
           maturityBadge || null,
           reviewBadge || null,
+          reviewDate || null,
           modelInfoLink || null,
         ])
       : null;
@@ -162,15 +254,20 @@ export function createTitleCard(meta) {
   // heading they disappeared in Japanese-only mode, which hides `.lang-en` —
   // taking the badge away from the readers its Japanese label was written for.
   const trail = categoryTrail(meta);
+  // Every disease model folds its trust into 「このモデルについて」 (ADR
+  // 2026-09-30): the generic shell, not a per-scene opt-in. A scene may still
+  // ask for it (`titleCard.foldTrust`), and an anatomy scene keeps its row.
+  const fold = foldsAboutThisModel(sceneById(meta.id), meta);
   return el('header', { class: `panel title-card${trail ? ' has-trail' : ''}` }, [
-    trail ?? el('p', { class: 'eyebrow', text: 'medical-3d-lab' }),
+    trail,
     el('h1', { class: 'title lang-en', text: meta.title }),
     el('p', { class: 'title-ja lang-ja', text: meta.titleJa }),
-    meta.titleCard?.foldTrust && trustBadges ? trustFold(status, trustBadges) : trustBadges,
+    fold && trustBadges ? aboutFold(status, trustBadges) : trustBadges,
     el('p', { class: 'subtitle' }, [
       el('span', { class: 'lang-ja', text: meta.subtitleJa }),
       el('span', { class: 'lang-en', text: meta.subtitle }),
     ]),
+    anatomyCheck(meta),
     pairedSceneLinks(meta),
-  ]);
+  ].filter(Boolean));
 }

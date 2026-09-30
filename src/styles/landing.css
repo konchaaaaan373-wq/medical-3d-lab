@@ -8,10 +8,10 @@ html[data-route='landing'] {
   --landing-blood-deep: #711829;
   --landing-cargo: #f2b35e;
   --landing-neco: #f0b777;
-  --landing-cyan: #38e1ef;
-  --landing-line: rgba(176, 198, 229, 0.18);
-  --landing-line-strong: rgba(176, 198, 229, 0.3);
-  --landing-panel: rgba(7, 11, 19, 0.91);
+  --landing-cyan: var(--accent);
+  --landing-line: rgba(241, 238, 232, 0.135);
+  --landing-line-strong: rgba(241, 238, 232, 0.225);
+  --landing-panel: rgba(18, 17, 15, 0.91);
   background: var(--reading-bg);
   color: var(--reading-ink);
 }
@@ -48,9 +48,9 @@ html[data-route='landing'] {
   align-items: center;
   gap: 22px;
   padding: 8px 10px;
-  border: 1px solid rgba(176, 198, 229, 0.14);
+  border: 1px solid rgba(241, 238, 232, 0.105);
   border-radius: 7px;
-  background: rgba(4, 6, 11, 0.84);
+  background: rgba(13, 12, 10, 0.84);
   box-shadow: 0 16px 48px rgba(0, 0, 0, 0.26);
   backdrop-filter: blur(19px) saturate(1.08);
   -webkit-backdrop-filter: blur(19px) saturate(1.08);
@@ -260,7 +260,7 @@ html[data-route='landing'] {
 .landing-button.primary {
   border-color: #e1e8ef;
   background: #e1e8ef;
-  color: #081016;
+  color: #151412;
   box-shadow: 0 5px 16px rgba(0, 0, 0, 0.2);
 }
 
@@ -270,8 +270,8 @@ html[data-route='landing'] {
 }
 
 .landing-button.secondary:hover {
-  border-color: rgba(56, 225, 239, 0.5);
-  background: rgba(56, 225, 239, 0.06);
+  border-color: rgba(240, 137, 74, 0.5);
+  background: rgba(240, 137, 74, 0.06);
 }
 
 /* Live 3D circulation workbench ----------------------------------------- */
@@ -280,7 +280,7 @@ html[data-route='landing'] {
   position: relative;
   border: 1px solid var(--landing-line-strong);
   border-radius: 10px;
-  background: rgba(4, 7, 12, 0.94);
+  background: rgba(14, 13, 11, 0.94);
   box-shadow: 0 18px 48px rgba(0, 0, 0, 0.32);
 }
 
@@ -292,7 +292,7 @@ html[data-route='landing'] {
   border-radius: 9px 9px 0 0;
   background:
     radial-gradient(circle at 45% 48%, rgba(96, 21, 39, 0.23), transparent 28rem),
-    #04070c;
+    #0e0d0b;
 }
 
 .landing-demo-stage::before,
@@ -307,13 +307,13 @@ html[data-route='landing'] {
 .landing-demo-stage::before {
   top: 0;
   height: 155px;
-  background: linear-gradient(180deg, rgba(3, 5, 10, 0.88), transparent);
+  background: linear-gradient(180deg, rgba(12, 11, 9, 0.88), transparent);
 }
 
 .landing-demo-stage::after {
   bottom: 0;
   height: 140px;
-  background: linear-gradient(0deg, rgba(3, 5, 10, 0.78), transparent);
+  background: linear-gradient(0deg, rgba(12, 11, 9, 0.78), transparent);
 }
 
 .landing-demo-viewport {
@@ -454,10 +454,10 @@ html[data-route='landing'] {
   gap: 7px;
   max-width: min(24rem, calc(100% - 44px));
   padding: 9px 13px;
-  border: 1px solid rgba(176, 198, 229, 0.2);
-  border-left: 2px solid var(--landing-cyan, #38e1ef);
+  border: 1px solid rgba(241, 238, 232, 0.15);
+  border-left: 2px solid var(--landing-cyan, var(--accent));
   border-radius: 4px;
-  background: rgba(5, 8, 14, 0.84);
+  background: rgba(15, 14, 12, 0.84);
   pointer-events: none;
 }
 
@@ -466,8 +466,8 @@ html[data-route='landing'] {
 /* Nothing picked yet: an invitation, not a name. It has to read as *less* than
    a name, or the instruction is mistaken for the answer. */
 .landing-demo-structure[data-state='hint'] {
-  border-left-color: rgba(176, 198, 229, 0.28);
-  background: rgba(5, 8, 14, 0.66);
+  border-left-color: rgba(241, 238, 232, 0.21);
+  background: rgba(15, 14, 12, 0.66);
 }
 
 .landing-demo-structure[data-state='hint'] .landing-demo-structure-swatch { display: none; }
@@ -482,7 +482,7 @@ html[data-route='landing'] {
 /* A hover is a preview of a name, and the reader is meant to be able to tell
    it from the one they pinned. */
 .landing-demo-structure[data-state='preview'] {
-  border-left-color: rgba(56, 225, 239, 0.45);
+  border-left-color: rgba(240, 137, 74, 0.45);
 }
 
 .landing-demo-structure-swatch {
@@ -493,7 +493,7 @@ html[data-route='landing'] {
   border-radius: 2px;
   /* The structure's own colour in the model, so the card and the highlighted
      mesh are recognisably the same part. */
-  background: var(--landing-structure-color, rgba(176, 198, 229, 0.55));
+  background: var(--landing-structure-color, rgba(241, 238, 232, 0.413));
 }
 
 /* The card is a caption and takes no pointer events; its way out is a control
@@ -508,12 +508,12 @@ html[data-route='landing'] {
 .landing-demo-structure-link {
   align-self: flex-start;
   margin-top: 2px;
-  color: var(--landing-cyan, #38e1ef);
+  color: var(--landing-cyan, var(--accent));
   font-size: 11px;
   line-height: 1.35;
   letter-spacing: 0.02em;
   text-decoration: none;
-  border-bottom: 1px solid rgba(56, 225, 239, 0.4);
+  border-bottom: 1px solid rgba(240, 137, 74, 0.4);
   pointer-events: auto;
 }
 
@@ -521,7 +521,7 @@ html[data-route='landing'] {
 
 .landing-demo-structure-link:hover,
 .landing-demo-structure-link:focus-visible {
-  border-bottom-color: var(--landing-cyan, #38e1ef);
+  border-bottom-color: var(--landing-cyan, var(--accent));
 }
 
 .landing-demo-structure-text {
@@ -562,7 +562,7 @@ html[data-route='landing'] {
   z-index: 5;
   display: grid;
   grid-template-columns: minmax(310px, 0.78fr) minmax(0, 1.35fr);
-  background: linear-gradient(180deg, rgba(12, 18, 29, 0.98), rgba(6, 9, 15, 0.99));
+  background: linear-gradient(180deg, rgba(26, 25, 23, 0.98), rgba(16, 15, 13, 0.99));
   border-top: 1px solid var(--landing-line-strong);
 }
 
@@ -603,7 +603,7 @@ html[data-route='landing'] {
   justify-items: start;
   gap: 5px;
   padding: 9px 12px 9px 14px;
-  border: 1px solid rgba(176, 198, 229, 0.21);
+  border: 1px solid rgba(241, 238, 232, 0.158);
   border-radius: 4px;
   background: rgba(255, 255, 255, 0.022);
   color: var(--ink-dim);
@@ -723,7 +723,7 @@ html[data-route='landing'] {
   min-height: 1.7em;
   margin: 14px 0 0;
   padding-top: 12px;
-  border-top: 1px solid rgba(176, 198, 229, 0.11);
+  border-top: 1px solid rgba(241, 238, 232, 0.083);
   color: var(--ink);
   font-size: 13px;
   line-height: 1.6;
@@ -738,7 +738,7 @@ html[data-route='landing'] {
   min-height: 49px;
   padding: 0 24px;
   border-top: 1px solid var(--landing-line);
-  background: rgba(2, 4, 8, 0.44);
+  background: rgba(11, 10, 8, 0.44);
 }
 
 /* The hero's own boundary statement — what the model it is showing does and
@@ -818,11 +818,11 @@ html[data-route='landing'] {
   display: flex;
   flex-direction: column;
   padding: 20px;
-  border: 1px solid rgba(176, 198, 229, 0.17);
+  border: 1px solid rgba(241, 238, 232, 0.128);
   border-radius: 6px;
   background:
     radial-gradient(circle at 82% 17%, color-mix(in srgb, var(--scene-accent) 10%, transparent), transparent 17rem),
-    linear-gradient(150deg, rgba(12, 18, 29, 0.91), rgba(5, 8, 14, 0.94));
+    linear-gradient(150deg, rgba(26, 25, 23, 0.91), rgba(15, 14, 12, 0.94));
   color: var(--ink);
   text-decoration: none;
   transition: transform 160ms ease, border-color 160ms ease, background 160ms ease;
@@ -851,7 +851,7 @@ html[data-route='landing'] {
   border-color: color-mix(in srgb, var(--scene-accent) 45%, var(--landing-line));
   background:
     radial-gradient(circle at 82% 17%, color-mix(in srgb, var(--scene-accent) 15%, transparent), transparent 17rem),
-    linear-gradient(150deg, rgba(15, 23, 37, 0.98), rgba(6, 10, 17, 0.97));
+    linear-gradient(150deg, rgba(31, 30, 28, 0.98), rgba(17, 16, 14, 0.97));
 }
 
 .landing-scene-topline {
@@ -935,7 +935,7 @@ html[data-route='landing'] {
   gap: 7px 11px;
   margin-top: auto;
   padding-top: 14px;
-  border-top: 1px solid rgba(176, 198, 229, 0.11);
+  border-top: 1px solid rgba(241, 238, 232, 0.083);
 }
 
 .landing-state-badge {
@@ -964,8 +964,8 @@ html[data-route='landing'] {
   border: 1px solid var(--landing-line-strong);
   border-radius: 7px;
   background:
-    radial-gradient(circle at 94% 0%, rgba(56, 225, 239, 0.075), transparent 23rem),
-    rgba(7, 11, 19, 0.89);
+    radial-gradient(circle at 94% 0%, rgba(240, 137, 74, 0.075), transparent 23rem),
+    rgba(18, 17, 15, 0.89);
 }
 
 .landing-method-heading h2,
@@ -1088,9 +1088,9 @@ html[data-route='landing'] {
   width: 18px;
   height: 18px;
   margin: -9px 0 0 -9px;
-  border: 1px solid rgba(56, 225, 239, 0.9);
+  border: 1px solid rgba(240, 137, 74, 0.9);
   border-radius: 50%;
-  box-shadow: 0 0 0 1px rgba(3, 5, 10, 0.55);
+  box-shadow: 0 0 0 1px rgba(12, 11, 9, 0.55);
   pointer-events: none;
 }
 
@@ -1415,7 +1415,7 @@ html[data-route='landing'] {
 .landing-demo[data-viewport='unavailable'] .landing-demo-loading {
   z-index: 6;
   flex-direction: column;
-  background: rgba(4, 7, 12, 0.9);
+  background: rgba(14, 13, 11, 0.9);
   pointer-events: auto;
 }
 
@@ -1428,9 +1428,9 @@ html[data-route='landing'] {
 .landing-demo-retry {
   min-height: 44px;
   padding: 9px 15px;
-  border: 1px solid rgba(56, 225, 239, 0.5);
+  border: 1px solid rgba(240, 137, 74, 0.5);
   border-radius: 5px;
-  background: rgba(56, 225, 239, 0.08);
+  background: rgba(240, 137, 74, 0.08);
   color: var(--ink);
   font: inherit;
   font-weight: 680;
@@ -1574,7 +1574,7 @@ html[data-route='landing'] {
   padding: 6px 11px;
   border: 1px solid var(--landing-line);
   border-radius: 999px;
-  background: rgba(2, 4, 8, 0.72);
+  background: rgba(11, 10, 8, 0.72);
   color: var(--ink-dim);
   font-size: 10.5px;
   font-weight: 620;
@@ -1655,7 +1655,7 @@ html[data-route='landing'] {
   margin: 22px 0 0;
   padding: 16px 18px;
   border-left: 2px solid var(--landing-cyan);
-  background: rgba(7, 11, 19, 0.72);
+  background: rgba(18, 17, 15, 0.72);
   color: var(--ink-dim);
   line-height: 1.65;
 }
