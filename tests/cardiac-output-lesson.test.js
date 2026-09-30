@@ -289,6 +289,51 @@ test('session: the read-out for B alone carries A as "before", with the solved d
   assert.equal(primary.reference.coDirection, outputDirection(solved));
 });
 
+test('session: while the vasoconstrictor action is on, the results say what it is and is not', () => {
+  // Owner's review, 2026-09-30: a reader who only presses the button saw the
+  // output fall with nothing beside it saying that only the resistance moved.
+  const session = new LessonSession();
+  assert.equal(readoutFor(session).caveat, null, 'A, nothing applied: nothing to qualify');
+
+  session.setPrimary('B');
+  session.tick(MANUAL_WALK_SECONDS / 4);
+  assert.equal(session.primaryId, null, 'part way through the walk');
+  assert.ok(readoutFor(session).caveat, 'from the first step of the walk');
+
+  session.setPrimary('B', { immediate: true });
+  const { caveat } = readoutFor(session);
+  const factor = INTERVENTION_PROFILES[INTERVENTION_IDS.VASOCONSTRICTION].effects.systemicResistanceMmHgSPerMl.multiply;
+  assert.match(caveat.ja, new RegExp(`血管抵抗だけを ${String(factor).replace('.', '\\.')} 倍`), 'the factor is the model’s own');
+  assert.match(caveat.ja, /模式実験/);
+  assert.match(caveat.ja, /実際の昇圧薬の全作用は再現しません/);
+  assert.ok(caveat.en.includes(`×${factor}`));
+
+  session.setShowOther(true);
+  assert.ok(readoutFor(session).caveat, 'B beside C is still B');
+
+  session.setPrimary('A', { immediate: true });
+  assert.equal(readoutFor(session).caveat, null, 'A beside C: the action is off again');
+});
+
+test('words: the change from A to B is said as a direction in this model, never as a size', () => {
+  // "少し減りました" put a clinical judgement on 3.75 → 3.13 L/min (−16 %)
+  // that the lesson does not make (owner's review, 2026-09-30).
+  const sizes = /少し|わずか|やや|大きく|大幅|かなり|著しく|a little|slightly|somewhat|greatly|markedly|significantly|substantially/i;
+  const said = [
+    ...Object.values(LESSON_STEPS.result.text),
+    LESSON_GUIDE.afterDown,
+    LESSON_GUIDE.afterSame,
+    LESSON_GUIDE.afterUp,
+  ];
+  for (const words of said) {
+    for (const text of [words.en, words.ja]) {
+      assert.doesNotMatch(text, sizes, `"${text}" says how big the change is`);
+    }
+    assert.match(words.ja, /このモデルでは/, `"${words.ja}" does not say it is this model's result`);
+    assert.match(words.en, /in this model/i, `"${words.en}" does not say it is this model's result`);
+  }
+});
+
 // ---------------------------------------------------------------------------
 // The explanation
 // ---------------------------------------------------------------------------

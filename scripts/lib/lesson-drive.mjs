@@ -77,6 +77,8 @@ const read = (page) =>
       play: rect('[data-lesson="play"]'),
       tryIt: rect('[data-lesson="try"]'),
       caption: text('.lesson-caption-heading'),
+      // What the vasoconstrictor action is and is not, under the results.
+      caveat: text('.lesson-readout .lesson-caveat'),
       guide: text('.lesson-guide'),
       rows: [...document.querySelectorAll('.lesson-row')].map((row) => row.dataset.card),
       modal: Boolean(document.querySelector('.scene-intro:not([hidden])')),
@@ -246,6 +248,7 @@ export async function driveLesson(browser, { url, slug, outDir, record = false, 
       if (box && box.height < 44) problems.push(where(`first screen: "${name}" is ${Math.round(box.height)} px tall, under 44`));
     }
     if (!/view=detail/.test(seen.detail ?? '')) problems.push(where('first screen: no way to the full model'));
+    if (seen.caveat) problems.push(where('first screen: the caveat about the vasoconstrictor action is shown before it is applied'));
     if (seen.state.problems.length) problems.push(where(`the lesson's claims do not hold: ${seen.state.problems.join('; ')}`));
     checkBand(seen, where('first screen'), problems);
     await checkCover(page, seen, where('first screen'), problems);
@@ -280,6 +283,10 @@ export async function driveLesson(browser, { url, slug, outDir, record = false, 
       if (pair && !seen.rows.includes('C')) problems.push(where(`scene ${index + 1}: C has no row in the results`));
       if (step.id === 'result' && !seen.rows.includes('before')) problems.push(where('scene 3: B is not read against "before (A)"'));
       if (pair && seen.rows.includes('before')) problems.push(where(`scene ${index + 1}: "before (A)" is shown beside C`));
+      // Beside every result the action made, in the explanation too (owner's review, 2026-09-30).
+      const applied = step.id !== 'start';
+      if (applied && !/模式実験/.test(seen.caveat)) problems.push(where(`scene ${index + 1}: B is on screen and nothing under the results says it is a schematic experiment`));
+      if (!applied && seen.caveat) problems.push(where(`scene ${index + 1}: the caveat is shown for A`));
       checkBand(seen, where(`scene ${index + 1}`), problems);
       await checkCover(page, seen, where(`scene ${index + 1}`), problems);
       await page.screenshot({ path: join(outDir, `${tag}-1-${index + 1}-${step.id}.png`) });
@@ -331,6 +338,9 @@ export async function driveLesson(browser, { url, slug, outDir, record = false, 
     seen = await read(page);
     if (seen.state.primaryId !== 'B') problems.push(where('buttons: the vasoconstrictor action did not arrive at B'));
     if (!seen.rows.includes('before')) problems.push(where('buttons: B alone is not read against "before (A)"'));
+    if (!/模式実験/.test(seen.caveat) || !/全作用は再現しません/.test(seen.caveat)) {
+      problems.push(where(`buttons: B's results do not say what the action is and is not (“${seen.caveat}”)`));
+    }
     checkBand(seen, where('buttons, B'), problems);
     await checkCover(page, seen, where('buttons, B'), problems);
     await page.screenshot({ path: join(outDir, `${tag}-3-B.png`) });
@@ -340,6 +350,7 @@ export async function driveLesson(browser, { url, slug, outDir, record = false, 
     seen = await read(page);
     if (!seen.state.showOther || !seen.rows.includes('C')) problems.push(where('buttons: C did not appear'));
     if (seen.rows.includes('before')) problems.push(where('buttons: "before (A)" is shown beside C'));
+    if (!/模式実験/.test(seen.caveat)) problems.push(where('buttons: beside C, B\'s results lost the caveat'));
     checkBand(seen, where('buttons, B and C'), problems);
     await checkCover(page, seen, where('buttons, B and C'), problems);
     await page.screenshot({ path: join(outDir, `${tag}-4-BC.png`) });
@@ -347,6 +358,7 @@ export async function driveLesson(browser, { url, slug, outDir, record = false, 
     await arrive(page, { primaryId: 'A' });
     seen = await read(page);
     if (seen.state.primaryId !== 'A') problems.push(where('buttons: taking the action away did not return to A'));
+    if (seen.caveat) problems.push(where('buttons: back at A, the caveat is still shown'));
 
     // --- the keyboard ------------------------------------------------------------
     await page.click('[data-lesson="reset"]');

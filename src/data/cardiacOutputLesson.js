@@ -63,6 +63,16 @@ export const LESSON_READOUT = {
   co: { label: { en: 'Cardiac output', ja: '心拍出量' }, abbr: 'CO', unit: { en: 'L/min', ja: 'L/分' } },
   changing: { en: 'changing…', ja: '変化中…' },
   group: { en: 'Results', ja: '計算結果' },
+  // Under the results whenever the vasoconstrictor action is on — from the
+  // first step of the walk to A's return, in the explanation and under the
+  // reader's buttons alike — because a reader who only presses the button sees
+  // the output fall and nothing else. {factor} is the intervention's own
+  // multiplier, read from the model, not written here (owner's review,
+  // 2026-09-30).
+  caveat: {
+    en: 'A schematic experiment: only the vascular resistance, ×{factor}. A real vasopressor’s whole action is not reproduced.',
+    ja: '血管抵抗だけを {factor} 倍にした模式実験。実際の昇圧薬の全作用は再現しません。',
+  },
 };
 
 export const LESSON_ACTIONS = {
@@ -100,17 +110,21 @@ export const LESSON_GUIDE = {
   },
   changing: { en: 'Adding the vasoconstrictor action…', ja: '血管収縮作用を加えています…' },
   releasing: { en: 'Taking the vasoconstrictor action away…', ja: '血管収縮作用を戻しています…' },
+  // Said as a direction in this model, never as a size: "a little" carried a
+  // clinical judgement of 3.75 → 3.13 L/min that this lesson does not make
+  // (owner's review, 2026-09-30). `tests/cardiac-output-lesson.test.js`
+  // holds these words to that.
   afterDown: {
-    en: 'Pressure went up; the output went down a little. Next, compare with C.',
-    ja: '血圧は上がり、送り出す量は少し減りました。次は C と比べてみましょう。',
+    en: 'Pressure went up; in this model, the output went down. Next, compare with C.',
+    ja: '血圧は上がり、送り出す量はこのモデルでは減りました。次は C と比べてみましょう。',
   },
   afterSame: {
-    en: 'Pressure went up; the output barely changed. Next, compare with C.',
-    ja: '血圧は上がり、送り出す量はほとんど変わりません。次は C と比べてみましょう。',
+    en: 'Pressure went up; in this model, the output barely changed. Next, compare with C.',
+    ja: '血圧は上がり、送り出す量はこのモデルではほとんど変わりません。次は C と比べてみましょう。',
   },
   afterUp: {
-    en: 'Pressure went up, and so did the output. Next, compare with C.',
-    ja: '血圧は上がり、送り出す量も増えました。次は C と比べてみましょう。',
+    en: 'Pressure went up; in this model, the output went up too. Next, compare with C.',
+    ja: '血圧は上がり、送り出す量もこのモデルでは増えました。次は C と比べてみましょう。',
   },
   pairBC: {
     en: 'B and C: about the same pressure — C sends out clearly more.',
@@ -165,16 +179,16 @@ export const LESSON_STEPS = {
     heading: { en: 'B: the pressure went up. And the output?', ja: 'B：血圧は上がった。送り出す量は？' },
     text: {
       down: {
-        en: 'Mean pressure {mapA} → {mapB} mmHg. Cardiac output did not rise: {coA} → {coB} L/min, a little less — against narrower vessels this heart sends out less per beat.',
-        ja: '平均血圧は {mapA} → {mapB} mmHg。心拍出量は増えず {coA} → {coB} L/分と少し減りました。細くなった血管へは、この心臓は押し出しにくくなります。',
+        en: 'Mean pressure {mapA} → {mapB} mmHg. Cardiac output did not rise; in this model it went down, {coA} → {coB} L/min — against narrower vessels this heart sends out less per beat.',
+        ja: '平均血圧は {mapA} → {mapB} mmHg。心拍出量は増えず、このモデルでは {coA} → {coB} L/分に減りました。細くなった血管へは、この心臓は押し出しにくくなります。',
       },
       same: {
-        en: 'Mean pressure {mapA} → {mapB} mmHg. Cardiac output barely moved: {coA} → {coB} L/min.',
-        ja: '平均血圧は {mapA} → {mapB} mmHg。心拍出量は {coA} → {coB} L/分で、ほとんど変わりません。',
+        en: 'Mean pressure {mapA} → {mapB} mmHg. In this model cardiac output barely moved: {coA} → {coB} L/min.',
+        ja: '平均血圧は {mapA} → {mapB} mmHg。心拍出量はこのモデルでは {coA} → {coB} L/分で、ほとんど変わりません。',
       },
       up: {
-        en: 'Mean pressure {mapA} → {mapB} mmHg, and cardiac output rose too: {coA} → {coB} L/min.',
-        ja: '平均血圧は {mapA} → {mapB} mmHg に上がり、心拍出量も {coA} → {coB} L/分に増えました。',
+        en: 'Mean pressure {mapA} → {mapB} mmHg, and in this model cardiac output rose too: {coA} → {coB} L/min.',
+        ja: '平均血圧は {mapA} → {mapB} mmHg に上がり、心拍出量もこのモデルでは {coA} → {coB} L/分に増えました。',
       },
     },
     note: {
@@ -199,9 +213,12 @@ export const LESSON_STEPS = {
       en: 'Mean pressure B {mapB}, C {mapC} mmHg; cardiac output B {coB}, C {coC} L/min. The pressure alone cannot tell you whether the circulation is keeping up.',
       ja: '平均血圧は B {mapB}・C {mapC} mmHg とほぼ同じなのに、心拍出量は B {coB}・C {coC} L/分。血圧の数字だけでは、循環が保たれているかを判断できません。',
     },
+    // What the caveat under the results does not already say. It said "only
+    // the vasoconstrictor action, not noradrenaline's whole action" too, which
+    // the results now carry at every B moment (owner's review, 2026-09-30).
     note: {
-      en: 'Schematic: only the vasoconstrictor action. Not noradrenaline’s whole action, not a dose; organ blood flow is not computed.',
-      ja: '模式実験：血管収縮作用だけを取り出しています。ノルアドレナリンの全作用・投与量・臓器の血流は再現していません。',
+      en: 'Doses and organ blood flow are not computed either.',
+      ja: '投与量や臓器の血流も、このモデルは計算していません。',
     },
   },
 };

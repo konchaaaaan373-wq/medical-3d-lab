@@ -1,7 +1,9 @@
 import { directionOf } from '../../../../models/cardiacOutputLesson.js';
+import { INTERVENTION_IDS, INTERVENTION_PROFILES } from '../../../../models/cardiacInterventions.js';
 import {
   LESSON_CONDITION_COPY,
   LESSON_GUIDE,
+  LESSON_READOUT,
   LESSON_STEPS,
   LESSON_TAGS,
 } from '../../../../data/cardiacOutputLesson.js';
@@ -276,5 +278,14 @@ export function readoutFor(session) {
   return {
     primary: card(session.primaryId, session.primary, session.reference),
     other: session.showOther ? card('C', session.other, null) : null,
+    // While any of the vasoconstrictor action is on — B, or a step of the walk
+    // between A and B — the results carry what it is and is not.
+    caveat: session.rung > 0 ? interventionCaveat() : null,
   };
+}
+
+/** The caveat under the results, with the intervention's own factor in it. */
+export function interventionCaveat() {
+  const factor = INTERVENTION_PROFILES[INTERVENTION_IDS.VASOCONSTRICTION].effects.systemicResistanceMmHgSPerMl.multiply;
+  return both(LESSON_READOUT.caveat, fillWith({ factor: String(factor) }));
 }

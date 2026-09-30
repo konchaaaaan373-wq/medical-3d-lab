@@ -364,8 +364,8 @@ export const BUNDLE_BUDGET_KB = {
    *
    * 700 → 725 on 2026-09-29: the cardiac-output introductory lesson (its
    * shell, its page, its scene and its stylesheet, and the full model's
-   * fourth intervention) added 23.5 kB gzipped — 696.5 kB on `main` before
-   * it, 720.0 kB with it, and a ceiling at the
+   * fourth intervention) added 23.7 kB gzipped — 696.5 kB on `main` before
+   * it, 720.2 kB with it, and a ceiling at the
    * measured figure would fail the next change of any size. None of it is in
    * the entry beyond the router's `?view=` (0.6 kB): the lesson loads with
    * `#/cardiac-output`, and the full model's scene (13.8 kB) only with

@@ -133,7 +133,10 @@ export function createLessonPanel({ titleCard, copy, detailHref, on }) {
     guide.replaceChildren(...pair(state.guide));
     guide.hidden = !state.guide;
 
-    readout.replaceChildren(renderTable(state.readout));
+    readout.replaceChildren(
+      renderTable(state.readout),
+      ...(state.readout.caveat ? [el('p', { class: 'lesson-caveat' }, pair(state.readout.caveat))] : [])
+    );
     readout.dataset.cards = state.readout.other ? '2' : '1';
 
     entries.hidden = state.mode !== 'idle';

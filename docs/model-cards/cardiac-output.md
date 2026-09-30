@@ -182,7 +182,19 @@ mean pressures are within 3 mmHg, that their outputs differ by at least
 at least 10 mmHg, and that the three share a heart rate (so one beat stands
 for a minute); a model change that breaks any of those turns the tests red.
 **Which way the output moved from A to B is not a claim** — the sentence is
-chosen from the solved direction, and the copy has one for each.
+chosen from the solved direction, and the copy has one for each. **Nor is how
+much**: each says the direction "in this model" (「このモデルでは減りました」)
+and none qualifies its size — 「少し減りました」 put a clinical judgement on
+3.75 → 3.13 L/min (−16 %) that the lesson does not make (owner's review,
+2026-09-30; `tests/cardiac-output-lesson.test.js`, "words").
+
+**Beside every result the action made, the caveat.** While any of the
+vasoconstrictor action is on — B, or a step of the walk to it, in the
+explanation and under the buttons alike — the results carry one line:
+「血管抵抗だけを 1.5 倍にした模式実験。実際の昇圧薬の全作用は再現しません。」, with
+the factor read from the intervention's profile. A reader who only presses the
+button used to see the output fall with that caveat folded away in 「根拠と限界」.
+`verify:disease` reads it on screen at every B moment and its absence at A.
 
 - **A → B is a before and after.** The same circulation, drawn in place; A is
   drawn inside it as cream marks (a needle, a sleeve round the blood sent out,
