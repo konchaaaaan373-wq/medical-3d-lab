@@ -259,7 +259,14 @@ export function mountLessonShell({ viewer, scene, SceneClass, meta, entry, ui })
       y: (-projected.y * 0.5 + 0.5) * viewer.container.clientHeight,
     };
   };
-  const withPoints = (items) => items.map((item) => ({ ...item, points: [scene.getLessonAnchor(item.unit, item.part)] }));
+  // A tag may offer more than one place to stand (`places`, best first); each
+  // is a named part of the scene, turned into a point here.
+  const withPoints = (items) =>
+    items.map((item) => ({
+      ...item,
+      points: [scene.getLessonAnchor(item.unit, item.part)],
+      places: item.places?.map((place) => ({ side: place.side, points: [scene.getLessonAnchor(item.unit, place.part)] })),
+    }));
 
   function stateForPanel() {
     return {
@@ -287,9 +294,12 @@ export function mountLessonShell({ viewer, scene, SceneClass, meta, entry, ui })
     if (framedFor !== frameKey()) refit();
     tween(dt);
     panel.render(stateForPanel());
-    // With one circulation on a narrow screen its row in the results names
-    // it, and the room over the model goes to the words about its parts.
-    const chips = !lesson.comparing() && band.right - band.left < 560 ? [] : lesson.chips();
+    // Chips name circulations, and are needed when there are two to tell
+    // apart. With one, its row in the results names it, and the room over the
+    // model goes to the words about its parts — on a wide screen too, where a
+    // chip over the arch pushed "blood sent out" off the arch's top and onto
+    // the arch itself.
+    const chips = lesson.comparing() ? lesson.chips() : [];
     panel.place({ tags: withPoints(explained ? explained.tags : lesson.tags()), chips: withPoints(chips) }, project, band);
   });
 

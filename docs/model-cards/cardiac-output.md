@@ -399,9 +399,13 @@ sources and limits are one link away rather than on the lesson's screen.
   of each quantity to the drawing, and which are to scale, is in §9.6.
 - **Implemented / checked**: implemented; checked in headless Chromium at
   1440×900, 390×844 and 375×667 by `verify:disease`'s lesson drive
-  (`scripts/lib/lesson-drive.mjs`) and recorded frame by frame; **not checked
-  on a real device** (F-238); **no medical review** (F-240); **no first-time
-  reader** (F-239).
+  (`scripts/lib/lesson-drive.mjs`) and recorded frame by frame. The drive also
+  measures that no word on the model covers the point it names or stands over
+  the model itself (counted in pixels with the words hidden, L-145 / L-146):
+  the vessels' tag moves below the vessels where the screen ends at their
+  right, and a circulation's name chip is shown only when two are compared.
+  **Not checked on a real device** (F-238); **no medical review** (F-240);
+  **no first-time reader** (F-239).
 - **What a first-time reader would be asked to do** (F-239): without playing
   anything, say what the screen asks; play the explanation once, then say what
   was changed, where it acted, what happened to the pressure and to the output

@@ -202,7 +202,7 @@ test('the lesson API: the explanation drives the one session, and hands it over 
   for (let i = 0; i < 120 && scene.session.walking; i++) scene.update(1 / 30);
   assert.equal(scene.session.primaryId, 'B');
   // Every part a tag names has somewhere to hang.
-  for (const part of ['heart', 'ejected', 'bed', 'gauge', 'chip']) {
+  for (const part of ['heart', 'ejected', 'bed', 'bedTip', 'gauge', 'chip']) {
     assert.ok(scene.getLessonAnchor('primary', part) instanceof THREE.Vector3, part);
   }
   lesson.reset();

@@ -52,6 +52,9 @@
  *   --dpr <number>   device scale factor (default 1)
  *   --dist <path>    build directory (default dist)
  *   --record-lesson  also record a lesson's explanation and buttons as video
+ *   --lesson-window <W>x<H>  drive a lesson at this window only (repeatable;
+ *                    default the three in `lib/lesson-drive.mjs`)
+ *   --lesson-only    drive a scene's lesson and stop there, without its full model
  *   the scene slugs to drive, as arguments, after an optional output directory
  *   for the screenshots.
  */
@@ -98,6 +101,26 @@ if (!['chromium', 'firefox', 'webkit'].includes(engineName)) {
 const recordLessonAt = argv.indexOf('--record-lesson');
 const recordLesson = recordLessonAt >= 0;
 if (recordLesson) argv.splice(recordLessonAt, 1);
+
+// `--lesson-window 1440x900`: one of the lesson's windows rather than all three
+// — a mutation check at the window a failure was seen at, in a third of the time.
+const lessonWindows = [];
+for (let at = argv.indexOf('--lesson-window'); at >= 0; at = argv.indexOf('--lesson-window')) {
+  const [width, height] = (argv[at + 1] ?? '').split('x').map(Number);
+  if (!(width > 0 && height > 0)) {
+    console.error(`--lesson-window takes <width>x<height>, not "${argv[at + 1]}".`);
+    process.exit(2);
+  }
+  lessonWindows.push({ width, height });
+  argv.splice(at, 2);
+}
+const lessonWindowList = lessonWindows.length ? lessonWindows : LESSON_WINDOWS;
+
+// `--lesson-only`: the lesson and nothing after it — for a check of the lesson's
+// own screen, which otherwise waits a quarter of an hour on the full model.
+const lessonOnlyAt = argv.indexOf('--lesson-only');
+const lessonOnly = lessonOnlyAt >= 0;
+if (lessonOnly) argv.splice(lessonOnlyAt, 1);
 
 const distAt = argv.indexOf('--dist');
 const distDir = resolve(distAt >= 0 ? argv[distAt + 1] : 'dist');
@@ -228,12 +251,16 @@ for (const slug of SLUGS) {
   // at the bare route; opened there now, it would find no console and report
   // the lesson as a broken experiment.
   if (await page.evaluate(() => Boolean(window.__app?.lesson))) {
-    const found = await driveLesson(browser, { url: `${base}?preview=1#/${slug}`, slug, outDir, record: recordLesson });
+    const found = await driveLesson(browser, { url: `${base}?preview=1#/${slug}`, slug, outDir, record: recordLesson, windows: lessonWindowList });
     problems.push(...found.map((problem) => `lesson: ${problem}`));
     console.log(
-      `  ${slug}: lesson driven at ${LESSON_WINDOWS.map(({ width, height }) => `${width}×${height}`).join(', ')}` +
+      `  ${slug}: lesson driven at ${lessonWindowList.map(({ width, height }) => `${width}×${height}`).join(', ')}` +
         `${recordLesson ? ', recorded' : ''} — ${found.length ? `${found.length} problem(s)` : 'no problems'}`
     );
+    if (lessonOnly) {
+      report.push({ slug, controlCount: 0, problems, baseline: null, diseased: null });
+      continue;
+    }
     await page.goto(`${base}?preview=1#/${slug}?view=detail`, { waitUntil: 'networkidle' });
     await page.waitForSelector('canvas');
     await page.waitForTimeout(2600);

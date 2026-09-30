@@ -277,7 +277,7 @@ export class CardiacOutputLessonScene {
    * A named point, in world space, for a tag or a chip.
    *
    * @param {'primary'|'other'} unit
-   * @param {'heart'|'ejected'|'bed'|'gauge'|'chip'} part
+   * @param {'heart'|'ejected'|'bed'|'bedTip'|'gauge'|'chip'} part
    */
   getLessonAnchor(unit, part) {
     const target = unit === 'other' ? this.other : this.primary;
@@ -309,15 +309,25 @@ export class CardiacOutputLessonScene {
    */
   getLesson() {
     const session = this.session;
-    /** Where each part's words stand relative to it. */
-    const SIDES = { heart: 'left', ejected: 'up', bed: 'right', gauge: 'up' };
-    const tag = (key, unit, part, words) => ({
-      key,
-      unit,
-      part,
-      side: SIDES[part] ?? 'up',
-      text: tagWords(words, session.solved),
-    });
+    /**
+     * Where each part's words may stand, best first: beside the part on the
+     * side away from the rest of the drawing — and, where that side runs out of
+     * screen (right of the vessels, on a phone), below the part's lower end,
+     * rather than pushed back over the part it names.
+     */
+    const PLACES = {
+      heart: [{ part: 'heart', side: 'left' }],
+      ejected: [{ part: 'ejected', side: 'up' }],
+      bed: [
+        { part: 'bed', side: 'right' },
+        { part: 'bedTip', side: 'down' },
+      ],
+      gauge: [{ part: 'gauge', side: 'up' }],
+    };
+    const tag = (key, unit, part, words) => {
+      const places = PLACES[part] ?? [{ part, side: 'up' }];
+      return { key, unit, part, side: places[0].side, places, text: tagWords(words, session.solved) };
+    };
     const chip = (key, id, unit) => {
       const copy = LESSON_CONDITION_COPY[id];
       return {

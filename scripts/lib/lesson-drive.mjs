@@ -33,7 +33,7 @@
  * device is, which is a different question.
  */
 import { spawn } from 'node:child_process';
-import { existsSync, readdirSync } from 'node:fs';
+import { existsSync, readdirSync, rmSync } from 'node:fs';
 import { join } from 'node:path';
 
 export const LESSON_WINDOWS = Object.freeze([
@@ -57,9 +57,15 @@ const read = (page) =>
       const box = node.getBoundingClientRect();
       return box.width && box.height ? { top: box.top, bottom: box.bottom, left: box.left, right: box.right, height: box.height } : null;
     };
-    const tags = [...document.querySelectorAll('.lesson-tags .lesson-tag-item:not([hidden]) > .lesson-tag, .lesson-tags .lesson-tag-item:not([hidden]) > .lesson-unit-chip')]
-      .map((node) => node.getBoundingClientRect())
-      .map((box) => ({ top: box.top, bottom: box.bottom, left: box.left, right: box.right }));
+    const tags = [...document.querySelectorAll('.lesson-tags .lesson-tag-item:not([hidden])')].map((item) => {
+      const box = item.querySelector(':scope > .lesson-tag, :scope > .lesson-unit-chip').getBoundingClientRect();
+      // The points it names, as drawn: the dot at the end of each line.
+      const dots = [...item.querySelectorAll(':scope > .lesson-tag-dot:not([hidden])')].map((dot) => {
+        const r = dot.getBoundingClientRect();
+        return { x: r.left + r.width / 2, y: r.top + r.height / 2 };
+      });
+      return { key: item.dataset.tag, top: box.top, bottom: box.bottom, left: box.left, right: box.right, dots };
+    });
     const text = (selector) => document.querySelector(selector)?.innerText?.trim() ?? '';
     return {
       state: window.__app.lesson.state(),
@@ -109,11 +115,71 @@ function checkBand(seen, where, problems) {
     if (tag.top < seen.band.top - 2 || tag.bottom > seen.band.bottom + 2 || tag.left < -1 || tag.right > seen.width + 1) {
       problems.push(`${where}: a tag on the model stands outside the band the panels leave`);
     }
+    // A tag pushed back into the band can land on the very point it names —
+    // at 1440×900 「一斉に細くなる＝血管抵抗↑」 did, and on the edge of the
+    // vessels with it, with every other check here green.
+    if (tag.dots.some((dot) => dot.x > tag.left + 1 && dot.x < tag.right - 1 && dot.y > tag.top + 1 && dot.y < tag.bottom - 1)) {
+      problems.push(`${where}: the tag "${tag.key}" covers the point it names`);
+    }
     for (const other of seen.tags.slice(i + 1)) {
       const overlap = Math.min(tag.right, other.right) - Math.max(tag.left, other.left) > 2 && Math.min(tag.bottom, other.bottom) - Math.max(tag.top, other.top) > 2;
       if (overlap) problems.push(`${where}: two tags on the model overlap`);
     }
   });
+}
+
+/**
+ * How much of each word on the model stands over the model itself. The tags
+ * are hidden, the page is photographed, and every pixel under each tag's box
+ * is sorted into model or background: the circulations are drawn in warm or
+ * bright colours on a blue-black ground, so "red clearly above blue, or bright"
+ * is the model. The glow round a highlighted part counts as model, which errs
+ * towards reporting. Decoded in the page, as `lib/frames.mjs` does.
+ *
+ * A tag may reach over the model a little — its line has to start somewhere —
+ * but one that stands on what it is about hides it (L-146).
+ */
+const MODEL_UNDER_TAG = 0.2;
+async function checkCover(page, seen, where, problems) {
+  const boxes = seen.tags.map(({ key, left, top, right, bottom }) => ({ key, left, top, right, bottom }));
+  if (!boxes.length) return;
+  await page.evaluate(() => document.querySelector('.lesson-tags')?.style.setProperty('visibility', 'hidden'));
+  const shot = await page.screenshot({ type: 'png' });
+  await page.evaluate(() => document.querySelector('.lesson-tags')?.style.removeProperty('visibility'));
+  const shares = await page.evaluate(
+    async ({ url, boxes }) => {
+      const image = await new Promise((done, fail) => {
+        const img = new Image();
+        img.onload = () => done(img);
+        img.onerror = fail;
+        img.src = url;
+      });
+      const canvas = document.createElement('canvas');
+      canvas.width = image.width;
+      canvas.height = image.height;
+      const context = canvas.getContext('2d', { willReadFrequently: true });
+      context.drawImage(image, 0, 0);
+      const scale = image.width / innerWidth;
+      return boxes.map(({ key, left, top, right, bottom }) => {
+        const x = Math.max(0, Math.round(left * scale));
+        const y = Math.max(0, Math.round(top * scale));
+        const w = Math.min(image.width, Math.round(right * scale)) - x;
+        const h = Math.min(image.height, Math.round(bottom * scale)) - y;
+        if (w <= 0 || h <= 0) return { key, share: 0 };
+        const data = context.getImageData(x, y, w, h).data;
+        let model = 0;
+        for (let i = 0; i < data.length; i += 4) {
+          const [r, g, b] = [data[i], data[i + 1], data[i + 2]];
+          if ((r > 60 && r > b + 12) || r + g + b > 330) model += 1;
+        }
+        return { key, share: model / (w * h) };
+      });
+    },
+    { url: `data:image/png;base64,${shot.toString('base64')}`, boxes }
+  );
+  for (const { key, share } of shares) {
+    if (share > MODEL_UNDER_TAG) problems.push(`${where}: the tag "${key}" stands over the model (${Math.round(share * 100)}% of it)`);
+  }
 }
 
 /**
@@ -123,6 +189,16 @@ function checkBand(seen, where, problems) {
  */
 export async function driveLesson(browser, { url, slug, outDir, record = false, windows = LESSON_WINDOWS }) {
   const problems = [];
+  if (record) {
+    // Ask the encoder first, with one real frame: the drive and the recordings
+    // take half an hour, and an encoder that cannot read the frames used to
+    // say so only at the end of it (L-144).
+    const refused = await probeEncoder(browser, outDir);
+    if (refused) {
+      problems.push(`recording: the encoder refused a frame before anything was recorded: ${refused}`);
+      record = false;
+    }
+  }
   for (const { width, height } of windows) {
     const tag = `${slug}-lesson-${width}x${height}`;
     const page = await browser.newPage({ viewport: { width, height } });
@@ -147,6 +223,7 @@ export async function driveLesson(browser, { url, slug, outDir, record = false, 
     if (!/view=detail/.test(seen.detail ?? '')) problems.push(where('first screen: no way to the full model'));
     if (seen.state.problems.length) problems.push(where(`the lesson's claims do not hold: ${seen.state.problems.join('; ')}`));
     checkBand(seen, where('first screen'), problems);
+    await checkCover(page, seen, where('first screen'), problems);
 
     // --- the explanation, scene by scene ---------------------------------------
     await page.click('[data-lesson="play"]');
@@ -171,6 +248,7 @@ export async function driveLesson(browser, { url, slug, outDir, record = false, 
       if (step.id === 'result' && !seen.rows.includes('before')) problems.push(where('scene 3: B is not read against "before (A)"'));
       if (pair && seen.rows.includes('before')) problems.push(where(`scene ${index + 1}: "before (A)" is shown beside C`));
       checkBand(seen, where(`scene ${index + 1}`), problems);
+      await checkCover(page, seen, where(`scene ${index + 1}`), problems);
       await page.screenshot({ path: join(outDir, `${tag}-1-${index + 1}-${step.id}.png`) });
     }
 
@@ -220,6 +298,7 @@ export async function driveLesson(browser, { url, slug, outDir, record = false, 
     if (seen.state.primaryId !== 'B') problems.push(where('buttons: the vasoconstrictor action did not arrive at B'));
     if (!seen.rows.includes('before')) problems.push(where('buttons: B alone is not read against "before (A)"'));
     checkBand(seen, where('buttons, B'), problems);
+    await checkCover(page, seen, where('buttons, B'), problems);
     await page.screenshot({ path: join(outDir, `${tag}-3-B.png`) });
     await page.click('[data-lesson="other"]');
     await arrive(page, { primaryId: 'B', showOther: true });
@@ -228,6 +307,7 @@ export async function driveLesson(browser, { url, slug, outDir, record = false, 
     if (!seen.state.showOther || !seen.rows.includes('C')) problems.push(where('buttons: C did not appear'));
     if (seen.rows.includes('before')) problems.push(where('buttons: "before (A)" is shown beside C'));
     checkBand(seen, where('buttons, B and C'), problems);
+    await checkCover(page, seen, where('buttons, B and C'), problems);
     await page.screenshot({ path: join(outDir, `${tag}-4-BC.png`) });
     await page.click('[data-lesson="constrict"]');
     await arrive(page, { primaryId: 'A' });
@@ -246,19 +326,86 @@ export async function driveLesson(browser, { url, slug, outDir, record = false, 
     await page.close();
 
     if (record) {
-      await recordLesson(browser, { url, width, height, file: join(outDir, `${tag}-explanation.webm`), part: 'explanation' });
-      await recordLesson(browser, { url, width, height, file: join(outDir, `${tag}-buttons.webm`), part: 'buttons' });
+      for (const part of ['explanation', 'buttons']) {
+        // A recording that fails is reported, not thrown: the checks above
+        // have already run, and one missing video must not hide them.
+        await recordLesson(browser, { url, width, height, file: join(outDir, `${tag}-${part}.webm`), part }).catch((error) =>
+          problems.push(`${width}×${height} recording (${part}) failed: ${error.message}`)
+        );
+      }
     }
   }
   return problems;
 }
 
-/** The encoder Playwright ships, which reads PNG frames and writes VP8. */
+/**
+ * The encoder Playwright ships. It decodes JPEG and VP8 and nothing else — no
+ * PNG — and reads from `file` and `pipe` only, so frames go in as JPEG on
+ * `pipe:0`, which is what Playwright's own recorder feeds it.
+ */
 function ffmpegPath() {
   const root = process.env.PLAYWRIGHT_BROWSERS_PATH ?? '';
   if (!root || !existsSync(root)) return 'ffmpeg';
   const found = readdirSync(root).filter((name) => name.startsWith('ffmpeg')).sort().pop();
   return found ? join(root, found, 'ffmpeg-linux') : 'ffmpeg';
+}
+
+/**
+ * One setting for the encoder, so the probe asks exactly what the recording
+ * will. `pipe:0`, not `-`: the bundled build has the `file` and `pipe`
+ * protocols only, and `-` is the `fd` protocol (L-144).
+ */
+const FPS = 30;
+function encoderArgs(file) {
+  return ['-y', '-loglevel', 'error', '-f', 'image2pipe', '-framerate', String(FPS), '-c:v', 'mjpeg', '-i', 'pipe:0', '-c:v', 'libvpx', '-b:v', '2500k', '-auto-alt-ref', '0', file];
+}
+
+/** What a frame is taken as: the one format the bundled encoder decodes. */
+const FRAME = Object.freeze({ type: 'jpeg', quality: 90 });
+
+function encode(file) {
+  const encoder = spawn(ffmpegPath(), encoderArgs(file), { stdio: ['pipe', 'inherit', 'pipe'] });
+  let said = '';
+  encoder.stderr.on('data', (chunk) => (said += chunk));
+  const done = new Promise((resolve, reject) => {
+    encoder.on('error', reject);
+    encoder.on('close', (code) =>
+      code === 0 ? resolve() : reject(new Error(`ffmpeg exited ${code}${said ? `: ${said.trim().split('\n').pop()}` : ''}`))
+    );
+  });
+  // An encoder that has gone away makes every further write an EPIPE; the
+  // caller stops feeding it rather than throwing out of its frame loop.
+  encoder.stdin.on('error', () => {});
+  return { encoder, done };
+}
+
+/**
+ * Encode two frames of a blank page the way a recording will, and throw them
+ * away. Resolves to null when the encoder took them, or to what it said.
+ *
+ * @param {import('playwright').Browser} browser
+ * @param {string} outDir
+ */
+export async function probeEncoder(browser, outDir) {
+  const page = await browser.newPage({ viewport: { width: 64, height: 64 } });
+  const file = join(outDir, '.encoder-probe.webm');
+  try {
+    const { encoder, done } = encode(file);
+    // Caught at once: an encoder that refuses the first frame exits while the
+    // second is still being taken.
+    const said = done.then(
+      () => null,
+      (error) => error.message
+    );
+    for (let i = 0; i < 2; i++) encoder.stdin.write(await page.screenshot(FRAME));
+    encoder.stdin.end();
+    return await said;
+  } catch (error) {
+    return error.message;
+  } finally {
+    await page.close();
+    rmSync(file, { force: true });
+  }
 }
 
 /**
@@ -268,55 +415,58 @@ function ffmpegPath() {
  * @param {{ url: string, width: number, height: number, file: string, part: 'explanation'|'buttons' }} options
  */
 export async function recordLesson(browser, { url, width, height, file, part }) {
-  const FPS = 30;
   const page = await browser.newPage({ viewport: { width, height } });
-  await page.goto(url, { waitUntil: 'networkidle' });
-  await ready(page);
-  await page.waitForTimeout(800);
-  // Take the clock: the viewer's own loop stops, and each frame is stepped by
-  // exactly 1/30 s.
-  await page.evaluate((fps) => {
-    const viewer = window.__app.viewer;
-    viewer.stop();
-    viewer.clock.getDelta = () => 1 / fps;
-    window.__step = () => viewer._tick();
-  }, FPS);
+  const encoding = encode(file);
+  const { encoder } = encoding;
+  let failed = null;
+  const done = encoding.done.catch((error) => {
+    failed = error;
+  });
+  try {
+    await page.goto(url, { waitUntil: 'networkidle' });
+    await ready(page);
+    await page.waitForTimeout(800);
+    // Take the clock: the viewer's own loop stops, and each frame is stepped by
+    // exactly 1/30 s.
+    await page.evaluate((fps) => {
+      const viewer = window.__app.viewer;
+      viewer.stop();
+      viewer.clock.getDelta = () => 1 / fps;
+      window.__step = () => viewer._tick();
+    }, FPS);
 
-  const encoder = spawn(ffmpegPath(), ['-y', '-loglevel', 'error', '-f', 'image2pipe', '-framerate', String(FPS), '-c:v', 'png', '-i', '-', '-c:v', 'libvpx', '-b:v', '2500k', '-auto-alt-ref', '0', file], {
-    stdio: ['pipe', 'inherit', 'inherit'],
-  });
-  const done = new Promise((resolve, reject) => {
-    encoder.on('close', (code) => (code === 0 ? resolve() : reject(new Error(`ffmpeg exited ${code}`))));
-  });
-  const frames = async (seconds) => {
-    for (let i = 0; i < Math.round(seconds * FPS); i++) {
-      await page.evaluate(() => window.__step());
-      const png = await page.screenshot({ type: 'png' });
-      if (!encoder.stdin.write(png)) await new Promise((resolve) => encoder.stdin.once('drain', resolve));
+    const frames = async (seconds) => {
+      for (let i = 0; i < Math.round(seconds * FPS) && !failed; i++) {
+        await page.evaluate(() => window.__step());
+        const frame = await page.screenshot(FRAME);
+        if (!encoder.stdin.write(frame)) await new Promise((resolve) => encoder.stdin.once('drain', resolve));
+      }
+    };
+    const press = (selector) => page.evaluate((target) => document.querySelector(target).click(), selector);
+
+    await frames(1.5);
+    if (part === 'explanation') {
+      await press('[data-lesson="play"]');
+      const duration = await page.evaluate(() => window.__app.lesson.duration);
+      await frames(duration + 1.5);
+    } else {
+      await press('[data-lesson="try"]');
+      await frames(2.5);
+      await press('[data-lesson="constrict"]');
+      await frames(5);
+      await press('[data-lesson="other"]');
+      await frames(6);
+      await press('[data-lesson="constrict"]');
+      await frames(4);
+      await press('[data-lesson="constrict"]');
+      await frames(4);
+      await press('[data-lesson="reset"]');
+      await frames(2);
     }
-  };
-  const press = (selector) => page.evaluate((target) => document.querySelector(target).click(), selector);
-
-  await frames(1.5);
-  if (part === 'explanation') {
-    await press('[data-lesson="play"]');
-    const duration = await page.evaluate(() => window.__app.lesson.duration);
-    await frames(duration + 1.5);
-  } else {
-    await press('[data-lesson="try"]');
-    await frames(2.5);
-    await press('[data-lesson="constrict"]');
-    await frames(5);
-    await press('[data-lesson="other"]');
-    await frames(6);
-    await press('[data-lesson="constrict"]');
-    await frames(4);
-    await press('[data-lesson="constrict"]');
-    await frames(4);
-    await press('[data-lesson="reset"]');
-    await frames(2);
+  } finally {
+    encoder.stdin.end();
+    await done;
+    await page.close();
   }
-  encoder.stdin.end();
-  await done;
-  await page.close();
+  if (failed) throw failed;
 }

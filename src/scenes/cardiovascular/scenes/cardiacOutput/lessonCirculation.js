@@ -178,10 +178,19 @@ export const UNIT_BOX = Object.freeze(
   })()
 );
 
-/** Anchors a tag or a chip hangs from, in the unit's frame. */
+/** The radius of A's sleeve round the blood B sends out. */
+const STROKE_BEFORE_RADIUS = 0.44;
+
+/**
+ * Anchors a tag or a chip hangs from, in the unit's frame. `bedTip` is the
+ * lower end of the vessels: where their tag goes when the room to their right
+ * has run out of screen. (The heart has no such second place: the framing fits
+ * its apex to the bottom of the band, so there is never room below it.)
+ */
 const ANCHORS = {
   heart: new THREE.Vector3(-3.1, -2.4, 1.2),
   bed: BED_INLET.clone().lerp(BED_OUTLET, 0.45).addScaledVector(SCREEN_RIGHT, 2.9),
+  bedTip: BED_OUTLET.clone().add(new THREE.Vector3(0, -0.2, 0)),
   gauge: GAUGE_CENTRE.clone().add(new THREE.Vector3(0, GAUGE_RADIUS + 0.25, 0)),
   chip: new THREE.Vector3(1.2, 5.6, 0),
 };
@@ -271,7 +280,7 @@ export class LessonCirculation extends THREE.Group {
 
     // The blood one beat sends out, and A's, as a sleeve round it.
     this.stroke = createStroke({ radius: 0.28, steps: compact ? 90 : 140, radial: compact ? 10 : 14, color: PALETTE.flow, opacity: 0.95, name: 'stroke' });
-    this.strokeBefore = createStroke({ radius: 0.44, steps: compact ? 90 : 140, radial: 12, color: PALETTE.before, opacity: 0.3, name: 'stroke-before', doubleSide: true });
+    this.strokeBefore = createStroke({ radius: STROKE_BEFORE_RADIUS, steps: compact ? 90 : 140, radial: 12, color: PALETTE.before, opacity: 0.3, name: 'stroke-before', doubleSide: true });
 
     // Blood moving through the artery and the small vessels, at a rate set by the output.
     this.arterialFlow = createFlowStream({ curves: [ARTERY], count: compact ? 50 : 80, color: PALETTE.flow, size: 5, speed: 0.22, spread: 0.07, seed: 4021, opacity: 0.45 });
@@ -427,8 +436,10 @@ export class LessonCirculation extends THREE.Group {
     if (part === 'ejected') {
       // A fixed point on the arch the stroke runs along — not the moving
       // stroke itself, whose tag would chase it round the arch every beat and,
-      // on a phone, settle on the dial beside the rising artery.
-      return this.localToWorld(ARTERY.getPointAt(0.42).clone());
+      // on a phone, settle on the dial beside the rising artery. On the top of
+      // A's sleeve rather than the arch's centre line, so a tag above it
+      // clears the sleeve when the sleeve is drawn.
+      return this.localToWorld(ARTERY.getPointAt(0.42).clone().add(new THREE.Vector3(0, STROKE_BEFORE_RADIUS, 0)));
     }
     const local = ANCHORS[part];
     return local ? this.localToWorld(local.clone()) : null;

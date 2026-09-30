@@ -206,10 +206,15 @@ export const LESSON_STEPS = {
 
 /** Short tags on the model, beside the part they name. */
 export const LESSON_TAGS = {
-  heart: { en: 'Heart (left ventricle)', ja: '心臓（左心室）' },
+  // Two lines, like the vessels' tag below: on one, it is wider than the room
+  // left of the heart on a phone and stood over the heart's wall.
+  heart: { en: 'Heart\n(left ventricle)', ja: '心臓\n（左心室）' },
   ejected: { en: 'Blood sent out this beat', ja: '1回に送り出された血液' },
   bed: { en: 'Small vessels of the whole body', ja: '全身の細い血管' },
-  bedNarrowing: { en: 'All narrow together → resistance ↑', ja: '一斉に細くなる＝血管抵抗↑' },
+  // Two lines on purpose: on one, it is wider than the room right of the
+  // vessels at 1440×900 beside the side column, and was pushed back over the
+  // very point it names (lesson-drive's "covers the point it names").
+  bedNarrowing: { en: 'All narrow together\n→ resistance ↑', ja: '一斉に細くなる\n＝血管抵抗↑' },
   gauge: { en: 'Mean blood pressure', ja: '平均血圧' },
   gaugeUp: { en: 'Pressure ↑', ja: '血圧↑' },
   ejectedLess: { en: 'Sent out per beat ↓', ja: '1回に送り出す量↓' },

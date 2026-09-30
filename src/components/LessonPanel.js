@@ -224,8 +224,11 @@ export function createLessonPanel({ titleCard, copy, detailHref, on }) {
         tagNodes.set(item.key, entry);
         tags.append(entry.node);
       }
-      const points = (item.points ?? []).map(project).filter(Boolean);
-      if (!points.length) {
+      // The places it may stand, best first, each with the points it names.
+      const places = (item.places?.length ? item.places : [{ side: item.side ?? 'up', points: item.points }])
+        .map((place) => ({ side: place.side, points: (place.points ?? []).map(project).filter(Boolean) }))
+        .filter((place) => place.points.length);
+      if (!places.length) {
         entry.node.hidden = true;
         continue;
       }
@@ -233,11 +236,10 @@ export function createLessonPanel({ titleCard, copy, detailHref, on }) {
       const width = entry.box.offsetWidth;
       const height = entry.box.offsetHeight;
       const gap = item.kind === 'chip' ? 6 : 16;
-      const xs = points.map((p) => p.x);
-      const ys = points.map((p) => p.y);
-      const cx = (Math.min(...xs) + Math.max(...xs)) / 2;
-      const preferred = points.length > 1 ? 'up' : item.side ?? 'up';
-      const boxFor = (side) => {
+      const boxFor = (points, side, penalty, choice) => {
+        const xs = points.map((p) => p.x);
+        const ys = points.map((p) => p.y);
+        const cx = (Math.min(...xs) + Math.max(...xs)) / 2;
         let bx;
         let by;
         if (side === 'left') {
@@ -263,13 +265,29 @@ export function createLessonPanel({ titleCard, copy, detailHref, on }) {
           const h = Math.min(cy0 + height + 4, other.y + other.h) - Math.max(cy0 - 4, other.y);
           return sum + (w > 0 && h > 0 ? w * h : 0);
         }, 0);
-        return { x: cx0, y: cy0, cost: clash * 4 + pushed * 6 + (side === preferred ? 0 : 400) };
+        // Pushed so far that it stands on the point it names: that side is
+        // no longer a place for it at all.
+        const covers = points.some((p) => p.x > cx0 - 2 && p.x < cx0 + width + 2 && p.y > cy0 - 2 && p.y < cy0 + height + 2);
+        // Where it stood last frame is worth a little: two near-equal places
+        // must not trade the tag back and forth while the camera settles.
+        const kept = choice === entry.choice ? -40 : 0;
+        return { x: cx0, y: cy0, points, choice, cost: clash * 4 + pushed * 6 + penalty + (covers ? 5000 : 0) + kept };
       };
-      // The side it asks for, unless that lands on a tag already placed or
-      // off the band; then the least bad of the others.
-      const sides = item.kind === 'chip' ? ['up'] : [preferred, ...['up', 'left', 'right', 'down'].filter((side) => side !== preferred)];
-      const best = sides.map(boxFor).reduce((a, b) => (b.cost < a.cost ? b : a));
-      const { x, y } = best;
+      // The first place on the side it asks for, unless that lands on a tag
+      // already placed or off the band; then another place it offers, on its
+      // own side; and only then the other sides of the first place, which
+      // stand over the part it names.
+      const candidates = places.flatMap((place, i) => {
+        const side = place.points.length > 1 ? 'up' : place.side ?? 'up';
+        if (item.kind === 'chip') return [boxFor(place.points, 'up', 0, `${i}up`)];
+        if (i > 0) return [boxFor(place.points, side, 150, `${i}${side}`)];
+        return [side, ...['up', 'left', 'right', 'down'].filter((other) => other !== side)].map((other) =>
+          boxFor(place.points, other, other === side ? 0 : 400, `${i}${other}`)
+        );
+      });
+      const best = candidates.reduce((a, b) => (b.cost < a.cost ? b : a));
+      const { x, y, points } = best;
+      entry.choice = best.choice;
       placed.push({ x, y, w: width, h: height });
       entry.box.style.transform = `translate(${Math.round(x)}px, ${Math.round(y)}px)`;
       // Lines from each point to the nearest point of the box.
