@@ -1,8 +1,18 @@
 import { el } from '../utils/dom.js';
 import { inLanguage } from '../utils/language.js';
-import { EXPLORER_ROUTE, LAB_ROUTE, LANDING_ROUTE, PATIENT_ROUTE, organById } from '../catalog/index.js';
+import {
+  ABOUT_ROUTE,
+  EXPLORER_ROUTE,
+  LAB_ROUTE,
+  LANDING_ROUTE,
+  MODELS_ROUTE,
+  PATIENT_ROUTE,
+  organById,
+  sceneById,
+} from '../catalog/index.js';
+import { BRAND } from '../data/brand.js';
 import { PURPOSE, PURPOSES, purposeById } from '../app/purpose.js';
-import { PUBLIC_MANIFEST } from '../catalog/publicManifest.js';
+import { PUBLIC_MANIFEST, layerOfScene } from '../catalog/publicManifest.js';
 import { activeUsesForSceneEntry } from '../access/sceneUses.js';
 import { readSceneLibrary, toggleSceneFavorite } from '../app/sceneLibrary.js';
 import { resolveRoute } from '../app/router.js';
@@ -16,6 +26,7 @@ import {
 } from '../app/sceneNavigationModel.js';
 import { createSiteHeaderMenu } from './SiteMenu.js';
 import { brandMark } from './ShellHeader.js';
+import { createWordmark } from './Wordmark.js';
 
 /**
  * The hash this document is actually showing.
@@ -36,8 +47,8 @@ const currentHash = () => (typeof window === 'undefined' ? '' : (window.location
  *
  * | zone | what | why there |
  * | --- | --- | --- |
- * | who | `← M/3 Medical 3D Lab ホーム` | the way home; the same mark as every other screen |
- * | where | organs, then the layers of the current organ | switching models is the product's main loop |
+ * | who | the mark and the BYOKI MOTION wordmark | the way home; the same name as every other screen |
+ * | where | on an anatomy model: organs, then the organ's layers. On a disease model: Models · About | anatomy is navigated by organ; a disease model is not |
  * | you | language, account | in the row when it is wide, in the menu when it is not |
  * | menu | ☰ | everything else the site has, in layers |
  *
@@ -102,6 +113,16 @@ export function createSceneSwitcher({
 
   const navigation = organLayerNavigation(models, currentScene.id);
   const onPublishedModel = Boolean(navigation.currentModel);
+  /**
+   * Whether this model is anatomy — named structures — rather than a disease
+   * model. Only anatomy is navigated organ by organ (ADR 2026-09-30): a
+   * reader on 心拍出量 is in a model about a circulation, and a row of
+   * 脳 心臓 肺 肝臓 above it told them they were in an organ atlas. The disease
+   * model reaches its organ's anatomy from its own title card instead
+   * (「解剖を確認」).
+   */
+  const catalogueScene = sceneById(currentScene.id) ?? currentScene;
+  const isAnatomy = (navigation.currentModel?.layer ?? layerOfScene(catalogueScene)) === 'anatomy';
 
   /**
    * The organs, as one press each.
@@ -112,7 +133,7 @@ export function createSceneSwitcher({
    * layer row names the page and the organ says `true` — "you are inside this
    * one" — which is what that value is for.
    */
-  const organStrip = onPublishedModel && navigation.organs.length > 1
+  const organStrip = isAnatomy && onPublishedModel && navigation.organs.length > 1
     ? el(
         'div',
         {
@@ -149,7 +170,7 @@ export function createSceneSwitcher({
    * anatomy and what sits on it.
    */
   const layerModels = navigation.currentOrgan?.models ?? [];
-  const layerRow = onPublishedModel && layerModels.length > 1
+  const layerRow = isAnatomy && onPublishedModel && layerModels.length > 1
     ? el(
         'div',
         {
@@ -202,7 +223,20 @@ export function createSceneSwitcher({
     });
     return el('span', { class: `global-nav-current-label lang-${lang}` }, children);
   };
+  // A disease model's header carries the product's own top level. Where it is
+  // (病態モデル › 循環 › the model) is the title card's first line, beside the
+  // model it names, rather than a second copy up here.
+  // A model with two purposes keeps its purpose-rooted location (医学教育 › …
+  // / 患者説明 › the question) — that is how the switch beside it says which
+  // side the reader is on (F-226).
+  const productNav = !isAnatomy && !purpose?.available
+    ? el('div', { class: 'global-nav-product', role: 'group', 'aria-label': inLanguage('Product', 'サイト') }, [
+        el('a', { class: 'global-nav-product-link', href: MODELS_ROUTE }, [bilingual('Models', 'モデル')]),
+        el('a', { class: 'global-nav-product-link', href: ABOUT_ROUTE }, [bilingual('About', 'About')]),
+      ])
+    : null;
   const currentLocation = organStrip
+    ?? productNav
     ?? el('div', { class: 'global-nav-current', 'aria-label': 'Current model / 現在のモデル' }, [
       breadcrumb([currentGroup.label, organEn, sceneEn], 'en'),
       breadcrumb([currentGroup.labelJa, organJa, sceneJa], 'ja'),
@@ -281,6 +315,8 @@ export function createSceneSwitcher({
           'aria-label': inLanguage('Purpose', '目的'),
         },
         PURPOSES.map((entry) => {
+          // Named for the reader — Medical | Patient — rather than for the use;
+          // the location beside it still says 医学教育 / 患者説明.
           const button = el(
             'button',
             {
@@ -290,7 +326,7 @@ export function createSceneSwitcher({
               dataset: { purpose: entry.id },
               on: { click: () => purpose.onChange?.(entry.id) },
             },
-            purposeLabel(entry.id)
+            [el('span', { class: 'lang-en', text: entry.audience.en }), el('span', { class: 'lang-ja', text: entry.audience.ja })]
           );
           purposeButtons.set(entry.id, button);
           return button;
@@ -523,20 +559,21 @@ export function createSceneSwitcher({
 
   // ---------------------------------------------------------------- who
 
-  // The way home is the product's icon, alone (owner's decision, 2026-09-27).
-  // It used to be `← M/3 Medical 3D Lab | ホーム`: an arrow and a word saying
-  // "home" twice, after a mark and a name. The icon is the same one the tab
-  // and every other screen show; the link's accessible name and tooltip still
-  // say where it goes, destination first.
+  // The way home: the mark and the wordmark (ADR 2026-09-30). It was the icon
+  // alone (owner's decision, 2026-09-27, replacing `← M/3 Medical 3D Lab |
+  // ホーム`); the name came back because BYOKI MOTION is a word a reader has
+  // to learn, and the model screen is where most of them arrive. On a phone
+  // with an organ row the name gives its room back and the mark stays. The
+  // link's accessible name and tooltip say where it goes, destination first.
   const brand = el(
     'a',
     {
       class: 'global-nav-brand',
       href: LANDING_ROUTE,
-      title: inLanguage('Home — Medical 3D Lab', 'トップへ戻る — Medical 3D Lab'),
-      'aria-label': inLanguage('Home — Medical 3D Lab', 'トップへ戻る — Medical 3D Lab'),
+      title: inLanguage(`Home — ${BRAND.name}`, `トップへ戻る — ${BRAND.name}`),
+      'aria-label': inLanguage(`Home — ${BRAND.name}`, `トップへ戻る — ${BRAND.name}`),
     },
-    [brandMark('global-nav-brand-mark')]
+    [brandMark('global-nav-brand-mark'), createWordmark({ size: 'sm', className: 'global-nav-brand-name' })]
   );
 
   const element = el(
@@ -546,7 +583,8 @@ export function createSceneSwitcher({
         `global-scene-nav has-site-menu${isLab ? ' is-lab' : ' is-public'}${hasChoices ? '' : ' is-single'}` +
         (organStrip ? ' has-model-strip' : '') +
         (layerRow ? ' has-layer-row' : '') +
-        (dualPurpose ? ' has-purpose' : ''),
+        (dualPurpose ? ' has-purpose' : '') +
+        (isAnatomy ? ' is-anatomy' : ' is-disease-model'),
       // Names the landmark, rather than repeating the brand.
       'aria-label': inLanguage('Site navigation', 'サイトナビゲーション'),
     },

@@ -1,3 +1,4 @@
+import { BRAND } from '../data/brand.js';
 import { el, focusBack } from '../utils/dom.js';
 import { redactText } from '../telemetry/redact.js';
 
@@ -320,7 +321,7 @@ export function createFeedbackPanel({
  * category so it can be triaged without opening it.
  */
 function openMailFallback(payload) {
-  const subject = `Medical 3D Lab feedback — ${payload.category}`;
+  const subject = `${BRAND.name} feedback — ${payload.category}`;
   const body = [payload.message, '', `route: ${payload.route || '(none)'}`, `surface: ${payload.surface}`].join('\n');
   const href = `mailto:?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
   window.open(href, '_blank', 'noopener');

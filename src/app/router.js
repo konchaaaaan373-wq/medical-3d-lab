@@ -1,6 +1,9 @@
 import {
+  ABOUT_SLUG,
+  ANATOMY_SLUG,
   EXPLORER_SLUG,
   LAB_SLUG,
+  MODELS_SLUG,
   PATHOLOGY_SLUG,
   PATIENT_SLUG,
   resolveSceneId,
@@ -19,11 +22,13 @@ import { LEGAL_SLUGS } from '../data/legalRoutes.js';
  */
 
 /** `#/explore` is accepted as well, because it is the word half of us reach for. */
-const EXPLORER_ALIASES = new Set([EXPLORER_SLUG, 'explore']);
+const EXPLORER_ALIASES = new Set([EXPLORER_SLUG, 'explore', ANATOMY_SLUG]);
 const LAB_ALIASES = new Set([LAB_SLUG, 'experimental']);
 const TRUST_ALIASES = new Set(['trust', 'evidence']);
 /** The disease-model list: where "病態モデル" in a mechanism scene's breadcrumb goes. */
-const PATHOLOGY_ALIASES = new Set([PATHOLOGY_SLUG]);
+const PATHOLOGY_ALIASES = new Set([MODELS_SLUG, PATHOLOGY_SLUG]);
+/** What BYOKI MOTION is (`src/app/About.js`). */
+const ABOUT_ALIASES = new Set([ABOUT_SLUG]);
 /** The patient-explanation entrance: questions, each opening a model in that purpose. */
 const PATIENT_ALIASES = new Set([PATIENT_SLUG]);
 const LANDING_ALIASES = new Set(['', 'home']);
@@ -131,6 +136,7 @@ export function resolveRoute(hash = '') {
   if (EXPLORER_ALIASES.has(slug)) return { kind: 'explorer' };
   if (LAB_ALIASES.has(slug)) return { kind: 'lab' };
   if (PATHOLOGY_ALIASES.has(slug)) return { kind: 'pathology' };
+  if (ABOUT_ALIASES.has(slug)) return { kind: 'about', focusId: queryValue(hash, 'section') };
   if (PATIENT_ALIASES.has(slug)) return { kind: 'patient' };
   if (TRUST_ALIASES.has(slug)) return { kind: 'trust', focusId: trustFocusOf(hash) };
   if (LEGAL_ALIASES.has(slug)) return { kind: 'legal', docId: slug };
@@ -155,6 +161,7 @@ export const DOCUMENT_ROUTE_SLUGS = Object.freeze([
   ...EXPLORER_ALIASES,
   ...LAB_ALIASES,
   ...PATHOLOGY_ALIASES,
+  ...ABOUT_ALIASES,
   ...PATIENT_ALIASES,
   ...TRUST_ALIASES,
   ...LEGAL_ALIASES,
@@ -175,6 +182,7 @@ export const DOCUMENT_ROUTE_KINDS = Object.freeze([
   'explorer',
   'lab',
   'pathology',
+  'about',
   'patient',
   'trust',
   'legal',

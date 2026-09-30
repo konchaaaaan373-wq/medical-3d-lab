@@ -16,11 +16,11 @@
 
 /** The `:root` custom properties in `base.css`, by name without the `--`. */
 export const TOKENS = {
-  bg: '#04060c',
-  ink: '#eaf2ff',
-  'ink-dim': '#a7b6ce',
-  'ink-faint': '#6b7c95',
-  accent: '#38e1ef',
+  bg: '#121110',
+  ink: '#f1eee8',
+  'ink-dim': '#bcb6ac',
+  'ink-faint': '#8f887e',
+  accent: '#f0894a',
 };
 
 /**
@@ -31,11 +31,11 @@ export const TOKENS = {
  */
 export const SURFACES = {
   /** The page itself. */
-  page: '#04060c',
-  /** `--panel`: rgba(10, 16, 28, 0.62) over the page. */
-  panel: composite('#0a101c', 0.62, '#04060c'),
-  /** `--panel-strong`: rgba(8, 13, 24, 0.86) over the page. */
-  panelStrong: composite('#080d18', 0.86, '#04060c'),
+  page: '#121110',
+  /** `--panel`: rgba(28, 26, 24, 0.72) over the page. */
+  panel: composite('#1c1a18', 0.72, '#121110'),
+  /** `--panel-strong`: rgba(24, 22, 20, 0.9) over the page. */
+  panelStrong: composite('#181614', 0.9, '#121110'),
   /**
    * The Trust page is a light editorial surface rather than an overlay on a
    * dark canvas, so it has its own palette and its own obligations. It is

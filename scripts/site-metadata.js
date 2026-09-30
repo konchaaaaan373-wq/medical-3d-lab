@@ -20,9 +20,13 @@
  * output the way it asserts on the catalogue.
  */
 
-export const SITE_NAME = 'Medical 3D Lab';
-export const SITE_TAGLINE_EN = 'Interactive 3D for understanding physiology and disease';
-export const SITE_TAGLINE_JA = '見えない病態生理を、3D で動かして理解する';
+import { BRAND } from '../src/data/brand.js';
+
+// Read from the one place the product's name lives (`src/data/brand.js`), so a
+// crawler, a link preview and the header cannot disagree about it.
+export const SITE_NAME = BRAND.name;
+export const SITE_TAGLINE_EN = BRAND.description;
+export const SITE_TAGLINE_JA = BRAND.tagline.ja;
 
 /** Where a generated scene page lives, relative to the site root. */
 export const scenePagePath = (scene) => `s/${scene.slug}/index.html`;
@@ -132,7 +136,7 @@ export function sceneJsonLd(meta, scene) {
     name: `${scene.titleJa} / ${scene.titleEn}`,
     description: meta.description,
     inLanguage: ['ja', 'en'],
-    learningResourceType: 'Interactive 3D model',
+    learningResourceType: 'Interactive model',
     educationalUse: 'instruction',
     isAccessibleForFree: true,
     keywords: meta.keywords.join(', '),
@@ -258,27 +262,27 @@ ${headTags({ ...meta, type: 'article' }).join('\n')}
 ${jsonLd}
     </script>
     <style>
-      :root { color-scheme: dark; }
-      body { margin: 0; padding: 6vh 5vw; background: #04060c; color: #eaf2ff;
+      :root { color-scheme: light; }
+      body { margin: 0; padding: 6vh 5vw; background: #f6f4ef; color: #1f1e1c;
         font-family: system-ui, -apple-system, 'Hiragino Sans', 'Noto Sans JP', sans-serif;
-        line-height: 1.7; }
+        line-height: 1.75; }
       main { max-width: 720px; margin: 0 auto; }
-      h1 { font-size: clamp(26px, 5vw, 40px); line-height: 1.15; margin: 0 0 6px; }
-      h1 small { display: block; font-size: 0.5em; font-weight: 500; color: #a7b6ce; margin-top: 8px; }
-      p { color: #c9d6ea; }
-      .badges { display: flex; flex-wrap: wrap; gap: 8px; margin: 18px 0 24px; }
-      .badge { border: 1px solid rgba(140,175,225,0.22); border-radius: 999px;
-        padding: 5px 12px; font-size: 12px; color: #a7b6ce; }
-      .open { display: inline-block; margin: 8px 0 28px; padding: 12px 22px; border-radius: 12px;
-        border: 1px solid rgba(56,225,239,0.5); background: rgba(56,225,239,0.12);
-        color: #eaf2ff; text-decoration: none; font-weight: 650; }
-      nav a { color: #38e1ef; margin-right: 16px; font-size: 13px; }
-      footer { margin-top: 36px; padding-top: 18px; border-top: 1px solid rgba(140,175,225,0.16);
-        color: #6b7c95; font-size: 12px; }
+      .brand { font-size: 13px; font-weight: 600; letter-spacing: 0.12em; color: #1f1e1c; text-decoration: none; }
+      h1 { font-size: clamp(26px, 5vw, 40px); font-weight: 600; line-height: 1.2; margin: 28px 0 6px; }
+      h1 small { display: block; font-size: 0.5em; font-weight: 400; color: #5f5b54; margin-top: 8px; }
+      p { color: #3d3b37; }
+      .badges { display: flex; flex-wrap: wrap; gap: 8px 16px; margin: 18px 0 24px; }
+      .badge { font-size: 13px; color: #5f5b54; }
+      .open { display: inline-block; margin: 8px 0 28px; padding: 12px 22px; border-radius: 6px;
+        background: #1f1e1c; color: #f6f4ef; text-decoration: none; font-weight: 600; }
+      nav a { color: #1f1e1c; margin-right: 18px; font-size: 14px; }
+      footer { margin-top: 36px; padding-top: 18px; border-top: 1px solid rgba(31,30,28,0.14);
+        color: #6f6b63; font-size: 13px; }
     </style>
   </head>
   <body>
     <main>
+      <a class="brand" href="${TO_ROOT}#/">${escapeHtml(SITE_NAME)}</a>
       <h1>${escapeHtml(scene.titleJa)}<small>${escapeHtml(scene.titleEn)}</small></h1>
       <div class="badges">
         <span class="badge">${escapeHtml(status.ja)}</span>
@@ -286,12 +290,12 @@ ${jsonLd}
       </div>
       <p>${escapeHtml(scene.descriptionJa)}</p>
       <p lang="en">${escapeHtml(scene.description)}</p>
-      <a class="open" href="${TO_ROOT}#/${escapeHtml(scene.slug)}">3D モデルを開く / Open the interactive model</a>
+      <a class="open" href="${TO_ROOT}#/${escapeHtml(scene.slug)}">モデルを開く / Open the interactive model</a>
       <p lang="en"><strong>${escapeHtml(status.en)}.</strong> ${escapeHtml(review.en)}.</p>
       <nav>
-        <a href="${TO_ROOT}#/organs">すべてのモデル / All models</a>
-        <a href="${TO_ROOT}#/trust">医学的信頼性 / Model trust</a>
-        <a href="${TO_ROOT}#/">${escapeHtml(SITE_NAME)}</a>
+        <a href="${TO_ROOT}#/trust?model=${escapeHtml(scene.slug)}">このモデルの根拠と限界 / Sources &amp; limits</a>
+        <a href="${TO_ROOT}#/models">すべてのモデル / All models</a>
+        <a href="${TO_ROOT}#/about">${escapeHtml(SITE_NAME)} について / About</a>
       </nav>
       <footer>
         教育目的の概念モデルです。個別患者の診断・治療を行うものではありません。<br />

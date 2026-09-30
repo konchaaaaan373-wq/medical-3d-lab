@@ -12,7 +12,8 @@ html[data-route='landing'] {
   --landing-line: rgba(176, 198, 229, 0.18);
   --landing-line-strong: rgba(176, 198, 229, 0.3);
   --landing-panel: rgba(7, 11, 19, 0.91);
-  background: #05080d;
+  background: var(--reading-bg);
+  color: var(--reading-ink);
 }
 
 .landing-flow-field {

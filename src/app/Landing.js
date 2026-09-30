@@ -4,13 +4,18 @@ import {
   HERO_ORGANS,
   heroOrgansForModels,
 } from '../data/landingHero.js';
-import { NECO_LINKS } from '../data/necoLinks.js';
-import { LANDING_ROUTE } from '../catalog/index.js';
+import { BRAND, pageTitle } from '../data/brand.js';
+import { MODELS_ROUTE, SCENES, sceneById } from '../catalog/index.js';
+import { isPathologyModelScene, pathologyModelScenes } from '../catalog/pathologyModels.js';
 import { createLandingOrganHero } from './landingOrganHero.js';
+import { createLandingFlowField } from './landingFlowField.js';
 import { el, skipLink } from '../utils/dom.js';
-import { createShellHeader, purposeDestinations } from '../components/ShellHeader.js';
+import { inLanguage } from '../utils/language.js';
+import { createShellHeader } from '../components/ShellHeader.js';
+import { createSiteFooter } from '../components/SiteFooter.js';
+import { createModelCard } from '../components/ModelCard.js';
+import { createWordmark } from '../components/Wordmark.js';
 import { patientExplanationScenes } from '../access/patientPurpose.js';
-import { PURPOSES } from './purpose.js';
 import { betaUnlocked } from './releaseGate.js';
 
 const dual = (en, ja, className = '') => [
@@ -18,179 +23,129 @@ const dual = (en, ja, className = '') => [
   el('span', { class: `${className} lang-ja`.trim(), text: ja }),
 ];
 
-const shellLink = (href, en, ja, className = 'landing-button') =>
-  el('a', { class: className, href }, dual(en, ja));
-
-const externalLink = (href, en, ja, className = 'landing-external-link') =>
-  el('a', {
-    class: className,
-    href,
-    target: '_blank',
-    rel: 'noopener noreferrer',
-  }, [
-    ...dual(en, ja),
-    el('span', { class: 'landing-external-mark', 'aria-hidden': 'true', text: '↗' }),
-    ...dual('Opens in a new tab', '新しいタブで開きます', 'landing-sr-only'),
-  ]);
-
-const operatorCredit = (className) => externalLink(
-  NECO_LINKS.operator,
-  'Operated by Neco Inc.',
-  '運営：株式会社Neco',
-  className
-);
-
-function landingSummary(models) {
-  if (models.length === 0) {
-    return {
-      en: 'No 3D anatomy model is available at the moment.',
-      ja: '現在利用できる3D解剖モデルはありません。',
-    };
-  }
-  if (models.length === 1 && models[0].organId === 'brain') {
-    return {
-      en: 'Rotate and zoom the brain to inspect the spatial relationship between its colour-coded structures.',
-      ja: '脳を回転・拡大し、色分けされた部位の位置関係を確認できます。',
-    };
-  }
-  return {
-    en: 'Rotate and zoom a published organ model to inspect the spatial relationship between its structures.',
-    ja: '公開中の臓器を回転・拡大し、部位ごとの位置関係を確認できます。',
-  };
-}
-
 /**
- * Public landing surface.
+ * BYOKI MOTION's front door (ADR 2026-09-30).
  *
- * Publication data comes only from the injected PUBLIC_MANIFEST contract. The
- * optional arguments exist for 0/1/2-model fixtures; production callers use
- * the defaults. No poster path is consumed here: the hero is the real model.
+ * ## What it has to do in five seconds
+ *
+ * Say what this is — models of pathophysiology you move — and put one of them
+ * a press away. So, top to bottom: the name and the promise with one action;
+ * the published disease models, each as a picture, a name and a question; two
+ * short paragraphs on why the models move and whom they speak to; the footer.
+ * It is deliberately not a corporate landing page and does not grow sections.
+ *
+ * ## What it stopped being
+ *
+ * An anatomy atlas's title over a daily-rotating organ. The organs are not gone —
+ * they are the anatomy shelf, one line below the models here and a section of
+ * `#/models` — but the page no longer opens on a specimen, because the product
+ * is not an atlas. There is no 3D on this page at all: the hero's motion is a
+ * 2D field of lanes and points (`landingFlowField.js`), which costs no model
+ * download and says "things move and respond" without claiming to be any
+ * organ.
+ *
+ * Which models appear is read from the public manifest and nothing else. Under
+ * the preview unlock the list is every disease model, as the other indexes do.
  */
 export function createLanding({
   ui,
   accountButton = null,
-  onRendererFailure = () => {},
   manifest = PUBLIC_MANIFEST,
-  heroCandidates = HERO_ORGANS,
   patientScenes = safePatientScenes(),
+  scenes = null,
 } = {}) {
   const models = [...(manifest?.models ?? [])];
-  const heroModels = heroOrgansForModels(models, heroCandidates);
-  const primaryModel = models[0] ?? null;
-  const summary = landingSummary(models);
-  const organHero = heroModels.length
-    ? createLandingOrganHero({
-        onRendererFailure,
-        organs: heroModels,
-        compact: true,
-        showOpenLink: false,
-      })
-    : null;
-
+  const diseaseModels = scenes ?? diseaseModelScenes(models);
+  // By the category rule every surface uses (`pathologyModels.js`), read off
+  // the catalogue entry rather than trusted from the row.
+  const anatomyModels = models.filter((model) => !isPathologyModelScene(sceneById(model.sceneId)));
   const languageToggle = createLanguageToggle((mode) => {
     ui.dataset.lang = mode;
   });
+  const flow = safeFlowField();
 
-  const element = el('main', { class: 'landing' }, [
+  const hero = el('section', {
+    class: 'bm-hero',
+    id: 'content',
+    tabindex: '-1',
+    'data-skip-target': '',
+    'aria-labelledby': 'bm-hero-title',
+  }, [
+    flow ? el('div', { class: 'bm-hero-motion', 'aria-hidden': 'true' }, [flow.element]) : null,
+    el('div', { class: 'bm-hero-copy' }, [
+      el('h1', { class: 'bm-hero-title', id: 'bm-hero-title' }, [createWordmark({ size: 'xl' })]),
+      el('p', { class: 'bm-hero-tagline' }, dual(BRAND.tagline.en, BRAND.tagline.ja)),
+      // English on both sides: it is the product's one-line definition, and
+      // the Japanese reader is shown it as the name's gloss.
+      el('p', { class: 'bm-hero-definition', lang: 'en', text: BRAND.description }),
+      el('a', { class: 'bm-cta', href: MODELS_ROUTE }, [
+        ...dual('See the models', 'モデルを見る'),
+        el('span', { class: 'bm-cta-arrow', 'aria-hidden': 'true', text: '→' }),
+      ]),
+    ]),
+  ].filter(Boolean));
+
+  const element = el('main', { class: 'bm-landing' }, [
     createShellHeader({
       current: 'home',
       accountButton,
       languageToggle: languageToggle.element,
       models,
     }),
-
-    el('section', {
-      class: 'landing-hero',
-      id: 'content',
-      tabindex: '-1',
-      'data-skip-target': '',
-    }, [
-      el('header', { class: 'landing-hero-heading' }, [
-        el('div', { class: 'landing-hero-copy' }, [
-          el('p', { class: 'landing-eyebrow' }, dual('Public beta', '公開β')),
-          el('h1', { class: 'landing-title' }, dual(
-            '3D anatomical models of the human body',
-            '人体の3D解剖モデル'
+    hero,
+    el('section', { class: 'bm-section bm-models', 'aria-labelledby': 'bm-models-title' }, [
+      el('header', { class: 'bm-section-head' }, [
+        el('h2', { class: 'bm-section-title', id: 'bm-models-title' }, dual('Disease models', '病態モデル')),
+        diseaseModels.length > 1
+          ? el('a', { class: 'bm-section-link', href: MODELS_ROUTE }, dual('All models →', 'すべてのモデル →'))
+          : null,
+      ]),
+      diseaseModels.length
+        ? el('div', { class: `bm-model-list${diseaseModels.length === 1 ? ' is-single' : ''}` },
+            diseaseModels.map((scene, index) => createModelCard(scene, { headingLevel: 3, feature: index === 0 })))
+        : el('p', { class: 'bm-empty', role: 'status' }, dual(
+            'Disease models will appear here as they are published.',
+            '公開した病態モデルから、ここに表示します。'
           )),
-          el('p', { class: 'landing-hero-summary' }, dual(summary.en, summary.ja)),
-          primaryModel
-            ? null
-            : el('p', {
-                class: 'landing-empty-state',
-                role: 'status',
-              }, dual(
-                'Models will appear here as they are published.',
-                '公開したモデルから、ここに表示します。'
-              )),
-        ]),
-      ]),
-      organHero ? el('div', { class: 'landing-hero-instrument' }, [organHero.element]) : null,
-      organHero
-        ? el('div', { class: 'landing-hero-actions' }, [
-            organHero.actionElement,
-            // The hero's own, so it names the organ on screen rather than the
-            // first one in the manifest.
-            organHero.infoElement,
-          ])
-        : null,
+      anatomyModels.length ? anatomyLine(anatomyModels) : null,
     ]),
-
-    purposeEntrances(patientScenes),
-
-    el('section', { class: 'landing-neco', 'aria-labelledby': 'landing-neco-title' }, [
-      el('div', { class: 'landing-neco-heading' }, [
-        operatorCredit('landing-neco-operator'),
-        el('h2', { id: 'landing-neco-title' }, dual(
-          'Support for doctors and medical institutions',
-          '医師の働き方・採用のご相談'
+    el('section', { class: 'bm-section bm-concept', 'aria-labelledby': 'bm-concept-title' }, [
+      el('h2', { class: 'bm-concept-title', id: 'bm-concept-title' }, dual(
+        'Disease does not stand still.',
+        '病態は、静止していない。'
+      )),
+      el('div', { class: 'bm-concept-body' }, [
+        el('p', {}, dual(
+          'A condition changes, the body responds, and an intervention changes it again. In BYOKI MOTION you move that chain of cause and effect yourself.',
+          '状態が変わり、身体が反応し、介入によってさらに変化する。BYOKI MOTIONでは、その因果関係を自分で動かして理解します。'
         )),
-      ]),
-      el('p', { class: 'landing-neco-copy' }, dual(
-        'Neco, the operator of Medical 3D Lab, supports doctors considering their work and careers, and medical institutions recruiting doctors.',
-        '運営する株式会社Necoは、医師の転職・働き方の相談と、医療機関の採用を支援しています。'
-      )),
-      el('nav', { class: 'landing-neco-links', 'aria-label': 'Neco services / Necoの相談窓口' }, [
-        externalLink(
-          NECO_LINKS.doctor,
-          'For doctors: discuss work and opportunities',
-          '医師の方：働き方・求人について相談する'
-        ),
-        externalLink(
-          NECO_LINKS.medicalInstitution,
-          'For medical institutions: discuss doctor recruitment',
-          '医療機関の方：医師の採用について相談する'
-        ),
+        el('ol', { class: 'bm-loop', 'aria-label': inLanguage('How a model is used', 'モデルの使い方') },
+          [
+            ['Look', '見る'],
+            ['Move', '動かす'],
+            ['The state changes', '状態が変わる'],
+            ['See why', 'なぜ変わったかが分かる'],
+          ].map(([en, ja], index) =>
+            el('li', { class: `bm-loop-step${index === 2 ? ' is-change' : ''}` }, dual(en, ja))
+          )),
       ]),
     ]),
-
-    el('footer', { class: 'landing-footer' }, [
-      el('div', { class: 'landing-footer-identity' }, [
-        el('div', { class: 'landing-footer-brand', text: 'Medical 3D Lab' }),
-        operatorCredit('landing-footer-operator'),
-      ]),
-      el('p', { class: 'landing-footer-boundary' }, dual(
-        'Representative educational models — not for individual diagnosis or treatment decisions.',
-        '学習用の代表モデルです。個別の診断・治療判断には使用できません。'
-      )),
-      el('nav', { class: 'landing-footer-links', 'aria-label': 'Legal and support / 規約・サポート' }, [
-        el('a', { class: 'landing-footer-link', href: '#/terms' }, dual('Terms', '利用規約')),
-        el('a', { class: 'landing-footer-link', href: '#/privacy' }, dual('Privacy', 'プライバシー')),
-        el('a', { class: 'landing-footer-link', href: '#/commerce' }, dual('Commercial disclosure', '特定商取引法に基づく表記')),
-        el('a', { class: 'landing-footer-link', href: '#/support' }, dual('Support', 'サポート')),
-      ]),
-    ]),
-  ].filter(Boolean));
+    audienceSection(patientScenes),
+    createSiteFooter(),
+  ]);
 
   ui.append(skipLink(), element);
   languageToggle.init();
-  void organHero?.mount();
-  document.title = 'Medical 3D Lab — 人体の3D解剖モデル';
+  // Sized to the hero once the hero has a size.
+  if (flow) {
+    flow.attach(hero);
+  }
+  document.title = pageTitle();
 
   return {
     element,
-    organHero,
     destroy() {
-      organHero?.destroy();
+      flow?.destroy();
       languageToggle.element.remove();
       element.remove();
     },
@@ -198,65 +153,91 @@ export function createLanding({
 }
 
 /**
- * The two ways into the same models, named by what they are for.
+ * The disease models the manifest opens, as catalogue entries, in its order.
+ * Under the preview unlock: every disease model in the catalogue.
  *
- * Only when there are two. Where no model offers patient explanation — the
- * released product today — a chooser with one live option is a question with
- * one answer, and the organ chooser above already *is* the education entrance.
- * So nothing is drawn, rather than a 患者説明 door onto an empty list.
+ * @param {ReadonlyArray<import('../catalog/publicManifest.js').PublicModel>} models
+ */
+function diseaseModelScenes(models) {
+  if (safeUnlocked()) return pathologyModelScenes(SCENES);
+  return pathologyModelScenes(models.map((model) => sceneById(model.sceneId)).filter(Boolean));
+}
+
+/**
+ * The anatomy, as one line under the models: it is there when a model needs
+ * it, and it is not what the page is about.
  *
- * Deliberately not a dialog in front of the model: the hero above stays the
- * first thing on the page, and choosing a purpose is something a reader may do,
- * not something they must do before they see anything.
+ * @param {ReadonlyArray<object>} anatomyModels
+ */
+function anatomyLine(anatomyModels) {
+  return el('nav', { class: 'bm-anatomy-line', 'aria-label': inLanguage('Anatomy', '解剖') }, [
+    el('span', { class: 'bm-anatomy-lead' }, dual('Check the anatomy', '解剖を確認する')),
+    el('span', { class: 'bm-anatomy-organs' }, anatomyModels.map((model) =>
+      el('a', { class: 'bm-anatomy-link', href: model.route }, dual(model.organLabel, model.organLabelJa))
+    )),
+  ]);
+}
+
+/**
+ * Medical | Patient, said in two short columns.
+ *
+ * The switch itself is in the header, and only where a model offers the
+ * patient side — which, on the released product, none yet does: a patient
+ * explanation opens only after the model's current medical review
+ * (`patientPurpose.js`). So this says that, rather than describing a switch
+ * the reader cannot find.
  *
  * @param {ReadonlyArray<object>} patientScenes
  */
-function purposeEntrances(patientScenes) {
-  if (!patientScenes.length) return null;
-  const routes = Object.fromEntries(purposeDestinations(safeUnlocked()).map((item) => [item.id, item.route]));
-  // In the beta the education entrance *is* this page's organ chooser; a link
-  // from the home page to the home page would reload what is on screen, so it
-  // points at the chooser instead.
-  const educationIsHere = routes.education === LANDING_ROUTE;
-  if (educationIsHere) routes.education = '#content';
-  const lead = {
-    education: dual(
-      'Anatomy, mechanism and disease, with the numbers and the model behind them.',
-      '解剖・機序・病態を、数値と根拠まで含めて。'
-    ),
-    patient: dual(
-      'A plain, step-by-step explanation of what happens — for the conversation in the clinic.',
-      '何が起きるのかを、平易な言葉で順に。診察室での説明に。'
-    ),
-  };
-  return el('section', { class: 'landing-purposes', 'aria-labelledby': 'landing-purposes-title' }, [
-    el('h2', { class: 'landing-purposes-title', id: 'landing-purposes-title' }, dual('Choose by purpose', '目的から選ぶ')),
-    el('div', { class: 'landing-purpose-list' }, PURPOSES.map((purpose) =>
-      el('a', {
-        class: `landing-purpose is-${purpose.id}`,
-        href: routes[purpose.id],
-        // `#content` in the address would read as a route on reload (`resolveRoute`
-        // takes any bare hash for a scene slug), so the in-page jump happens
-        // without writing it — the way `skipLink` does.
-        ...(educationIsHere && purpose.id === 'education'
-          ? {
-              on: {
-                click: (event) => {
-                  event.preventDefault();
-                  const target = document.getElementById('content');
-                  target?.scrollIntoView?.({ block: 'start' });
-                  target?.focus?.({ preventScroll: true });
-                },
-              },
-            }
-          : {}),
-      }, [
-        el('span', { class: 'landing-purpose-name' }, dual(purpose.en, purpose.ja)),
-        el('span', { class: 'landing-purpose-explore' }, dual(purpose.explore.en, purpose.explore.ja)),
-        el('span', { class: 'landing-purpose-lead' }, lead[purpose.id]),
-      ])
-    )),
+function audienceSection(patientScenes) {
+  const offered = patientScenes.length > 0;
+  return el('section', { class: 'bm-section bm-audience', 'aria-labelledby': 'bm-audience-title' }, [
+    el('h2', { class: 'bm-section-title', id: 'bm-audience-title' }, dual('One model, two readers', 'ひとつのモデル、ふたつの読み手')),
+    el('div', { class: 'bm-audience-columns' }, [
+      el('div', { class: 'bm-audience-column is-medical' }, [
+        el('h3', { class: 'bm-audience-name' }, dual('Medical', '医療者向け')),
+        el('p', {}, dual(
+          'The mechanism in clinical terms — preload, afterload, SVR — with the figures the model computes and where its numbers came from.',
+          '前負荷・後負荷・SVR といった用語と、モデルが計算した数値、その出どころまで。機序を、医学の言葉で。'
+        )),
+      ]),
+      el('div', { class: 'bm-audience-column is-patient' }, [
+        el('h3', { class: 'bm-audience-name' }, dual('Patient', '患者向け')),
+        el('p', {}, dual(
+          'The same model and the same motion, told in plain words: what happens in the body, and what it means.',
+          '同じモデル、同じ動きを、平易な言葉で。からだの中で何が起きて、それが何を意味するのか。'
+        )),
+        offered
+          ? null
+          : el('p', { class: 'bm-audience-note' }, dual(
+              'Patient explanations open model by model, after each has passed a current medical review.',
+              '患者向けの説明は、医学レビューを終えたモデルから順に公開します。'
+            )),
+      ]),
+    ]),
   ]);
+}
+
+/** The hero's field, or nothing where a canvas cannot be made (tests, old browsers). */
+function safeFlowField() {
+  try {
+    if (typeof window === 'undefined' || typeof document === 'undefined') return null;
+    let field = null;
+    return {
+      element: el('div', { class: 'bm-hero-motion-slot' }),
+      attach(host) {
+        field = createLandingFlowField({ host });
+        this.element.replaceChildren(field.element);
+        // The hero is in the document now; measure it after its first layout.
+        globalThis.requestAnimationFrame?.(() => field?.resize?.());
+      },
+      destroy() {
+        field?.destroy();
+      },
+    };
+  } catch {
+    return null;
+  }
 }
 
 /** `node --test` has no `window`; the safe answers are "not unlocked" and "none". */
@@ -277,7 +258,13 @@ function safePatientScenes() {
 }
 
 /**
- * Focused public surface for the anatomy beta.
+ * The anatomy shelf — `#/anatomy` (and `#/organs`, `#/explore`) in the beta.
+ *
+ * Organs by name, one live model at a time, chosen from a row of organs. It
+ * was the landing page's hero until the BYOKI MOTION rebrand moved the front
+ * door to the disease models (ADR 2026-09-30); it is kept whole, because the
+ * anatomy is a product layer with its own quality bar (`CLAUDE.md`), and a
+ * disease model's 「解剖を確認」 lands here or on the organ's own model.
  *
  * It intentionally has no search, filters, empty organ categories or prepared
  * cards. With one published model the real model is the catalogue; when the
@@ -316,12 +303,12 @@ export function createPublicModelsExplorer({
           '脳を回転・拡大し、色分けされた部位の位置関係を確認できます。',
         ]
       : [
-          'Choose a published organ, then rotate and zoom it to inspect the spatial relationship between its structures.',
-          '公開中の臓器を選び、回転・拡大して部位ごとの位置関係を確認できます。',
+          'The structures a disease model points at, by name. Choose an organ, then rotate and zoom it to see where each part lies.',
+          '病態モデルが指す場所を、名前で確かめるための解剖です。臓器を選び、回転・拡大して部位の位置関係を確認できます。',
         ];
   const heading = models.length === 1
     ? [models[0].titleEn, models[0].titleJa]
-    : ['3D anatomical models', '3D解剖モデル'];
+    : ['Anatomy', '解剖'];
 
   const element = el('main', { class: 'explorer public-models' }, [
     createShellHeader({
@@ -336,10 +323,14 @@ export function createPublicModelsExplorer({
       tabindex: '-1',
       'data-skip-target': '',
     }, [
-      el('p', { class: 'eyebrow' }, dual(
-        models.length === 0 ? 'Publication status' : '3D anatomy model',
-        models.length === 0 ? '公開状況' : '3D解剖モデル'
-      )),
+      el('nav', { class: 'eyebrow bm-trail', 'aria-label': inLanguage('Breadcrumb', '現在地') }, [
+        el('a', { class: 'bm-trail-parent', href: MODELS_ROUTE }, dual('Models', 'モデル')),
+        el('span', { class: 'bm-trail-separator', 'aria-hidden': 'true', text: '/' }),
+        el('span', {}, dual(
+          models.length === 0 ? 'Publication status' : 'Anatomy',
+          models.length === 0 ? '公開状況' : '解剖'
+        )),
+      ]),
       el('h1', { class: 'title' }, dual(heading[0], heading[1])),
       el('p', { class: 'subtitle' }, dual(summary[0], summary[1])),
     ]),
@@ -370,27 +361,13 @@ export function createPublicModelsExplorer({
           organHero.infoElement,
         ])
       : null,
-    el('footer', { class: 'explorer-footer public-models-footer' }, [
-      el('div', { class: 'public-models-footer-copy' }, [
-        operatorCredit('public-models-operator'),
-        el('p', {}, dual(
-          'Representative educational models — not for individual diagnosis or treatment decisions.',
-          '学習用の代表モデルです。個別の診断・治療判断には使用できません。'
-        )),
-      ]),
-      el('nav', { class: 'public-models-footer-links', 'aria-label': 'Legal and support / 規約・サポート' }, [
-        el('a', { class: 'explorer-shell-link', href: '#/terms' }, dual('Terms', '利用規約')),
-        el('a', { class: 'explorer-shell-link', href: '#/privacy' }, dual('Privacy', 'プライバシー')),
-        el('a', { class: 'explorer-shell-link', href: '#/commerce' }, dual('Commercial disclosure', '特定商取引法に基づく表記')),
-        el('a', { class: 'explorer-shell-link', href: '#/support' }, dual('Support', 'サポート')),
-      ]),
-    ]),
+    createSiteFooter(),
   ].filter(Boolean));
 
   ui.append(skipLink(), element);
   languageToggle.init();
   void organHero?.mount();
-  document.title = 'Medical 3D Lab — 人体の3D解剖モデル';
+  document.title = pageTitle('解剖 / Anatomy');
 
   return {
     element,

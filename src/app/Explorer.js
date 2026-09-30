@@ -1,3 +1,4 @@
+import { pageTitle } from '../data/brand.js';
 import { el, skipLink } from '../utils/dom.js';
 import { createShellHeader } from '../components/ShellHeader.js';
 import { inLanguage } from '../utils/language.js';
@@ -566,8 +567,8 @@ export function createExplorer({
   window.addEventListener('keydown', searchShortcut);
 
   document.title = isLab
-    ? 'Experimental Lab — Medical 3D Lab'
-    : 'Organ explorer — Medical 3D Lab';
+    ? pageTitle('Experimental Lab')
+    : pageTitle('解剖 / Anatomy');
 
   return {
     element,

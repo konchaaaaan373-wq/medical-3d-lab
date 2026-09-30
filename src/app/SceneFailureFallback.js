@@ -1,3 +1,4 @@
+import { BRAND } from '../data/brand.js';
 import {
   EXPLORER_ROUTE,
   LAB_ROUTE,
@@ -66,8 +67,8 @@ export function createSceneFailureFallback({
     : null;
 
   const title = el('h1', { class: 'scene-fallback-title', tabindex: '-1' }, [
-    el('span', { class: 'lang-en', text: scene?.titleEn ?? 'Medical 3D Lab' }),
-    el('span', { class: 'lang-ja', text: scene?.titleJa ?? 'Medical 3D Lab' }),
+    el('span', { class: 'lang-en', text: scene?.titleEn ?? BRAND.name }),
+    el('span', { class: 'lang-ja', text: scene?.titleJa ?? BRAND.name }),
   ]);
 
   const element = el('main', { class: 'scene-fallback', role: 'main' }, [
@@ -102,8 +103,8 @@ export function createSceneFailureFallback({
   title.focus?.();
   const language = ui.dataset.lang === 'en' ? 'en' : 'ja';
   document.title = language === 'en'
-    ? `${scene?.titleEn ?? 'Medical 3D Lab'} — 3D unavailable`
-    : `${scene?.titleJa ?? 'Medical 3D Lab'} — 3Dを開始できません`;
+    ? `${scene?.titleEn ?? BRAND.name} — 3D unavailable`
+    : `${scene?.titleJa ?? BRAND.name} — 3Dを開始できません`;
   return {
     element,
     destroy() {

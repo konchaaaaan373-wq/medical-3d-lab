@@ -28,16 +28,19 @@
      the most developed of the four and the closest to the scene's own studio
      backdrop — arriving at a model from a reading surface is now a change of
      brightness rather than an inversion. */
-  --reading-bg: #edf3f5;
-  --reading-surface: #ffffff;
-  --reading-surface-raised: #f5f9fa;
-  --reading-ink: #102f3a;
-  --reading-muted: #49656f;
-  --reading-faint: #6e848c;
-  --reading-rule: rgba(16, 47, 59, 0.13);
-  --reading-rule-strong: rgba(16, 47, 59, 0.25);
-  --reading-accent: #087383;
-  --reading-accent-strong: #045564;
+  /* BYOKI MOTION's paper (ADR 2026-09-30): off-white, charcoal ink, warm grey.
+     Links are charcoal and underlined; the product's orange is kept for what
+     is operated, selected or changing, so it is not the link colour here. */
+  --reading-bg: #f6f4ef;
+  --reading-surface: #fbfaf7;
+  --reading-surface-raised: #efece5;
+  --reading-ink: #1f1e1c;
+  --reading-muted: #45423d;
+  --reading-faint: #6f6b63;
+  --reading-rule: rgba(31, 30, 28, 0.12);
+  --reading-rule-strong: rgba(31, 30, 28, 0.24);
+  --reading-accent: #1f1e1c;
+  --reading-accent-strong: #000000;
 
   /* The shell's own chrome, resolved per surface below. Declared here so that
      every rule in this file reads from one name rather than from a selector. */
@@ -49,8 +52,9 @@
   --shell-height: 60px;
 }
 
-/* Two surfaces keep a dark ground, and the header keeps its structure on both.
-   Only the four colours change.
+/* One surface keeps a dark ground, and the header keeps its structure on it.
+   Only the four colours change. The landing page was the other until the
+   BYOKI MOTION rebrand (2026-09-30) put it on paper with the rest.
 
    The locked surface is here because `locked.css` paints `.locked-surface` with
    `var(--bg)` — it is a closed door, not a workbench, and it is deliberately
@@ -59,12 +63,11 @@
    1.44:1 text over a dark panel, and a horizontal seam where the panel ended
    and the page's new pale ground began. It was the one surface of the five
    that was never looked at. */
-html[data-route='landing'],
 html[data-route='locked'] {
-  --shell-ink: #eaf2ff;
-  --shell-muted: #a7b6ce;
-  --shell-rule: rgba(176, 198, 229, 0.18);
-  --shell-accent: #f04f69;
+  --shell-ink: #f1eee8;
+  --shell-muted: #bcb6ac;
+  --shell-rule: rgba(241, 238, 232, 0.14);
+  --shell-accent: #f0894a;
 }
 
 /* The locked surface's own panel is `var(--bg)`; the page behind it has to

@@ -1,25 +1,31 @@
-/* Design tokens + resets. Dark, minimal, high contrast — the 3D view is the subject. */
+/* Design tokens + resets. A warm dark stage, minimal, high contrast — the model is the subject. */
 :root {
-  --bg: #04060c;
-  --ink: #eaf2ff;
-  --ink-dim: #a7b6ce;
-  --ink-faint: #6b7c95;
+  /* BYOKI MOTION's stage (ADR 2026-09-30): warm charcoal rather than blue-black,
+     and orange only where something is operated, selected or changing. The
+     reading surfaces are paper (`--reading-*` in shell-header.css); the model
+     stays on a dark stage because its lighting and materials are calibrated
+     against one (`src/app/inspection.js`). `src/styles/palette.js` mirrors
+     these values so a contrast ratio can be tested without a browser. */
+  --bg: #121110;
+  --ink: #f1eee8;
+  --ink-dim: #bcb6ac;
+  --ink-faint: #8f887e;
   /* Text that warns about the limits of a model. It has to stay readable on
      whichever panel it lands on, so it is a token, not a literal. */
   --caution-ink: rgba(255, 205, 160, 0.85);
-  --panel: rgba(10, 16, 28, 0.62);
-  --panel-strong: rgba(8, 13, 24, 0.86);
+  --panel: rgba(28, 26, 24, 0.72);
+  --panel-strong: rgba(24, 22, 20, 0.9);
   /* Opaque: a phone sheet sits over the model and over other chrome, and
      anything showing through it reads as a rendering fault, not a panel. */
-  --panel-sheet: #0a1019;
-  --border: rgba(140, 175, 225, 0.16);
-  --accent: #38e1ef;
-  --accent-hover: #6bf0fa;
-  --accent-soft: rgba(56, 225, 239, 0.12);
-  --accent-border: rgba(56, 225, 239, 0.55);
-  --accent-ink: #04121a;
-  --control-bg: rgba(30, 44, 70, 0.5);
-  --control-hover: rgba(46, 66, 100, 0.6);
+  --panel-sheet: #1c1a18;
+  --border: rgba(241, 238, 232, 0.13);
+  --accent: #f0894a;
+  --accent-hover: #f5a472;
+  --accent-soft: rgba(240, 137, 74, 0.14);
+  --accent-border: rgba(240, 137, 74, 0.55);
+  --accent-ink: #1a0f08;
+  --control-bg: rgba(241, 238, 232, 0.07);
+  --control-hover: rgba(241, 238, 232, 0.12);
   --radius: 10px;
   --shadow: 0 18px 46px rgba(0, 0, 0, 0.5);
   /* One native UI stack across the product. Inter was never bundled, so the

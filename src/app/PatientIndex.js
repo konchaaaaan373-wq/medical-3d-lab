@@ -1,3 +1,4 @@
+import { pageTitle } from '../data/brand.js';
 import { el, skipLink } from '../utils/dom.js';
 import { inLanguage } from '../utils/language.js';
 import { createShellHeader } from '../components/ShellHeader.js';
@@ -103,7 +104,7 @@ export async function createPatientIndex({ ui, accountButton = null, scenes = nu
 
   ui.append(skipLink(), element);
   languageToggle.init();
-  document.title = `${purpose.en} — Medical 3D Lab`;
+  document.title = pageTitle(purpose.en);
   return {
     element,
     scenes: listed,

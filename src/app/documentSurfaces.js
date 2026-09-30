@@ -51,6 +51,8 @@ const ROUTE_ELEMENT_STATE = Object.freeze({
   // A list of models, like the explorer, and on the explorer's ground.
   pathology: 'explorer',
   patient: 'explorer',
+  // A document on the landing page's ground: what the product is, not a list.
+  about: 'landing',
   trust: 'trust',
   legal: 'legal',
 });
@@ -62,6 +64,7 @@ const TELEMETRY_SURFACE = Object.freeze({
   lab: 'lab',
   pathology: 'explorer',
   patient: 'explorer',
+  about: 'landing',
   trust: 'trust',
   legal: 'landing',
   locked: 'landing',
@@ -183,6 +186,9 @@ export async function mountDocumentSurface({
   } else if (kind === 'pathology') {
     const { createPathologyIndex } = await import('./PathologyIndex.js');
     surface = createPathologyIndex({ ui, accountButton });
+  } else if (kind === 'about') {
+    const { createAbout } = await import('./About.js');
+    surface = createAbout({ ui, accountButton, focusId: route.focusId ?? null });
   } else if (kind === 'patient') {
     const { createPatientIndex } = await import('./PatientIndex.js');
     surface = await createPatientIndex({ ui, accountButton });

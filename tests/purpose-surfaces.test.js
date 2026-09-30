@@ -89,23 +89,31 @@ function withDocument(run) {
   }
 }
 
-test('the reading header names the two purposes only when both exist', () => withDocument(() => {
+test('the reading header names the two readers only when both exist', () => withDocument(() => {
+  // BYOKI MOTION (2026-09-30): the two purposes are offered as the reader's
+  // side — Medical | Patient (医療者向け | 患者向け) — in one grouped control.
   const withBoth = createShellHeader({ current: 'models', showLab: true, showPurposes: true, models: [] });
   const links = findByClass(withBoth, 'shell-nav-link');
   const labels = links.map((a) => words(a));
-  assert.ok(labels.some((t) => t.includes('医学教育')) && labels.some((t) => t.includes('患者説明')));
-  assert.equal(labels.some((t) => t === 'ModelsモデルModels' || /^Modelsモデル$/.test(t)), false, 'the model index is 医学教育 here, not a third link');
+  assert.ok(labels.some((t) => t.includes('医療者向け')) && labels.some((t) => t.includes('患者向け')));
+  assert.equal(findByClass(withBoth, 'shell-audience').length, 1, 'the two sides are one control');
+  assert.equal(labels.some((t) => /^Modelsモデル$/.test(t)), false, 'the model index is the Medical side here, not a third link');
   const current = links.find((a) => a.getAttribute('aria-current') === 'page');
-  assert.match(words(current), /医学教育/, 'the model index marks 医学教育 as where you are');
+  assert.match(words(current), /医療者向け/, 'the model index marks Medical as where you are');
 
   const withOne = createShellHeader({ current: 'models', showLab: true, showPurposes: false, models: [] });
   const oneLabels = findByClass(withOne, 'shell-nav-link').map((a) => words(a));
-  assert.equal(oneLabels.some((t) => t.includes('患者説明')), false, 'no 患者説明 door onto an empty room');
+  assert.equal(oneLabels.some((t) => t.includes('患者向け')), false, 'no Patient door onto an empty room');
+  assert.equal(findByClass(withOne, 'shell-audience').length, 0);
 }));
 
 test('no entrance to patient explanation where none is open', () => {
+  // The landing page describes the two readers and links neither: the switch
+  // is in the header, where it exists only when a model offers both. Where
+  // none does, it says patient explanations open after review.
   const landing = read('src/app/Landing.js');
-  assert.match(landing, /function purposeEntrances\(patientScenes\) \{\s*if \(!patientScenes\.length\) return null;/);
+  assert.doesNotMatch(landing, /PATIENT_ROUTE|'#\/patient'/);
+  assert.match(landing, /const offered = patientScenes\.length > 0;/);
   const header = read('src/components/ShellHeader.js');
   assert.match(header, /patientExplanationScenes\(\)\.length > 0/);
   const explorer = read('src/app/Explorer.js');

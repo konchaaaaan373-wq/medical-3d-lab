@@ -97,8 +97,10 @@ test('the shell declares every colour the header reads, so no route falls back t
   }
   // And the dark-ground block sets all four, not a subset: three of four leaves
   // one colour resolved against the other ground.
+  // The locked surface is the one dark ground left since the landing page
+  // moved to paper (BYOKI MOTION, 2026-09-30).
   const darkBlock = [...rulesOf(shell)].find(
-    (rule) => /data-route='landing'/.test(rule.selectors) && /--shell-ink:/.test(rule.body)
+    (rule) => /data-route='locked'/.test(rule.selectors) && /--shell-ink:/.test(rule.body)
   );
   assert.ok(darkBlock, 'the dark-ground token block');
   for (const token of ['--shell-ink', '--shell-muted', '--shell-rule', '--shell-accent']) {
