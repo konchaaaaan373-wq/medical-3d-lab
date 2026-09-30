@@ -410,6 +410,9 @@ html[data-route='explorer'] body {
 }
 
 .bm-trail-parent {
+  display: inline-flex;
+  align-items: center;
+  min-height: 24px;
   color: var(--reading-ink);
   text-decoration: underline;
   text-underline-offset: 3px;
@@ -806,6 +809,21 @@ html[data-route='explorer'] .public-models-actions .landing-demo-info {
   }
 }
 
+/* On a wide window the same panel opens in the rail where the console stands,
+   and the console painted over it (verify:ui, 1280×800). The console gives
+   way while the panel is open, as the read-out does on a phone. */
+@media (min-width: 721px) {
+  #ui[data-layout='experiment'].is-inspecting .console {
+    visibility: hidden;
+  }
+}
+
+/* 「他の指標」 is a 22 px line of text in the read-out; 24 px is WCAG 2.5.8's
+   floor at every width (44 on a phone is phone-touch-targets.css). */
+#ui[data-layout='experiment'] .metrics .metrics-more {
+  min-height: 24px;
+}
+
 /* The phone header is a grid (site-header.css, ≤ 720 px); the product links
    take the place the organ row takes on an anatomy model. */
 @media (max-width: 720px) {
@@ -820,7 +838,10 @@ html[data-route='explorer'] .public-models-actions .landing-demo-info {
 
 /* 「病態モデル / 循環」: the kind of model (a link back to the others) and the
    system, above the name. */
-.title-trail-system {
+.title-trail-system,
+.title-trail-separator {
+  /* The separator was `--ink-faint`: 3.31:1 on the anatomy card's pale ground
+     (verify:ui). A character a reader reads is text. */
   color: var(--ink-dim);
 }
 
