@@ -853,6 +853,17 @@ html[data-route='explorer'] .public-models-actions .landing-demo-info {
   flex-basis: 100%;
 }
 
+/* On a disease model the title line carries its two quiet links on the same
+   row as the name when there is room — 「このモデルについて ＋」 and
+   「心臓の解剖を確認 →」 — rather than a row each: the camera frames the model
+   under the title card, and a row each cost the heart 23 px at 1280×720
+   (verify:disease). The panel the first opens is out of the flow. */
+#ui[data-layout='experiment'] .title-card.has-trail > .title-trust-fold,
+#ui[data-layout='experiment'] .title-card.has-trail > .title-anatomy-check {
+  flex-basis: auto;
+  margin-left: 12px;
+}
+
 .title-anatomy-link {
   display: inline-flex;
   align-items: center;
@@ -1006,7 +1017,7 @@ html[data-route='explorer'] .public-models-actions .landing-demo-info {
   color: var(--ink);
 }
 
-#ui[data-layout='experiment'] .metrics .metric:not([data-quiet='true']) .metric-delta {
+#ui[data-layout='experiment'] .metrics .metric:not([data-quiet='true']):not([data-delta='flat']) .metric-delta {
   color: var(--accent);
 }
 

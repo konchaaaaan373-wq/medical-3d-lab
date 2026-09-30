@@ -1835,6 +1835,19 @@ try {
       deviceScaleFactor: 1,
       reducedMotion: 'reduce',
     });
+    // Every scene's first-visit introduction is marked seen before any page
+    // loads: this matrix measures the screen a returning reader works in,
+    // and the introduction is `verify:disease`'s to measure. A state, not a
+    // wait — the first version waited 1.5 s for it to open, and at 1280 px
+    // the renderer took longer, so the introduction opened after the check had
+    // moved on and covered 22 controls (L-156).
+    await context.addInitScript((ids) => {
+      try {
+        for (const id of ids) localStorage.setItem(`m3l:intro-seen:${id}`, '1');
+      } catch {
+        /* storage unavailable: the fallback below closes it */
+      }
+    }, surfaces.filter((surface) => surface.needsRenderer).map((surface) => surface.route.replace(/^#\/?/, '').split('?')[0]));
     const page = await context.newPage();
     const lifecycleTrace = createLifecycleTrace(page, viewport);
     const fullTabWalk = viewport.width === narrowest || viewport.width === widest;
@@ -1906,19 +1919,12 @@ try {
         }
         await page.waitForTimeout(surface.needsRenderer ? 800 : 300);
         // A first-visit introduction makes everything behind it inert until it
-        // is closed (`SceneIntro`), so every later press here timed out on the
-        // disease model — the first scene in this matrix that has one. Closed
-        // the way a reader closes it; the introduction itself is
-        // `verify:disease`'s to measure.
-        if (surface.needsRenderer) {
-          const opened = await page
-            .waitForSelector('.scene-intro:not([hidden])', { timeout: 1500 })
-            .then(() => true, () => false);
-          if (opened) {
-            await page.locator('.scene-intro-skip').first().click({ timeout: 5_000 })
-              .catch(() => problems.push(`${where}: the first-visit introduction could not be skipped`));
-            await page.waitForSelector('.scene-intro', { state: 'hidden', timeout: 5_000 }).catch(() => {});
-          }
+        // is closed (`SceneIntro`). It is marked seen above; one that opens
+        // anyway is a problem with that marking, closed the way a reader
+        // closes it so the rest of the surface is still measured.
+        if (surface.needsRenderer && (await page.locator('.scene-intro:not([hidden])').count())) {
+          problems.push(`${where}: the first-visit introduction opened although it was marked seen`);
+          await page.locator('.scene-intro-skip').first().click({ timeout: 5_000 }).catch(() => {});
         }
         await lifecycleTrace?.snapshot('surface-ready-for-measurement');
 

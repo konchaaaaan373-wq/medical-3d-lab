@@ -153,4 +153,4 @@ CTA「モデルを見る」は同じページのモデル節へ移動します�
 （`#/models`・`#/about`・`#/organs`・`#/cardiac-output` を行列に追加）、
 `npm run shots:surfaces`（この PR で追加。任意の route を 1280 / 390 で撮る）。
 結果は PR 本文と `docs/follow-ups.md` の F-247〜F-256。検証の嘘は
-`docs/verification-lessons.md` の L-152〜L-155。
+`docs/verification-lessons.md` の L-152〜L-156。

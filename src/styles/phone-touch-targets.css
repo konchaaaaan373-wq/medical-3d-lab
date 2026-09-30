@@ -88,14 +88,36 @@
   /* 「他の指標」 on the disease model's read-out: 64×22 at 390 px, measured
      once a disease model joined the matrix (2026-09-30). The layout's own
      rule is `#ui[data-layout='experiment'] .metrics .metrics-more`, so this
-     one names the same path. The negative block margin keeps the strip the
-     height it was: the box grows to 44, the row it sits in does not. */
+     one names the same path.
+
+     Out of the flow, in the strip's top-right corner where the grid put it.
+     A first version grew it in place with a negative block margin "so the row
+     would not grow"; the strip grew 22 px anyway (90 → 112 at 430×932), and
+     the camera framed the ventricle under `verify:disease`'s floor. The strip
+     stands on the console, so every pixel it gains comes off the model. */
+  #ui[data-layout='experiment'] .metrics {
+    position: relative;
+  }
+
+  /* With the link out of the grid its cell (row 1, column 4) is empty, and
+     auto-placement pulled 心拍出量 up into it — the strip grew to 119 px.
+     The figures keep their own row. */
+  #ui[data-layout='experiment'] .metrics.has-compact .metric.is-key:not(.is-qualitative) {
+    grid-row: 2;
+  }
+
   #ui[data-layout='experiment'] .metrics .metrics-more {
+    position: absolute;
+    top: 0;
+    right: 0;
     display: inline-flex;
-    align-items: center;
+    /* The words stay on the heading's line; the box reaches down over the
+       labels, which are not controls, to make the 44 px. */
+    align-items: flex-start;
+    justify-content: flex-end;
     min-height: 44px;
     min-width: 44px;
-    margin-block: -11px;
+    margin: 0;
   }
 
   /* ---------- the anatomy title card's rail ---------- */
