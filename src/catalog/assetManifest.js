@@ -973,10 +973,12 @@ export const ASSET_MANIFEST = Object.freeze([
       'One node disagrees with itself: VH_M_left_anterior_descending_artery carries FMA:8636, which names a branch of ' +
         'the pulmonary artery. Left unchanged and surfaced to the reader in both languages rather than silently relabelled.',
       'No mesh is named "circumflex"; two meshes share FMA:3860, which is a vocabulary collision rather than a duplicated structure.',
-      'The two renal arteries are named the wrong way round: VH_M_left_renal_artery (label "left renal artery", ' +
-        'UBERON:0001186) leaves the right side of the aorta and runs to the right kidney, in the file\'s own axes, ' +
-        'and VH_M_right_renal_artery the mirror of it. The file is left unchanged; the scene names them by where they ' +
-        'go and says so beside the name (src/data/heartAnatomy.js).',
+      'The two renal arteries\' labels disagree with their geometry: VH_M_left_renal_artery (label "left renal ' +
+        'artery", UBERON:0001186) leaves the right side of the aorta and runs to the right, beside the file\'s own ' +
+        'right renal vein, and VH_M_right_renal_artery the mirror of it; nothing in the file is mirrored and its other ' +
+        'left/right markers all put the body\'s left at +x (docs/model-evidence/heart-anatomy.md, claim 16). The file ' +
+        'is left unchanged; the scene shows them under the names their position gives them and keeps the source\'s ' +
+        'labels in the detail tab.',
       'The file has no iliac artery, no right common carotid and no right subclavian artery: the descending aorta ends ' +
         'with two openings and the brachiocephalic trunk with a rounded tip. The scene draws the first centimetres of ' +
         'those four schematically, marked as such; they are code, not part of this asset.',

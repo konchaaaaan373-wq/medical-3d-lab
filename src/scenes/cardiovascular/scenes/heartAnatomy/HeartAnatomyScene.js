@@ -512,7 +512,7 @@ export class HeartAnatomyScene {
     if (range) {
       if (entry.reach) setReach(range, this._worldReach(entry.reach));
       if (entry.extent === 'root' && this.heartBox && !this.heartBox.isEmpty()) {
-        setTrim(range, this._heartTrim());
+        setTrim(range, this._heartTrim(entry));
       }
       installDisplayRange(mesh.material, range);
       mesh.renderOrder = RANGED_RENDER_ORDER;
@@ -549,12 +549,23 @@ export class HeartAnatomyScene {
     };
   }
 
-  /** The heart-only trim, in world space, at the strength it is at now. */
-  _heartTrim() {
+  /**
+   * The heart-only trim, in world space, at the strength it is at now.
+   *
+   * Measured from the heart's box — except below a structure's own floor
+   * (`heartOnlyFloorMm`), for a vessel that runs up the heart **inside** that
+   * box and would otherwise be kept for its whole run there.
+   */
+  _heartTrim(entry = null) {
     const perMetre = this.modelRoot.getWorldScale(new THREE.Vector3()).x;
+    const box = this.heartBox.clone();
+    if (entry?.heartOnlyFloorMm != null) {
+      const floor = this.modelRoot.localToWorld(new THREE.Vector3(0, entry.heartOnlyFloorMm / 1000, 0)).y;
+      box.min.y = Math.min(box.max.y, Math.max(box.min.y, floor));
+    }
     return {
-      centre: this.heartBox.getCenter(new THREE.Vector3()),
-      half: this.heartBox.getSize(new THREE.Vector3()).multiplyScalar(0.5),
+      centre: box.getCenter(new THREE.Vector3()),
+      half: box.getSize(new THREE.Vector3()).multiplyScalar(0.5),
       margin: (HEART_ONLY_TRIM.marginMm / 1000) * perMetre,
       fade: (HEART_ONLY_TRIM.fadeMm / 1000) * perMetre,
       strength: this.trimStrength,
@@ -1613,6 +1624,40 @@ export class HeartAnatomyScene {
   }
 
   /**
+   * What "go to it" frames: for a branch of the aorta, the branch **and where
+   * it leaves** — the stretch of the vessel it comes from within reach of its
+   * origin — so a reader sees what it branches from.
+   *
+   * Found on the real screen: going to the coeliac trunk filled the frame with
+   * a 25 mm stub and a wall of aorta with no top or bottom, and nothing said
+   * which way the aorta ran. Framing the whole parent would be the opposite
+   * failure — the branch small again under forty centimetres of aorta — so the
+   * parent is taken only near the origin: within 0.6 of the branch's own drawn
+   * size, and never less than 15 mm or more than 35 mm. Everything else frames
+   * its own drawn bounds, as `getStructureBounds` does.
+   */
+  getFocusBounds(id) {
+    const own = this.getStructureBounds(id);
+    const entry = heartPartById(id);
+    const parent = focusParentOf(entry);
+    const meshes = this._meshesFor(id);
+    const origin = meshes.find((mesh) => mesh.userData.range?.reach)?.userData.range.reach.from;
+    if (!own || !parent || !origin || !this.meshesById.has(parent)) return own;
+    const perMetre = this.modelRoot.getWorldScale(new THREE.Vector3()).x;
+    const box = new THREE.Box3().setFromPoints(own.corners);
+    const size = box.getSize(new THREE.Vector3()).length();
+    const reach = THREE.MathUtils.clamp(0.6 * size, (FOCUS_CONTEXT_MM.min / 1000) * perMetre, (FOCUS_CONTEXT_MM.max / 1000) * perMetre);
+    let took = false;
+    for (const mesh of this._meshesFor(parent)) {
+      if (this._targetOpacityFor(mesh) <= DRAWN_OPACITY) continue;
+      took = expandByDrawnVertices(box, mesh, (point) => (
+        point.distanceTo(origin) <= reach ? this._rangeAlpha(mesh, point, { target: true }) : 0
+      ), { eachVertex: true }) || took;
+    }
+    return took ? cornersOf(box) : own;
+  }
+
+  /**
    * A label for a part, anchored on its outside and hidden when it cannot be
    * seen — the same rule the brain uses, for the same reason: a name drawn over
    * whatever is in front of it is a name attached to the wrong thing.
@@ -1754,8 +1799,20 @@ function cornersOf(box) {
  *
  * @returns {boolean} whether any vertex was taken
  */
-function expandByDrawnVertices(box, mesh, drawn) {
-  if (!mesh.userData.range) {
+/** How much of the parent "go to it" shows around a branch's origin, in source mm. */
+const FOCUS_CONTEXT_MM = Object.freeze({ min: 15, max: 35 });
+
+/** The vessel a branch of the aorta leaves, for framing it with its origin. */
+function focusParentOf(entry) {
+  if (!entry) return null;
+  if (entry.schematic) return entry.parent ?? null;
+  if (entry.group === 'archBranch') return 'VH_M_aortic_arch';
+  if (entry.group === 'abdominalBranch') return 'VH_M_descending_aorta';
+  return null;
+}
+
+function expandByDrawnVertices(box, mesh, drawn, { eachVertex = false } = {}) {
+  if (!mesh.userData.range && !eachVertex) {
     box.expandByObject(mesh);
     return true;
   }

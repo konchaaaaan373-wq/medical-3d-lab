@@ -600,6 +600,17 @@
   }
 }
 
+/* On a phone held sideways the summary is a card in the top corner. With the
+   switch in its row of actions the card grew from 327 px to 517 px wide and
+   reached across the middle of an 844 px screen, and the framing put the model
+   in what was left, under the title card. Held to the width it has in a scene
+   without a switch, the actions wrap instead. */
+@media (max-height: 460px) and (min-aspect-ratio: 8/5) {
+  .anatomy-panel:has(.anatomy-scope-switch):not([data-sheet='open']) {
+    max-width: 340px;
+  }
+}
+
 @media (prefers-reduced-motion: reduce) {
   .anatomy-tree-chevron { transition: none; }
 }
@@ -722,21 +733,12 @@
   content: ' · name unverified';
 }
 
-/* Two more states a name can be in, marked the same quiet way. The renal
-   arteries are named by where they go because the source names them the
-   other way round; four arteries are not in the source at all and are drawn
-   schematically. Neither may read as an ordinary measured structure. */
-.anatomy-panel[data-selection-identity='side-corrected'] .anatomy-panel-where::after,
-.anatomy-search-hit[data-identity='side-corrected'] .anatomy-search-where::after {
-  content: ' · 位置で命名（出典は左右逆の表記）';
-  opacity: 0.85;
-}
-
-.anatomy-panel[data-selection-identity='side-corrected'] .anatomy-panel-where.lang-en::after,
-.anatomy-search-hit[data-identity='side-corrected'] .anatomy-search-where .lang-en::after {
-  content: ' · named by position (the source labels the other side)';
-}
-
+/* One more state a name can be in, marked the same quiet way: four arteries
+   are not in the source at all and are drawn schematically, and may not read
+   as ordinary measured structures. (The renal arteries, shown under the names
+   their position gives them, carry no mark here: the name shown is the
+   standard one, and what the source file calls each is said in the detail
+   tab.) */
 .anatomy-panel[data-selection-identity='schematic'] .anatomy-panel-where::after,
 .anatomy-search-hit[data-identity='schematic'] .anatomy-search-where::after {
   content: ' · 模式（出典に無い区間）';

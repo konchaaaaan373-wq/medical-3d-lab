@@ -85,15 +85,19 @@ shows **the heart on its own** instead:
 | Kept | Taken away |
 | --- | --- |
 | the fourteen heart parts; all eight coronary arteries and seven cardiac veins | the arch, the descending aorta, every branch of the aorta (source and schematic) |
-| the **roots** of the ascending aorta, pulmonary trunk and arteries, both venae cavae and the four pulmonary veins — drawn to just outside the heart's box and faded out there | the two brachiocephalic veins |
+| the **roots** of the great vessels: the ascending aorta, the pulmonary trunk and arteries and the four pulmonary veins **whole**, as the source ends them within 15 mm of the heart; the two venae cavae as **short roots** | the two brachiocephalic veins; the venae cavae beyond their roots |
 
 The roots are what keeps the base of the heart from being left with holes where
 the vessels leave it, and what keeps the coronary arteries arising from an aorta
-rather than from nothing. They are **trimmed**, not hidden: the inferior vena
-cava, which the source draws down to the pelvis, is otherwise the tallest thing
-in a frame meant for the heart. The trim is one rule for all of them
-(`HEART_ONLY_TRIM`: 4 mm past the heart's box, fading over 10 mm), a
-composition choice and not anatomy.
+rather than from nothing. Only the two venae cavae are **trimmed** — the
+inferior, which the source draws down to the pelvis, would otherwise be the
+tallest thing in a frame meant for the heart — to 1 mm past the heart's box,
+fading over 3 mm, and the inferior no lower than 10 mm below where it meets the
+right atrium, because it runs up the back of the heart inside that box
+(`HEART_ONLY_TRIM`, `heartOnlyFloorMm`). A composition choice, not anatomy.
+Trimming the other roots too, as a first version did, sliced them obliquely
+and showed the background through them as holes from behind and from the side
+(`docs/organ-3d-playbook.md` §2 T); they are drawn whole.
 
 What the switch takes away stops being anything at once: a selection on it is
 cleared, an isolation of it ended, and it stops taking clicks and labels before
@@ -130,15 +134,20 @@ now, with the publisher's own names, ids and grouping. **The aorta ends** at
 the level of its bifurcation with two openings and no iliac artery in the file
 (its pelvic vessels are veins only).
 
-**The source names its two renal arteries the wrong way round.** The mesh it
-calls the left renal artery leaves the right side of the aorta, passes behind
-the inferior vena cava and ends at the right kidney's hilum, beside the file's
-own right renal vein — in the file's own axes, the ones that put its left
-atrium, its left ophthalmic veins and its left renal vein on the left. It is
-named here by where it goes, marked "named by position" beside the name, and
-the source's own label and term are kept on its card. This is the one place the
-adapter departs from a source name, and it does so on the file's geometry, not
-on an anatomical opinion.
+**The two renal arteries are shown under the names their position gives
+them, which are not the names the source file records.** The mesh the file
+records as the left renal artery leaves the right side of the aorta, is the
+longer of the two and ends beside the vessel the same file records as the right
+renal vein. The check that this is a labelling matter and not a mirrored file
+is in the evidence dossier (claim 16): the file and the scene move and mirror
+nothing, and every independent left/right marker in the file — the heart's
+apex, the arch, the venae cavae, the liver's and spleen's vessels, the long left
+renal vein crossing in front of the aorta, and the file's own labels on five
+other pairs — puts the body's left at +x. **The reader is not told the file is
+wrong**: the standard name is shown with no mark beside it, and the detail tab
+says what the file records and that this model shows the vessel by position,
+with the source's label and term kept. No anatomist has confirmed it. This is
+the one place the adapter departs from a source name.
 
 **Four segments are schematic**: the start of the right common carotid and the
 right subclavian arteries from the end of the brachiocephalic trunk, and the
@@ -148,9 +157,11 @@ centreline, with its calibre taken from the opening or from the source's
 left-sided counterpart at the same height, and each is routed clear of the
 source's own vessels (the right subclavian behind the right brachiocephalic
 vein; the right common iliac in front of the inferior vena cava; measured
-clearance at least 0.49 mm, at the aorta's own opening). **Their length, angle
-and course follow textbook anatomy, not this specimen.** None carries an
-ontology id, because the term would be ours and would look like the source's.
+clearance at least 0.49 mm, at the aorta's own opening). **Where each one
+arises was checked against a textbook (OpenStax §20.5); its length, angle and
+course were not — they are the drawing's, not this specimen's and not a
+source's.** None carries an ontology id, because the term would be ours and
+would look like the source's.
 
 **Every branch fades out where the display range ends** rather than stopping.
 A rounded tip reads as a vessel that ends, and none of these do; a cut ring
@@ -169,16 +180,22 @@ two to each other.
 it.** Selecting the coeliac trunk used to give where its mesh came from and what
 is still being checked, and not one word about the vessel. The ascending aorta,
 the arch, the descending aorta and the twelve branches now open with a short
-paragraph of **textbook** anatomy — where the vessel leaves its parent, its
-typical vertebral level, how the two sides differ, what it supplies, and the
-commonest variants — and then the account of the model, unchanged. **Those
-paragraphs are statements of standard anatomy, not measurements of this
-specimen**: a level is written as "typically" wherever one is given, and the
-scope panel says so once for all of them. Where a sentence names something the
-source lacks (the ligamentum arteriosum, the vertebral artery, the intercostal
-and lumbar arteries) it says the source lacks it, and "What is still absent"
-lists the aorta's smaller branches and the ligamentum arteriosum by name, so an
-aorta drawn with its major branches is not read as an aorta with only those.
+paragraph of general anatomy — where the vessel arises, the few levels the
+textbook gives, how the two sides differ and what it supplies — and then the
+account of the model, unchanged. **Every sentence in those paragraphs was
+checked against the one anatomy text that could actually be opened** (OpenStax,
+*Anatomy and Physiology 2e*, §20.5, §19.1, §20.6); the evidence dossier's
+"Reference check" table gives, for each, the passage, the result and what was
+not confirmed. The first draft, written from memory, carried vertebral levels,
+distances between branches, relations to other structures and variants the
+opened text does not give — two of its distances it contradicts — and those were
+removed rather than kept on trust. **The paragraphs are the textbook's account,
+not measurements of this specimen**; where the source model's shape differs
+from that account (the inferior mesenteric artery leaves just above the
+bifurcation, where the text puts it about 5 cm higher) the paragraph says which
+is which and does not call it a variant. "What is still absent" lists the
+aorta's smaller branches and the ligamentum arteriosum by name, so an aorta
+drawn with its major branches is not read as an aorta with only those.
 The heart's own parts do not have such a paragraph yet (`docs/follow-ups.md`
 F-237).
 
@@ -203,7 +220,10 @@ changes. The shape both are held to is
 
 The reader can: point to preview a name, click to pin it, search for it by name
 in either language, go to it, show it on its own, hide it, and put the display
-back. Six named viewpoints — anterior, posterior, left lateral, right lateral,
+back. **Going to a branch of the aorta frames the branch with where it leaves**
+— the stretch of its parent within 15–35 mm of its origin (`getFocusBounds`) —
+so the reader sees what it comes from, without the whole parent making the
+branch small again. Six named viewpoints — anterior, posterior, left lateral, right lateral,
 base, apex — are derived from the model's **measured** axes rather than assumed
 from `+x`.
 
@@ -408,18 +428,20 @@ What was measured in this repository, and is therefore a fact about the files:
   cannot be the other way round in a normal heart. Note this is *not* the brain
   atlas's convention, which is why each scene declares its own.
 
-* **The aortic branches were checked against the file, and against standard
-  anatomy, by this repository and nobody else.** The order they leave the aorta
+* **The aortic branches were checked against the file, and against one opened
+  textbook, by this repository and nobody else.** The order they leave the aorta
   (coeliac trunk, superior mesenteric, the renal arteries, inferior mesenteric,
-  bifurcation), the sides and directions they run (the gut arteries forward, the
-  renal arteries out and back, the right one behind the inferior vena cava and
-  longer), and that each one sits in an opening of the aorta, are measured from
-  the source and held by `tests/heart-anatomy.test.js`. That the specimen's
-  inferior mesenteric artery arises about 1.2 cm above the end of its aorta,
-  where 3–4 cm is usual, is the specimen's and is left as it is.
+  bifurcation), the sides they run to and the right renal artery being the
+  longer agree with OpenStax §20.5; the directions they leave the aorta in are
+  measured from the file but were not found in the opened text. Each one sits in
+  an opening of the aorta; all of it is held by `tests/heart-anatomy.test.js`.
+  **The distances between origins are not shown**: the file's (the inferior
+  mesenteric about 1 cm above the aorta's end, in file units) are model
+  geometry with no calibration to the specimen, and the textbook's differ from
+  them. It is not called a variant.
 * **The schematic segments are not measured anatomy.** Their start is measured
-  (the vessel they leave); their length, angle and course are drawn from
-  standard descriptions and are not claims about this specimen.
+  (the vessel they leave) and where they arise is the textbook's; their length,
+  angle and course are the drawing's.
 
 What has not been established: no anatomist and no clinician has looked at this
 geometry or these labels — including the aortic branches, the renal naming and

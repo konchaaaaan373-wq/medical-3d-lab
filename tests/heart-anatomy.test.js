@@ -1083,6 +1083,17 @@ test('heart: an unsettled name is marked wherever the structure is named', () =>
   for (const entry of HEART_STRUCTURES) {
     const other = heartStructureInfo(entry.id);
     assert.equal(other.identity, expected[entry.id] ?? null, entry.id);
+    // A name given by position carries no mark beside it: the name shown is
+    // the standard one, and the source's own name is in the detail note, which
+    // says what the file records and what this model shows — and does not call
+    // the file wrong in the reader's face.
+    if (expected[entry.id] === 'side-corrected') {
+      assert.equal(other.identityNote, null, entry.id);
+      assert.equal(other.identityNoteJa, null, entry.id);
+      assert.match(other.noteJa, /という名前で収録されています/, entry.id);
+      assert.doesNotMatch(`${other.note} ${other.noteJa}`, /wrong way|mislabel|誤記|左右逆/, entry.id);
+      continue;
+    }
     if (expected[entry.id]) {
       assert.ok(other.identityNote && other.identityNoteJa, `${entry.id} carries the short mark in both languages`);
       assert.ok(other.identityNote.length < 24 && other.identityNoteJa.length < 12, entry.id);
@@ -1472,16 +1483,20 @@ test('heart: every structure is in exactly one extent, and the switch is one swi
   for (const entry of HEART_STRUCTURES.filter((e) => ['chamber', 'valve', 'papillary', 'coronary', 'cardiacVein'].includes(e.group))) {
     assert.equal(entry.extent, 'heart', entry.id);
   }
-  // Every root is a great vessel the heart itself is joined to; the aorta
-  // beyond its root, every branch of it and the veins beyond the vena cava go.
+  // Only the two venae cavae are trimmed with the heart on its own: they run
+  // on far beyond it. The other great-vessel roots end in the source within
+  // 15 mm of the heart, in their own ends, and are drawn whole — trimming them
+  // sliced them into see-through holes (found in renders of all six sides).
   assert.deepEqual(
     HEART_STRUCTURES.filter((e) => e.extent === 'root').map((e) => e.id).sort(),
-    [
-      'VH_M_ascending_aorta', 'VH_M_inferior_vena_cava', 'VH_M_pulmonary_artery_L', 'VH_M_pulmonary_artery_R',
-      'VH_M_pulmonary_trunk', 'VH_M_pulmonary_vein_L_inf', 'VH_M_pulmonary_vein_L_sup', 'VH_M_pulmonary_vein_R_inf',
-      'VH_M_pulmonary_vein_R_sup', 'VH_M_superior_vena_cava',
-    ]
+    ['VH_M_inferior_vena_cava', 'VH_M_superior_vena_cava']
   );
+  for (const id of [
+    'VH_M_ascending_aorta', 'VH_M_pulmonary_trunk', 'VH_M_pulmonary_artery_L', 'VH_M_pulmonary_artery_R',
+    'VH_M_pulmonary_vein_L_sup', 'VH_M_pulmonary_vein_L_inf', 'VH_M_pulmonary_vein_R_sup', 'VH_M_pulmonary_vein_R_inf',
+  ]) {
+    assert.equal(heartPartById(id).extent, 'heart', `${id} is drawn whole in both ways of looking`);
+  }
   for (const id of ['VH_M_aortic_arch', 'VH_M_descending_aorta', 'VH_M_celiac_trunk', 'VH_M_brachiocephalic_vein_L']) {
     assert.equal(heartPartById(id).extent, 'beyond', id);
   }
@@ -1770,6 +1785,40 @@ function schematicFixture() {
   box('VH_M_descending_aorta_b', [2, 187, -30], [22, 403, 30]);
   return file;
 }
+
+test('heart: "go to it" on a branch frames the branch with where it leaves, not the whole vessel', () => {
+  // Found on the real screen: going to the coeliac trunk filled the frame with
+  // the stub and a wall of aorta, with nothing to say what it branched from.
+  const built = new HeartAnatomyScene({ model: fixture(), vessels: schematicFixture(), vesselLoader: null });
+  built.build();
+  const span = (bounds) => {
+    const box = new THREE.Box3().setFromPoints(bounds.corners);
+    return box;
+  };
+  for (const entry of HEART_SCHEMATIC) {
+    const own = span(built.getStructureBounds(entry.id));
+    const focus = span(built.getFocusBounds(entry.id));
+    const parent = span(built.getStructureBounds(entry.parent));
+    const origin = built.meshesById.get(entry.id)[0].userData.range.reach.from;
+    // The branch is all in it, and so is the parent where the branch leaves it…
+    assert.ok(focus.containsBox(own), `${entry.id}: the branch is in the frame`);
+    assert.ok(focus.containsPoint(origin), `${entry.id}: so is its origin`);
+    assert.ok(
+      focus.getSize(new THREE.Vector3()).length() > own.getSize(new THREE.Vector3()).length() * 1.05,
+      `${entry.id}: and some of the vessel it leaves`
+    );
+    // …but not the whole of a long vessel it leaves, or the branch is small
+    // again: the aorta in this fixture is 216 mm tall, where the brachiocephalic
+    // trunk the two neck branches leave is only 46 mm, and may be taken whole.
+    if (entry.parent === 'VH_M_descending_aorta') {
+      const ratio = focus.getSize(new THREE.Vector3()).y / parent.getSize(new THREE.Vector3()).y;
+      assert.ok(ratio < 0.4, `${entry.id}: framed on the origin, not the whole aorta (${ratio.toFixed(2)} of its height)`);
+    }
+  }
+  // A structure that is not a branch frames itself, as before.
+  assert.deepEqual(built.getFocusBounds('VH_M_heart_left_ventricle'), built.getStructureBounds('VH_M_heart_left_ventricle'));
+  built.dispose();
+});
 
 test('heart: a schematic segment is drawn only where the vessel it continues actually is', () => {
   // The ordinary fixture puts the aorta somewhere the source does not, and so

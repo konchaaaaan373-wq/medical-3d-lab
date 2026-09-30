@@ -8,11 +8,12 @@ clinician has judged this geometry or these labels**, and every surface says so
 
 | | |
 | --- | --- |
-| **Decided at** | 2026-09-30 (re-taken: the aorta's branches, the heart-only switch and the re-derived vessel file on 2026-09-29, and the real-screen review that followed on 2026-09-30) |
-| **Decided by** | Claude Code (AI engineering agent), at the owner's direction, re-pinning after the vessel file was re-derived and the scene gained its two ways of looking; the 2026-09-15 acceptance of what this scene names still stands for everything it named then |
+| **Status on this branch** | **Technical re-pin only — not confirmed by the owner, not a publication decision, not a medical review.** The pins below were moved on the unmerged branch `claude/dreamy-fermi-2ddpth` (2026-09-29/30) so that it builds and its tests run against the new vessel file and scene sources. Whether this scene stays published in this form is the owner's decision, still to be taken |
+| **Pins moved at** | 2026-09-30 (vessel-file hash and scene digest; see "Technical re-pin on 2026-09-29/30") |
+| **Pins moved by** | Claude Code (AI engineering agent), on its own initiative to keep the branch consistent — **not** at the owner's direction for this step. The 2026-09-15 acceptance by the owner of what this scene named then, and the owner-directed re-pins of 2026-09-21 and 2026-09-24, are the last decisions a person took |
 | **Role** | `engineering` — software behaviour, not anatomical or clinical judgement |
 | **Asset revisions** | `hubmap-vh-m-heart` @ `sha256:994a86380bd30bc9744c08edd9812825ab22b340339665a422be6ba545fbbf8a`<br>`hubmap-vh-m-blood-vasculature` @ `sha256:f03a50620a66c3d7b6987806b9025eb12742ca57377b243f8cea6f2bcfbb231a` |
-| **Scene revision** | model card revision **28**, source digest `6aeab16590d0e13a` |
+| **Scene revision** | model card revision **28**, source digest `231f4dc5eee3d1b0` |
 | **Scene sources under that digest** | [`src/data/heartAnatomy.js`](../../src/data/heartAnatomy.js), [`src/scenes/cardiovascular/scenes/heartAnatomy/HeartAnatomyScene.js`](../../src/scenes/cardiovascular/scenes/heartAnatomy/HeartAnatomyScene.js), [`src/scenes/cardiovascular/scenes/heartAnatomy/displayRange.js`](../../src/scenes/cardiovascular/scenes/heartAnatomy/displayRange.js) |
 | **Adoption decision** | [`../decisions/HEART-ASSET-ADOPTION.md`](../decisions/HEART-ASSET-ADOPTION.md) |
 
@@ -38,16 +39,35 @@ That is the one thing this record most wants a later reader to know: a claim was
 not smuggled in with a repair. `npm run assets:repair:verify` rebuilds the exact
 hashes above from the pinned sources and reports the validator clean.
 
-## Re-taken on 2026-09-29 — the aorta and its branches, and the heart on its own
+## Technical re-pin on 2026-09-29/30 — the aorta and its branches, and the heart on its own
 
-**This record was re-taken in the branch that made the change, and the owner
-should confirm it before that branch merges.** The gate closed on all three of
-its conditions at once, which is the mechanism working: the vessel file's hash
-moved, the scene's sources moved, and the model card was revised.
+**What this section is, and is not.** The gate closed on all three of its
+conditions at once when the branch changed the vessel file and the scene, which
+is the mechanism working. Claude Code moved the pins so that the branch builds,
+its tests run and `betaPublicationProblems()` can be read at all. **That is a
+technical alignment of hashes and a digest. It is not a decision that the
+scene is fit to publish, it is not an anatomical or clinical judgement, and a
+green test run is not evidence of either.** The owner asked on 2026-09-30 that
+the branch not be merged and that publication not be settled before their own
+check.
 
-**Why.** The owner asked for the heart model to show the aorta with the major
-branches it has in the range it is drawn, and for one switch to the heart on
-its own, larger and turning about itself.
+| What | State on 2026-09-30 |
+| --- | --- |
+| Asset hash and scene digest in `release.js` | moved to the branch's files (technical) |
+| Owner's confirmation of publication in this form | **not given** |
+| Anatomist review (`anatomyExpertReview`) | **not done** — pending, as for every structure here |
+| Clinical review | **not done** — pending in the registry |
+| Descriptions of the aorta and its branches | checked against one opened textbook (OpenStax *Anatomy and Physiology 2e*, §20.5), see the evidence dossier's "Reference check"; no anatomist has read them |
+| Renal arteries shown by position | a mirrored file was ruled out by measurement (evidence claim 16); no anatomist has confirmed the reading |
+| Japanese terminology | not checked against an anatomical terminology source |
+| Real devices | none; Chromium with touch emulation only |
+
+**Why the branch changed.** The owner asked for the heart model to show the
+aorta with the major branches it has in the range it is drawn, and for one
+switch to the heart on its own, larger and turning about itself; then for a
+strict look at the real screens as an anatomy study site; then for the anatomy
+to be checked against sources actually opened and the two ways of looking to be
+finished.
 
 **What changed in the file.** The derived vessel file keeps five more of the
 publisher's meshes — the coeliac trunk, the superior and inferior mesenteric
@@ -56,42 +76,36 @@ descending aorta already in the file has an opening for each. Nothing already
 in the file moved (`heldUnchanged.vertexPositions`), the validator is clean,
 and both pipeline steps reproduce the new hash twice.
 
-**What changed in the scene.** It opens on the heart and its aorta (the arch
-branches and the descending aorta no longer start hidden); four arterial
-segments the source lacks are drawn schematically and marked so; every branch
-fades out at the end of its display range; the renal arteries are named by
-where they go, against the source's own names, and say so; and one switch shows
-the heart on its own. The model card's §2 has the whole account and the
-evidence dossier's claims 15–19 the sources.
+**What changed in the scene.** It opens on the heart and its aorta; four
+arterial segments the source lacks are drawn schematically and marked so;
+every branch fades out at the end of its display range; the renal arteries are
+shown under the names their position gives them, with the source's names in
+the detail tab; one switch shows the heart on its own, with the venae cavae
+trimmed to short roots and the other great-vessel roots drawn whole; the aorta
+and its branches open their description with general anatomy checked against
+the textbook; the parts tree reads in anatomical order; "go to it" on a branch
+frames it with where it leaves; and the great-vessels view is framed on the
+heart and the arch. **What a structure is called in the tree and what a click
+selects did not change** except as listed; the tour points and the 55
+structures are the same. Outside the digest: the phone Detail tab now shows a
+structure's description at all (it showed none, for every anatomy scene).
 
-**What was re-checked, on these files.**
+**What was run, on these files** (software checks — see above for what they
+are not):
 
 - `npm run verify:anatomy -- --scene heart-anatomy` on a preview build, the
-  full drive, with the new section 11b for the switch at 1280×800 and 390×844
-  — result below.
-- The branches, the arch division and the bifurcation rendered close up from
-  the front, back, both sides and above/below; the heart on its own from all
-  six viewpoints (`docs/asset-qa/heart-hubmap-vh-m-blood-vasculature.md`,
-  "Re-derived 2026-09-29"; `docs/screenshots/heart/17-*.png`).
-- `npm test`, `npm run assets:repair:verify`, `npm run assets:compress:verify`.
+  full drive, with section 11b for the switch at 1280×800 and 390×844, the
+  phone Detail tab and the phone sheet's list height.
+- Renders of the branches, the arch division and the bifurcation close up, and
+  of the heart on its own from all six viewpoints
+  (`docs/screenshots/heart/17-*.png`, `18-*.png`).
+- `npm test`, `npm run verify:ui` on the two scene surfaces.
 
-**Not re-checked:** the landing hero's keyboard pass (`verify:hero-input`) —
-the hero draws its own light model and hands a structure to this scene by id,
-which is unchanged for every structure it can name; and any phone other than
-desktop Chromium with touch emulation.
+**Not run:** the landing hero's keyboard pass (`verify:hero-input`) — the hero
+draws its own light model and hands a structure to this scene by id, which is
+unchanged for every structure it can name; any real phone.
 
-**2026-09-30 — the review that followed, and why the digest moved again.** The
-owner asked for a strict look at the real screens as an anatomy study site. What
-changed in the scene's sources: the aorta and its fifteen structures open their
-description with a paragraph of textbook anatomy (model card §2, evidence
-claim 20), the parts tree reads in anatomical order, the great-vessels view is
-framed on the heart and the arch, the scope panel's source lines no longer call
-the files unadopted candidates, and two absences are listed by name. **What a
-structure is and what a click selects did not change**; the tour points and the
-55 structures are the same. Outside the digest: the phone Detail tab now shows
-a structure's description at all (it showed none, for every anatomy scene), and
-`verify:anatomy` reads it. What the review found and did not fix is in
-`docs/follow-ups.md` F-237, items 6–11.
+What the reviews found and did not fix is in `docs/follow-ups.md` F-237.
 
 ## Re-taken on 2026-09-24 — both files are Draco-compressed
 

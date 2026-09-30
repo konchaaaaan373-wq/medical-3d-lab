@@ -446,7 +446,7 @@ export const BETA_PUBLICATION_DECISIONS = Object.freeze([
     decidedAt: '2026-09-30',
     decidedBy: Object.freeze({
       name:
-        "Repository owner's approval of 2026-09-15 for what this scene names; re-pinned 2026-09-21 by Claude Code (AI engineering agent) after the scene's opening colour mode changed, again 2026-09-24 after both files were Draco-compressed, and again 2026-09-29/30 after the aorta's branches, the heart-only switch, the re-derived vessel file and the real-screen review that followed them (textbook descriptions of the aorta, the parts tree in reading order, the great-vessels framing), each at the owner's direction",
+        "Repository owner's approval of 2026-09-15 for what this scene names; re-pinned 2026-09-21 by Claude Code (AI engineering agent) after the scene's opening colour mode changed, and again 2026-09-24 after both files were Draco-compressed, each at the owner's direction. Re-pinned again 2026-09-29/30 by Claude Code on the unmerged branch claude/dreamy-fermi-2ddpth as a TECHNICAL ALIGNMENT ONLY — the new vessel-file hash and scene digest — so that the branch builds and its tests run; the owner has NOT confirmed this re-pin, and it is not an anatomical, clinical or publication approval (docs/beta-publication/heart-anatomy.md, 2026-09-30)",
       role: 'engineering',
     }),
     record: 'docs/beta-publication/heart-anatomy.md',
@@ -468,7 +468,7 @@ export const BETA_PUBLICATION_DECISIONS = Object.freeze([
       'hubmap-vh-m-heart': '994a86380bd30bc9744c08edd9812825ab22b340339665a422be6ba545fbbf8a',
       'hubmap-vh-m-blood-vasculature': 'f03a50620a66c3d7b6987806b9025eb12742ca57377b243f8cea6f2bcfbb231a',
     }),
-    sceneRevision: Object.freeze({ cardRevision: 28, modelDigest: '6aeab16590d0e13a' }),
+    sceneRevision: Object.freeze({ cardRevision: 28, modelDigest: '231f4dc5eee3d1b0' }),
     scope: Object.freeze({
       // The authored tour in `SCENE_POINTS`, not whatever a run measured: four
       // named parts at four recorded points, crossing both adopted files —
@@ -534,9 +534,10 @@ export const BETA_PUBLICATION_DECISIONS = Object.freeze([
       'the source has no myocardial free wall as a named part, so no wall thickness is claimed',
       'whether a chamber surface stands for the cavity or for the wall around it is not established by the file',
       'VH_M_left_anterior_descending_artery carries FMA:8636, which names a pulmonary branch; it is surfaced to the reader rather than relabelled',
-      'the two renal arteries are named by where they go, against the source\'s own names, on the file\'s geometry — no anatomist has confirmed it',
-      'four arterial segments (right common carotid, right subclavian, both common iliac) are schematic: where they start is measured, their length, angle and course are textbook, not this specimen',
-      'the descriptions of the aorta and its branches are textbook anatomy applied from knowledge, not re-read page by page and not checked by an anatomist; the heart\'s own parts still describe only their provenance',
+      'the owner has not confirmed the 2026-09-29/30 re-pin: it aligns the vessel-file hash and the scene digest and approves nothing',
+      'the two renal arteries are shown under the names their position gives them, not the source\'s; a mirrored file was ruled out by measurement, but no anatomist has confirmed the reading',
+      'four arterial segments (right common carotid, right subclavian, both common iliac) are schematic: where they start is measured and where they arise is checked against one textbook; their length, angle and course are the drawing\'s',
+      'the descriptions of the aorta and its branches were checked against one opened textbook (OpenStax Anatomy and Physiology 2e, §20.5) and keep only what it says; no anatomist has read them, and the Japanese terms were not checked against an anatomical terminology source; the heart\'s own parts still describe only their provenance',
       'on a phone held sideways, selecting a structure moves the model under the left-hand card (the same on main; docs/follow-ups.md F-237)',
       'the phone size was driven in desktop Chromium with touch emulation, not on a phone',
     ]),

@@ -78,6 +78,15 @@ export const HEART_GROUPS = Object.freeze({
  *   base of the heart is not left with holes where they leave it, and that the
  *   coronary arteries still arise from an aorta rather than from nothing.
  *
+ * Which roots are trimmed was decided from the file and from pictures of all
+ * six sides. The ascending aorta, the pulmonary trunk and arteries and the
+ * four pulmonary veins end in the source within 15 mm of the heart's box, in
+ * their own ends — a closed cap, or the ring where the arch joins — and are
+ * drawn whole (`heart`): trimming them sliced a single surface obliquely and
+ * left see-through holes in the right pulmonary artery and open rings on the
+ * veins. Only the two venae cavae run on far beyond the heart (37 and 23 mm
+ * and more) and are trimmed (`root`).
+ *
  * So every structure has one of three extents, and the pair above is nothing
  * more than which extents are drawn and whether the roots are trimmed:
  *
@@ -131,8 +140,14 @@ export const HEART_SCOPE_SWITCH = Object.freeze({
  * leave it, and the coronary arteries arise from an aorta) while the inferior
  * vena cava, which the source draws down to the pelvis, stops being the
  * tallest thing in the frame. Re-judge it from pictures if it changes.
+ *
+ * **The fade is short on purpose.** Over 10 mm, the band where both walls of
+ * the inferior vena cava are half drawn showed the background through it as a
+ * white oval — from the right and from below it read as a hole in the vein.
+ * Over 3 mm it reads as where the vein is cut, and the double-sided surface
+ * shows its inside there, as a transected vessel does.
  */
-export const HEART_ONLY_TRIM = Object.freeze({ marginMm: 4, fadeMm: 10 });
+export const HEART_ONLY_TRIM = Object.freeze({ marginMm: 1, fadeMm: 3 });
 
 /**
  * The fourteen parts.
@@ -237,12 +252,12 @@ function part(node, name, nameJa, ontologyId, group, enclosedMl, closed, extra =
  * ends so the two sides are drawn to the same height.
  */
 export const HEART_VESSELS = Object.freeze([
-  vessel('VH_M_ascending_aorta', ['VH_M_ascending_aorta'], 'Ascending aorta', '上行大動脈', 'UBERON:0001496', 'greatVessel', 'artery', 'ascending aorta', { extent: 'root' }),
+  vessel('VH_M_ascending_aorta', ['VH_M_ascending_aorta'], 'Ascending aorta', '上行大動脈', 'UBERON:0001496', 'greatVessel', 'artery', 'ascending aorta', { extent: 'heart' }),
   vessel('VH_M_aortic_arch', ['VH_M_aortic_arch'], 'Arch of the aorta', '大動脈弓', 'UBERON:0001508', 'greatVessel', 'artery', 'arch of aorta', { extent: 'beyond' }),
   vessel('VH_M_descending_aorta', ['VH_M_descending_aorta_a', 'VH_M_descending_aorta_b'], 'Descending aorta', '下行大動脈', 'UBERON:0001514', 'greatVessel', 'artery', 'descending aorta', { extent: 'beyond' }),
-  vessel('VH_M_pulmonary_trunk', ['VH_M_pulmonary_trunk'], 'Pulmonary trunk', '肺動脈幹', 'UBERON:0002333', 'greatVessel', 'artery', 'pulmonary trunk', { extent: 'root' }),
-  vessel('VH_M_pulmonary_artery_L', ['VH_M_pulmonary_artery_L'], 'Left pulmonary artery', '左肺動脈', 'UBERON:0001652', 'greatVessel', 'artery', 'left pulmonary artery', { extent: 'root' }),
-  vessel('VH_M_pulmonary_artery_R', ['VH_M_pulmonary_artery_R'], 'Right pulmonary artery', '右肺動脈', 'UBERON:0001651', 'greatVessel', 'artery', 'right pulmonary artery', { extent: 'root' }),
+  vessel('VH_M_pulmonary_trunk', ['VH_M_pulmonary_trunk'], 'Pulmonary trunk', '肺動脈幹', 'UBERON:0002333', 'greatVessel', 'artery', 'pulmonary trunk', { extent: 'heart' }),
+  vessel('VH_M_pulmonary_artery_L', ['VH_M_pulmonary_artery_L'], 'Left pulmonary artery', '左肺動脈', 'UBERON:0001652', 'greatVessel', 'artery', 'left pulmonary artery', { extent: 'heart' }),
+  vessel('VH_M_pulmonary_artery_R', ['VH_M_pulmonary_artery_R'], 'Right pulmonary artery', '右肺動脈', 'UBERON:0001651', 'greatVessel', 'artery', 'right pulmonary artery', { extent: 'heart' }),
   vessel('VH_M_superior_vena_cava', ['VH_M_superior_vena_cava'], 'Superior vena cava', '上大静脈', 'FMA:4720', 'greatVessel', 'vein', 'superior vena cava', { extent: 'root' }),
   vessel('VH_M_inferior_vena_cava', ['VH_M_inferior_vena_cava_a', 'VH_M_inferior_vena_cava_b'], 'Inferior vena cava', '下大静脈', 'FMA:10951', 'greatVessel', 'vein', 'inferior vena cava', {
     extent: 'root',
@@ -251,11 +266,18 @@ export const HEART_VESSELS = Object.freeze([
     // aorta's branches, rather than left as two cut rings beside the aortic
     // bifurcation.
     reach: reach([-20.0, 450.0, 5.0], [-3.0, 172.0, 19.0], 272, 16),
+    // With only the heart shown: a short root below the right atrium. It runs
+    // up the back of the heart *inside* the heart's box (the box reaches down
+    // to the apex, y 423), so trimmed at the box it kept 35 mm of vein, and a
+    // hollow in its own surface there showed the background through it from
+    // the right and from below once the vein behind was trimmed away. Its top
+    // is at y 457.
+    heartOnlyFloorMm: 447,
   }),
-  vessel('VH_M_pulmonary_vein_L_sup', ['VH_M_pulmonary_vein_L_sup'], 'Left superior pulmonary vein', '左上肺静脈', 'FMA:49916', 'greatVessel', 'vein', 'left superior pulmonary vein', { extent: 'root' }),
-  vessel('VH_M_pulmonary_vein_L_inf', ['VH_M_pulmonary_vein_L_inf'], 'Left inferior pulmonary vein', '左下肺静脈', 'FMA:49913', 'greatVessel', 'vein', 'left inferior pulmonary vein', { extent: 'root' }),
-  vessel('VH_M_pulmonary_vein_R_sup', ['VH_M_pulmonary_vein_R_sup'], 'Right superior pulmonary vein', '右上肺静脈', 'FMA:49914', 'greatVessel', 'vein', 'right superior pulmonary vein', { extent: 'root' }),
-  vessel('VH_M_pulmonary_vein_R_inf', ['VH_M_pulmonary_vein_R_inf'], 'Right inferior pulmonary vein', '右下肺静脈', 'FMA:49911', 'greatVessel', 'vein', 'right inferior pulmonary vein', { extent: 'root' }),
+  vessel('VH_M_pulmonary_vein_L_sup', ['VH_M_pulmonary_vein_L_sup'], 'Left superior pulmonary vein', '左上肺静脈', 'FMA:49916', 'greatVessel', 'vein', 'left superior pulmonary vein', { extent: 'heart' }),
+  vessel('VH_M_pulmonary_vein_L_inf', ['VH_M_pulmonary_vein_L_inf'], 'Left inferior pulmonary vein', '左下肺静脈', 'FMA:49913', 'greatVessel', 'vein', 'left inferior pulmonary vein', { extent: 'heart' }),
+  vessel('VH_M_pulmonary_vein_R_sup', ['VH_M_pulmonary_vein_R_sup'], 'Right superior pulmonary vein', '右上肺静脈', 'FMA:49914', 'greatVessel', 'vein', 'right superior pulmonary vein', { extent: 'heart' }),
+  vessel('VH_M_pulmonary_vein_R_inf', ['VH_M_pulmonary_vein_R_inf'], 'Right inferior pulmonary vein', '右下肺静脈', 'FMA:49911', 'greatVessel', 'vein', 'right inferior pulmonary vein', { extent: 'heart' }),
 
   vessel('VH_M_left_coronary_artery', ['VH_M_left_coronary_artery'], 'Left coronary artery', '左冠動脈', 'UBERON:0001626', 'coronary', 'artery', 'left coronary artery'),
   vessel(
@@ -327,19 +349,20 @@ export const HEART_VESSELS = Object.freeze([
     reach: reach([12.5, 317.7, 10.7], [12.8, 274.3, 52.1], 59, 16),
   }),
   /**
-   * **The source names the two renal arteries the wrong way round**, and this
-   * table names them by where they go.
+   * **The two renal arteries are shown under the names their position gives
+   * them**, which are not the names the file records.
    *
-   * The mesh the file calls `VH_M_left_renal_artery` (label "left renal
+   * The mesh the file records as `VH_M_left_renal_artery` (label "left renal
    * artery", UBERON:0001186) leaves the **right** side of the aorta, runs to
-   * the right, passes behind the inferior vena cava and ends at the hilum of
-   * the right kidney, where the file's own right renal vein leaves it; the one
-   * it calls right does the mirror of that on the left. "Right" and "left" are
-   * not a judgement here — they are the file's own axes, which three
-   * independent pairs in the same file fix (the left atrium, the left
-   * ophthalmic veins and the left renal vein are all at +x). The ids stay the
-   * node names, because an id is opaque; the source's own label and term are
-   * kept beside the name and the disagreement is said wherever it is named.
+   * the right for the longer distance and ends beside the vessel the same file
+   * records as the right renal vein; the one it records as right does the
+   * mirror of that, shorter, on the left. That this is the two labels and not a
+   * mirrored file was checked (`docs/model-evidence/heart-anatomy.md`, claim
+   * 16): nothing in the file or the scene mirrors anything, and every
+   * independent left/right marker in the file puts the body's left at +x. The
+   * ids stay the node names, because an id is opaque; the reader sees the
+   * standard name, and the detail tab says what the file records and keeps its
+   * label and term — without telling the reader the file is wrong.
    */
   vessel('VH_M_left_renal_artery', ['VH_M_left_renal_artery'], 'Right renal artery', '右腎動脈', 'UBERON:0001185', 'abdominalBranch', 'artery', 'left renal artery', {
     extent: 'beyond',
@@ -374,15 +397,22 @@ function reach(from, toward, visibleMm, fadeMm) {
 
 /** The note a side-swapped renal artery carries. A declaration, so the table above can use it. */
 function sideSwappedNote(source) {
+  const other = source === 'left' ? 'right' : 'left';
+  const ja = (side) => (side === 'left' ? '左' : '右');
   return {
     en:
-      `The source file calls this mesh the ${source} renal artery. It leaves the other side of the aorta and runs to ` +
-      'the other kidney, in the file\'s own axes — the same axes that put its left atrium, its left ophthalmic veins ' +
-      'and its left renal vein on the left — so it is named here by where it goes. The source\'s label and term are ' +
-      'kept as they are.',
+      `In the source file this vessel is recorded under the name "${source} renal artery". This model shows it as ` +
+      `the ${other} renal artery, from where it lies: it leaves the ${other} side of the aorta and runs towards the ` +
+      `${other} kidney, beside the vessel the same file records as the ${other} renal vein. The source\'s own label ` +
+      'and ontology id are kept unchanged. What that judgement rests on — the file\'s axes, checked against the ' +
+      'heart, the aortic arch, the venae cavae, the liver\'s and spleen\'s vessels and the renal veins — is in the ' +
+      'model\'s evidence record.',
     ja:
-      `出典ファイルではこの mesh を「${source === 'left' ? '左' : '右'}腎動脈」としています。しかし同じファイルの座標軸（左心房・左眼静脈・左腎静脈がそろって左に来る軸）で見ると、` +
-      '大動脈の反対側から出て反対側の腎臓へ向かっているため、ここでは走行した先で名前を付けています。出典の label と ontology id はそのまま残しています。',
+      `出典ファイルでは、この血管は「${ja(source)}腎動脈」という名前で収録されています。このモデルでは位置関係から` +
+      `${ja(other)}腎動脈として表示しています——大動脈の${ja(other)}側から出て${ja(other)}の腎臓の方へ向かい、同じファイルが` +
+      `「${ja(other)}腎静脈」としている血管と並んでいます。出典の名前（label）と ontology id は変えずに残しています。` +
+      '判断の根拠（ファイルの座標軸を、心臓・大動脈弓・上下大静脈・肝臓と脾臓の血管・腎静脈と照らし合わせた結果）は、' +
+      'モデルの根拠資料に記録しています。',
   };
 }
 
@@ -402,6 +432,8 @@ function vessel(id, meshNames, name, nameJa, ontologyId, group, vesselType, sour
     distal: Boolean(extra.distal),
     extent: extra.extent ?? 'heart',
     reach: extra.reach ?? null,
+    /** With only the heart shown, drawn no lower than this (source mm) — see `_heartTrim`. */
+    heartOnlyFloorMm: extra.heartOnlyFloorMm ?? null,
     schematic: false,
     descriptionKey: extra.descriptionKey ?? null,
     /**
@@ -674,19 +706,19 @@ export function heartStructureInfo(id) {
      * read this to mark the name as unsettled where it is shown.
      */
     identity: entry.identityConflict ? 'source-conflict' : entry.sideSwapped ? 'side-corrected' : entry.schematic ? 'schematic' : null,
+    // No short mark for a name given by position: the name shown is the
+    // standard one, and what the source calls the mesh is said in the detail
+    // tab (`note`), not beside the name.
     identityNote: entry.identityConflict
       ? IDENTITY_UNSETTLED.en
-      : entry.sideSwapped ? SIDE_CORRECTED.en : entry.schematic ? SCHEMATIC_MARK.en : null,
+      : entry.schematic ? SCHEMATIC_MARK.en : null,
     identityNoteJa: entry.identityConflict
       ? IDENTITY_UNSETTLED.ja
-      : entry.sideSwapped ? SIDE_CORRECTED.ja : entry.schematic ? SCHEMATIC_MARK.ja : null,
+      : entry.schematic ? SCHEMATIC_MARK.ja : null,
     /** The source's own term, when the name above is not the one the source gave this mesh. */
     sourceOntologyId: entry.sourceOntologyId ?? null,
   };
 }
-
-/** A name the source gives the other side, settled here by where the vessel goes. */
-const SIDE_CORRECTED = Object.freeze({ en: 'named by position', ja: '位置で命名' });
 
 /** Not in either file: drawn here to show where an artery begins and which way it runs. */
 const SCHEMATIC_MARK = Object.freeze({ en: 'schematic', ja: '模式' });
@@ -712,80 +744,84 @@ function describe(entry) {
  *
  * Found on the real screen: selecting the coeliac trunk or a renal artery gave
  * only where the mesh came from and what is still being checked, and not one
- * word about the vessel — where it leaves the aorta, what it supplies, how the
- * two sides differ. The liver scene on the same site says what each of its
- * vessels does; this said less than a label.
+ * word about the vessel.
  *
- * **These are statements of standard anatomy, not of this specimen.** Levels,
- * lengths and territories are the typical ones (Gray's Anatomy; Moore,
- * Clinically Oriented Anatomy; Netter), said as "typically" where a number is
- * given, and nothing here is measured from the Visible Human. What this model
- * does with the vessel — drawn from the source, schematic, faded — follows in
- * its own paragraph, unchanged. Where the source lacks something a sentence
- * names, the sentence says so.
+ * **Every statement here was checked against a source that was actually
+ * opened**: OpenStax, *Anatomy and Physiology 2e*, §20.5 "Circulatory
+ * Pathways" (and the sections on the heart and fetal circulation), read from
+ * the publisher's own source at commit `5ae32b3` — the table of what was
+ * checked, where, and what was not is in `docs/model-evidence/heart-anatomy.md`
+ * ("Reference check"). The first draft of this table was written from memory
+ * of other textbooks; everything in it that the opened source does not say —
+ * most vertebral levels, the distances between branches, relations to the
+ * trachea and the veins, variants — was taken out rather than kept on
+ * trust. **These are the textbook's account, not measurements of this
+ * specimen**, and a level is written "typically" wherever one is given. Where
+ * the source model's shape and that account differ, the text says which is
+ * which and does not call the difference a variant.
  */
 const ANATOMY = Object.freeze({
   VH_M_ascending_aorta: Object.freeze({
-    en: 'Begins at the aortic valve of the left ventricle and runs up and to the right for about 5 cm to become the arch. The right and left coronary arteries leave its root, from the aortic sinuses.',
-    ja: '左心室の大動脈弁から始まり、右上方へ約 5 cm 上って大動脈弓に続きます。付け根の大動脈洞から左右の冠動脈が出ます。',
+    en: 'The first part of the aorta. It rises from the left ventricle for about 5 cm and ends at the level of the sternal angle, where the arch begins. The right and left coronary arteries arise from its root, from two of the three aortic sinuses just above the aortic valve.',
+    ja: '大動脈の最初の部分です。左心室から上方へ約 5 cm 上り、胸骨角の高さで大動脈弓に続きます。左右の冠動脈は、大動脈弁のすぐ上にある 3 つの大動脈洞のうち 2 つから出ます。',
   }),
   VH_M_aortic_arch: Object.freeze({
-    en: 'Continues the ascending aorta, arching back and to the left across the front of the trachea, and becomes the descending aorta, typically at the level of the sternal angle (between the fourth and fifth thoracic vertebrae). Three branches leave its upper side, from right to left: the brachiocephalic trunk, the left common carotid and the left subclavian — the commonest pattern, with variants such as a shared trunk. The ligamentum arteriosum, which joins its underside to the left pulmonary artery, is not in this model.',
-    ja: '上行大動脈に続き、気管の前を左後方へ弓なりに越えて、典型的には胸骨角（第 4・第 5 胸椎の間）の高さで下行大動脈に続きます。上縁からは、右から順に腕頭動脈・左総頸動脈・左鎖骨下動脈の 3 本が出ます（最も多い形で、共通幹などの変異があります）。下縁と左肺動脈を結ぶ動脈管索はこのモデルにありません。',
+    en: 'Continues the ascending aorta as an arc to the left and becomes the descending aorta, typically at the level of the disc between the fourth and fifth thoracic vertebrae. It gives off three major branches: the brachiocephalic trunk first, then the left common carotid and the left subclavian arteries. The ligamentum arteriosum — the remnant of the fetal ductus arteriosus, which joined the pulmonary trunk to the aorta — is not in this model.',
+    ja: '上行大動脈に続いて左へ弓なりに曲がり、典型的には第 4・第 5 胸椎の間の椎間円板の高さで下行大動脈に続きます。3 本の主要な分枝を出し、最初が腕頭動脈、続いて左総頸動脈、左鎖骨下動脈です。胎生期の動脈管（肺動脈幹と大動脈を結んでいた血管）の遺残である動脈管索は、このモデルにありません。',
   }),
   VH_M_descending_aorta: Object.freeze({
-    en: 'Continues the arch down the front of the spine, left of the midline, and passes through the aortic hiatus of the diaphragm (typically at the twelfth thoracic vertebra) into the abdomen. Above the hiatus it is the thoracic aorta and below it the abdominal aorta, which typically divides into the two common iliac arteries at the fourth lumbar vertebra. The source records the whole length as one structure, so it is selected as one here. Its small branches — intercostal, lumbar and others — are not in the source and are not drawn.',
-    ja: '大動脈弓に続いて脊柱の左前を下り、横隔膜の大動脈裂孔（典型的には第 12 胸椎の高さ）を通って腹部に入ります。裂孔より上を胸部大動脈、下を腹部大動脈（解剖学用語では胸大動脈・腹大動脈）と呼び、腹部大動脈は典型的には第 4 腰椎の高さで左右の総腸骨動脈に分かれます。出典は全長を 1 つの構造として収録しているため、ここでも 1 つとして選びます。肋間動脈・腰動脈などの細い枝は出典になく、描いていません。',
+    en: 'Continues the arch downward close to the bodies of the vertebrae and passes through the aortic hiatus of the diaphragm. Above the hiatus it is called the thoracic aorta and below it the abdominal aorta, which runs to the left of the vertebral column and typically divides into the two common iliac arteries at the level of the fourth lumbar vertebra. The source records the whole length as one structure, so it is selected as one here. Its smaller branches — intercostal, lumbar and others — are not in the source and are not drawn.',
+    ja: '大動脈弓に続いて椎体の近くを下り、横隔膜の大動脈裂孔を通ります。裂孔より上を胸部大動脈、下を腹部大動脈と呼びます。腹部大動脈は脊柱の左側を下り、典型的には第 4 腰椎の高さで左右の総腸骨動脈に分かれます。出典は全長を 1 つの構造として収録しているため、ここでも 1 つとして選びます。肋間動脈・腰動脈などの細い枝は出典になく、描いていません。',
   }),
   VH_M_brachiocephalic_artery: Object.freeze({
-    en: 'The first and largest branch of the arch. It runs up and to the right in front of the trachea for 4–5 cm and divides behind the right sternoclavicular joint into the right common carotid and right subclavian arteries.',
-    ja: '大動脈弓の最初で最も太い分枝です。気管の前を右上方へ 4〜5 cm 走り、右胸鎖関節の後ろで右総頸動脈と右鎖骨下動脈に分かれます。',
+    en: 'The first branch of the arch, on the right side only — there is no left counterpart. It divides into the right subclavian and right common carotid arteries, which supply the head and neck, the upper limb and the chest wall on the right.',
+    ja: '大動脈弓の最初の分枝で、右側にだけあります（左側に対応する血管はありません）。右鎖骨下動脈と右総頸動脈に分かれ、右側の頭頸部・上肢・胸壁へ血液を送ります。',
   }),
   schematic_right_common_carotid_artery: Object.freeze({
-    en: 'One of the two arteries the brachiocephalic trunk divides into, behind the right sternoclavicular joint. It runs up the right side of the trachea into the neck.',
-    ja: '腕頭動脈が右胸鎖関節の後ろで分かれてできる 2 本のうちの 1 本です。気管の右側を頸部へ上行します。',
+    en: 'Arises from the brachiocephalic trunk. Like the left one, it divides into the external and internal carotid arteries and supplies its own side of the head and neck.',
+    ja: '腕頭動脈から出ます。左と同じく外頸動脈と内頸動脈に分かれ、頭頸部の右側を栄養します。',
   }),
   schematic_right_subclavian_artery: Object.freeze({
-    en: 'The other division of the brachiocephalic trunk. It arches out over the first rib towards the arm.',
-    ja: '腕頭動脈が分かれてできるもう 1 本です。外側へ弓状に走り、第 1 肋骨を越えて上肢へ向かいます。',
+    en: 'Arises from the brachiocephalic trunk. It gives off the internal thoracic, vertebral and thyrocervical arteries and continues as the axillary artery towards the arm.',
+    ja: '腕頭動脈から出ます。内胸動脈・椎骨動脈・甲状頸動脈を出し、腋窩動脈となって上肢へ続きます。',
   }),
   VH_M_left_common_carotid_artery: Object.freeze({
-    en: 'The second branch of the arch, running up the left side of the trachea into the neck. The right common carotid comes from the brachiocephalic trunk; the left leaves the arch directly. The source carries it on into its branches in the neck; here it fades out at the height the right one does.',
-    ja: '大動脈弓の 2 番目の分枝で、気管の左側を頸部へ上行します。右総頸動脈は腕頭動脈から出ますが、左は大動脈弓から直接出ます。出典は頸部の分枝まで含めて収録していますが、ここでは右と同じ高さで薄れて消えます。',
+    en: 'Arises directly from the arch — the right common carotid comes from the brachiocephalic trunk instead. It divides into the external and internal carotid arteries and supplies the left side of the head and neck. The source carries it on into its branches in the neck; here it fades out at the height the right one does.',
+    ja: '大動脈弓から直接出ます（右総頸動脈は腕頭動脈から出ます）。外頸動脈と内頸動脈に分かれ、頭頸部の左側を栄養します。出典は頸部の分枝まで含めて収録していますが、ここでは右と同じ高さで薄れて消えます。',
   }),
   VH_M_left_subclavian_artery: Object.freeze({
-    en: 'The third branch of the arch, leaving it behind and to the left of the left common carotid and arching out over the first rib towards the arm. The right subclavian comes from the brachiocephalic trunk. Its own branches, such as the vertebral and internal thoracic arteries, are not in the source.',
-    ja: '大動脈弓の 3 番目の分枝で、左総頸動脈の左後ろから出て、第 1 肋骨を越えて上肢へ向かいます。右鎖骨下動脈は腕頭動脈から出ます。椎骨動脈・内胸動脈などの枝は出典にありません。',
+    en: 'Arises directly from the arch — the right subclavian comes from the brachiocephalic trunk instead. It gives off the internal thoracic, vertebral and thyrocervical arteries and continues as the axillary artery towards the arm; those branches are not in the source.',
+    ja: '大動脈弓から直接出ます（右鎖骨下動脈は腕頭動脈から出ます）。内胸動脈・椎骨動脈・甲状頸動脈を出し、腋窩動脈となって上肢へ続きます。これらの枝は出典にありません。',
   }),
   VH_M_celiac_trunk: Object.freeze({
-    en: 'The first branch to leave the front of the abdominal aorta: a short trunk just below the aortic hiatus (typically at the twelfth thoracic or first lumbar vertebra). Within one or two centimetres it divides into the left gastric, common hepatic and splenic arteries, which supply the organs derived from the foregut — stomach, liver, gallbladder, part of the pancreas and the upper duodenum — and the spleen.',
-    ja: '腹部大動脈から前へ出る最初の枝で、大動脈裂孔を出てすぐ（典型的には第 12 胸椎〜第 1 腰椎の高さ）の短い幹です。1〜2 cm で左胃動脈・総肝動脈・脾動脈に分かれ、前腸由来の臓器（胃・肝臓・胆嚢・膵臓の一部・十二指腸の上半）と脾臓を栄養します。',
+    en: 'A single (unpaired) branch of the abdominal aorta, above the superior mesenteric artery. It divides into the left gastric, splenic and common hepatic arteries, which supply the stomach and oesophagus, the spleen, the liver and gallbladder, and parts of the duodenum and pancreas.',
+    ja: '腹部大動脈の不対の枝で、上腸間膜動脈より上から出ます。左胃動脈・脾動脈・総肝動脈に分かれ、胃と食道、脾臓、肝臓と胆嚢、十二指腸と膵臓の一部を栄養します。',
   }),
   VH_M_superior_mesenteric_artery: Object.freeze({
-    en: 'Leaves the front of the abdominal aorta about 1 cm below the coeliac trunk (typically at the first lumbar vertebra). It passes in front of the left renal vein and the third part of the duodenum, and supplies the gut derived from the midgut — from the lower duodenum to the right two-thirds of the transverse colon.',
-    ja: '腹腔動脈の約 1 cm 下（典型的には第 1 腰椎の高さ）で腹部大動脈の前面から出ます。左腎静脈と十二指腸水平部の前を越えて下り、中腸由来の腸管（十二指腸の下半から横行結腸の右 2/3 まで）を栄養します。',
+    en: 'A single (unpaired) branch of the abdominal aorta, below the coeliac trunk. It supplies the small intestine (duodenum, jejunum and ileum), the pancreas and most of the large intestine.',
+    ja: '腹部大動脈の不対の枝で、腹腔動脈の下から出ます。小腸（十二指腸・空腸・回腸）、膵臓、大腸の大部分を栄養します。',
   }),
-  // Keyed by node id: this mesh is the right renal artery (see HEART_VESSELS).
+  // Keyed by node id: this mesh is shown as the right renal artery (see HEART_VESSELS).
   VH_M_left_renal_artery: Object.freeze({
-    en: 'Leaves the right side of the abdominal aorta just below the superior mesenteric artery (typically between the first and second lumbar vertebrae) and runs to the hilum of the right kidney. Because the aorta lies a little left of the midline it is the longer of the two, and it passes behind the inferior vena cava. More than one renal artery on a side is not unusual.',
-    ja: '上腸間膜動脈のすぐ下（典型的には第 1〜第 2 腰椎の高さ）で腹部大動脈の右側から出て、右腎の腎門へ向かいます。大動脈が正中のやや左にあるため左より長く、下大静脈の後ろを通ります。片側に 2 本以上の腎動脈がある人も珍しくありません。',
+    en: 'One of the paired renal arteries, below the superior mesenteric artery; it supplies the right kidney. Because the aorta lies to the left of the vertebral column, the right renal artery is the longer of the two.',
+    ja: '上腸間膜動脈より下で出る左右一対の腎動脈のうち右側で、右の腎臓を栄養します。大動脈が脊柱の左側にあるため、右腎動脈は左より長くなります。',
   }),
-  // Keyed by node id: this mesh is the left renal artery (see HEART_VESSELS).
+  // Keyed by node id: this mesh is shown as the left renal artery (see HEART_VESSELS).
   VH_M_right_renal_artery: Object.freeze({
-    en: 'Leaves the left side of the abdominal aorta at about the level of the right and runs to the hilum of the left kidney. It is shorter than the right and runs behind the left renal vein. More than one renal artery on a side is not unusual.',
-    ja: '右腎動脈とほぼ同じ高さで腹部大動脈の左側から出て、左腎の腎門へ向かいます。右より短く、左腎静脈の後ろを走ります。片側に 2 本以上の腎動脈がある人も珍しくありません。',
+    en: 'One of the paired renal arteries, below the superior mesenteric artery; it supplies the left kidney. Because the aorta lies to the left of the vertebral column, it is shorter than the right.',
+    ja: '上腸間膜動脈より下で出る左右一対の腎動脈のうち左側で、左の腎臓を栄養します。大動脈が脊柱の左側にあるため、右より短くなります。',
   }),
   VH_M_inferior_mesenteric_artery: Object.freeze({
-    en: 'Leaves the front of the abdominal aorta, a little to the left, 3–4 cm above its bifurcation (typically at the third lumbar vertebra). It runs down and to the left and supplies the gut derived from the hindgut — from the left third of the transverse colon to the upper rectum. In this specimen it leaves only about 1.2 cm above the bifurcation, lower than is typical.',
-    ja: '分岐部の 3〜4 cm 上（典型的には第 3 腰椎の高さ）で腹部大動脈の前面やや左から出ます。左下方へ走り、後腸由来の腸管（横行結腸の左 1/3 から直腸上部まで）を栄養します。この標本では分岐部の約 1.2 cm 上から出ており、典型より低い位置です。',
+    en: 'The lowest single (unpaired) branch of the abdominal aorta, arising above the point where the aorta divides into the common iliac arteries (about 5 cm above it, in OpenStax\'s account). It supplies the distal part of the large intestine and the rectum. In this model, the source\'s own shape has it leaving just above that division — lower than that account. Whether that reflects this body or how the model was made is not established.',
+    ja: '腹部大動脈の不対の枝のうち最も下にあり、総腸骨動脈に分かれる位置より上から出ます（OpenStax の記載では約 5 cm 上）。大腸の遠位部と直腸を栄養します。このモデルでは、出典の形状のまま分岐部のすぐ上から出ており、この記載より低い位置です。それがこの人の体の特徴なのか、モデル作成上のものなのかは確認できていません。',
   }),
   schematic_right_common_iliac_artery: Object.freeze({
-    en: 'The right of the two arteries the abdominal aorta ends in (typically at the fourth lumbar vertebra). It runs down and out for about 4 cm and divides in front of the sacroiliac joint into the internal and external iliac arteries, crossing in front of where the common iliac veins join to form the inferior vena cava.',
-    ja: '腹部大動脈が終わるところ（典型的には第 4 腰椎の高さ）で分かれる右側の枝です。右外下方へ約 4 cm 走り、仙腸関節の前で内腸骨動脈と外腸骨動脈に分かれます。左右の総腸骨静脈が合流して下大静脈になるところの前を越えます。',
+    en: 'The right of the two arteries the abdominal aorta divides into, typically at the level of the fourth lumbar vertebra. It divides in turn into the external and internal iliac arteries at about the level of the lumbosacral joint, supplying the pelvis and the lower limb.',
+    ja: '腹部大動脈が典型的には第 4 腰椎の高さで分かれてできる 2 本のうち右側です。腰仙関節のあたりの高さで外腸骨動脈と内腸骨動脈に分かれ、骨盤と下肢へ血液を送ります。',
   }),
   schematic_left_common_iliac_artery: Object.freeze({
-    en: 'The left of the two arteries the abdominal aorta ends in. It runs down and out for about 4 cm and divides in front of the sacroiliac joint into the internal and external iliac arteries.',
-    ja: '腹部大動脈が終わるところで分かれる左側の枝です。左外下方へ約 4 cm 走り、仙腸関節の前で内腸骨動脈と外腸骨動脈に分かれます。',
+    en: 'The left of the two arteries the abdominal aorta divides into, typically at the level of the fourth lumbar vertebra. It divides in turn into the external and internal iliac arteries at about the level of the lumbosacral joint, supplying the pelvis and the lower limb.',
+    ja: '腹部大動脈が典型的には第 4 腰椎の高さで分かれてできる 2 本のうち左側です。腰仙関節のあたりの高さで外腸骨動脈と内腸骨動脈に分かれ、骨盤と下肢へ血液を送ります。',
   }),
 });
 
@@ -1069,16 +1105,16 @@ export const HEART_MODEL_SCOPE = Object.freeze({
       textJa: '出典内で名称が一致しない部位が 1 つあり、こちらで決めずに「名称要確認」と表示しています。',
     },
     {
-      text: '**The source names its two renal arteries the wrong way round.** They are named here by where they go, in the file\'s own axes, and marked "named by position"; the source\'s own labels are kept beside them.',
-      textJa: '**出典は左右の腎動脈の名前を逆に付けています。** ここではファイル自身の座標軸で走行先から名前を付け、「位置で命名」と表示し、出典の表記も残しています。',
+      text: 'The two renal arteries are shown under the names their position gives them, which are not the names the source file records for them. What the file calls each one, and what the judgement rests on, are in its detail tab and the evidence record.',
+      textJa: '左右の腎動脈は、位置関係にもとづく名前で表示しています。出典ファイルでの名前とは左右が一致しません。出典での名前と判断の根拠は、各血管の「詳細」と根拠資料にあります。',
     },
     {
       text: '**Four segments are schematic, not specimen**: the start of the right common carotid and right subclavian arteries, and of both common iliac arteries. The source has none of them; each begins at the end or opening the source leaves, but its length, angle and course follow textbook anatomy, and each is marked "schematic".',
       textJa: '**4 つの区間は標本ではなく模式です。** 右総頸動脈・右鎖骨下動脈・左右の総腸骨動脈の起始部で、出典にはありません。出典が残す末端・開口から始まりますが、長さ・角度・走行は教科書的な解剖に従っており、「模式」と表示しています。',
     },
     {
-      text: 'What a vessel\'s description says about its course, level and territory is the textbook\'s typical account, not a measurement of this specimen.',
-      textJa: '血管の説明にある走行・高さ・栄養域は教科書的な典型の記載で、この標本を計測したものではありません。',
+      text: 'What the aorta\'s and its branches\' descriptions say about their course, level and territory is a textbook\'s general account (OpenStax, Anatomy and Physiology 2e, §20.5), kept to what could be checked against it — not a measurement of this specimen. No anatomist has reviewed it.',
+      textJa: '大動脈と分枝の説明にある走行・高さ・栄養域は、教科書（OpenStax Anatomy and Physiology 2e、§20.5）の一般的な記載のうち照合できたものだけで、この標本を計測したものではありません。解剖学者による確認は受けていません。',
     },
     {
       text: 'A branch fades out where the display range ends. The fade is a way of saying "it continues", not a place where the vessel stops.',
@@ -1483,12 +1519,13 @@ export const HEART_MISSING = Object.freeze([
     'The aorta\'s smaller branches',
     '大動脈の細い分枝',
     'noted',
-    'The source has none of them: from the thoracic aorta the posterior intercostal, bronchial and oesophageal ' +
-      'arteries; from the abdominal aorta the inferior phrenic, middle suprarenal, testicular, lumbar and median ' +
-      'sacral arteries. The aorta here shows its major branches only — which is not the same as an aorta with ' +
-      'only those branches.',
-    '出典にはいずれもありません——胸部大動脈の肋間動脈・気管支動脈・食道動脈、腹部大動脈の下横隔動脈・' +
-      '中副腎動脈・精巣動脈・腰動脈・正中仙骨動脈。ここに描いた大動脈は主要な分枝だけを見せています。' +
+    'The source has none of them: from the thoracic aorta the intercostal, bronchial, oesophageal, pericardial, ' +
+      'mediastinal and superior phrenic arteries; from the abdominal aorta the inferior phrenic, adrenal, ' +
+      'gonadal (testicular) and lumbar arteries, and the median sacral artery that continues it. The aorta here ' +
+      'shows its major branches only — which is not the same as an aorta with only those branches.',
+    '出典にはいずれもありません——胸部大動脈の肋間動脈・気管支動脈・食道動脈・心膜枝・縦隔枝・上横隔動脈、' +
+      '腹部大動脈の下横隔動脈・副腎動脈・性腺動脈（精巣動脈）・腰動脈と、その続きの正中仙骨動脈。' +
+      'ここに描いた大動脈は主要な分枝だけを見せています。' +
       '大動脈の分枝がそれだけだという意味ではありません。'
   ),
   missing(
@@ -1496,9 +1533,8 @@ export const HEART_MISSING = Object.freeze([
     'Ligamentum arteriosum',
     '動脈管索',
     'noted',
-    'The remnant of the fetal ductus arteriosus, joining the underside of the arch to the left pulmonary artery. ' +
-      'Not in the source.',
-    '胎生期の動脈管の遺残で、大動脈弓の下縁と左肺動脈を結びます。出典にありません。'
+    'The remnant of the fetal ductus arteriosus, which joined the pulmonary trunk to the aorta. Not in the source.',
+    '胎生期に肺動脈幹と大動脈を結んでいた動脈管の遺残です。出典にありません。'
   ),
   missing('chordae-tendineae', 'Chordae tendineae', '腱索', 'noted'),
   missing('pericardium', 'Pericardium', '心膜', 'noted'),

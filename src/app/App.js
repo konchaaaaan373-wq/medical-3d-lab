@@ -1129,7 +1129,10 @@ export async function createApp({ stage, ui, onRetryModel = null }) {
    * here means the model is not loaded yet.
    */
   const focusOnStructure = (id) => {
-    const bounds = scene.getStructureBounds?.(id);
+    // A scene may frame a structure with some of what it belongs to — a
+    // branch with where it leaves its vessel — and says so by offering
+    // `getFocusBounds`. Every other scene frames the structure alone.
+    const bounds = scene.getFocusBounds?.(id) ?? scene.getStructureBounds?.(id);
     if (!bounds) return false;
     const pose = { position: viewer.camera.position.clone(), target: viewer.controls.target.clone() };
     const insets = safeAreaInsets();

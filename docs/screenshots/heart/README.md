@@ -37,24 +37,35 @@ geometry. The scene cannot be published: it rests on candidate assets that have
 been through no asset pipeline and no publication decision exists — see
 `docs/model-cards/heart-anatomy.md`.
 
-## `17-*` — the aorta and its branches, and the heart on its own (2026-09-30)
+## `17-*` — the aorta and its branches, and the heart on its own (re-taken 2026-09-30)
 
 Taken from a preview build of branch `claude/dreamy-fermi-2ddpth` (`npm run
 build:preview`, `?preview=1`), headless Chromium 141 with SwiftShader, served
 files `VH_M_Heart.glb` sha256 `994a8638…` and `VH_M_Blood_Vasculature.glb`
 sha256 `f03a5062…` — the **adopted derivatives**, not the candidates above.
+Close-ups have the UI hidden and the camera placed on the source's own
+coordinates.
 
 | File | What it shows |
 | --- | --- |
 | `17-aorta-desktop.png` | 1280×800, as the scene opens: the heart and its aorta, switch on |
-| `17-heart-only-desktop.png` | the same after one press of 大動脈・主要分枝を表示: the heart on its own, roots of the great vessels faded just outside it |
+| `17-heart-only-desktop.png` | after one press of 大動脈・主要分枝を表示: the heart on its own, from the front |
+| `17-heart-only-back-desktop.png` | the same from behind (後面): pulmonary roots drawn whole, venae cavae as short roots |
 | `17-great-vessels.png` | 「大血管を見る」, framed on the heart and the arch |
-| `17-arch-branches.png` | close-up, UI hidden: brachiocephalic trunk dividing into the schematic right common carotid and right subclavian, left common carotid, left subclavian |
-| `17-abdominal-branches.png` | close-up, UI hidden: coeliac trunk, superior mesenteric, both renal arteries |
-| `17-bifurcation.png` | close-up, UI hidden: inferior mesenteric and the schematic start of both common iliac arteries |
-| `17-detail-desktop.png` | the coeliac trunk's Detail tab: textbook anatomy first, then what the model does with it |
+| `17-arch-branches.png` | close-up: brachiocephalic trunk dividing into the schematic right common carotid and right subclavian, left common carotid, left subclavian |
+| `17-abdominal-branches.png` | close-up from front-left: coeliac trunk, superior mesenteric, right renal (behind the IVC) and left renal arteries |
+| `17-bifurcation.png` | close-up: inferior mesenteric and the schematic start of both common iliac arteries |
+| `17-focus-celiac.png` | 「寄る」 on the coeliac trunk: the branch with the stretch of aorta it leaves |
+| `17-detail-desktop.png` | the coeliac trunk's Detail tab: checked general anatomy first, then what the model does with it |
 | `17-aorta-phone.png`, `17-heart-only-phone.png` | 390×844, the two ways of looking |
-| `17-detail-phone.png` | 390×844, the renal artery's Detail tab in the sheet — which showed no description at all before 2026-09-30 |
+| `17-detail-phone.png` | 390×844, the right renal artery's Detail tab in the sheet: the source file's own name for it is in the note, not beside the name |
+
+## `18-*` — two phone problems that are on `main` too (2026-09-30)
+
+| File | What it shows |
+| --- | --- |
+| `18-landscape-selected-main.png`, `18-landscape-selected-branch.png` | 844×390 after rotating and selecting the arch: the model slides under the title card on `main` and on the branch alike (`docs/follow-ups.md` F-237 item 6) |
+| `18-phone-sheet-list-main.png`, `18-phone-sheet-list-branch.png` | 375×667 with a structure selected: about two rows of the parts list under the search box, the same on both (item 12) |
 
 **These are not a review either.** No anatomist has looked at the branches, the
 schematic segments or the descriptions.

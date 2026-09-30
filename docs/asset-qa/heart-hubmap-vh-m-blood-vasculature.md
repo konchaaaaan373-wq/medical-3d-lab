@@ -353,11 +353,15 @@ descending aorta against the branches' own, in the source's millimetres:
 
 Top to bottom that is coeliac (332), superior mesenteric (318), renal (303,
 300), inferior mesenteric (199), the aorta's end (187) — the standard order.
-The inferior mesenteric arises about 1.2 cm above the end, where 3–4 cm is
-usual; the specimen's, and left as it is.
+The inferior mesenteric's opening is 8.0 and 10.8 (file units × 1000) above
+the two iliac openings and 11.4 above the aorta's lowest vertex. That is model
+geometry: the file is in metres only by the glTF convention and nothing
+calibrates it to the specimen, so it is not read as the specimen's anatomy or as
+a variant (`docs/model-evidence/heart-anatomy.md`, claim 15).
 
-**A defect in the source, found on the way: the renal arteries are named the
-wrong way round.** `VH_M_left_renal_artery` leaves the aorta's −x side and ends
+**Found on the way: the two renal arteries' labels disagree with their
+geometry** (checked against a mirrored-file explanation in
+`docs/model-evidence/heart-anatomy.md`, claim 16). `VH_M_left_renal_artery` leaves the aorta's −x side and ends
 at (−50.6, 313.1, −10.2), at the hilum where the file's **right** renal vein
 (x −62…−33) is, passing behind the inferior vena cava; `VH_M_right_renal_artery`
 ends at x +53…+55 beside the left renal vein. +x is the patient's left in this
