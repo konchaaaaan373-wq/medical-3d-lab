@@ -63,6 +63,7 @@ CLAUDE.md が禁じる「中身のない網羅」の、インフラ版です。
 | 解剖シーンの操作（選択・drag is not click・シート・拡大の支点） | `npm run verify:anatomy` |
 | 病態シーンの操作（baseline → disease → reset）と**動画書き出し**（同意画面 → 録画 → 書き出したファイルをブラウザに再生させて 1 フレーム撮る） | `npm run verify:disease` |
 | 患者説明／医学教育の目的（入口・ヘッダーの切替と現在地・直接 URL・再読み込み・戻る・キーボード・公開ゲート） | `npm run verify:purpose`（preview は `-- --dist dist-preview --preview`） |
+| ページの離れ方（読む面のその場差し替え・転送が住所欄まで直るか・モデルは別文書・veil・戻る）。**ルートや転送を変えたら走らせる** | `npm run verify:departure` |
 | hero のタッチとキーボード | `npm run verify:hero-input` |
 | ログイン周り | `npm run verify:auth` |
 | 静的サーバ（range・traversal ガード・mount） | `scripts/lib/serve-dist.mjs` |

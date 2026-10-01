@@ -58,6 +58,27 @@ L-95 と L-96 は「別件を直したら、触っていない検査が赤くな
 どれも、
 書いた時点では正しく見え、レビューを通り、緑でした。
 
+### L-157 転送をやめたのに、転送を前提にした遷移検査を手元で一度も走らせず、CI で初めて赤くなった
+
+- **症状**: BYOKI MOTION で `#/organs` の転送をやめ（解剖の棚に戻した）、転送は
+  `#/pathology` → `#/models` の 1 本だけにしました。unit test（`tests/route-redirects.test.js`）
+  と `verify:ui` は書き換えて緑にしましたが、`verify:departure` は
+  「転送されるルート」を **`#/organs` と名指しで**持っており、手元では一度も
+  走らせていませんでした。CI の `viewport matrix (chromium)` が
+  「settled at hash #/organs with data-route="explorer"」で落ちて初めて分かりました。
+  CLAUDE.md の道具表に `verify:departure` が載っておらず、遷移を変えたときに
+  走らせる検査として思い出せなかったのが半分の原因です。
+- **どう見つかったか**: PR の CI（`.github/workflows/` の viewport matrix の後段）。
+  手元で旧スクリプトを走らせて同じ FAIL を再現してから直しました。
+- **いま何が捕まえるか**: `scripts/check-departure.mjs` は転送先を名指しせず
+  `redirectFor()`（`src/app/routeRedirects.js`）に聞きます——転送の規則が変われば
+  検査も一緒に変わり、`#/pathology` が転送されなくなれば「この検査は転送される
+  ルートを要る」と赤くなります。解剖の棚・モデル一覧・About は「その場で差し替わる
+  読む面」の列に入りました（隣同士が同じ `data-route` にならない並びで——`move()` は
+  期待した route を見た時点で待つのをやめるため）。CLAUDE.md の道具表にも載せました。
+- **一般形**: **ルートの意味を変えたら、ルートを名指ししている検査を全部探す。**
+  `grep -rn "'#/<slug>'" scripts/` が最初の一手です。
+
 ### L-156 初回イントロを「1.5 秒待って開いたら閉じる」にしたら、遅い幅でだけ開いたあとに覆われた
 
 - **症状**: `verify:ui` の行列に病態モデル（`#/cardiac-output`）を足した日、初回イントロが
