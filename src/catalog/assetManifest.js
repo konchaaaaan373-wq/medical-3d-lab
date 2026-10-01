@@ -821,8 +821,10 @@ export const ASSET_MANIFEST = Object.freeze([
     organs: ['heart'],
     structureScope:
       'The vessels of the heart: the great vessels and the arch branches, the coronary arteries, the cardiac veins ' +
-      'and the caval tributaries, as separately named surfaces with UBERON/FMA ids. The whole-body vessels in the ' +
-      'same file are outside the scope this scene draws.',
+      'and the caval tributaries, as separately named surfaces with UBERON/FMA ids — and, since 2026-09-29, the five ' +
+      'arteries leaving the abdominal aorta (coeliac trunk, superior and inferior mesenteric, both renal), which the ' +
+      'descending aorta in the same file has an opening for each of. The rest of the whole-body vessels in the file ' +
+      'are outside the scope this scene draws.',
     source: {
       name: 'HuBMAP Human Reference Atlas — 3D Reference Organ for Blood Vasculature, Male v1.2 (VH_M_Blood_Vasculature.glb)',
       url: 'https://github.com/hubmapconsortium/ccf-releases',
@@ -891,7 +893,9 @@ export const ASSET_MANIFEST = Object.freeze([
         name: 'HuBMAP CCF — 3D Reference Organ for Blood Vasculature, Male v1.2',
         url: 'https://doi.org/10.48539/HBM686.LBDQ.998',
         license: 'CC-BY-4.0',
-        role: 'Every vessel surface in the file; this scene draws the 37 meshes of VH_M_blood_vasculature_of_heart.',
+        role:
+          'Every vessel surface in the file; this scene draws the 37 meshes of VH_M_blood_vasculature_of_heart and ' +
+          'the five abdominal aortic branches filed under the liver, kidney and large intestine.',
         additionalTerms:
           'Creators Kristen Browne (ORCID 0000-0003-4066-7531) and Heidi Schlehlein (ORCID 0000-0002-3333-5646); ' +
           'reviewers Marc Halushka and Shin Lin; publisher HuBMAP; funder NIH OT2OD026671.',
@@ -922,8 +926,8 @@ export const ASSET_MANIFEST = Object.freeze([
     ],
     output: {
       path: 'public/assets/heart/VH_M_Blood_Vasculature.glb',
-      sha256: 'de4170610a12b3cd0595be79c2254735de63b0375252448c32fefa210aad11b9',
-      bytes: 434364,
+      sha256: 'f03a50620a66c3d7b6987806b9025eb12742ca57377b243f8cea6f2bcfbb231a',
+      bytes: 463508,
     },
     geometry: {
       coordinateSystem: 'glTF 2.0 (right-handed, +Y up, +Z forward); measured to share the whole-body frame with the heart file',
@@ -941,8 +945,10 @@ export const ASSET_MANIFEST = Object.freeze([
       generator: 'babylon.js glTF exporter for Autodesk MAYA 2022.2 v20211115.1 (upstream)',
       steps: [
         'Upstream: modelled from Visible Human Male imaging and exported from Maya.',
-        'Here, in order: the 67 meshes outside VH_M_blood_vasculature_of_heart removed — the publisher\'s own ' +
-          'grouping, and the branches this scene has never drawn — then 24 zero-area triangles and 5 exact duplicate ' +
+        'Here, in order: the 62 meshes outside VH_M_blood_vasculature_of_heart and five named abdominal arteries ' +
+          'removed — the publisher\'s own grouping, plus (since 2026-09-29) the coeliac trunk, the superior and ' +
+          'inferior mesenteric and both renal arteries kept with their ancestors, names and extras, because the ' +
+          'descending aorta has an opening for each — then 24 zero-area triangles and 5 exact duplicate ' +
           'faces, then the 33 degenerate vertex normals replaced as in the heart file. The trim comes first so that ' +
           'every later count is about what ships. **Every mesh still drawn keeps its vertex positions byte for byte**, ' +
           'with its node name, its place in the hierarchy and its ontology id; the report checks that by hashing ' +
@@ -956,22 +962,32 @@ export const ASSET_MANIFEST = Object.freeze([
     semanticParts: {
       partIdSource: 'glTF node names carrying UBERON/FMA ontology ids, as published upstream',
       mappingModule: 'src/data/heartAnatomy.js',
-      partCount: 37,
+      partCount: 42,
     },
     acceptedSimplifications: [
-      'The 67 meshes outside the heart subtree are gone: eye, abdominal and pelvic vessels this scene never drew, removed rather than shipped unseen.',
+      'The 62 meshes outside the heart subtree and the five abdominal aortic branches are gone: eye, hepatic, splenic, colic, renal-venous and pelvic vessels this scene never drew, removed rather than shipped unseen.',
+      'The scene draws each aortic branch for its first few centimetres and fades it out there (a display range, set in src/data/heartAnatomy.js); nothing in the file is cut or edited to do so.',
       'Whether each vessel surface is a lumen or an outer wall is not established by the file, and is not asserted.',
     ],
     knownDefects: [
       'One node disagrees with itself: VH_M_left_anterior_descending_artery carries FMA:8636, which names a branch of ' +
         'the pulmonary artery. Left unchanged and surfaced to the reader in both languages rather than silently relabelled.',
       'No mesh is named "circumflex"; two meshes share FMA:3860, which is a vocabulary collision rather than a duplicated structure.',
+      'The two renal arteries\' labels disagree with their geometry: VH_M_left_renal_artery (label "left renal ' +
+        'artery", UBERON:0001186) leaves the right side of the aorta and runs to the right, beside the file\'s own ' +
+        'right renal vein, and VH_M_right_renal_artery the mirror of it; nothing in the file is mirrored and its other ' +
+        'left/right markers all put the body\'s left at +x (docs/model-evidence/heart-anatomy.md, claim 16). The file ' +
+        'is left unchanged; the scene shows them under the names their position gives them and keeps the source\'s ' +
+        'labels in the detail tab.',
+      'The file has no iliac artery, no right common carotid and no right subclavian artery: the descending aorta ends ' +
+        'with two openings and the brachiocephalic trunk with a rounded tip. The scene draws the first centimetres of ' +
+        'those four schematically, marked as such; they are code, not part of this asset.',
     ],
     budget: {
-      triangles: 153476,
+      triangles: 161077,
       materials: 3,
       textures: 0,
-      bytes: 434364,
+      bytes: 463508,
       targetDevices:
         'Desktop and current phones. This entry used to read "7.4 MB to serve 37 drawn meshes is the cost of not ' +
         'modifying the file further" — and the ship-weight budget is what made that cost no longer worth paying: ' +
@@ -986,11 +1002,11 @@ export const ASSET_MANIFEST = Object.freeze([
         status: QA_STATUS.PASSED,
         tool: 'Khronos glTF Validator (npm gltf-validator)',
         toolVersion: '2.0.0-dev.3.10',
-        assetSha256: 'de4170610a12b3cd0595be79c2254735de63b0375252448c32fefa210aad11b9',
-        checkedAt: '2026-09-24T09:30:00Z',
+        assetSha256: 'f03a50620a66c3d7b6987806b9025eb12742ca57377b243f8cea6f2bcfbb231a',
+        checkedAt: '2026-09-29T12:52:00Z',
         errors: 0,
         warnings: 0,
-        infos: 39,
+        infos: 43,
         scope:
           'The compressed file that ships, validated with its Draco payload decoded by the validator. The source is ' +
           'INVALID with 33 ACCESSOR_VECTOR3_NON_UNIT errors, recorded in ' +
@@ -999,11 +1015,12 @@ export const ASSET_MANIFEST = Object.freeze([
       },
       semanticIntegrity: {
         status: QA_STATUS.PASSED,
-        assetSha256: 'de4170610a12b3cd0595be79c2254735de63b0375252448c32fefa210aad11b9',
+        assetSha256: 'f03a50620a66c3d7b6987806b9025eb12742ca57377b243f8cea6f2bcfbb231a',
         reference: 'tests/heart-anatomy.test.js',
         scope:
-          'The 37 heart-vessel meshes the adapter names, their ontology ids, and the node names and hierarchy held ' +
-          'identical across the repair and the compression. A test of the file and the adapter, not of the anatomy.',
+          'The 42 vessel meshes the adapter names — the 37 of the heart subtree and the five abdominal aortic ' +
+          'branches — their ontology ids, and the node names and hierarchy held identical across the repair and the ' +
+          'compression. A test of the file and the adapter, not of the anatomy.',
       },
       anatomyExpertReview: {
         status: QA_STATUS.PENDING,
@@ -1014,17 +1031,19 @@ export const ASSET_MANIFEST = Object.freeze([
       },
       visualReview: {
         status: QA_STATUS.PASSED,
-        assetSha256: 'de4170610a12b3cd0595be79c2254735de63b0375252448c32fefa210aad11b9',
-        reference: 'docs/asset-qa/heart-hubmap-vh-m-heart.md',
+        assetSha256: 'f03a50620a66c3d7b6987806b9025eb12742ca57377b243f8cea6f2bcfbb231a',
+        reference: 'docs/asset-qa/heart-hubmap-vh-m-blood-vasculature.md',
         browser: 'Chromium (Playwright, headless, SwiftShader WebGL2)',
-        viewport: '1280x800',
+        viewport: '1280x800 and 390x844',
         scene: 'heart-anatomy',
-        commit: '9a7df7d6286ecd706e80af59519325e961212e58',
-        reviewedAt: '2026-09-24',
+        commit: '600e29162508209c8efc9bc7499747076448f7eb',
+        reviewedAt: '2026-09-29',
         scope:
-          'Rendered with the heart file at all six fixed viewpoints in both colour modes, before and after the ' +
-          'compression; the vessels sit where they meet the heart and the compressed file is not distinguishable on ' +
-          'screen (per-frame counts in docs/asset-qa/heart-hubmap-vh-m-heart.md).',
+          'Re-rendered for the file that keeps the five abdominal branches (the working tree on top of the commit ' +
+          'named): each branch sits in the opening the descending aorta has for it, from the front, the back and both ' +
+          'sides, and the arch and bifurcation were rendered close up with the schematic segments beside them ' +
+          '("Re-derived 2026-09-29" in the reference). The compression was re-verified by npm run ' +
+          'assets:compress:verify; the earlier before/after pixel counts are about the previous file.',
       },
       clinicianReview: {
         status: QA_STATUS.PENDING,

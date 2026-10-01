@@ -306,7 +306,12 @@ export class Viewer {
       // nothing and cannot drift from it.
       this.renderer.setClearColor(preset.backdrop.bottom, 1);
     }
-    if (this.bloomPass) this.bloomPass.strength = preset.bloomStrength;
+    if (this.bloomPass) {
+      this.bloomPass.strength = preset.bloomStrength;
+      // Per ground, because bloom thresholds the whole frame and the backdrop
+      // is in it: a light backdrop above the threshold blooms into the model.
+      this.bloomPass.threshold = preset.bloomThreshold ?? BLOOM_THRESHOLD;
+    }
     return preset;
   }
 

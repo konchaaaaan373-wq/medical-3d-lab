@@ -370,17 +370,25 @@ export const BUNDLE_BUDGET_KB = {
    * renders any more were removed in the same change (CSS 52.9 → 52.7 despite
    * the new brand sheet), which brought it to 708.2. The rest is paid for.
    *
-   * 715 → 735 with the cardiac-output introductory lesson (#167): its shell,
+   * 715 → 730 with the heart's aorta and its branches (2026-10-01). Main
+   * measured 708.7; the branch 721.8. Almost all of it is the heart scene's own
+   * lazy chunk (16.2 → 26.8): the bilingual textbook account of the aorta and
+   * its twelve branches, collated against the sources the evidence dossier
+   * names; the display range written once for the shader and once for every
+   * click, label and bound; the four schematic segments (`tube.js`, 1.5); and
+   * the two ways of looking. None of it is fetched before a reader opens the
+   * heart, where the two model files are 0.89 MB.
+   *
+   * 730 → 750 with the cardiac-output introductory lesson (#167): its shell,
    * its page, its circuit diagram (SVG, since the owner's review of 2026-10-01)
    * and its stylesheet, and the full model's fourth intervention. None of it is
    * in the entry beyond the router's `?view=` (0.6 kB): the lesson loads with
    * `#/cardiac-output`, and the full model's scene (28.4 kB with the rebrand's
-   * 「今、何が起きた？」) only with `?view=detail`. Measured 728.5 kB on top of
-   * main's rebrand (708.2): the lesson and the fourth intervention are 20.3 of
-   * it — 19.6 before the rebrand (696.5 → 716.1), and the rest the lesson's
-   * rules for the rebrand's title line and 「このモデルについて」 sheet.
+   * 「今、何が起きた？」) only with `?view=detail`. Measured 741.6 kB on top of
+   * main's aorta (721.8): the lesson and the fourth intervention are 19.8 of it,
+   * as they were on each main before (696.5 → 716.1, 708.2 → 728.5).
    */
-  code: 735,
+  code: 750,
   /**
    * The heaviest single model's media — the geometry one reader downloads when
    * they open one scene.

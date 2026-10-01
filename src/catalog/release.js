@@ -443,10 +443,10 @@ export const BETA_PUBLICATION_DECISIONS = Object.freeze([
   }),
   Object.freeze({
     sceneId: 'heart-anatomy',
-    decidedAt: '2026-09-24',
+    decidedAt: '2026-10-01',
     decidedBy: Object.freeze({
       name:
-        "Repository owner's approval of 2026-09-15 for what this scene names; re-pinned 2026-09-21 by Claude Code (AI engineering agent) after the scene's opening colour mode changed, and again 2026-09-24 after both files were Draco-compressed, each at the owner's direction",
+        "Repository owner's approval of 2026-09-15 for what this scene names; re-pinned 2026-09-21 by Claude Code (AI engineering agent) after the scene's opening colour mode changed, and again 2026-09-24 after both files were Draco-compressed, each at the owner's direction. Re-pinned 2026-09-29/30 and 2026-10-01 by Claude Code on the branch claude/dreamy-fermi-2ddpth — the new vessel-file hash and scene digest — first as a technical alignment only, then, after review fixes, at the owner's direction of 2026-10-01 to merge the branch (which publishes this form). That direction is the owner's publication decision; it is not an anatomical or clinical review, and neither has been done (docs/beta-publication/heart-anatomy.md, 2026-10-01)",
       role: 'engineering',
     }),
     record: 'docs/beta-publication/heart-anatomy.md',
@@ -466,9 +466,9 @@ export const BETA_PUBLICATION_DECISIONS = Object.freeze([
      */
     assetRevisions: Object.freeze({
       'hubmap-vh-m-heart': '994a86380bd30bc9744c08edd9812825ab22b340339665a422be6ba545fbbf8a',
-      'hubmap-vh-m-blood-vasculature': 'de4170610a12b3cd0595be79c2254735de63b0375252448c32fefa210aad11b9',
+      'hubmap-vh-m-blood-vasculature': 'f03a50620a66c3d7b6987806b9025eb12742ca57377b243f8cea6f2bcfbb231a',
     }),
-    sceneRevision: Object.freeze({ cardRevision: 27, modelDigest: '5b1357058b22960b' }),
+    sceneRevision: Object.freeze({ cardRevision: 28, modelDigest: '110895884470177e' }),
     scope: Object.freeze({
       // The authored tour in `SCENE_POINTS`, not whatever a run measured: four
       // named parts at four recorded points, crossing both adopted files —
@@ -479,11 +479,16 @@ export const BETA_PUBLICATION_DECISIONS = Object.freeze([
       // opening framing stopped being discarded (F-133), so the model moved.
       // The old fourth point named the left ventricle where it was authored
       // for the artery that runs across it.
+      //
+      // Re-measured 2026-09-29: the scene now opens on the heart **and its
+      // aorta**, a column with the heart at its top, so every point moved.
+      // Two points in each file, and the descending aorta is the proof that
+      // the opening view draws the aorta.
       structures: Object.freeze([
-        'Superior vena cava',
-        'Arch of the aorta',
-        'Ascending aorta',
-        'Left atrium',
+        'Right atrium',
+        'Right ventricle',
+        'Descending aorta',
+        'Inferior vena cava',
       ]),
       views: Object.freeze([
         'six authored viewpoints offered and one applied by the drive: anterior, posterior, left and right lateral, from the base, from the apex',
@@ -491,10 +496,12 @@ export const BETA_PUBLICATION_DECISIONS = Object.freeze([
       ]),
       interactions: Object.freeze([
         'a click names a structure and the panel gives it in both languages with a place in the hierarchy',
-        'the part tree lists 46 structures and selection agrees in both directions',
+        'the part tree lists 55 structures, in reading order, and selection agrees in both directions',
+        'on a phone the Detail tab shows the selected structure\'s description across the sheet',
         'a drag is not a click, including a drag that ends where it began',
         'a branch of the tree is hidden and shown again in one press, and by V on the focused branch',
-        'the six structures the scene opens with hidden come back with the branch, as Unhide all returns them',
+        'the two brachiocephalic veins the scene opens with hidden come back with the branch, as Unhide all returns them',
+        'one switch shows the heart on its own: what it takes away is deselected and stops taking clicks, the heart fills the frame and turns about itself, switching back returns the opening frame with no drift over repeated switching, the reader\'s direction is kept, and Reset display returns the aorta — driven at 1280x800 and 390x844',
         'isolation wins over a hide and over a viewpoint, so isolating a hidden structure shows it rather than blanking the model',
         'the two files were measured to share one coordinate frame; one offset and one uniform scale are applied to the pair',
         'the landing hero reaches this scene with a keyboard: Tab focuses the model, Enter names the structure in front of it, Escape lets go, Enter after turning names a different one, and the card hands that structure to the full model — driven on the heart by verify:hero-input, which was taught the same day to repeat its keyboard pass for every published organ rather than only the first in the rotation',
@@ -512,6 +519,8 @@ export const BETA_PUBLICATION_DECISIONS = Object.freeze([
       'docs/decisions/HEART-ASSET-ADOPTION.md',
       'public/assets/heart/ATTRIBUTION.md',
       'tests/heart-anatomy.test.js',
+      'tests/heart-display-range.test.js',
+      'tests/anatomy-scope-switch.test.js',
       'tests/organ-anatomy-scenes.test.js',
       'src/app/anatomyContract.js',
     ]),
@@ -519,12 +528,18 @@ export const BETA_PUBLICATION_DECISIONS = Object.freeze([
     unverified: Object.freeze([
       'no anatomist has judged this geometry, its labels or their Japanese terminology — anatomyExpertReview is pending, the same footing the brain is published on',
       'no clinician has reviewed this scene; the registry records it as pending',
-      '42 of the 46 structures were not individually opened',
+      '51 of the 55 structures were not individually opened',
       'one browser engine, desktop only: no touch, Safari, Firefox or screen reader',
       'the underlying Visible Human Male terms were read through secondary sources only — nlm.nih.gov was unreachable, so the NLM acknowledgment is given rather than reasoned away',
       'the source has no myocardial free wall as a named part, so no wall thickness is claimed',
       'whether a chamber surface stands for the cavity or for the wall around it is not established by the file',
       'VH_M_left_anterior_descending_artery carries FMA:8636, which names a pulmonary branch; it is surfaced to the reader rather than relabelled',
+      'the owner has not confirmed the 2026-09-29/30 re-pin: it aligns the vessel-file hash and the scene digest and approves nothing',
+      'the two renal arteries are shown under the names their position gives them, not the source\'s; a mirrored file was ruled out by measurement, but no anatomist has confirmed the reading',
+      'four arterial segments (right common carotid, right subclavian, both common iliac) are schematic: where they start is measured and where they arise is checked against one textbook; their length, angle and course are the drawing\'s',
+      'the descriptions of the aorta and its branches were checked against one opened textbook (OpenStax Anatomy and Physiology 2e, §20.5) and keep only what it says; no anatomist has read them, and the Japanese terms were not checked against an anatomical terminology source; the heart\'s own parts still describe only their provenance',
+      'on a phone held sideways, selecting a structure moves the model under the left-hand card (the same on main; docs/follow-ups.md F-237)',
+      'the phone size was driven in desktop Chromium with touch emulation, not on a phone',
     ]),
   }),
   Object.freeze({
