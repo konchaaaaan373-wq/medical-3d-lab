@@ -1,8 +1,8 @@
 import { BRAND } from '../data/brand.js';
 import {
-  EXPLORER_ROUTE,
   LAB_ROUTE,
   LANDING_ROUTE,
+  MODELS_ROUTE,
   sceneById,
   statusById,
 } from '../catalog/index.js';
@@ -91,7 +91,7 @@ export function createSceneFailureFallback({
       ]),
       el('div', { class: 'scene-fallback-actions' }, [
         retry,
-        link(EXPLORER_ROUTE, 'Browse public models', '公開モデルを見る', true),
+        link(MODELS_ROUTE, 'Browse public models', '公開モデルを見る', true),
         link(LANDING_ROUTE, 'Home', 'ホーム'),
         betaUnlocked() ? link(LAB_ROUTE, 'Experimental Lab', '実験室') : null,
       ].filter(Boolean)),

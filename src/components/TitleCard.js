@@ -1,10 +1,10 @@
 import { el } from '../utils/dom.js';
 import { inLanguage } from '../utils/language.js';
 import { statusById } from '../catalog/taxonomy.js';
-import { clinicalReviewPresentation } from '../catalog/clinicalReview.js';
+import { clinicalReviewPresentation, reviewDateLabel } from '../catalog/clinicalReview.js';
 import { relatedScenesFor, sceneById, sceneRoute } from '../catalog/index.js';
 import { anatomyChecksFor } from '../catalog/anatomyLinks.js';
-import { foldsAboutThisModel, titleTrailFor } from '../app/modelLocation.js';
+import { foldsAboutThisModel, modelLocation } from '../app/modelLocation.js';
 import { sceneOpen } from '../app/releaseGate.js';
 import '../styles/clinical-review.css';
 import '../styles/scene-pairing.css';
@@ -77,7 +77,7 @@ function aboutFold(status, badges, { lead = true, anatomy = null } = {}) {
       ? el('p', { class: 'title-about-lead' }, [
           el('span', {
             class: 'lang-en',
-            text: 'An educational model of the mechanism. It does not predict any individual patient’s circulation or condition, and is not for diagnosis or treatment decisions.',
+            text: 'An educational model of the mechanism. It does not predict any individual patient’s condition, and is not for diagnosis or treatment decisions.',
           }),
           el('span', {
             class: 'lang-ja',
@@ -124,6 +124,13 @@ function aboutFold(status, badges, { lead = true, anatomy = null } = {}) {
     body.style.top = `${Math.round(rect.bottom + 6)}px`;
     body.style.left = `${Math.round(Math.max(12, rect.left))}px`;
   };
+  // The column the card sits in fades its last pixels with a mask while it
+  // scrolls (`.top-left.has-more`), and a mask clips everything inside it —
+  // fixed descendants included. The body is placed below that column on a
+  // phone (a sheet at the foot of the screen), so with the fade on it was not
+  // painted at all. The column is told while the fold is open, and drops it.
+  const markColumn = () => fold.closest?.('.top-left')?.classList.toggle('is-reading-about', fold.open);
+  fold.addEventListener('toggle', markColumn);
   fold.addEventListener('toggle', place);
   globalThis.addEventListener?.('resize', place, { passive: true });
   body.addEventListener('keydown', (event) => {
@@ -142,8 +149,7 @@ function aboutFold(status, badges, { lead = true, anatomy = null } = {}) {
  * like every other link: an organ whose anatomy is not open has no link rather
  * than a link to a "to be updated" page.
  */
-function anatomyCheck(meta) {
-  const checks = anatomyChecksFor(sceneById(meta.id)).filter((check) => sceneOpen(check.scene));
+function anatomyCheck(checks) {
   if (checks.length === 0) return null;
   return el('nav', { class: 'title-anatomy-check', 'aria-label': inLanguage('Anatomy', '解剖') }, checks.map(({ scene, organ }) =>
     el('a', { class: 'title-anatomy-link', href: sceneRoute(scene) }, [
@@ -159,10 +165,10 @@ function anatomyCheck(meta) {
  * The first part is the way back to the others of that kind (`#/models`); the
  * second says the system. The title that follows is the current place, so it
  * is not repeated. An anatomy model has none — its header's organ strip says
- * where it is, and a second line here covers the model (`titleTrailFor`).
+ * where it is, and a second line here covers the model (`modelLocation`).
  */
 function categoryTrail(meta) {
-  const location = titleTrailFor(sceneById(meta.id));
+  const location = modelLocation(sceneById(meta.id));
   if (!location) return null;
   const { kind, parent, where } = location;
   return el('nav', { class: `title-trail is-${kind}`, 'aria-label': inLanguage('Breadcrumb', '現在地') }, [
@@ -235,14 +241,14 @@ export function createTitleCard(meta) {
       el('span', { class: 'lang-ja', text: 'このモデルの根拠の記録 →' }),
     ]);
 
-  // The date the model was last signed, or that it has not been — said in
-  // words, because a blank reads as "recently".
-  const reviewedAt = review?.record?.reviewedAt ?? null;
+  // The date the model was last signed, or which kind of "no date" it is —
+  // said in words, because a blank reads as "recently" (`reviewDateLabel`).
+  const dateLabel = reviewDateLabel(review);
   const reviewDate =
-    review &&
+    dateLabel &&
     el('span', { class: 'title-review-date' }, [
-      el('span', { class: 'lang-en', text: reviewedAt ? `Last reviewed ${reviewedAt}` : 'Not yet reviewed' }),
-      el('span', { class: 'lang-ja', text: reviewedAt ? `最終レビュー ${reviewedAt}` : '医学レビュー未実施' }),
+      el('span', { class: 'lang-en', text: dateLabel.en }),
+      el('span', { class: 'lang-ja', text: dateLabel.ja }),
     ]);
 
   const trustBadges =
@@ -263,16 +269,19 @@ export function createTitleCard(meta) {
   // 2026-09-30): the generic shell, not a per-scene opt-in. A scene may still
   // ask for it (`titleCard.foldTrust`), and an anatomy scene keeps its row.
   const fold = foldsAboutThisModel(sceneById(meta.id), meta);
+  // Read once; drawn twice — under the title on a wide window, inside the
+  // sheet on a phone (a node can be in one place only).
+  const anatomyChecks = anatomyChecksFor(sceneById(meta.id)).filter((check) => sceneOpen(check.scene));
   return el('header', { class: `panel title-card${trail ? ' has-trail' : ''}` }, [
     trail,
     el('h1', { class: 'title lang-en', text: meta.title }),
     el('p', { class: 'title-ja lang-ja', text: meta.titleJa }),
-    fold && trustBadges ? aboutFold(status, trustBadges, { anatomy: anatomyCheck(meta) }) : trustBadges,
+    fold && trustBadges ? aboutFold(status, trustBadges, { anatomy: anatomyCheck(anatomyChecks) }) : trustBadges,
     el('p', { class: 'subtitle' }, [
       el('span', { class: 'lang-ja', text: meta.subtitleJa }),
       el('span', { class: 'lang-en', text: meta.subtitle }),
     ]),
-    anatomyCheck(meta),
+    anatomyCheck(anatomyChecks),
     pairedSceneLinks(meta),
   ].filter(Boolean));
 }

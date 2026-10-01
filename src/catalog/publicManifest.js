@@ -22,7 +22,7 @@
  *
  * Pure data derived from pure data: no DOM, no `three`, no filesystem.
  */
-import { EXPLORER_ROUTE, SCENES, sceneRoute } from './index.js';
+import { MODELS_ROUTE, SCENES, sceneRoute } from './index.js';
 import { modelCardForScene } from './clinicalReview.js';
 import { MECHANISM_LEVEL, modelProfileForScene } from './modelProfiles.js';
 import { PATHOLOGY_CATEGORY } from './pathologyModels.js';
@@ -177,12 +177,13 @@ export const PUBLIC_MANIFEST = Object.freeze({
 /**
  * Where "show me a model that is open" has to go, and what to call it.
  *
- * The Explorer is the natural answer and is the wrong one while the release
- * opens a single model: a list of one is a page whose only job is to be passed
- * through, and a visitor who has just been told "not this one, but something
- * is" should arrive at the something. So one open model links straight to it,
- * named by its organ; two or more and the choice is real, so it goes to the
- * Explorer.
+ * The model index (`#/models`) is the natural answer and is the wrong one while
+ * the release opens a single model: a list of one is a page whose only job is
+ * to be passed through, and a visitor who has just been told "not this one, but
+ * something is" should arrive at the something. So one open model links
+ * straight to it, named by its organ; two or more and the choice is real, so it
+ * goes to the index. Not to `#/organs`: since the BYOKI MOTION rebrand that is
+ * the anatomy shelf, and it does not list the disease models that are open.
  *
  * Derived, never written down. The day `heart-anatomy` opens, this becomes the
  * Explorer on its own and no surface is edited — which is the point, because
@@ -196,7 +197,7 @@ export const PUBLIC_MANIFEST = Object.freeze({
 export function openModelDestination(manifest = PUBLIC_MANIFEST) {
   const [only] = manifest.models;
   if (manifest.count !== 1 || !only) {
-    return { route: EXPLORER_ROUTE, en: 'See the models that are open', ja: '公開中のモデルを見る' };
+    return { route: MODELS_ROUTE, en: 'See the models that are open', ja: '公開中のモデルを見る' };
   }
   const organ = organById(only.organId);
   return {

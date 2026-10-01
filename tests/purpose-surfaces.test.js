@@ -5,6 +5,7 @@ import { readFileSync } from 'node:fs';
 import { createSceneSwitcher } from '../src/components/SceneSwitcher.js';
 import { createShellHeader } from '../src/components/ShellHeader.js';
 import { FakeElement, findByClass, installFakeDocument } from './helpers/fake-dom.js';
+import { purposeDestinations } from '../src/components/ShellHeader.js';
 
 globalThis.requestAnimationFrame ??= (fn) => { fn(0); return 0; };
 
@@ -58,6 +59,9 @@ test('a two-purpose model says which purpose it is in, and switches through the 
   const [educationRoot] = findByClass(switcher.element, 'global-nav-purpose-root').filter((a) => a.className.includes('is-education'));
   assert.ok(educationRoot, 'the education location starts from its purpose');
   assert.match(words(educationRoot), /医学教育/);
+  // …and to where the reading header's 医療者向け goes: one side, one place.
+  assert.equal(educationRoot.getAttribute('href'), purposeDestinations().find((item) => item.id === 'education').route);
+  assert.equal(educationRoot.getAttribute('href'), '#/models');
 
   // Pressing asks; it does not decide.
   options[1].click();

@@ -14,9 +14,13 @@
  * `verify:ui` measures them; this shows them. It prints no verdict.
  *
  * Waits for a state, not a time: the boot veil gone, no loading indicator on
- * screen, and — for a route with a renderer — one animation frame after the
- * canvas exists. A fixed wait photographs whatever happened to be mid-tween
- * (`CLAUDE.md`, "待つときは、時間ではなく状態を待つ").
+ * screen, and — for a model — the viewer up and its framing at rest
+ * (`waitForFramingToSettle`, the same one the checks use), after every
+ * `--click`; and every image it is about to photograph decoded (a model card's
+ * poster is lazy). A fixed wait photographs whatever happened to be mid-tween
+ * (`CLAUDE.md`, "待つときは、時間ではなく状態を待つ"). The first version of this
+ * header said so and the code only waited two frames — the tween that follows
+ * closing the intro or opening a card was in every model shot it took.
  *
  * Options:
  *   --dist <dir>        built site to serve (default: dist)
@@ -33,6 +37,7 @@ import { resolve } from 'node:path';
 import { chromium } from 'playwright';
 import { serveDist } from './lib/serve-dist.mjs';
 import { chromiumExecutable } from './lib/browser.mjs';
+import { waitForFramingToSettle } from './lib/camera.mjs';
 
 const argv = process.argv.slice(2);
 const flag = (name) => argv.includes(name);
@@ -107,6 +112,29 @@ try {
           console.warn(`  ${route} @${width}: nothing to press at ${selector}`);
         });
       }
+      // A model re-frames after its bands move (an intro closing, a card
+      // opening): wait for the camera, not for a time.
+      const isModel = await page.evaluate(() => document.documentElement.dataset.route === 'scene');
+      if (isModel) {
+        await page.waitForFunction(() => Boolean(window.__app?.viewer), null, { timeout: 30000 })
+          .then(() => waitForFramingToSettle(page))
+          .catch(() => console.warn(`  ${route} @${width}: the camera did not settle — photographed anyway`));
+      }
+      // And the pictures it is about to photograph. A model card's poster is a
+      // lazy image: the first shot of `#/models` after this was written caught
+      // it as a black panel, which reads exactly like a broken poster. Every
+      // image on the first screen (every image, with --full) has to have
+      // decoded — and a lazy one below the fold is told to load when the whole
+      // page is wanted, since nothing will scroll it into view.
+      await page.evaluate(async (full) => {
+        const onScreen = (img) => {
+          const box = img.getBoundingClientRect();
+          return box.bottom > 0 && box.top < innerHeight && box.right > 0 && box.left < innerWidth;
+        };
+        const wanted = [...document.images].filter((img) => full || onScreen(img));
+        for (const img of wanted) if (full) img.loading = 'eager';
+        await Promise.all(wanted.map((img) => (img.decode ? img.decode().catch(() => {}) : null)));
+      }, flag('--full'));
       // Two frames: one for the layout the last step caused, one for the paint.
       await page.evaluate(() => new Promise((done) => requestAnimationFrame(() => requestAnimationFrame(done))));
       const file = resolve(outDir, `${nameFor(route, width)}.png`);

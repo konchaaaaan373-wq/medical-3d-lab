@@ -72,6 +72,21 @@ test('brand: no public surface still shows the old name', () => {
   assert.match(read('index.html'), /<title>BYOKI MOTION — /);
 });
 
+test('brand: the application never writes the new name out either — it reads BRAND.name', () => {
+  // The rule in CLAUDE.md is "one place". The old-name test above could not
+  // see a copy of the *new* name, and the landing page's concept paragraph
+  // carried two ("In BYOKI MOTION you move…", 「BYOKI MOTIONでは…」): a rename
+  // would have left them behind with every test green.
+  const NEW_NAME_AS_TEXT = new RegExp(`['"\`>][^'"\`<\\n]*${BRAND.name}`);
+  const sources = filesUnder('src', ['.js']).filter((path) =>
+    // The source itself, and the terms — which name the service as a legal
+    // party, and change only with a notice to account holders (F-252).
+    path !== 'src/data/brand.js' && path !== 'src/data/legal.js'
+  );
+  const offenders = sources.filter((path) => NEW_NAME_AS_TEXT.test(stripComments(read(path))));
+  assert.deepEqual(offenders, [], 'these write the product name out — read BRAND.name instead');
+});
+
 test('brand: the operator is named in the footer and on About, not in the header or the hero', () => {
   const footer = read('src/components/SiteFooter.js');
   assert.match(footer, /BRAND\.operator/);

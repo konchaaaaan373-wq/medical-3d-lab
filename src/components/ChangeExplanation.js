@@ -25,8 +25,18 @@ export function createChangeExplanation({ rules, copy }) {
       el('span', { class: 'lang-en', text: copy.heading.en }),
       el('span', { class: 'lang-ja', text: copy.heading.ja }),
     ]),
-    el('p', { class: 'change-explanation-text', 'aria-live': 'polite' }, [textEn, textJa]),
+    el('p', { class: 'change-explanation-text' }, [textEn, textJa]),
   ]);
+  // What a screen reader hears, kept apart from what is seen. The live region
+  // was the paragraph above, inside a section that is `hidden` until the first
+  // rule matches — and text that arrives in the same update that un-hides its
+  // region is generally not announced, so the first 「今、何が起きた？」 (the
+  // one that matters most) was silent. This one is always rendered, starts
+  // empty, and takes no room (`.visually-hidden` is out of flow, so it is no
+  // grid cell either). The caller places it beside `element`.
+  const sayEn = el('span', { class: 'lang-en' });
+  const sayJa = el('span', { class: 'lang-ja' });
+  const announcer = el('p', { class: 'change-explanation-live visually-hidden', role: 'status', 'aria-live': 'polite' }, [sayEn, sayJa]);
 
   let signature = null;
   let said = null;
@@ -40,11 +50,15 @@ export function createChangeExplanation({ rules, copy }) {
     element.dataset.audience = found?.audience ?? '';
     textEn.textContent = found?.en ?? '';
     textJa.textContent = found?.ja ?? '';
+    sayEn.textContent = found?.en ?? '';
+    sayJa.textContent = found?.ja ?? '';
   }
   const stop = onAudienceChange(render);
 
   return {
     element,
+    /** The live region: always in the document, never `hidden`. */
+    announcer,
     /** @param {Parameters<typeof explainChange>[0]} next */
     update(next) {
       signature = next;

@@ -75,3 +75,40 @@ test('showcase: every system a disease model sits in has a card label', () => {
   const systems = new Set(SCENES.filter(isPathologyModelScene).map((scene) => scene.system));
   for (const system of systems) assert.ok(SHOWCASE_SYSTEM_LABELS[system], `no card label for ${system}`);
 });
+
+test('the quiet motif stays inside its frame for every model that could be shown without a photograph', async () => {
+  // The hash is unsigned; read with `>>` its top bit made every remainder
+  // negative and amyloid-beta's three points were drawn off the left edge.
+  const { motifLanes } = await import('../src/components/ModelCard.js');
+  const { SCENES } = await import('../src/catalog/index.js');
+  const seeds = SCENES.map((scene) => scene.id);
+  assert.ok(seeds.includes('amyloid-beta'), 'the case this was found on is still a scene');
+  for (const seed of seeds) {
+    for (const lane of motifLanes(seed)) {
+      assert.ok(lane.cx >= 40 && lane.cx < 190, `${seed}: point at ${lane.cx}`);
+      assert.ok(lane.bend >= -6 && lane.bend <= 6, `${seed}: bend ${lane.bend}`);
+    }
+  }
+});
+
+test('a model card says, in words, when the model is not production — no pill, but never silent', async () => {
+  // The rebrand took the badges off the cards; it also took the maturity, so
+  // an alpha model was listed exactly like a finished one.
+  const { createModelCard } = await import('../src/components/ModelCard.js');
+  const { sceneById } = await import('../src/catalog/index.js');
+  const { installFakeDocument, findByClass } = await import('./helpers/fake-dom.js');
+  const restore = installFakeDocument();
+  try {
+    const alpha = sceneById('cardiac-output');
+    assert.notEqual(alpha.status, 'production', 'the case this guards: a published model that is not production');
+    const card = createModelCard(alpha);
+    const said = findByClass(card, 'model-card-maturity').map((node) => node.textContent);
+    assert.deepEqual(said, ['Alpha', 'アルファ']);
+    assert.equal(findByClass(card, 'badge').length, 0, 'and it is words, not a badge');
+
+    const finished = createModelCard({ ...alpha, status: 'production' });
+    assert.equal(findByClass(finished, 'model-card-maturity').length, 0, 'a production model says nothing extra');
+  } finally {
+    restore();
+  }
+});

@@ -26,8 +26,9 @@
  * arrival rather than the default scene — which is where `resolveRoute` sends
  * anything it does not recognise.
  *
- * Pure: `unlocked` is passed in, never read from `window`, so the rule is
- * testable and cannot disagree with itself between two callers on one page.
+ * Pure, and the same on every build: when the beta corrected `#/organs` the
+ * answer depended on the preview unlock, which callers passed in. Nothing does
+ * now, so nothing is passed.
  */
 import { MODELS_ROUTE, PATHOLOGY_SLUG } from '../catalog/index.js';
 import { slugOf } from './router.js';
@@ -39,10 +40,9 @@ import { slugOf } from './router.js';
  * reader's, not the route's.
  *
  * @param {string} hash
- * @param {{unlocked: boolean}} _options
  * @returns {string|null}
  */
-export function redirectFor(hash, _options = { unlocked: false }) {
+export function redirectFor(hash) {
   if (slugOf(hash) !== PATHOLOGY_SLUG) return null;
   const query = String(hash).split('?')[1];
   return query ? `${MODELS_ROUTE}?${query}` : MODELS_ROUTE;

@@ -132,8 +132,8 @@ export function createLanding({
       )),
       el('div', { class: 'bm-concept-body' }, [
         el('p', {}, dual(
-          'A condition changes, the body responds, and an intervention changes it again. In BYOKI MOTION you move that chain of cause and effect yourself.',
-          '状態が変わり、身体が反応し、介入によってさらに変化する。BYOKI MOTIONでは、その因果関係を自分で動かして理解します。'
+          `A condition changes, the body responds, and an intervention changes it again. In ${BRAND.name} you move that chain of cause and effect yourself.`,
+          `状態が変わり、身体が反応し、介入によってさらに変化する。${BRAND.name}では、その因果関係を自分で動かして理解します。`
         )),
         el('ol', { class: 'bm-loop', 'aria-label': inLanguage('How a model is used', 'モデルの使い方') },
           [

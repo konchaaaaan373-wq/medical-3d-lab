@@ -116,19 +116,16 @@ function patientPurposeOffered() {
 /**
  * The two purposes as the product's top level, when there are two.
  *
- * Medical education is explored by system, organ and mechanism — the model
- * index under the preview unlock, the home page's organ chooser in the beta
- * (where `#/organs` *is* the home page, see `routeRedirects.js`). Patient
- * explanation is explored by the question a person brings (`#/patient`).
- *
- * @param {boolean} labOffered
+ * Medical education is explored through the model index (`#/models`) on every
+ * build; patient explanation by the question a person brings (`#/patient`).
+ * The scene header's purpose root reads this too, so the two headers cannot
+ * send one side to two places.
  */
-export function purposeDestinations(labOffered) {
+export function purposeDestinations() {
   const education = purposeById(PURPOSE.EDUCATION);
   const patient = purposeById(PURPOSE.PATIENT);
   // Medical is explored through the model index on every build now: the index
   // is the product's "Models", and the preview unlock only widens what it lists.
-  void labOffered;
   return Object.freeze([
     Object.freeze({
       id: 'education',
@@ -212,7 +209,7 @@ export function createShellHeader({
   // first of them rather than a third link beside them.
   const here = showPurposes && current === 'models' ? 'education' : current;
   const destinations = showPurposes
-    ? [...purposeDestinations(showLab), ...SHELL_DESTINATIONS.filter((item) => item.id !== 'models')]
+    ? [...purposeDestinations(), ...SHELL_DESTINATIONS.filter((item) => item.id !== 'models')]
     : SHELL_DESTINATIONS;
   const link = (item) =>
     el(

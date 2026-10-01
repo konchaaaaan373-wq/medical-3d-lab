@@ -169,3 +169,31 @@ test('audience: follows the purpose, tells its listeners once, and defaults to m
   assert.deepEqual(heard, ['patient', 'medical']);
   setAudience('medical');
 });
+
+test('explanations: the first sentence is announced — the live region is never inside the hidden section', async () => {
+  // Text that arrives in the update that un-hides its own live region is
+  // generally not spoken, so the first 「今、何が起きた？」 was silent.
+  const { installFakeDocument, findByClass } = await import('./helpers/fake-dom.js');
+  const { createChangeExplanation } = await import('../src/components/ChangeExplanation.js');
+  const { CHANGE_EXPLANATION_COPY } = await import('../src/data/cardiacOutputExplanations.js');
+  const restore = installFakeDocument();
+  try {
+    const explanation = createChangeExplanation({ rules: CARDIAC_OUTPUT_EXPLANATIONS, copy: CHANGE_EXPLANATION_COPY });
+    const { element, announcer } = explanation;
+    assert.ok(announcer, 'a live region of its own');
+    assert.equal(announcer.getAttribute('aria-live'), 'polite');
+    assert.equal(announcer.hidden, false);
+    assert.equal(findByClass(element, 'change-explanation-live').length, 0, 'not inside the section that hides');
+    assert.equal(findByClass(element, 'change-explanation-text')[0].getAttribute('aria-live'), null, 'and only one region speaks');
+    assert.equal(element.hidden, true, 'the section is hidden until there is something to say');
+
+    const step = afterPresses('contractilityEesMmHgPerMl', 'down', 1);
+    explanation.update(step.signature);
+    const said = findByClass(announcer, 'lang-ja')[0].textContent;
+    assert.ok(said, 'the first change is put in the live region');
+    assert.equal(said, findByClass(element, 'lang-ja').at(-1).textContent, 'and it is the sentence on screen');
+    explanation.destroy();
+  } finally {
+    restore();
+  }
+});

@@ -55,7 +55,7 @@ import { openingMessage } from './app/destinationName.js';
 import { takeHandover } from './app/sceneHandover.js';
 import { installDeparture } from './app/departure.js';
 import { looksLikeAuthRedirect } from './access/authRedirect.js';
-import { betaUnlocked, routeOpen } from './app/releaseGate.js';
+import { routeOpen } from './app/releaseGate.js';
 import { redirectFor } from './app/routeRedirects.js';
 import { recordSceneVisit } from './app/sceneLibrary.js';
 import { describeAssetProgress, prefetchSceneAssets } from './app/sceneAssetPreload.js';
@@ -121,7 +121,7 @@ async function boot() {
   // leave, so it must not cost them a Back press to get out of. It also does
   // not fire `hashchange`, so nothing here can loop.
   if (!authRedirect) {
-    const corrected = redirectFor(window.location.hash, { unlocked: betaUnlocked() });
+    const corrected = redirectFor(window.location.hash);
     if (corrected) {
       try {
         window.history.replaceState(window.history.state, '', corrected);

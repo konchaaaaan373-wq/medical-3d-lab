@@ -254,8 +254,25 @@ BYOKI MOTION のリブランディングで、病態モデルのタイトルに�
 捕まえたのは `verify:anatomy` の tour です——下前頭溝の点をクリックすると、
 カードに当たって前の選択（上頭頂小葉）のままになり、「4 点で 3 構造」と報告しました。
 解剖シーンのヘッダーは臓器の帯で現在地を言っているので、trail は病態モデルだけに
-付けています（`titleTrailFor`、`tests/model-shell.test.js` が固定）。
+付けています（`modelLocation`、`tests/model-shell.test.js` が固定）。
 
 **やること（追加）**: 描画サイズが変わらなくても安心しない。
 `verify:anatomy` の tour（クリックが名前の付いた構造に届くか）が、
 **覆われた**ことを言える検査です。
+
+**3 つ目の形——`position: fixed` は、すべての箱から抜け出すわけではない。**
+fixed の要素は `overflow` の切り抜きからは抜けますが、祖先に `mask-image`・`filter`・
+`backdrop-filter`・`transform`・`contain` があると、**その祖先に閉じ込められるか、
+切り抜かれます**。「このモデルについて」のスマホの下シートは、スクロールのフェードに
+mask を持つ `.top-left` の中にあり、開いても 1 px も描かれていませんでした
+（`docs/verification-lessons.md` L-158）。いまは fold が開いている間、列にフェードを
+外させています（`is-reading-about`）。
+
+**やること**: 画面に固定するもの（シート・パネル・トースト）をシーンの上の DOM の
+**中に**作るなら、祖先のどれかが mask / filter / transform を持っていないか、
+開いた状態で `elementFromPoint` で確かめる。「open になった」は「描かれた」ではありません。
+
+**表示の持ち主は 1 つ（規則 3 の CSS 版）。** 埋め込んだ scope は、fold の開閉と
+学習ビューの `display: none` の 2 か所から表示を決められ、後者が勝って空の fold を
+出していました。fold の中の scope は fold が持つ、と規則で言い切っています
+（`#ui[data-view] .title-about .model-scope.is-embedded`）。

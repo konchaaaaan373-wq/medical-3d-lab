@@ -28,6 +28,7 @@ import {
   standardInspectionViews,
 } from './inspection.js';
 import { captureSessionState, restoreSessionState } from './sessionState.js';
+import { scopeInAboutFold } from './modelLocation.js';
 import { el } from '../utils/dom.js';
 import { inLanguage, onLanguageChange } from '../utils/language.js';
 import { prefersReducedMotion } from '../utils/motion.js';
@@ -1437,7 +1438,7 @@ export async function createApp({ stage, ui, onRetryModel = null }) {
         const conditions = createConsoleCard({
           id: 'conditions',
           copy: cardCopy.conditions,
-          body: [modelControls.element, effectChain?.element, operateTools, changeExplanation?.element],
+          body: [modelControls.element, effectChain?.element, operateTools, changeExplanation?.element, changeExplanation?.announcer],
         });
         const explainer = scene.getExplainer?.();
         /** The stage whose sentence is beside the model, and what it last said. */
@@ -1685,7 +1686,8 @@ export async function createApp({ stage, ui, onRetryModel = null }) {
   // A scene that folds its trust row into one line gets its scope panel inside
   // that line too — one place for "sources and limits", not two.
   const trustFold = titleCard.querySelector('.title-trust-fold');
-  const scopeInFold = Boolean(trustFold && scopePanel);
+  // …unless the scope is the lesson's own question (`scopeInAboutFold`).
+  const scopeInFold = Boolean(trustFold && scopePanel && scopeInAboutFold(meta));
   // Inside 「このモデルについて」 the scope is part of what the fold opens,
   // not a second disclosure inside the first. The review row goes after it:
   // what the model shows, then how far it has been checked.

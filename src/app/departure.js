@@ -1,4 +1,5 @@
 import { isInPageAnchor, resolveRoute, sameRoute } from './router.js';
+import { redirectFor } from './routeRedirects.js';
 
 /**
  * What "leaving this document" means, in one place.
@@ -338,6 +339,18 @@ export function installDeparture({
       // flight is abandoned for the same reason.
       swapToken += 1;
       takeDown();
+      // …but the address may be an old name for it. `#/pathology` renders the
+      // same page as `#/models`, so following an old link from the model index
+      // is a 'stay' — and the correction the swap path makes is never reached.
+      // Made here too, so the address bar never keeps a retired name.
+      const corrected = redirectFor(hash);
+      if (corrected) {
+        try {
+          windowRef.history?.replaceState?.(windowRef.history?.state ?? null, '', corrected);
+        } catch {
+          /* the page is already the right one; only the address bar lags */
+        }
+      }
       return;
     }
 

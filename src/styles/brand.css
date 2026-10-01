@@ -907,6 +907,21 @@ html[data-route='explorer'] .public-models-actions .landing-demo-info {
   white-space: normal;
 }
 
+/* While 「このモデルについて」 is open, its column drops the scroll fade: a mask
+   clips fixed descendants too, and the phone's sheet sits below the column. */
+#ui .top-left.is-reading-about {
+  -webkit-mask-image: none;
+  mask-image: none;
+}
+
+/* The scope inside the fold is the fold's content, not the learning view's
+   optional detail: `#ui[data-view='learning'] .model-scope:not(.is-primary)`
+   hides a non-primary scope, which emptied the fold of what the model shows
+   and does not show on every model whose scope is not primary (COPD, …). */
+#ui[data-view] .title-about .model-scope.is-embedded {
+  display: block;
+}
+
 .title-about-close {
   display: inline-flex;
   align-items: center;

@@ -25,7 +25,7 @@ import {
   scenesByOrganForNavigation,
 } from '../app/sceneNavigationModel.js';
 import { createSiteHeaderMenu } from './SiteMenu.js';
-import { brandMark } from './ShellHeader.js';
+import { brandMark, purposeDestinations } from './ShellHeader.js';
 import { createWordmark } from './Wordmark.js';
 
 /**
@@ -265,12 +265,16 @@ export function createSceneSwitcher({
     const entry = purposeById(id);
     return [el('span', { class: 'lang-en', text: entry.en }), el('span', { class: 'lang-ja', text: entry.ja })];
   };
+  // Where each side's root goes is the reading header's rule, read rather than
+  // restated: this said `#/` (or `#/organs` with the preview unlock) while the
+  // reading header's 医療者向け said `#/models` — two links for one side.
+  const purposeRoute = (id) => purposeDestinations().find((item) => item.id === id)?.route ?? PATIENT_ROUTE;
   const purposeRootLink = (id) =>
     el(
       'a',
       {
         class: `global-nav-purpose-root is-${id}`,
-        href: id === PURPOSE.PATIENT ? PATIENT_ROUTE : showLab ? EXPLORER_ROUTE : LANDING_ROUTE,
+        href: purposeRoute(id),
       },
       purposeLabel(id)
     );

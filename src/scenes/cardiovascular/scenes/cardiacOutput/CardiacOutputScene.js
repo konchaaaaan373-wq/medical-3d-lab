@@ -1280,11 +1280,6 @@ export class CardiacOutputScene {
     return movedInputs({ baseline: this.session.baseline.input, shown: this.session.view.input });
   }
 
-  /**
-   * What the change did, as a chain: cause → heart and blood → figures
-   * (`describeEffect`). From the starting condition to the one on screen,
-   * both solved; null at the start.
-   */
   /** Which way each thing moved, for 「今、何が起きた？」 (`changeSummary.js`). */
   getChangeSignature() {
     return changeSignature({
@@ -1295,6 +1290,11 @@ export class CardiacOutputScene {
     });
   }
 
+  /**
+   * What the change did, as a chain: cause → heart and blood → figures
+   * (`describeEffect`). From the starting condition to the one on screen,
+   * both solved; null at the start.
+   */
   getEffectSummary() {
     return describeEffect({
       baseline: this.session.baseline.input,
