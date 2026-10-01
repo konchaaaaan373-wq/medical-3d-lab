@@ -32,7 +32,7 @@
   overflow: hidden;
   border: 1px solid rgba(158, 190, 204, 0.22);
   border-radius: 14px;
-  background: rgba(7, 13, 20, 0.95);
+  background: rgba(19, 18, 16, 0.95);
   box-shadow: -16px 0 40px rgba(0, 0, 0, 0.28);
   backdrop-filter: blur(18px);
 }

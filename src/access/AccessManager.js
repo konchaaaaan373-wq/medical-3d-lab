@@ -1,3 +1,4 @@
+import { BRAND } from '../data/brand.js';
 import { el, focusBack } from '../utils/dom.js';
 import {
   authConfigured,
@@ -757,14 +758,14 @@ export function createAccessManager({ ui }) {
         ? 'Permanent account deletion'
         : required
           ? 'Unlock this mode'
-          : 'Medical 3D Lab account';
+          : `${BRAND.name} account`;
     const kickerJa = recovery
       ? 'パスワード再設定'
       : deleting
         ? 'アカウントの完全削除'
         : required
           ? 'このモードを利用する'
-          : 'Medical 3D Lab アカウント';
+          : `${BRAND.name} アカウント`;
     // Signed out with no particular mode being reached for, the dialog *is* the
     // credential form, so its heading says which of the two is on screen —
     // "Access & billing" over a password field does not tell anybody where they

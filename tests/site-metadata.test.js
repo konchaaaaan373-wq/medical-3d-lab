@@ -204,8 +204,10 @@ test('page: is readable with no JavaScript and no bundle', () => {
 test('page: links into the model relatively, so a subpath deployment still works', () => {
   const html = renderScenePage(scene('copd'), { baseUrl: BASE });
   assert.ok(html.includes('href="../../#/copd"'));
-  assert.ok(html.includes('href="../../#/organs"'));
-  assert.ok(html.includes('href="../../#/trust"'));
+  assert.ok(html.includes('href="../../#/models"'));
+  assert.ok(html.includes('href="../../#/about"'));
+  // This model's own record, not the ledger of every model (2026-09-27).
+  assert.ok(html.includes('href="../../#/trust?model=copd"'));
 });
 
 test('page: states maturity, review state and the educational-model boundary', () => {

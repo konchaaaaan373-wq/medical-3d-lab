@@ -4,6 +4,7 @@ import { readFileSync } from 'node:fs';
 
 import { createLanding } from '../src/app/Landing.js';
 import { createPublicModelsExplorer } from '../src/app/Landing.js';
+import { createAbout } from '../src/app/About.js';
 import { createLandingOrganHero } from '../src/app/landingOrganHero.js';
 import {
   HERO_ORGANS,
@@ -72,39 +73,58 @@ test('public UI: zero models renders a stable empty state without a model link o
     const hrefs = linksOf(mounted.element).map((link) => link.getAttribute('href'));
 
     assert.equal(findByClass(mounted.element, 'landing-demo-viewport').length, 0);
+    assert.equal(findByClass(mounted.element, 'model-card').length, 0);
     assert.equal(hrefs.some((href) => /^#\/(brain|heart)-anatomy$/.test(href ?? '')), false);
-    assert.match(textOf(mounted.element), /現在利用できる3D解剖モデルはありません/);
-    assert.equal(mounted.organHero, null);
+    assert.match(textOf(mounted.element), /公開した病態モデルから、ここに表示します/);
+
+    // The anatomy page says the same thing about the organs, without WebGL.
+    const anatomy = createPublicModelsExplorer({ ui: new FakeElement('div'), manifest: manifest([]) });
+    assert.match(textOf(anatomy.element), /現在利用できる3D解剖モデルはありません/);
+    assert.equal(anatomy.organHero, null);
   });
 });
 
-test('public UI: one model is the live brain and has a direct action, not a one-card catalogue', () => {
+test('public UI: an anatomy-only release lists the organ under the models, and the organ lives on the anatomy page', () => {
   withDom(() => {
     const ui = new FakeElement('div');
     const mounted = createLanding({ ui, manifest: manifest([BRAIN]) });
     const hrefs = linksOf(mounted.element).map((link) => link.getAttribute('href'));
 
-    assert.match(textOf(mounted.element), /人体の3D解剖モデル/);
-    assert.match(textOf(mounted.element), /脳を回転・拡大し、色分けされた部位の位置関係/);
-    assert.equal(findByClass(mounted.element, 'landing-demo-viewport').length, 1);
-    assert.equal(findByClass(mounted.element, 'landing-demo-state').length, 0);
-    assert.equal(findByClass(mounted.element, 'landing-scene-card').length, 0);
-    assert.equal(findByClass(mounted.element, 'landing-flow-field').length, 0);
+    // BYOKI MOTION's front door has no organ in 3D (ADR 2026-09-30): the brain
+    // is a link on the anatomy line, not a model on the page.
+    assert.equal(findByClass(mounted.element, 'landing-demo-viewport').length, 0);
+    assert.equal(findByClass(mounted.element, 'model-card').length, 0, 'an anatomy model is not a disease-model card');
+    // The hero's field is decoration, and says so to assistive tech.
+    for (const field of findByClass(mounted.element, 'bm-hero-motion')) {
+      assert.equal(field.getAttribute('aria-hidden'), 'true');
+    }
     assert.ok(hrefs.includes('#/brain-anatomy'));
-    assert.equal(mounted.organHero.organ, 'brain');
+
+    const anatomy = createPublicModelsExplorer({ ui: new FakeElement('div'), manifest: manifest([BRAIN]) });
+    assert.match(textOf(anatomy.element), /脳を回転・拡大し、色分けされた部位の位置関係/);
+    assert.equal(findByClass(anatomy.element, 'landing-demo-viewport').length, 1);
+    assert.equal(findByClass(anatomy.element, 'landing-demo-state').length, 0);
+    assert.equal(anatomy.organHero.organ, 'brain');
   });
 });
 
-test('public UI: Neco is identified after the model with verified, audience-specific links', () => {
+test('public UI: Neco is the operator — credited once at the foot, introduced on About', () => {
   withDom(() => {
     const ui = new FakeElement('div');
     const mounted = createLanding({ ui, manifest: manifest([BRAIN]) });
-    const sections = findByClass(mounted.element, 'landing-neco');
-    const links = linksOf(sections[0]);
+    const landingHrefs = linksOf(mounted.element).map((link) => link.getAttribute('href'));
 
-    assert.equal(sections.length, 1, 'the consultation block appears once below the model experience');
-    assert.match(textOf(sections[0]), /運営：株式会社Neco/);
-    assert.match(textOf(sections[0]), /医師の働き方・採用のご相談/);
+    // ADR 2026-09-30: BYOKI MOTION is the product; the operator is named in
+    // the footer's size, not as a section of the front door.
+    assert.equal(findByClass(mounted.element, 'landing-neco').length, 0);
+    assert.equal(landingHrefs.filter((href) => href === NECO_LINKS.operator).length, 1);
+    assert.equal(landingHrefs.includes(NECO_LINKS.doctor), false);
+    assert.equal(landingHrefs.includes(NECO_LINKS.medicalInstitution), false);
+    assert.match(textOf(findByClass(mounted.element, 'site-footer-operator')[0]), /運営：株式会社Neco/);
+
+    const about = createAbout({ ui: new FakeElement('div') });
+    const operator = findByClass(about.element, 'bm-about-section').find((node) => node.getAttribute('id') === 'about-operator');
+    const links = linksOf(operator);
     assert.deepEqual(
       links.map((link) => link.getAttribute('href')),
       [NECO_LINKS.operator, NECO_LINKS.doctor, NECO_LINKS.medicalInstitution]

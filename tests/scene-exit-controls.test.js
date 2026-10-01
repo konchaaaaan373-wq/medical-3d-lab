@@ -93,21 +93,20 @@ test('scene exits: and that menu opens, and reaches the pages a scene has no row
   assert.equal(hrefs.includes('#/trust'), false, 'the publication ledger is not a reader destination (2026-09-27)');
 });
 
-test('scene exits: the way home is the product icon alone, and says where it goes', () => {
+test('scene exits: the way home is the mark and the name, and says where it goes', () => {
   // Owner's decision, 2026-09-27: `← M/3 Medical 3D Lab | ホーム` said "home"
-  // twice. What stays is the icon — the same one as the tab — and a name for
-  // assistive tech that leads with the destination (next test).
+  // twice, and the icon alone stayed. BYOKI MOTION (2026-09-30) put the name
+  // back beside it — a new name has to be seen to be learned — but not the
+  // arrow or the word ホーム. The accessible name leads with the destination
+  // (next test).
   const { element } = oneModel();
   const [brand] = findByClass(element, 'global-nav-brand');
 
   assert.ok(brand, 'the header has a brand link');
   assert.equal(brand.getAttribute('href'), LANDING_ROUTE);
   assert.equal(findByClass(brand, 'brand-icon').length, 1, 'the product icon');
-  assert.deepEqual(
-    brand.children.map((child) => child.className),
-    [findByClass(brand, 'brand-icon')[0].className],
-    'and nothing else: no arrow, no name, no ホーム'
-  );
+  assert.equal(findByClass(brand, 'wordmark').length, 1, 'the product name, set as type');
+  assert.equal(brand.children.length, 2, 'and nothing else: no arrow, no ホーム');
 });
 
 test('scene exits: the accessible name leads with the destination, in one language', () => {

@@ -159,7 +159,7 @@
   gap: 0;
   line-height: 1.15;
   border-radius: 10px;
-  border: 1px solid rgba(167, 182, 206, 0.24);
+  border: 1px solid rgba(241, 238, 232, 0.18);
   background: rgba(255, 255, 255, 0.03);
   text-align: center;
 }
@@ -178,7 +178,7 @@
 }
 
 #ui[data-layout='experiment'] .model-choice-button.is-selected {
-  color: var(--accent-ink, #04212a);
+  color: var(--accent-ink, #201f1d);
   background: var(--accent);
   border-color: var(--accent);
   box-shadow: none;
@@ -231,7 +231,7 @@
   min-height: 44px;
   padding: 0 12px;
   border-radius: 10px;
-  border: 1px solid rgba(167, 182, 206, 0.3);
+  border: 1px solid rgba(241, 238, 232, 0.225);
   background: rgba(255, 255, 255, 0.04);
   color: var(--ink);
   font-size: 13px;
@@ -284,7 +284,7 @@
   min-height: 44px;
   padding: 3px 8px;
   border-radius: 10px;
-  border: 1px solid rgba(167, 182, 206, 0.24);
+  border: 1px solid rgba(241, 238, 232, 0.18);
   background: rgba(255, 255, 255, 0.03);
   color: var(--ink-dim);
   text-align: left;
@@ -519,7 +519,7 @@
   position: relative;
   min-width: 0;
   border-radius: 10px;
-  border: 1px solid rgba(167, 182, 206, 0.32);
+  border: 1px solid rgba(241, 238, 232, 0.24);
   background: rgba(255, 255, 255, 0.035);
   touch-action: none;
   user-select: none;
@@ -537,7 +537,7 @@
 #ui[data-layout='experiment'] .pad-guide {
   position: absolute;
   pointer-events: none;
-  border-color: rgba(167, 182, 206, 0.28);
+  border-color: rgba(241, 238, 232, 0.21);
   border-style: dashed;
   border-width: 0;
 }
@@ -567,7 +567,7 @@
   margin: -11px 0 0 -11px;
   border-radius: 50%;
   background: var(--accent);
-  box-shadow: 0 0 0 3px rgba(4, 18, 26, 0.85);
+  box-shadow: 0 0 0 3px rgba(22, 21, 19, 0.85);
   pointer-events: none;
 }
 
@@ -595,7 +595,7 @@
   min-height: 44px;
   padding: 0 12px;
   border-radius: 10px;
-  border: 1px solid rgba(167, 182, 206, 0.24);
+  border: 1px solid rgba(241, 238, 232, 0.18);
   font-size: 13px;
   color: var(--ink-dim);
   white-space: nowrap;
@@ -700,7 +700,7 @@
   gap: 2px;
   padding: 0 0 8px;
   margin: 0 0 4px;
-  border-bottom: 1px solid rgba(167, 182, 206, 0.24);
+  border-bottom: 1px solid rgba(241, 238, 232, 0.18);
 }
 
 #ui[data-layout='experiment'] .metrics .metric.is-qualitative .metric-label {
@@ -814,7 +814,7 @@
   min-width: 190px;
   border-radius: 12px;
   border: 1px solid var(--border);
-  background: #0c121c;
+  background: #191816;
   box-shadow: 0 12px 32px rgba(0, 0, 0, 0.45);
 }
 
@@ -932,7 +932,7 @@
     padding: 7px 0;
     margin: 0;
     border: 0;
-    border-top: 1px solid rgba(167, 182, 206, 0.1);
+    border-top: 1px solid rgba(241, 238, 232, 0.075);
   }
 
   #ui[data-layout='experiment'] .metrics .metric.is-qualitative + .metric {
@@ -992,7 +992,7 @@
        its `position: fixed` children (L-116). */
     backdrop-filter: none;
     -webkit-backdrop-filter: none;
-    background: rgba(9, 14, 22, 0.94);
+    background: rgba(21, 20, 18, 0.94);
   }
 
 
@@ -1328,7 +1328,7 @@
 }
 
 #ui[data-layout='experiment'] .console-card + .console-card {
-  border-top: 1px solid rgba(167, 182, 206, 0.16);
+  border-top: 1px solid rgba(241, 238, 232, 0.12);
 }
 
 #ui[data-layout='experiment'] .console-card-head {
@@ -1451,7 +1451,7 @@
   min-height: 44px;
   padding: 3px 7px;
   border-radius: 10px;
-  border: 1px solid rgba(167, 182, 206, 0.24);
+  border: 1px solid rgba(241, 238, 232, 0.18);
   background: rgba(255, 255, 255, 0.03);
   color: var(--ink-dim);
   text-align: left;
@@ -1552,7 +1552,7 @@
   min-height: 44px;
   padding: 0 10px;
   border-radius: 10px;
-  border: 1px solid rgba(167, 182, 206, 0.3);
+  border: 1px solid rgba(241, 238, 232, 0.225);
   background: rgba(255, 255, 255, 0.04);
   color: var(--ink);
   font-size: 13px;
@@ -1658,7 +1658,7 @@
   min-height: 44px;
   padding: 0 14px;
   border-radius: 10px;
-  border: 1px solid rgba(167, 182, 206, 0.3);
+  border: 1px solid rgba(241, 238, 232, 0.225);
   background: rgba(255, 255, 255, 0.04);
   color: var(--ink);
   font-size: 14px;
@@ -1691,7 +1691,7 @@
   display: block;
   height: 4px;
   border-radius: 2px;
-  background: rgba(167, 182, 206, 0.18);
+  background: rgba(241, 238, 232, 0.135);
   overflow: hidden;
 }
 

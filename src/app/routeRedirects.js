@@ -3,52 +3,47 @@
  *
  * ## The one that does
  *
- * `#/organs` was the Organ Explorer: a searchable index of every organ in the
- * catalogue, with filters, system sections and a card per model. Under the
- * preview unlock it still is, and it earns its page — seventy models is a
- * thing you need an index for.
+ * `#/pathology` was the disease-model list, the place "病態モデル" in a
+ * mechanism scene's breadcrumb went back to. Since the BYOKI MOTION rebrand
+ * (ADR 2026-09-30) that list *is* the product's model index, `#/models`, and
+ * the old address renders the same page. Two addresses for one page are how a
+ * header stops being a landmark — so the old one is corrected in the address
+ * bar, and a shared link still arrives.
  *
- * In the beta it is not that page. `createExplorer` sees the release gate,
- * hands straight over to `createPublicModelsExplorer`, and what renders is the
- * same organ hero, the same organ chips, the same "open this model" and
- * "sources & limits" buttons as the landing page, in the same order. Driven in
- * a browser, the two surfaces exposed **an identical set of 23 controls**; the
- * only differences were the heading above them and the footer below.
+ * ## The one that used to, and why it stopped
  *
- * Two pages with the same controls are not two pages. They are one page with
- * two entrances, and the cost is paid by the reader: "Models" in the header
- * and the wordmark beside it went to the same set of models, neither told you
- * which one you were on, and pressing either from the other changed the
- * heading and nothing else. A reader cannot use a landmark that appears twice.
- *
- * So while the release opens few enough models that the landing page shows all
- * of them, the index is the landing page, and `#/organs` says so instead of
- * rendering a copy. The header destination goes with it — see
- * `ShellHeader.js`, where `models` is gated on the same unlock.
+ * Until 2026-09-30 the beta corrected `#/organs` (and `#/explore`) to the
+ * landing page, because the landing page *was* the organ chooser: the two
+ * surfaces exposed an identical set of 23 controls. The rebrand took the organ
+ * hero off the landing page — BYOKI MOTION opens on its disease models — so
+ * `#/organs` is a page of its own again: the anatomy shelf, also reached as
+ * `#/anatomy`. Correcting it to a landing page that no longer shows any organ
+ * would send a reader who asked for anatomy somewhere without it.
  *
  * ## Why a redirect rather than deleting the route
  *
- * Links outlive pages. `#/organs` and its `#/explore` alias have been shipped,
- * shared and crawled, and a route that has been published owes its visitors an
+ * Links outlive pages. A route that has been published owes its visitors an
  * arrival rather than the default scene — which is where `resolveRoute` sends
- * anything it does not recognise. The rule is one line and it disappears on
- * its own the day the Explorer is a real page again.
+ * anything it does not recognise.
  *
- * Pure: `unlocked` is passed in, never read from `window`, so the rule is
- * testable and cannot disagree with itself between two callers on one page.
+ * Pure, and the same on every build: when the beta corrected `#/organs` the
+ * answer depended on the preview unlock, which callers passed in. Nothing does
+ * now, so nothing is passed.
  */
-import { LANDING_ROUTE } from '../catalog/index.js';
-import { resolveRoute } from './router.js';
+import { MODELS_ROUTE, PATHOLOGY_SLUG } from '../catalog/index.js';
+import { slugOf } from './router.js';
 
 /**
  * Where this hash should actually go, or null when it is already there.
  *
+ * The query survives the correction: `?purpose=` and `?preview=` are the
+ * reader's, not the route's.
+ *
  * @param {string} hash
- * @param {{unlocked: boolean}} options
  * @returns {string|null}
  */
-export function redirectFor(hash, { unlocked }) {
-  if (unlocked) return null;
-  if (resolveRoute(hash).kind === 'explorer') return LANDING_ROUTE;
-  return null;
+export function redirectFor(hash) {
+  if (slugOf(hash) !== PATHOLOGY_SLUG) return null;
+  const query = String(hash).split('?')[1];
+  return query ? `${MODELS_ROUTE}?${query}` : MODELS_ROUTE;
 }

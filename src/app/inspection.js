@@ -13,9 +13,12 @@ export const BACKGROUND_PRESETS = Object.freeze([
     label: 'Graphite',
     labelJa: '黒',
     tone: 'dark',
-    swatch: '#070b14',
-    backdrop: Object.freeze({ top: '#0b1020', bottom: '#04060c', accent: '#12324a', halo: 0.35 }),
-    fog: '#05070d',
+    // Warm charcoal (ADR 2026-09-30). The hue moved from blue-black; the
+    // exposure, environment and bloom — what a tissue colour is judged under —
+    // did not.
+    swatch: '#141312',
+    backdrop: Object.freeze({ top: '#1b1a18', bottom: '#121110', accent: '#2c2723', halo: 0.35 }),
+    fog: '#131211',
     fogDensity: 0.017,
     environmentIntensity: 0.45,
     exposure: 1.05,

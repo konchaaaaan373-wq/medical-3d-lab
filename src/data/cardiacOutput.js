@@ -330,7 +330,8 @@ export const MODEL_CONTROLS = {
 
 /**
  * The console as two cards the reader opens, each for one kind of thing
- * (owner's review, 2026-09-27):
+ * (owner's review, 2026-09-27; named 操作する / アニメーション in the BYOKI
+ * MOTION shell, 2026-09-30, which every disease model now shares):
  *
  * - **Operate the model** — the four inputs, what the change did, and the
  *   starting condition drawn over the current one. Pressing anything here
@@ -347,16 +348,16 @@ export const CONSOLE_LAYOUT = {
   overflow: ['data', 'zoom', 'inspection', 'learn', 'reel', 'capture'],
   cards: {
     conditions: {
-      title: 'Operate the model',
-      titleJa: '実際に操作する',
+      title: 'Operate',
+      titleJa: '操作する',
       summary: 'Filling, resistance, contractility, rate',
       summaryJa: '充満量・血管抵抗・収縮力・心拍数',
       changedPrefix: 'Changed:',
       changedPrefixJa: '変更中：',
     },
     view: {
-      title: 'Explanation animation',
-      titleJa: '説明アニメーション',
+      title: 'Animation',
+      titleJa: 'アニメーション',
       summary: 'When contractility falls — press play',
       summaryJa: '収縮力が落ちると（再生して見る）',
       playing: 'Playing',

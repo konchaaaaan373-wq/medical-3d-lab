@@ -72,15 +72,20 @@ export const VIEWPORTS = [
  */
 export const SURFACES = [
   { id: 'landing', route: '#/', label: 'Landing' },
-  // Kept in the matrix although the beta corrects it: `#/organs` is a route
-  // that has been shipped, shared and crawled, and what a visitor following an
-  // old link arrives at is worth measuring at every width. `redirectsTo` is
-  // what the address bar is expected to read once the page has settled — see
-  // `src/app/routeRedirects.js` for why, and for the day it goes away.
-  { id: 'explorer', route: '#/organs', redirectsTo: '#/', label: 'Explorer (redirected)' },
+  // BYOKI MOTION's "Models" (ADR 2026-09-30): disease models, then the anatomy
+  // shelf. Where a disease model's breadcrumb 「病態モデル」 goes back to.
+  { id: 'models', route: '#/models', label: 'Models' },
+  // What the product is, the model rule, and the operator.
+  { id: 'about', route: '#/about', label: 'About' },
+  // The anatomy shelf: the organ chooser with one live organ. `#/organs` was
+  // corrected to the landing page until the landing page stopped being that
+  // chooser (2026-09-30); now it is the page, and it had never been measured.
+  { id: 'explorer', route: '#/organs', label: 'Anatomy (organ chooser)' },
   { id: 'lab', route: '#/lab', label: 'Lab', locked: true },
-  // Where a mechanism scene's breadcrumb 「病態モデル ›」 goes back to.
-  { id: 'pathology', route: '#/pathology', label: 'Disease models' },
+  // The disease list's old address, kept in the matrix because it has been
+  // shipped and shared: it must arrive at `#/models` at every width. See
+  // `src/app/routeRedirects.js`.
+  { id: 'pathology', route: '#/pathology', redirectsTo: '#/models', label: 'Disease models (redirected)' },
   // The patient-explanation entrance. In a release with no reviewed patient
   // explanation it is the page that says so; `verify:purpose` drives the rest.
   { id: 'patient', route: '#/patient', label: 'Patient explanation' },
@@ -96,6 +101,10 @@ export const SURFACES = [
   // matrix never saw it: its links shipped at 36–40 px, under the phone floor,
   // with every run green.
   { id: 'scene-layers', route: '#/heart-anatomy', label: 'Scene (organ with layers)', needsRenderer: true },
+  // A disease model — the product's centre since 2026-09-30: the model shell's
+  // header (mark, name, Models · About), its title line, 「このモデルについて」,
+  // 「解剖を確認」 and the two console cards, at every width.
+  { id: 'scene-disease', route: '#/cardiac-output', label: 'Disease model', needsRenderer: true },
 ];
 
 /**

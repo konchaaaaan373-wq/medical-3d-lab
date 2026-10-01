@@ -1,3 +1,4 @@
+import { BRAND } from './data/brand.js';
 import './styles/base.css';
 import './styles/reading-surface.css';
 import './styles/ui.css';
@@ -40,6 +41,10 @@ import './styles/scene-explain.css';
 // the header's switch and location, the title card, the patient console, the
 // entrances (`src/app/purpose.js`). After the consultation sheet it adjusts.
 import './styles/purpose.css';
+// BYOKI MOTION's own surfaces and the wordmark (ADR 2026-09-30). After every
+// surface sheet it restyles, before the touch floor, which still has the last
+// word on phone target sizes.
+import './styles/brand.css';
 // Last, and deliberately: it is the one place that owns the 44 px touch floor
 // for phone widths, and it has to outrank every surface sheet that compacts —
 // the consultation view above included.
@@ -50,7 +55,7 @@ import { openingMessage } from './app/destinationName.js';
 import { takeHandover } from './app/sceneHandover.js';
 import { installDeparture } from './app/departure.js';
 import { looksLikeAuthRedirect } from './access/authRedirect.js';
-import { betaUnlocked, routeOpen } from './app/releaseGate.js';
+import { routeOpen } from './app/releaseGate.js';
 import { redirectFor } from './app/routeRedirects.js';
 import { recordSceneVisit } from './app/sceneLibrary.js';
 import { describeAssetProgress, prefetchSceneAssets } from './app/sceneAssetPreload.js';
@@ -72,7 +77,7 @@ const ui = document.getElementById('ui');
 
 boot().catch(async (error) => {
   console.error(error);
-  ui.textContent = 'Failed to start Medical 3D Lab.';
+  ui.textContent = `Failed to start ${BRAND.name}.`;
   try {
     const { installTelemetry } = await import('./telemetry/install.js');
     installTelemetry({ surface: 'fallback' }).reporter.capture(error, { handled: false });
@@ -116,7 +121,7 @@ async function boot() {
   // leave, so it must not cost them a Back press to get out of. It also does
   // not fire `hashchange`, so nothing here can loop.
   if (!authRedirect) {
-    const corrected = redirectFor(window.location.hash, { unlocked: betaUnlocked() });
+    const corrected = redirectFor(window.location.hash);
     if (corrected) {
       try {
         window.history.replaceState(window.history.state, '', corrected);
@@ -270,7 +275,7 @@ async function boot() {
   const veilLabel = document.createElement('span');
   veilLabel.textContent =
     openingMessage(window.location.hash, sceneLanguage) ??
-    (sceneLanguage === 'en' ? 'Loading 3D model' : '3Dモデルを読み込んでいます');
+    (sceneLanguage === 'en' ? 'Loading the model' : 'モデルを読み込んでいます');
   const veilBar = document.createElement('span');
   veilBar.className = 'loading-bar';
   veil.replaceChildren(veilLabel, veilBar);

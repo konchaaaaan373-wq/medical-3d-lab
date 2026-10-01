@@ -559,6 +559,58 @@ export function organLayerList(navigation) {
 }
 
 /**
+ * The published models as BYOKI MOTION's menu lists them: the disease models
+ * first, then the anatomy — the same two shelves, in the same order, as
+ * `#/models` (ADR 2026-09-30).
+ *
+ * The rows are `organLayerList`'s rows (one full-width link each, a short
+ * first column), so the menu keeps its measured targets and its styles; what
+ * changed is the grouping. Organ-first put 脳 · 心臓 · 肺 · 肝臓 at the top of
+ * the menu and the one disease model as the heart's second line.
+ *
+ * @param {ReadonlyArray<import('../catalog/publicManifest.js').PublicModel>} models
+ * @param {{ systemOf?: (sceneId: string) => {en: string, ja: string}|null, currentSceneId?: string|null }} [options]
+ */
+export function modelShelfList(models, { systemOf = () => null, currentSceneId = null } = {}) {
+  const row = (model, first, label) =>
+    el('li', { class: 'site-menu-organ' }, [
+      el(
+        'a',
+        {
+          class: `site-menu-model${model.sceneId === currentSceneId ? ' is-current' : ''}`,
+          href: model.route,
+          ...(model.sceneId === currentSceneId ? { 'aria-current': 'page' } : {}),
+        },
+        [
+          dual(first.en, first.ja, 'site-menu-organ-name'),
+          el('span', { class: 'site-menu-model-label' }, [dual(label.en, label.ja, 'site-menu-model-name')]),
+        ]
+      ),
+    ]);
+  const disease = models.filter((model) => model.layer !== 'anatomy');
+  const anatomy = models.filter((model) => model.layer === 'anatomy');
+  const shelf = (title, rows) =>
+    rows.length
+      ? el('div', { class: 'site-menu-shelf' }, [
+          el('p', { class: 'site-menu-shelf-title' }, [dual(title.en, title.ja)]),
+          el('ul', { class: 'site-menu-organs' }, rows),
+        ])
+      : null;
+  return el('div', { class: 'site-menu-shelves' }, [
+    shelf(
+      { en: 'Disease models', ja: '病態モデル' },
+      disease.map((model) =>
+        row(model, systemOf(model.sceneId) ?? { en: model.organLabel, ja: model.organLabelJa }, { en: model.titleEn, ja: model.titleJa })
+      )
+    ),
+    shelf(
+      { en: 'Anatomy', ja: '解剖' },
+      anatomy.map((model) => row(model, { en: model.organLabel, ja: model.organLabelJa }, { en: 'Anatomy', ja: '解剖' }))
+    ),
+  ].filter(Boolean));
+}
+
+/**
  * @typedef {object} MenuPage
  * @property {string} href
  * @property {string} en

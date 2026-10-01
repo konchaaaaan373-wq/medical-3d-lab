@@ -1,3 +1,4 @@
+import { pageTitle } from '../data/brand.js';
 import { LEGAL_DOCUMENTS, LEGAL_UPDATED, legalDocument } from '../data/legal.js';
 import { createLanguageToggle } from '../components/LanguageToggle.js';
 import { el, skipLink } from '../utils/dom.js';
@@ -126,6 +127,6 @@ export function createLegal({ ui, docId = 'terms', accountButton = null }) {
 
   ui.append(skipLink(), element);
   languageToggle.init();
-  document.title = `${doc.titleEn} — Medical 3D Lab`;
+  document.title = pageTitle(doc.titleEn);
   return { element, docId: doc.slug };
 }

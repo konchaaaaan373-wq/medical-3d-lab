@@ -359,8 +359,18 @@ export const BUNDLE_BUDGET_KB = {
   largestChunk: 260,
   /** All CSS, which is loaded eagerly today. */
   css: 120,
-  /** All JS and CSS in the build. */
-  code: 700,
+  /**
+   * All JS and CSS in the build.
+   *
+   * 700 → 715 with the BYOKI MOTION rebrand (2026-09-30). Main measured 696.5;
+   * the branch 711.9 before any trimming. The growth is new surfaces, not
+   * drift: the About page (3.4), the model shell's 「今、何が起きた？」 with its
+   * rules and the reader's side (≈3.7), the model card, shared footer and
+   * wordmark (≈2). The old landing page's stylesheet rules that no script
+   * renders any more were removed in the same change (CSS 52.9 → 52.7 despite
+   * the new brand sheet), which brought it to 708.2. The rest is paid for.
+   */
+  code: 715,
   /**
    * The heaviest single model's media — the geometry one reader downloads when
    * they open one scene.

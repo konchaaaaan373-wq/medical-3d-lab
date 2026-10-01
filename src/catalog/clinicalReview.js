@@ -154,3 +154,26 @@ export function clinicalReviewPresentation(scene) {
   };
   return Object.freeze({ status, record, ...labels });
 }
+
+/**
+ * The line beside the review badge: when the model was last signed — or, when
+ * there is no date, which kind of "no date" this is, in words.
+ *
+ * Not "not yet reviewed" for every missing date. A legacy record is a real
+ * historical review whose date was never pinned, and the line read
+ * 「医学レビュー未実施」 beside the badge 「医学レビュー：旧基準・版固定なし」 — a
+ * trust surface contradicting itself. Only a model with no attestation at all
+ * (pending, or no record) says it has not been reviewed.
+ *
+ * @param {{status: string, record?: {reviewedAt?: string|null}|null}|null} presentation
+ * @returns {{en: string, ja: string}|null}
+ */
+export function reviewDateLabel(presentation) {
+  if (!presentation) return null;
+  const reviewedAt = presentation.record?.reviewedAt ?? null;
+  if (reviewedAt) return { en: `Last reviewed ${reviewedAt}`, ja: `最終レビュー ${reviewedAt}` };
+  if (presentation.status === 'pending' || presentation.status === 'unrecorded') {
+    return { en: 'Not yet reviewed', ja: '医学レビュー未実施' };
+  }
+  return { en: 'Review date not recorded', ja: 'レビュー日の記録なし' };
+}

@@ -2,7 +2,7 @@ import { installDeparture, needsDocumentUnlessClosed } from './departure.js';
 import { isDocumentSurface, mountDocumentSurface as mountSurface } from './documentSurfaces.js';
 import { destinationSubject, openingMessage } from './destinationName.js';
 import { resolveRoute, sameRoute } from './router.js';
-import { betaUnlocked, routeOpen } from './releaseGate.js';
+import { routeOpen } from './releaseGate.js';
 import { redirectFor } from './routeRedirects.js';
 import { recordSceneVisit } from './sceneLibrary.js';
 
@@ -304,7 +304,7 @@ export async function installShellNavigation({
     // the address bar — disagreeing with what is on screen for the rest of the
     // document's life. `replaceState` fires no `hashchange`, so correcting it
     // queues nothing behind this swap.
-    const corrected = redirectFor(hash, { unlocked: betaUnlocked() });
+    const corrected = redirectFor(hash);
     if (corrected) {
       try {
         windowRef.history?.replaceState?.(windowRef.history?.state ?? null, '', corrected);
