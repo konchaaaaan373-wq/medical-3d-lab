@@ -442,7 +442,14 @@
   min-height: 24px;
 }
 
+/* A target as well as a line of text: 24 px tall at every width (WCAG 2.5.8),
+   44 on a phone (below; here rather than in phone-touch-targets.css, whose
+   `#ui .x` this layout's own rule outranks). It was 21–22, and nothing measured
+   it until the viewport matrix reached the lesson (2026-10-01). */
 #ui[data-layout='lesson'] .lesson-detail {
+  display: inline-flex;
+  align-items: center;
+  min-height: 24px;
   font-size: 13px;
   color: var(--ink-dim);
   text-decoration: underline;
@@ -687,5 +694,6 @@
 
   #ui[data-layout='lesson'] .lesson-detail {
     font-size: 12px;
+    min-height: 44px;
   }
 }

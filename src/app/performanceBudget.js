@@ -375,8 +375,8 @@ export const BUNDLE_BUDGET_KB = {
    * and its stylesheet, and the full model's fourth intervention. None of it is
    * in the entry beyond the router's `?view=` (0.6 kB): the lesson loads with
    * `#/cardiac-output`, and the full model's scene (28.4 kB with the rebrand's
-   * 「今、何が起きた？」) only with `?view=detail`. Measured 728.3 kB on top of
-   * main's rebrand (708.2): the lesson and the fourth intervention are 20.1 of
+   * 「今、何が起きた？」) only with `?view=detail`. Measured 728.4 kB on top of
+   * main's rebrand (708.2): the lesson and the fourth intervention are 20.2 of
    * it — 19.6 before the rebrand (696.5 → 716.1), and the rest the lesson's
    * rules for the rebrand's title line and 「このモデルについて」 sheet.
    */

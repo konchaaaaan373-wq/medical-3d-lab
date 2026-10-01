@@ -1976,7 +1976,14 @@ try {
             // scene chrome to hide. That is the runner talking, and the rest of
             // this file is careful to record it as a note rather than a defect.
             const missing = `${where}: a scene surface with no "hide controls" control`;
+            // A lesson (`layout: 'lesson'`) draws no 3D for the controls to
+            // stand over: its figure sits between the question and the
+            // buttons, and the note on what the experiment is must stay on
+            // screen for a reader who only presses buttons (owner's review,
+            // 2026-10-01). Hiding it is not something the lesson offers.
+            const layout = await page.evaluate(() => document.getElementById('ui')?.dataset.layout ?? null);
             if (rendererDown()) notes.push(`${missing} — the renderer did not start on this engine`);
+            else if (layout === 'lesson') notes.push(`${missing} — a lesson: nothing stands over its figure, and its caveat stays on screen`);
             else problems.push(missing);
           } else if (!hideUi.offered) {
             notes.push(`${where}: the "hide controls" control is not offered here — ${hideUi.why}`);
