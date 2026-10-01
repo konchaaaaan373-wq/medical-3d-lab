@@ -20,8 +20,8 @@
       "src/scenes/cardiovascular/scenes/heartAnatomy/displayRange.js"
     ],
     "cardRevision": 28,
-    "modelDigest": "231f4dc5eee3d1b0",
-    "cardUpdatedAt": "2026-09-30"
+    "modelDigest": "eda80801ba2b981a",
+    "cardUpdatedAt": "2026-10-01"
   },
   {
     "sceneId": "circulation",

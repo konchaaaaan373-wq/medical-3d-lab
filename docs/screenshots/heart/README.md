@@ -67,5 +67,12 @@ coordinates.
 | `18-landscape-selected-main.png`, `18-landscape-selected-branch.png` | 844×390 after rotating and selecting the arch: the model slides under the title card on `main` and on the branch alike (`docs/follow-ups.md` F-237 item 6) |
 | `18-phone-sheet-list-main.png`, `18-phone-sheet-list-branch.png` | 375×667 with a structure selected: about two rows of the parts list under the search box, the same on both (item 12) |
 
+## `19-*` — descriptions after the second collation (2026-10-01)
+
+| File | What it shows |
+| --- | --- |
+| `19-detail-ima-phone.png` | 390×844, the inferior mesenteric artery's Detail tab: it leaves the front of the aorta a little to the left (from OpenStax's figure of the abdominal arteries), and the model's lower origin is still said to differ from the textbook's |
+| `19-detail-descending-aorta-phone.png` | 390×844, the descending aorta's Detail tab: the T12 level of the aortic hiatus put back, with 「典型的には」 |
+
 **These are not a review either.** No anatomist has looked at the branches, the
 schematic segments or the descriptions.

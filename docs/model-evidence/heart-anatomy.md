@@ -29,7 +29,32 @@ is one.
   Blood Vessels and Fetal Circulation" (`m46610`) for the ductus arteriosus. **This
   is the only anatomy text that was actually opened for this scene.** What each
   claim was checked against, and what could not be, is the table under
-  "Reference check" at the end of this file.
+  "Reference check" at the end of this file. On 2026-10-01 two of §20.5's
+  figures were also looked at — "Aorta" (`media/2121_Aorta.jpg`) and "Arteries of
+  the Thoracic and Abdominal Regions" (`media/2124_Thoracic_Abdominal_Arteries.jpg`)
+  — and the text of all 198 modules of the book was searched for each fact the
+  table had recorded as absent, not only §20.5.
+* **HuBMAP ASCT+B table for the blood vasculature, v1.2**
+  (`v1.2/asct-b/ASCT-B_VH_Blood_Vasculature.csv`, same `ccf-releases` commit),
+  read 2026-10-01 for **which vessel is a branch of which**. Its header names its
+  authors (Griffin Weber, Sujin Lee, Rajeev Malhotra), its reviewers (Marc
+  Halushka, Avinash Boppana), the date 05/06/2022 and the data DOI
+  `10.48539/HBM954.HNGT.899`. It is a reviewed table of parent–child relations,
+  not a text: it says nothing about order, level, direction or length. Its own
+  header cites Netter and Gray's as general publications; **those were not
+  opened here**, and nothing below rests on them through it.
+* **The publisher's other vasculature files**, read 2026-10-01 for the renal
+  arteries only (claim 16): the **female** model of the same release,
+  `v1.2/models/VH_F_Blood_Vasculature.glb` (sha256 `4b034a65…219486a`), and the
+  **male** model of the later release, `v1.4/models/3d-vh-m-blood-vasculature.glb`
+  (sha256 `39f8c154…c361747`, fetched from the same commit). v1.3's male file is
+  the same git blob as v1.2's. The node-to-label crosswalks
+  `v1.4/models/asct-b-3d-models-crosswalk.csv` and `v2.0/…` were read for the same
+  two nodes. None of these files is in the repository or used by the scene.
+* **JMdict** (EDRDG; the archive `jitendex/edrdg-dictionary-archive` at commit
+  `1b4754784a6f`), read 2026-10-01. **A general Japanese–English dictionary, not
+  a terminology standard**: it was used only to see whether a Japanese name means
+  the English one, and a word it lacks says nothing either way.
 * **Not consulted, and not a source for anything here:** Gray's Anatomy, Moore's
   *Clinically Oriented Anatomy* and Netter's *Atlas*. An earlier draft of this
   dossier (2026-09-29) named them as the basis of the branch order and of the
@@ -39,9 +64,16 @@ is one.
   network policy on 2026-09-29/30: en.wikipedia.org, teachmeanatomy.info,
   www.ncbi.nlm.nih.gov (StatPearls), openstax.org, radiopaedia.org,
   www.kenhub.com, en.wikisource.org, www.gutenberg.org, archive.org.
+* Tried again on 2026-10-01 and refused by the same policy: www.ncbi.nlm.nih.gov,
+  en.wikipedia.org, ja.wikipedia.org, teachmeanatomy.info, jams.med.or.jp (日本医学会
+  医学用語辞典), www.anatomy.or.jp (日本解剖学会), lsd-project.jp (ライフサイエンス辞書),
+  ta2viewer.openanatomy.org (TA2), www.med.kobe-u.ac.jp, togodb.org,
+  togodb.dbcls.jp, www.wikidata.org; anatomicalterms.info did not resolve. Only
+  GitHub was reachable, which is why every source above is read from a GitHub
+  repository.
 * **No Japanese anatomical-terminology source was opened.** The Japanese names
   follow the ones this site already uses (e.g. 腹部大動脈 in the abdomen scene);
-  they have not been checked against 解剖学用語.
+  they have not been checked against 解剖学用語. JMdict (above) is not that check.
 
 ## Claim → Source → Implementation → Assumption → Validation
 
@@ -218,7 +250,7 @@ is one.
 | **Source** | `VH_M_Blood_Vasculature.glb`: the five abdominal branches are separate meshes the publisher filed under the liver, the kidney and the large intestine. Boundary loops, measured in the source's millimetres: the descending aorta's openings for the SMA (12.5, 317.7, 10.7; r 6.9), the IMA (15.2, 198.8, 27.9; r 5.0) and one renal artery (21.2, 300.1, 6.0; r 4.1) are the same rings as those branches' own; the coeliac trunk's (12.5, 331.7) and the other renal artery's (3.2, 302.9) sit on openings 1–2 mm away. Origins top to bottom: coeliac 332, SMA 318, renal 303 and 300, IMA 199, aortic end 187 mm. |
 | **Implementation** | `scripts/repair-candidate-gltf.mjs` keeps them (`keepAlso`), with their ancestor groups, names and extras; `HEART_VESSELS` names them; `HEART_VESSEL_NODES_OUTSIDE_SUBTREE` is what the scene takes beside the heart subtree. |
 | **Assumption** | The publisher's segmentation of each branch, and its identity, is trusted — except where its own geometry contradicts its name (claim 16). In the source's geometry the inferior mesenteric artery leaves just above the aorta's end: 8.0 and 10.8 mm (file units × 1000) along the file's vertical axis from the centre of its opening to the centres of the two iliac openings, 11.4 mm to the aorta's lowest vertex. **That is a distance in the model, not a measurement of the Visible Human specimen**: the file is in metres only by the glTF convention, nothing calibrates this reference-atlas model to the specimen, and whether the reference model reproduces the specimen at this point is not established. It is not called a variant. OpenStax places the IMA about 5 cm above the common iliac arteries; the reader is told the two differ, and which is which. |
-| **Validation** | `tests/heart-anatomy.test.js` — the order of origins, the forward course of the gut arteries and the outward-and-backward course of the renal arteries, and the right renal artery longer than the left; `npm run assets:repair:verify` (positions of every kept mesh byte-identical to the publisher's); renders from the front, back and both sides. |
+| **Validation** | `tests/heart-anatomy.test.js` — the order of origins, the forward course of the gut arteries and the outward-and-backward course of the renal arteries, and the right renal artery longer than the left; `npm run assets:repair:verify` (positions of every kept mesh byte-identical to the publisher's); renders from the front, back and both sides. Checked against sources on 2026-10-01: every parent–child relation shown is the HuBMAP ASCT+B table's (arch → brachiocephalic, left common carotid, left subclavian; brachiocephalic → right common carotid, right subclavian; abdominal aorta → coeliac, SMA, renal, IMA, common iliacs), and the order and the direction each leaves the aorta in are those of OpenStax's two figures ("Reference check"). |
 
 ### 16. The renal arteries are shown under the names their position gives them
 
@@ -227,15 +259,15 @@ is one.
 | **Claim** | The mesh the source file records as `VH_M_left_renal_artery` (label "left renal artery", UBERON:0001186) is shown as the **right** renal artery, and `VH_M_right_renal_artery` as the left, because the file's own geometry puts each on the other side — and the geometry, not the two labels, is what the rest of the file agrees with. |
 | **Source** | Measured on the pinned source (`dev-assets/heart/VH_M_Blood_Vasculature.glb`), 2026-09-30, `+x`/`+y`/`+z` in file units × 1000. **(a) Nothing in the file moves or mirrors anything**: none of its 153 nodes carries a translation, rotation, scale or matrix, and every mesh's world matrix has determinant +1; the heart file's 18 nodes likewise. **(b) The scene applies a translation and one positive uniform scale** to both files together (`HeartAnatomyScene`, `modelRoot.position` / `scale.setScalar(TARGET_RADIUS / radius)`) — no rotation, no reflection — and `GLTFLoader` keeps glTF's axes. **(c) +x is the body's left by every independent marker in the file**, each agreeing with the textbook (OpenStax §19.1, §20.5): the heart's apex deviates to the left — left ventricle x +45.4 against right atrium −21.4; the arch arcs to the left — thoracic descending aorta x +12.2 against ascending −3.2; the venae cavae are on the right of the aorta — superior −26.2, inferior −19.0 against aorta +11.5 at y 300; the liver's right hepatic vein is at −84.4 and the spleen's artery and vein at +58.6 and +79.0; and the vein the file labels *left* renal vein is the long one (x −7.0 … +60.9) and crosses in front of the aorta (z 18.1 against the aorta's 8.0), as the textbook's longer left renal vein does. **(d) The file's own left/right labels agree with that** for every other paired structure measured: superior ophthalmic veins, brachiocephalic veins, common and external iliac veins, renal veins and pulmonary arteries all have `_L` at +x. **(e) The two renal arteries are the exception**: the one labelled *left* runs from the aorta to −x, 62.6 mm, ends at x −51.1 beside the file's *right* renal vein (x −62.1 … −32.6), and passes behind the inferior vena cava (z −0.3 against 6.5); the one labelled *right* runs to +x, 44.3 mm. The textbook's longer renal artery is the right (OpenStax §20.5); here the longer one is the one labelled left. |
 | **Implementation** | `HEART_VESSELS` keeps the node names as ids (an id is opaque) and shows the structures under the names by position. **The reader is not told the source is wrong**: the name shown is the standard one with no mark beside it, and the detail tab says what the file records it as and that this model shows it by position, with the source's label and term kept (`sourceLabel`, `sourceOntologyId`). Until 2026-09-30 the summary line read 「位置で命名（出典は左右逆の表記）」; that was withdrawn as a statement stronger than a reader could check. |
-| **Assumption** | That a mirrored or rotated file is ruled out by (a)–(d), and that a mislabelled pair is the remaining explanation of (e). **No anatomist has confirmed it**, and nothing here says why the publisher's labels differ. That the right renal artery passes behind the inferior vena cava is consistent with (e) but was not found in the opened text, so it is not counted as evidence. |
-| **Validation** | `tests/heart-anatomy.test.js` — each renal artery runs to the side it is shown as, in `HEART_AXES`, keeps the source's label, carries no mark beside its name and has a detail note that does not call the file wrong. The measurements in (a)–(e) are a script run once on the pinned source, recorded here; they are not re-run by a test, because the source file is not in the repository. |
+| **Assumption** | That a mirrored or rotated file is ruled out by (a)–(d), and that a mislabelled pair is the remaining explanation of (e). **No anatomist has confirmed it**, and nothing here says why the publisher's labels differ. That the right renal artery passes behind the inferior vena cava is consistent with (e) but was not found in the opened text, so it is not counted as evidence. **Checked on 2026-10-01 against the publisher's other files** (Sources consulted): (f) in the **female** model of the same release, with no node transforms either, the artery labelled *right* runs to −x, 80.8 mm, and the one labelled *left* to +x, 52.7 mm — **there the labels and the geometry agree**, and the right is the longer, as in the textbook; (g) the **v1.4 male** file has the same two meshes, vertex for vertex (893 and 725 vertices, centroids unmoved), with the same labels and terms, and the v1.4 and v2.0 crosswalks map the two node names to the same labels — so no later release has changed either. (f) says the publisher's two bodies differ at exactly this pair; it does not say why, and it is not an anatomist's reading. |
+| **Validation** | `tests/heart-anatomy.test.js` — each renal artery runs to the side it is shown as, in `HEART_AXES`, keeps the source's label, carries no mark beside its name and has a detail note that does not call the file wrong. The measurements in (a)–(g) are scripts run once on the pinned source and the publisher's other files, recorded here; they are not re-run by a test, because none of those files is in the repository. |
 
 ### 17. Four arterial segments are schematic, and say so
 
 | | |
 | --- | --- |
 | **Claim** | The start of the right common carotid, the right subclavian and both common iliac arteries is drawn **schematically**: where it starts is measured, how it runs is not. |
-| **Source** | The source has none of the four. Its brachiocephalic trunk ends in a rounded tip at (−27.0, 606.8, 25.0), at the level where the trunk divides; its aorta ends at y 187 with two openings, (5.2, 190.8, 25.0; r 3.6) on the right and (14.9, 188.0, 23.1; r 2.6) on the left, and its pelvic vessels are veins only. **What was checked**: that the right common carotid and right subclavian arteries arise from the brachiocephalic trunk, and that the abdominal aorta divides into the two common iliac arteries (OpenStax §20.5). **What was not**: their direction, angle and length, which follow the drawing, not a source. |
+| **Source** | The source has none of the four. Its brachiocephalic trunk ends in a rounded tip at (−27.0, 606.8, 25.0), at the level where the trunk divides; its aorta ends at y 187 with two openings, (5.2, 190.8, 25.0; r 3.6) on the right and (14.9, 188.0, 23.1; r 2.6) on the left, and its pelvic vessels are veins only. **What was checked**: that the right common carotid and right subclavian arteries arise from the brachiocephalic trunk, and that the abdominal aorta divides into the two common iliac arteries (OpenStax §20.5; the HuBMAP ASCT+B table, 2026-10-01); and, in OpenStax's figures, the general way each goes — the right common carotid upward and the right subclavian outward to the right ("Aorta"), the two common iliacs downward and apart ("Arteries of the Thoracic and Abdominal Regions"). **What was not**: their angle and length, and their relation to the veins beside them, which follow the drawing, not a source; the figures are diagrams and give no values. |
 | **Implementation** | `HEART_SCHEMATIC`: a centreline starting on the parent's measured centreline, inside it, calibre from the opening (iliac) or from the source's left carotid and subclavian at the same height, routed clear of the source's vessels — measured clearances: right common carotid 8.1 mm from the right brachiocephalic vein, right subclavian 3.0 mm (passing behind it), right common iliac 0.49 mm from the inferior vena cava at the aorta's own opening, left common iliac 2.6 mm from the inferior mesenteric artery. Built only when the parent is where the table says (`buildSchematicVessels`). |
 | **Assumption** | **Their length, angle and course are not this specimen's.** No ontology id is quoted for them. |
 | **Validation** | `tests/heart-anatomy.test.js` — each is drawn only beside its parent, is selectable and labelled, says "schematic" / 「模式」 on its card, carries no ontology id, starts inside its parent and tapers and fades before its own end. |
@@ -265,42 +297,49 @@ is one.
 | | |
 | --- | --- |
 | **Claim** | The ascending aorta, the arch, the descending aorta and the twelve branches each open their description with general anatomy — where the vessel arises, the few levels the opened textbook gives, how the two sides differ and what it supplies — before the account of what this model does with it. |
-| **Source** | OpenStax, *Anatomy and Physiology 2e*, §20.5, §19.1, §20.6 (Sources consulted). Every sentence is in the "Reference check" table. **Not this specimen**: no level, length or territory is measured from the Visible Human. |
-| **Implementation** | `ANATOMY` / `heartAnatomyNote` in `src/data/heartAnatomy.js`, prepended by `heartStructureInfo` as its own paragraph; the scope panel says the text is the textbook's general account, kept to what could be checked, and not reviewed by an anatomist; `HEART_MISSING` lists the aorta's smaller branches (as OpenStax names them, each checked absent from the source's node names) and the ligamentum arteriosum. **Removed on 2026-09-30** because the opened source does not support them: the vertebral levels of the aortic hiatus, coeliac trunk, SMA, renal arteries and IMA; the lengths of the brachiocephalic trunk and the common iliac arteries; the brachiocephalic trunk's division behind the sternoclavicular joint; the subclavian arteries crossing the first rib; the relations to the trachea, the inferior vena cava, the left renal vein and the duodenum; the fore/mid/hindgut territories; the variants; and the distances between branches. Two of those distances were **contradicted** by the source (SMA "about 1 cm" below the coeliac trunk where OpenStax says about 2.5 cm; IMA "3–4 cm" above the bifurcation where it says about 5 cm). |
+| **Source** | OpenStax, *Anatomy and Physiology 2e*, §20.5, §19.1, §20.6, and §20.5's figures "Aorta" and "Arteries of the Thoracic and Abdominal Regions" for the directions the abdominal branches leave the aorta in (Sources consulted). Every sentence is in the "Reference check" table. **Not this specimen**: no level, length or territory is measured from the Visible Human. |
+| **Implementation** | `ANATOMY` / `heartAnatomyNote` in `src/data/heartAnatomy.js`, prepended by `heartStructureInfo` as its own paragraph; the scope panel says the text is the textbook's general account, kept to what could be checked, and not reviewed by an anatomist; `HEART_MISSING` lists the aorta's smaller branches (as OpenStax names them, each checked absent from the source's node names) and the ligamentum arteriosum. **Removed on 2026-09-30** because the opened source does not support them: the vertebral levels of the coeliac trunk, SMA, renal arteries and IMA (and of the aortic hiatus — **wrongly**: §20.5 gives it, under "Thoracic Aorta and Major Branches", and it was put back on 2026-10-01, see "Reference check"); the lengths of the brachiocephalic trunk and the common iliac arteries; the brachiocephalic trunk's division behind the sternoclavicular joint; the subclavian arteries crossing the first rib; the relations to the trachea, the inferior vena cava, the left renal vein and the duodenum; the fore/mid/hindgut territories; the variants; and the distances between branches. Two of those distances were **contradicted** by the source (SMA "about 1 cm" below the coeliac trunk where OpenStax says about 2.5 cm; IMA "3–4 cm" above the bifurcation where it says about 5 cm). |
 | **Assumption** | A level is written "typically" / 「典型的には」 wherever one is given. One textbook is one account: where texts differ, only what this one says is written, and the inter-branch distances it gives are not shown at all. The renal paragraphs follow the names given by position (claim 16). |
-| **Validation** | `tests/heart-anatomy.test.js` — all fifteen have both languages, the anatomy comes first and the model's account is kept whole after it, every vertebral level is said to be typical, the renal paragraphs name the kidney each one goes to, and the two absences are listed. Removing the paragraph from `heartStructureInfo` turns it red. **No anatomist has read these paragraphs.** |
+| **Validation** | `tests/heart-anatomy.test.js` — all fifteen have both languages, the anatomy comes first and the model's account is kept whole after it, every sentence that gives a vertebral level says it is typical (per sentence since 2026-10-01: per paragraph, the restored T12 would have passed without it), the renal paragraphs name the kidney each one goes to, and the two absences are listed. Removing the paragraph from `heartStructureInfo` turns it red. **No anatomist has read these paragraphs.** |
 
-## Reference check — the aorta and its branches (2026-09-30)
+## Reference check — the aorta and its branches (2026-09-30; collated again 2026-10-01)
 
 資料: OpenStax, *Anatomy and Physiology 2e*（出版元のソース `openstax/osbooks-anatomy-physiology`
 commit `5ae32b3`）。§19.1 = module `m46676`、§20.5 = `m46646`、§20.6 = `m46610`。
-**実際に開いて読んだのはこの 1 冊だけ**です。引用は原文の英語のまま短く載せます。
+**実際に開いて読んだ解剖の本文はこの 1 冊だけ**です。2026-10-01 に、同じ節の図 2 枚
+（「Aorta」`2121_Aorta.jpg`、「Arteries of the Thoracic and Abdominal Regions」
+`2124_Thoracic_Abdominal_Arteries.jpg`）、HuBMAP の ASCT+B 表（血管系 v1.2、著者・査読者名入り）、
+出典の女性モデルと v1.4 の男性モデル、JMdict を加えて照合し直しました（Sources consulted）。
+「資料に無い」と書いた行は、§20.5 だけでなく本全体（198 モジュール）の本文を検索して確かめ直しています。
+引用は原文の英語のまま短く載せます。
 「モデル」の数値は出典ファイルの座標（ファイル単位 × 1000）で、標本の実寸ではありません。
 
 | 確認対象 | 閲覧した資料の該当箇所 | 確認結果 | 未確認点・処理 |
 | --- | --- | --- | --- |
 | 弓部の分枝は 3 本 | §20.5 "Aortic Arch Branches": "There are three major branches of the aortic arch: the brachiocephalic artery, the left common carotid artery, and the left subclavian" | 一致。モデルの弓部にも開口が 3 つ | 変異（共通幹など）は資料に無い → 説明文から削除 |
-| 弓部分枝の順序 | §20.5 表 "Aortic Arch Branches and Brain Circulation": 腕頭動脈は "the first vessel branching from the aortic arch" | 一致。モデルの起始は右（−x）から腕頭 −4.5、左総頸 +8.3、左鎖骨下 +14.5 | 左総頸 → 左鎖骨下の順は列挙順からの読み取り（明示は「腕頭が最初」のみ） |
-| 腕頭動脈は右だけで、右鎖骨下と右総頸に分かれる | §20.5: "located only on the right side of the body" / "branches into the right subclavian artery and the right common carotid artery" | 一致。模式の 2 区間はこの分岐に従う | 分岐の高さ（胸鎖関節の後ろ）、長さ 4〜5 cm、最も太いこと → 資料に無く削除 |
+| 弓部分枝の順序 | §20.5 表 "Aortic Arch Branches and Brain Circulation": 腕頭動脈は "the first vessel branching from the aortic arch"。図「Aorta」は右から腕頭動脈・左総頸動脈・左鎖骨下動脈の順に描く | 一致。モデルの起始は右（−x）から腕頭 −4.5、左総頸 +8.3、左鎖骨下 +14.5 | 2026-09-30 は「左総頸 → 左鎖骨下の順は列挙順からの読み取り」としていた → **2026-10-01 に図で確認** |
+| 腕頭動脈は右だけで、右鎖骨下と右総頸に分かれる | §20.5: "located only on the right side of the body" / "branches into the right subclavian artery and the right common carotid artery"。図「Aorta」も右総頸は上へ、右鎖骨下は右外側へ分かれる形。ASCT+B v1.2: brachiocephalic artery の子が right common carotid artery / right subclavian artery | 一致。模式の 2 区間はこの分岐に従う | 分岐の高さ（胸鎖関節の後ろ）、長さ 4〜5 cm、最も太いこと → 資料に無く削除 |
 | 左総頸・左鎖骨下は弓から直接 | §20.5: "arise independently from the aortic arch"; 表 "the left common carotid artery arises from the aortic arch" | 一致 | 気管との位置関係、左鎖骨下が左総頸の後ろ左から出ること → 削除 |
 | 鎖骨下動脈の枝と続き | §20.5 表: "gives rise to the internal thoracic, vertebral, and thyrocervical arteries"; 本文: the left subclavian "becomes the axillary artery" | 一致（その枝は出典ファイルに無いことをノード名で確認） | 第 1 肋骨を越えること → 削除 |
 | 総頸動脈の分岐と栄養域 | §20.5 表: "each gives rise to the external and internal carotid arteries; supplies the respective sides of the head and neck" | 一致 | — |
 | 上行大動脈 | §20.5: "moves in a superior direction for approximately 5 cm and ends at the sternal angle"; 冠動脈は "arise from two of the three sinuses in the ascending aorta just superior to the aortic semilunar valve" | 一致 | 「右上方へ」の向き → 削除。5 cm をモデル寸法と照合はしていない |
 | 大動脈弓の走行と終わり | §20.5: "a graceful arc to the left" / "ends at the level of the intervertebral disk between the fourth and fifth thoracic vertebrae" | 一致。モデルでも胸部下行大動脈（x +12.2）は上行（−3.2）より左 | モデルに椎骨は無く、高さの一致は確認できない（説明文は「典型的には」付きの教科書の記載） |
-| 胸部・腹部大動脈の区分 | §20.5: "Superior to the diaphragm, the aorta is called the thoracic aorta, and inferior to the diaphragm, it is called the abdominal aorta" | 一致 | 大動脈裂孔の高さ（第 12 胸椎）は資料に無い → 削除。モデルに横隔膜は無い |
+| 胸部・腹部大動脈の区分 | §20.5: "Superior to the diaphragm, the aorta is called the thoracic aorta, and inferior to the diaphragm, it is called the abdominal aorta"。同じ節の "Thoracic Aorta and Major Branches": "The thoracic aorta begins at the level of vertebra T5 and continues through to the diaphragm at the level of T12" | 一致 | **2026-09-30 の「裂孔の高さ（第 12 胸椎）は資料に無い → 削除」は誤り**でした（同じ節の別の小見出しにあった）。2026-10-01 に「典型的には第 12 胸椎の高さで」を説明文に戻した。モデルに横隔膜も椎骨も無く、高さの一致は確認できない |
 | 腹部大動脈は脊柱の左 | §20.5: "remains to the left of the vertebral column" | 一致。モデルの大動脈 x +9.6〜+12.9、下大静脈 −3.3〜−23.5 | モデルに脊柱は無い（下大静脈との左右で代替） |
 | 分岐部の高さ | §20.5: "bifurcates into the two common iliac arteries at the level of the fourth lumbar vertebra" | 記載として一致 | モデルに椎骨は無く、高さの一致は確認できない |
-| 腹部主要分枝の順序（上から） | §20.5: SMA "arises approximately 2.5 cm after the celiac trunk"; renal "approximately 2.5 cm inferior to the superior mesenteric"; IMA "approximately 5 cm superior to the common iliac arteries" | **順序は一致**。モデルの開口 y: 腹腔 332.4、上腸間膜 317.7、腎 302.9 / 300.1、下腸間膜 198.8、総腸骨 190.8 / 188.0 | **距離は一致しない**（モデル 14.7、15〜17、8〜11）。旧記述「上腸間膜は腹腔の約 1 cm 下」「下腸間膜は分岐部の 3〜4 cm 上」は資料と矛盾 → 削除。距離は表示しない。下腸間膜だけは不一致を説明文に明記 |
+| 腹部主要分枝の順序（上から） | §20.5: SMA "arises approximately 2.5 cm after the celiac trunk"; renal "approximately 2.5 cm inferior to the superior mesenteric"; IMA "approximately 5 cm superior to the common iliac arteries"。図「Arteries of the Thoracic and Abdominal Regions」も上から腹腔動脈・上腸間膜動脈・腎動脈・下腸間膜動脈・総腸骨動脈 | **順序は一致**。モデルの開口 y: 腹腔 332.4、上腸間膜 317.7、腎 302.9 / 300.1、下腸間膜 198.8、総腸骨 190.8 / 188.0 | **距離は一致しない**（モデル 14.7、15〜17、8〜11）。旧記述「上腸間膜は腹腔の約 1 cm 下」「下腸間膜は分岐部の 3〜4 cm 上」は資料と矛盾 → 削除。距離は表示しない。下腸間膜だけは不一致を説明文に明記 |
 | 不対か対か | §20.5: "A single celiac trunk"; "Two additional single vessels ... the superior and inferior mesenteric arteries"; "several significant paired arteries ... the renal arteries" | 一致 | — |
-| 起始の方向 | §20.5 の本文・表に記載なし | **未確認**。モデルでは腹腔 3°・上腸間膜 1°（真前）、腎 −80° / +104°（左右）、下腸間膜 60°（前左）（真前 = 0°、左 = +） | 教科書での方向は確認できず、説明文に書かない |
+| 起始の方向 | §20.5 の本文・表には記載なし。**図「Arteries of the Thoracic and Abdominal Regions」**（前から見た図）が、腹腔動脈・上腸間膜動脈・下腸間膜動脈を大動脈の前面で切った断端として描き（下腸間膜動脈は前面のやや左）、腎動脈を大動脈の側面から左右へ出す | **一致**（2026-10-01）。モデルでは腹腔 3°・上腸間膜 1°（真前）、腎 −80° / +104°（左右）、下腸間膜 60°（前左）（真前 = 0°、左 = +） | 2026-09-30 は未確認で説明文に書いていなかった → 「前面から」「側面から」「前面のやや左から」を説明文に足した。**図は模式図で角度の値は無い**ので、角度は書かない |
 | 右腎動脈が長い | §20.5: "The right renal artery is longer than the left since the aorta lies to the left of the vertebral column" | 一致（位置で名付けた右 62.6 mm、左 44.3 mm） | — |
-| 腎動脈の左右の判定材料 | §19.1: "The slight deviation of the apex to the left"; §20.5: 弓は "arc to the left"; "Since the inferior vena cava lies primarily to the right of the vertebral column and aorta, the left renal vein is longer" | 判定の根拠として使用（claim 16） | 右腎動脈が下大静脈の後ろを通ることは資料で未確認 → 根拠に数えない。解剖学者の確認なし |
-| 各枝の栄養域 | §20.5: 腹腔 → "stomach and esophagus / spleen / liver / stomach / gall bladder / duodenum / pancreas"; 表: SMA "small intestine (duodenum, jejunum, and ileum), the pancreas, and a majority of the large intestine"; IMA "distal segment of the large intestine and rectum"; renal "supplies each kidney" | 一致 | 前腸・中腸・後腸の区分、横行結腸の 2/3 の境界 → 削除 |
+| 腎動脈の左右の判定材料 | §19.1: "The slight deviation of the apex to the left"; §20.5: 弓は "arc to the left"; "Since the inferior vena cava lies primarily to the right of the vertebral column and aorta, the left renal vein is longer"。出典の**女性モデル**（同じ v1.2）と **v1.4 の男性モデル**、v1.4 / v2.0 の crosswalk（2026-10-01） | 判定の根拠として使用（claim 16）。女性モデルでは「右」と名付けた腎動脈が −x へ 80.8 mm、「左」が +x へ 52.7 mm で、**名前と形状が一致**し、右が長い。v1.4 の男性モデルは同じ 2 本を頂点まで同じ形・同じ名前で収録しており、後の版でも変わっていない | 右腎動脈が下大静脈の後ろを通ることは資料で未確認 → 根拠に数えない。なぜ男性モデルだけ名前と形状が食い違うのかは不明。**解剖学者の確認なし** |
+| 各枝の栄養域 | §20.5: 腹腔 → "stomach and esophagus / spleen / liver / stomach / gall bladder / duodenum / pancreas"; 表: SMA "small intestine (duodenum, jejunum, and ileum), the pancreas, and a majority of the large intestine"; IMA "distal segment of the large intestine and rectum"; renal "supplies each kidney" | 一致 | 前腸・中腸・後腸と各動脈の対応、横行結腸の 2/3 の境界 → 削除。（2026-10-01 補足: 本全体を検索すると §23.5 `m46512` に "The region defined as hindgut begins with the last third of the transverse colon" はあるが、**後腸を下腸間膜動脈と結びつける記述は無い**ので、削除はそのまま） |
 | 総腸骨動脈の先 | §20.5: "They split into external and internal iliac arteries approximately at the level of the lumbar-sacral articulation" | 一致 | 旧記述「仙腸関節の前で分かれる」は資料と異なる → 訂正。長さ約 4 cm → 削除 |
-| 模式区間の接続（右総頸・右鎖骨下は腕頭から、総腸骨は大動脈の終わりから） | 上の各行 | 接続先は一致 | **方向・角度・長さ・周囲との位置関係（右鎖骨下が右腕頭静脈の後ろ、右総腸骨が下大静脈の前）は資料で未確認**。模式の描画上の選択として扱う |
+| 模式区間の接続（右総頸・右鎖骨下は腕頭から、総腸骨は大動脈の終わりから） | 上の各行。ASCT+B v1.2 でも親は腕頭動脈 / 腹部大動脈。図 2 枚: 右総頸は上へ、右鎖骨下は右外側へ、総腸骨は下へ左右に開く | 接続先と大まかな向きは一致 | **角度・長さ・周囲との位置関係（右鎖骨下が右腕頭静脈の後ろ、右総腸骨が下大静脈の前）は資料で未確認**（図は模式図で値が無い）。模式の描画上の選択として扱う |
 | 動脈管索 | §20.6: "The ductus arteriosus is a short, muscular vessel that connects the pulmonary trunk to the aorta"; §19.1: "ligamentum arteriosum, the remnant of the fetal shunt called the ductus arteriosus" | 旧記述「大動脈弓と左肺動脈を結ぶ」を資料に合わせて訂正 | — |
 | 大動脈の細い分枝 | §20.5: 胸部 — bronchial, pericardial, esophageal, mediastinal, intercostal, superior phrenic; 腹部 — inferior phrenic, adrenal, gonadal, lumbar; "continues as a small vessel, the median sacral artery" | 一致。いずれも出典ファイルのノード名に無いことを確認（正中仙骨は静脈のみ） | — |
-| 日本語の用語 | 開いた資料なし | **未確認** | 解剖学用語との照合をしていない |
+| 親子関係（どの血管がどの血管の枝か） | HuBMAP ASCT+B 表 v1.2（血管系）: arch of aorta → brachiocephalic artery / left common carotid artery / left subclavian artery、brachiocephalic artery → right common carotid / right subclavian、descending thoracic aorta → abdominal aorta → celiac artery / superior mesenteric artery / left・right renal artery / inferior mesenteric artery / left・right common iliac artery | 表示しているすべての親子関係が一致（2026-10-01） | 表は親子だけで、順序・高さ・方向・長さは持たない |
+| 日本語の用語 | 解剖学用語・医学用語辞典は開けなかった（Sources consulted の拒否ホスト）。一般の和英辞書 JMdict でのみ意味を確認（2026-10-01） | **未確認**。JMdict に載っていて英名と意味が合ったのは 上行大動脈・下行大動脈・腹腔動脈（celiac artery）・総頸動脈・鎖骨下動脈・大動脈・上大静脈・下大静脈・腎静脈 など。大動脈弓・腕頭動脈・上腸間膜動脈・下腸間膜動脈・腎動脈・総腸骨動脈は JMdict に無い | 辞書に無いことは誤りの証拠ではなく、載っていることも用語の標準であることの証拠ではない。解剖学用語（例: 「腹大動脈」と「腹部大動脈」のどちらを使うか）は照合していない |
 
-**この表が言っていないこと**: 1 冊の教科書と一致したことは、解剖学者の確認ではありません。
+**この表が言っていないこと**: 1 冊の教科書と、査読者の名前が入った 1 つの表（ASCT+B）と一致したことは、
+このシーンを解剖学者が確認したことではありません。
 教科書どうしで値が違う項目（分枝間の距離など）は、この 1 冊の値を正とはせず、表示しない側に倒しています。

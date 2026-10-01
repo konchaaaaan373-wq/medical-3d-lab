@@ -158,8 +158,9 @@ left-sided counterpart at the same height, and each is routed clear of the
 source's own vessels (the right subclavian behind the right brachiocephalic
 vein; the right common iliac in front of the inferior vena cava; measured
 clearance at least 0.49 mm, at the aorta's own opening). **Where each one
-arises was checked against a textbook (OpenStax §20.5); its length, angle and
-course were not — they are the drawing's, not this specimen's and not a
+arises was checked against a textbook (OpenStax §20.5) and the HuBMAP ASCT+B
+table, and the general way it goes against the textbook's figures; its length,
+angle and course were not — they are the drawing's, not this specimen's and not a
 source's.** None carries an ontology id, because the term would be ours and
 would look like the source's.
 
@@ -184,7 +185,8 @@ paragraph of general anatomy — where the vessel arises, the few levels the
 textbook gives, how the two sides differ and what it supplies — and then the
 account of the model, unchanged. **Every sentence in those paragraphs was
 checked against the one anatomy text that could actually be opened** (OpenStax,
-*Anatomy and Physiology 2e*, §20.5, §19.1, §20.6); the evidence dossier's
+*Anatomy and Physiology 2e*, §20.5, §19.1, §20.6, and two of §20.5's figures for
+the directions the abdominal branches leave the aorta in); the evidence dossier's
 "Reference check" table gives, for each, the passage, the result and what was
 not confirmed. The first draft, written from memory, carried vertebral levels,
 distances between branches, relations to other structures and variants the
@@ -432,8 +434,10 @@ What was measured in this repository, and is therefore a fact about the files:
   textbook, by this repository and nobody else.** The order they leave the aorta
   (coeliac trunk, superior mesenteric, the renal arteries, inferior mesenteric,
   bifurcation), the sides they run to and the right renal artery being the
-  longer agree with OpenStax §20.5; the directions they leave the aorta in are
-  measured from the file but were not found in the opened text. Each one sits in
+  longer agree with OpenStax §20.5; the directions they leave the aorta in
+  (front, front-left, sides) agree with that section's figure of the abdominal
+  arteries, which gives no angles; which vessel is a branch of which agrees with
+  the HuBMAP ASCT+B table (2026-10-01). Each one sits in
   an opening of the aorta; all of it is held by `tests/heart-anatomy.test.js`.
   **The distances between origins are not shown**: the file's (the inferior
   mesenteric about 1 cm above the aorta's end, in file units) are model

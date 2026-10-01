@@ -1623,9 +1623,14 @@ test('heart: the aorta and its branches say what they are, as textbook anatomy, 
     assert.ok(info.description.startsWith(note.en) && info.descriptionJa.startsWith(note.ja), `${entry.id}: anatomy first`);
     assert.match(info.descriptionJa, /\n\n/, `${entry.id}: two paragraphs`);
     assert.ok(info.descriptionJa.length > note.ja.length + 40, `${entry.id}: what the model does is still said`);
-    // A level is the textbook's typical one, and says so.
-    if (/\bvertebrae?\b/.test(note.en)) assert.match(note.en, /typically/, `${entry.id}: a level is said to be typical`);
-    if (/胸椎|腰椎/.test(note.ja)) assert.match(note.ja, /典型的には/, `${entry.id}: 高さは典型として書く`);
+    // A level is the textbook's typical one, and every sentence that gives one says so —
+    // one "typically" in a paragraph does not cover a second level (2026-10-01).
+    for (const sentence of note.en.split(/(?<=\.)\s+/)) {
+      if (/\b(thoracic|lumbar) vertebrae?\b/.test(sentence)) assert.match(sentence, /typically/, `${entry.id}: a level is said to be typical — "${sentence}"`);
+    }
+    for (const sentence of note.ja.split(/(?<=。)/)) {
+      if (/胸椎|腰椎/.test(sentence)) assert.match(sentence, /典型的には/, `${entry.id}: 高さは典型として書く —「${sentence}」`);
+    }
   }
   // The renal arteries are described by where they go, as they are named.
   assert.match(heartAnatomyNote('VH_M_left_renal_artery').en, /right kidney/);

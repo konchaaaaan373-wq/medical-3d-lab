@@ -755,8 +755,14 @@ function describe(entry) {
  * of other textbooks; everything in it that the opened source does not say —
  * most vertebral levels, the distances between branches, relations to the
  * trachea and the veins, variants — was taken out rather than kept on
- * trust. **These are the textbook's account, not measurements of this
- * specimen**, and a level is written "typically" wherever one is given. Where
+ * trust — and one of those, the T12 level of the aortic hiatus, was taken out
+ * wrongly and put back on 2026-10-01: it is in the same section, under
+ * another heading. The directions the abdominal branches leave the aorta in
+ * (front for the coeliac trunk and the mesenteric arteries, sides for the
+ * renal arteries) are not in the text; they are in the same section's figure
+ * of the abdominal arteries, and agree with the model's own openings
+ * (2026-10-01). **These are the textbook's account, not measurements of this
+ * specimen**, and every sentence that gives a level says "typically". Where
  * the source model's shape and that account differ, the text says which is
  * which and does not call the difference a variant.
  */
@@ -770,8 +776,8 @@ const ANATOMY = Object.freeze({
     ja: '上行大動脈に続いて左へ弓なりに曲がり、典型的には第 4・第 5 胸椎の間の椎間円板の高さで下行大動脈に続きます。3 本の主要な分枝を出し、最初が腕頭動脈、続いて左総頸動脈、左鎖骨下動脈です。胎生期の動脈管（肺動脈幹と大動脈を結んでいた血管）の遺残である動脈管索は、このモデルにありません。',
   }),
   VH_M_descending_aorta: Object.freeze({
-    en: 'Continues the arch downward close to the bodies of the vertebrae and passes through the aortic hiatus of the diaphragm. Above the hiatus it is called the thoracic aorta and below it the abdominal aorta, which runs to the left of the vertebral column and typically divides into the two common iliac arteries at the level of the fourth lumbar vertebra. The source records the whole length as one structure, so it is selected as one here. Its smaller branches — intercostal, lumbar and others — are not in the source and are not drawn.',
-    ja: '大動脈弓に続いて椎体の近くを下り、横隔膜の大動脈裂孔を通ります。裂孔より上を胸部大動脈、下を腹部大動脈と呼びます。腹部大動脈は脊柱の左側を下り、典型的には第 4 腰椎の高さで左右の総腸骨動脈に分かれます。出典は全長を 1 つの構造として収録しているため、ここでも 1 つとして選びます。肋間動脈・腰動脈などの細い枝は出典になく、描いていません。',
+    en: 'Continues the arch downward close to the bodies of the vertebrae and passes through the aortic hiatus of the diaphragm, typically at the level of the twelfth thoracic vertebra. Above the hiatus it is called the thoracic aorta and below it the abdominal aorta, which runs to the left of the vertebral column and typically divides into the two common iliac arteries at the level of the fourth lumbar vertebra. The source records the whole length as one structure, so it is selected as one here. Its smaller branches — intercostal, lumbar and others — are not in the source and are not drawn.',
+    ja: '大動脈弓に続いて椎体の近くを下り、典型的には第 12 胸椎の高さで横隔膜の大動脈裂孔を通ります。裂孔より上を胸部大動脈、下を腹部大動脈と呼びます。腹部大動脈は脊柱の左側を下り、典型的には第 4 腰椎の高さで左右の総腸骨動脈に分かれます。出典は全長を 1 つの構造として収録しているため、ここでも 1 つとして選びます。肋間動脈・腰動脈などの細い枝は出典になく、描いていません。',
   }),
   VH_M_brachiocephalic_artery: Object.freeze({
     en: 'The first branch of the arch, on the right side only — there is no left counterpart. It divides into the right subclavian and right common carotid arteries, which supply the head and neck, the upper limb and the chest wall on the right.',
@@ -794,26 +800,26 @@ const ANATOMY = Object.freeze({
     ja: '大動脈弓から直接出ます（右鎖骨下動脈は腕頭動脈から出ます）。内胸動脈・椎骨動脈・甲状頸動脈を出し、腋窩動脈となって上肢へ続きます。これらの枝は出典にありません。',
   }),
   VH_M_celiac_trunk: Object.freeze({
-    en: 'A single (unpaired) branch of the abdominal aorta, above the superior mesenteric artery. It divides into the left gastric, splenic and common hepatic arteries, which supply the stomach and oesophagus, the spleen, the liver and gallbladder, and parts of the duodenum and pancreas.',
-    ja: '腹部大動脈の不対の枝で、上腸間膜動脈より上から出ます。左胃動脈・脾動脈・総肝動脈に分かれ、胃と食道、脾臓、肝臓と胆嚢、十二指腸と膵臓の一部を栄養します。',
+    en: 'A single (unpaired) branch from the front of the abdominal aorta, above the superior mesenteric artery. It divides into the left gastric, splenic and common hepatic arteries, which supply the stomach and oesophagus, the spleen, the liver and gallbladder, and parts of the duodenum and pancreas.',
+    ja: '腹部大動脈の前面から出る不対の枝で、上腸間膜動脈より上にあります。左胃動脈・脾動脈・総肝動脈に分かれ、胃と食道、脾臓、肝臓と胆嚢、十二指腸と膵臓の一部を栄養します。',
   }),
   VH_M_superior_mesenteric_artery: Object.freeze({
-    en: 'A single (unpaired) branch of the abdominal aorta, below the coeliac trunk. It supplies the small intestine (duodenum, jejunum and ileum), the pancreas and most of the large intestine.',
-    ja: '腹部大動脈の不対の枝で、腹腔動脈の下から出ます。小腸（十二指腸・空腸・回腸）、膵臓、大腸の大部分を栄養します。',
+    en: 'A single (unpaired) branch from the front of the abdominal aorta, below the coeliac trunk. It supplies the small intestine (duodenum, jejunum and ileum), the pancreas and most of the large intestine.',
+    ja: '腹部大動脈の前面から、腹腔動脈の下で出る不対の枝です。小腸（十二指腸・空腸・回腸）、膵臓、大腸の大部分を栄養します。',
   }),
   // Keyed by node id: this mesh is shown as the right renal artery (see HEART_VESSELS).
   VH_M_left_renal_artery: Object.freeze({
-    en: 'One of the paired renal arteries, below the superior mesenteric artery; it supplies the right kidney. Because the aorta lies to the left of the vertebral column, the right renal artery is the longer of the two.',
-    ja: '上腸間膜動脈より下で出る左右一対の腎動脈のうち右側で、右の腎臓を栄養します。大動脈が脊柱の左側にあるため、右腎動脈は左より長くなります。',
+    en: 'One of the paired renal arteries, leaving the side of the abdominal aorta below the superior mesenteric artery; it supplies the right kidney. Because the aorta lies to the left of the vertebral column, the right renal artery is the longer of the two.',
+    ja: '上腸間膜動脈より下で腹部大動脈の側面から出る、左右一対の腎動脈のうち右側で、右の腎臓を栄養します。大動脈が脊柱の左側にあるため、右腎動脈は左より長くなります。',
   }),
   // Keyed by node id: this mesh is shown as the left renal artery (see HEART_VESSELS).
   VH_M_right_renal_artery: Object.freeze({
-    en: 'One of the paired renal arteries, below the superior mesenteric artery; it supplies the left kidney. Because the aorta lies to the left of the vertebral column, it is shorter than the right.',
-    ja: '上腸間膜動脈より下で出る左右一対の腎動脈のうち左側で、左の腎臓を栄養します。大動脈が脊柱の左側にあるため、右より短くなります。',
+    en: 'One of the paired renal arteries, leaving the side of the abdominal aorta below the superior mesenteric artery; it supplies the left kidney. Because the aorta lies to the left of the vertebral column, it is shorter than the right.',
+    ja: '上腸間膜動脈より下で腹部大動脈の側面から出る、左右一対の腎動脈のうち左側で、左の腎臓を栄養します。大動脈が脊柱の左側にあるため、右より短くなります。',
   }),
   VH_M_inferior_mesenteric_artery: Object.freeze({
-    en: 'The lowest single (unpaired) branch of the abdominal aorta, arising above the point where the aorta divides into the common iliac arteries (about 5 cm above it, in OpenStax\'s account). It supplies the distal part of the large intestine and the rectum. In this model, the source\'s own shape has it leaving just above that division — lower than that account. Whether that reflects this body or how the model was made is not established.',
-    ja: '腹部大動脈の不対の枝のうち最も下にあり、総腸骨動脈に分かれる位置より上から出ます（OpenStax の記載では約 5 cm 上）。大腸の遠位部と直腸を栄養します。このモデルでは、出典の形状のまま分岐部のすぐ上から出ており、この記載より低い位置です。それがこの人の体の特徴なのか、モデル作成上のものなのかは確認できていません。',
+    en: 'The lowest single (unpaired) branch of the abdominal aorta, arising from its front, a little to the left, above the point where the aorta divides into the common iliac arteries (about 5 cm above it, in OpenStax\'s account). It supplies the distal part of the large intestine and the rectum. In this model, the source\'s own shape has it leaving just above that division — lower than that account. Whether that reflects this body or how the model was made is not established.',
+    ja: '腹部大動脈の不対の枝のうち最も下にあり、前面のやや左から、総腸骨動脈に分かれる位置より上で出ます（OpenStax の記載では約 5 cm 上）。大腸の遠位部と直腸を栄養します。このモデルでは、出典の形状のまま分岐部のすぐ上から出ており、この記載より低い位置です。それがこの人の体の特徴なのか、モデル作成上のものなのかは確認できていません。',
   }),
   schematic_right_common_iliac_artery: Object.freeze({
     en: 'The right of the two arteries the abdominal aorta divides into, typically at the level of the fourth lumbar vertebra. It divides in turn into the external and internal iliac arteries at about the level of the lumbosacral joint, supplying the pelvis and the lower limb.',
