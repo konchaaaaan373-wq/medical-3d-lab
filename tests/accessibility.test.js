@@ -46,8 +46,8 @@ test('contrast: a colour that is not a colour is rejected rather than measured',
 
 test('contrast: a translucent panel is measured as composited, not as declared', () => {
   // The declared panel colour is darker than what a reader actually sees.
-  assert.equal(composite('#0a101c', 0.62, '#04060c'), SURFACES.panel);
-  assert.notEqual(SURFACES.panel, '#0a101c');
+  assert.equal(composite('#1c1a18', 0.72, '#121110'), SURFACES.panel);
+  assert.notEqual(SURFACES.panel, '#1c1a18');
   assert.equal(composite('#ffffff', 1, '#000000'), '#ffffff');
   assert.equal(composite('#ffffff', 0, '#000000'), '#000000');
 });
@@ -168,7 +168,9 @@ test('focus: the skip target does not land on the navigation it was meant to ski
   // The id belongs to the first content element, never to the landmark that
   // still contains the header.
   for (const [path, landmark] of [
-    ['src/app/Landing.js', "el('main', { class: 'landing' }"],
+    ['src/app/Landing.js', "el('main', { class: 'bm-landing' }"],
+    ['src/app/About.js', "el('main', { class: 'bm-page bm-about' }"],
+    ['src/app/PathologyIndex.js', "el('main', { class: 'bm-page bm-models-index is-pathology' }"],
     ['src/app/Trust.js', "el('main', { class: 'trust-page' }"],
     ['src/app/Legal.js', "el('main', { class: 'legal-page' }"],
   ]) {
@@ -286,13 +288,14 @@ test('generated pages: state their colours explicitly rather than inheriting', (
   // They are standalone documents: without an explicit scheme a reader with a
   // light-mode browser gets dark text on a dark background.
   const html = renderScenePage(PUBLIC_SCENES[0], {});
-  assert.match(html, /color-scheme: dark/);
-  assert.match(html, /background: #04060c/);
-  assert.match(html, /color: #eaf2ff/);
+  assert.match(html, /color-scheme: light/);
+  assert.match(html, /background: #f6f4ef/);
+  assert.match(html, /color: #1f1e1c/);
 });
 
 test('generated pages: their body text clears AA against their own background', () => {
-  assert.ok(contrastRatio('#eaf2ff', '#04060c') >= CONTRAST_MINIMUM.body);
-  assert.ok(contrastRatio('#c9d6ea', '#04060c') >= CONTRAST_MINIMUM.body);
-  assert.ok(contrastRatio('#a7b6ce', '#04060c') >= CONTRAST_MINIMUM.body);
+  // The page's own ink, body, secondary and footer text, on its paper ground.
+  for (const ink of ['#1f1e1c', '#3d3b37', '#5f5b54', '#6f6b63']) {
+    assert.ok(contrastRatio(ink, '#f6f4ef') >= CONTRAST_MINIMUM.body, ink);
+  }
 });

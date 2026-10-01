@@ -61,8 +61,10 @@ test('reading routes use direct headings and legal prose remains body-sized', ()
   const legal = read('src/app/Legal.js');
   const css = read('src/styles/surface-polish.css');
 
-  assert.match(landing, /Public beta/);
-  assert.match(landing, /3D anatomy model/);
+  // BYOKI MOTION (2026-09-30): the front door is the product's name and
+  // promise, read from the one place they live — not an anatomy atlas's title.
+  assert.match(landing, /BRAND\.tagline/);
+  assert.doesNotMatch(landing, /人体の3D解剖モデル/);
   assert.match(trust, /Model status and medical review/);
   assert.match(trust, /モデルの公開状態と医学レビュー/);
   assert.doesNotMatch(trust, /Maturity and medical review are different claims/);
@@ -111,6 +113,6 @@ test('mixed light and dark model surfaces keep small text and focus visible', ()
   );
   assert.match(
     css,
-    /html\[data-route='explorer'\] \.public-models \.landing-demo :focus-visible\s*\{[^}]*outline-color:\s*#38e1ef;/s
+    /html\[data-route='explorer'\] \.public-models \.landing-demo :focus-visible\s*\{[^}]*outline-color:\s*var\(--accent\);/s
   );
 });

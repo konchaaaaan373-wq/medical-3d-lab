@@ -1,4 +1,12 @@
-# medical-3d-lab
+# BYOKI MOTION
+
+**病態を、動かして理解する。** — Interactive models for understanding pathophysiology.
+
+病態生理の因果関係を、操作と動きで理解するインタラクティブ医学モデル集です
+（旧名 Medical 3D Lab。リポジトリ名は `medical-3d-lab` のまま）。
+名前・情報設計・モデル画面の器の判断は
+[`docs/architecture/adr-2026-09-30-byoki-motion.md`](docs/architecture/adr-2026-09-30-byoki-motion.md)。
+運営: 株式会社Neco。
 
 > **Make invisible mechanisms of health and disease visible, interactive, and understandable.**
 >

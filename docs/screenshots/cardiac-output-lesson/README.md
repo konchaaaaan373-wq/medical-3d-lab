@@ -12,13 +12,17 @@ it a tube that fills with what the heart sends out per minute. A legend under
 the strip says what each part means until C takes its place.
 
 Driven, not posed: every file here was written by
-`npm run verify:disease -- <dir> cardiac-output --lesson-only --record-lesson`
-(`scripts/lib/lesson-drive.mjs`) on 2026-10-01, in a run that also asserted, at
-each of these moments, that the figure and its parts are the size they were on
+`npm run verify:disease -- <dir> cardiac-output --lesson-only`
+(`scripts/lib/lesson-drive.mjs`; add `--record-lesson` for the recordings) on
+2026-10-01, after main's rebrand (#168) was merged in, in a run that also
+asserted, at each of these moments, that the figure and its parts are the size they were on
 the first screen, that each strip's numbers, arrows and on-screen tube length
 are the solver's, that C is never beside anything but B, that the note on what
 the experiment is stands on screen, and that no word in the figure overlaps
-another or is drawn under 12 px on a phone. Production build served locally,
+another or is drawn under 12 px on a phone; that on a phone the figure is drawn
+across at least 92% of the window (347×253 at 375×667, 362×264 at 390×844); and
+that 「このモデルについて」 opens on screen, holds the lesson's scope, and closes.
+Production build served locally,
 headless Chromium. **Not a real device** (F-238), **not a first-time reader**
 (F-239), **not medically reviewed** (F-240).
 
@@ -41,6 +45,8 @@ condition; nothing here is drawn from a figure written by hand.
 | `375-BC-no-words.png` | 375×667 | The same with every word and number hidden |
 | `375-3-result-no-words.png` | 375×667 | Scene 3 with every word and number hidden: the vessels lit, the tube short of its cream start mark |
 | `375-handover.png` | 375×667 | The explanation left for the buttons half way through scene 2: the line under the figure says what is on screen now and what the cream marks are |
+| `375-about.png` | 375×667 | 「このモデルについて」 opened: the shared sheet from the foot of the screen, with the lesson's scope in it (and, on a phone, the way to the heart's anatomy further down). Over the buttons, not under them (L-166) |
+| `1440-about.png` | 1440×900 | The same sheet on a wide window, hanging from its line. The dark-grey band under its lower edge is the WebGL canvas not drawn there in headless Chromium — the full model's sheet shows it too (F-246) |
 
 The two recordings per window (the explanation played through; the buttons —
 A, the action, C beside B, the action taken away so that C closes, and B again)

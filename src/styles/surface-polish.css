@@ -14,69 +14,25 @@ html[data-route='legal'] {
 
 /* Landing ---------------------------------------------------------------- */
 
-.landing-nav {
-  border-radius: 5px;
-  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
-}
-
-.landing-brand-mark {
-  background: transparent;
-  box-shadow: none;
-  font-weight: var(--weight-bold);
-}
-
-.landing-brand-mark i,
-.landing-eyebrow::before,
 .landing-demo-state.is-selected::before {
   box-shadow: none;
 }
 
-.landing-brand-name,
-.landing-nav-link,
 .landing-button,
 .landing-model-info-link,
-.landing-method-link,
-.landing-external-link,
-.landing-neco-operator,
-.landing-footer-operator,
 .landing-demo-title,
 .landing-demo-controls legend,
 .landing-demo-state-label,
-.landing-demo-metric-label,
-.landing-demo-metric-value,
-.landing-demo-retry,
-.landing-method-heading h2,
-.landing-neco-heading h2,
-.landing-contact h2 {
+.landing-demo-retry {
   font-weight: var(--weight-semibold);
 }
 
-.landing-eyebrow,
-.landing-section-kicker,
 .landing-demo-kicker {
   color: var(--ink-dim);
   font-size: 13px;
   font-weight: var(--weight-semibold);
   letter-spacing: 0.015em;
   text-transform: none;
-}
-
-.landing-eyebrow::before {
-  width: 18px;
-  background: var(--landing-blood);
-}
-
-.landing-title {
-  max-width: 11em;
-  font-size: clamp(42px, 4.3vw, 64px);
-  font-weight: var(--weight-semibold);
-  letter-spacing: -0.045em;
-}
-
-.landing-hero-summary,
-.landing-method-copy,
-.landing-neco-copy {
-  font-size: 16px;
 }
 
 .landing-button:hover,
@@ -99,8 +55,7 @@ html[data-route='legal'] {
 }
 
 .landing-demo-state,
-.landing-demo-retry,
-.landing-demo-detail {
+.landing-demo-retry {
   border-radius: 3px;
 }
 
@@ -236,10 +191,10 @@ html[data-route='explorer'] .public-models-actions .landing-model-action {
 /* Trust ------------------------------------------------------------------ */
 
 html[data-route='trust'] {
-  --ink: #1c2528;
+  --ink: #292826;
   --ink-dim: #425054;
   --ink-faint: #657176;
-  --border: rgba(28, 37, 40, 0.16);
+  --border: rgba(41, 40, 38, 0.16);
   --accent: #315f66;
   --panel: #ffffff;
 }
@@ -250,7 +205,7 @@ html[data-route='trust'] {
 
 .trust-nav {
   min-height: 58px;
-  border-color: rgba(28, 37, 40, 0.12);
+  border-color: rgba(41, 40, 38, 0.12);
   background: rgba(244, 245, 242, 0.96);
 }
 
@@ -303,13 +258,13 @@ html[data-route='trust'] {
   grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 0;
   margin-top: 30px;
-  border-block: 1px solid rgba(28, 37, 40, 0.14);
+  border-block: 1px solid rgba(41, 40, 38, 0.14);
 }
 
 .trust-principles > span {
   min-width: 0;
   padding: 14px 16px;
-  border-left: 1px solid rgba(28, 37, 40, 0.14);
+  border-left: 1px solid rgba(41, 40, 38, 0.14);
   font-size: 14px;
   line-height: 1.55;
 }
@@ -384,10 +339,10 @@ html[data-route='trust'] {
 
 html[data-route='legal'] {
   --bg: #f4f6f5;
-  --ink: #18282d;
+  --ink: #2a2927;
   --ink-dim: #465c63;
   --ink-faint: #607176;
-  --border: rgba(24, 40, 45, 0.16);
+  --border: rgba(42, 41, 39, 0.16);
   --accent: #075f6c;
   --accent-hover: #054b56;
   --panel: #ffffff;
@@ -492,7 +447,6 @@ html[data-route='legal'] #ui {
   color: #9f3030;
 }
 
-.landing-title .lang-ja,
 .public-models-header .title .lang-ja,
 .trust-hero h1 .lang-ja,
 .legal-title .lang-ja {
@@ -551,20 +505,13 @@ html[data-route='legal'] #ui {
 /* Explorer chrome is light, but its live model well is near-black. Keep the
    route's dark-teal ring outside the well and restore a luminous ring within. */
 html[data-route='explorer'] .public-models .landing-demo :focus-visible {
-  outline-color: #38e1ef;
+  outline-color: var(--accent);
 }
 
 @media (max-width: 720px) {
-  .landing-title {
-    font-size: clamp(30px, 9.4vw, 36px);
-    letter-spacing: -0.03em;
-  }
+  
 
-  .landing-hero-summary,
-  .landing-method-copy,
-  .landing-neco-copy {
-    font-size: 15px;
-  }
+  
 
   .public-models-appbar {
     margin-bottom: 18px;
@@ -585,7 +532,7 @@ html[data-route='explorer'] .public-models .landing-demo :focus-visible {
   .trust-principles > span {
     padding: 11px 0;
     border-left: 0;
-    border-top: 1px solid rgba(28, 37, 40, 0.12);
+    border-top: 1px solid rgba(41, 40, 38, 0.12);
   }
 
   .trust-principles > span:first-child {

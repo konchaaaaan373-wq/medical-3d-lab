@@ -53,7 +53,7 @@
 /* On is filled, off is text: the two states differ in more than colour. */
 .global-nav-purpose-option[aria-pressed='true'] {
   background: var(--accent);
-  color: #04121a;
+  color: #161513;
 }
 
 .global-nav-purpose-option:focus-visible {
@@ -303,7 +303,7 @@
     overflow: auto;
     border: 1px solid rgba(158, 190, 204, 0.22);
     border-radius: 14px;
-    background: rgba(7, 13, 20, 0.95);
+    background: rgba(19, 18, 16, 0.95);
     box-shadow: -16px 0 40px rgba(0, 0, 0, 0.28);
   }
 
@@ -351,7 +351,7 @@
   padding: 8px 8px 8px 14px;
   border: 1px solid color-mix(in srgb, var(--accent) 45%, var(--border));
   border-radius: 10px;
-  background: rgba(7, 13, 20, 0.96);
+  background: rgba(19, 18, 16, 0.96);
   color: var(--ink);
   font-size: 13px;
   line-height: 1.5;

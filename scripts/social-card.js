@@ -24,6 +24,7 @@
 import { createHash } from 'node:crypto';
 
 import { SITE_NAME, escapeHtml } from './site-metadata.js';
+import { BRAND } from '../src/data/brand.js';
 
 /**
  * A short digest of the markup a card was drawn from.
@@ -176,9 +177,9 @@ export function siteCardHtml({ sceneCount = 0 } = {}) {
     // No eyebrow: the wordmark is directly above it, and repeating the site's
     // own name there is the one thing this card does not need to say twice.
     eyebrow: '',
-    title: 'Make invisible physiology visible',
-    titleJa: '見えない病態生理を、動かして理解する',
-    body: '一つの医学モデルから、3D・数値・グラフ・教材がすべて導かれます。',
+    title: BRAND.description,
+    titleJa: BRAND.tagline.ja,
+    body: BRAND.descriptionJa,
     badges: [
       { text: `${sceneCount} public models · 公開モデル ${sceneCount} 件`, tone: 'plain' },
       { text: 'Maturity and clinical review shown per model', tone: 'plain' },
@@ -186,10 +187,11 @@ export function siteCardHtml({ sceneCount = 0 } = {}) {
   });
 }
 
+// On BYOKI MOTION's paper (2026-09-30). Each ink clears 4.5:1 on #f6f4ef.
 const TONES = {
-  good: { border: '#3f7f63', ink: '#a9e7c4' },
-  warn: { border: '#8a6a33', ink: '#f0cf94' },
-  plain: { border: '#2b3648', ink: '#a7b6ce' },
+  good: { border: '#6f9a82', ink: '#2f5e45' },
+  warn: { border: '#b8925a', ink: '#7a4a12' },
+  plain: { border: '#c9c4ba', ink: '#45423d' },
 };
 
 function card({ eyebrow, title, titleJa, body, badges, titleScale = 1 }) {
@@ -206,66 +208,53 @@ function card({ eyebrow, title, titleJa, body, badges, titleScale = 1 }) {
   * { margin: 0; padding: 0; box-sizing: border-box; }
   html, body { width: ${CARD_WIDTH}px; height: ${CARD_HEIGHT}px; }
   body {
-    background: #04060c;
-    color: #eaf2ff;
+    background: #f6f4ef;
+    color: #1f1e1c;
     font-family: ${FONT_STACK};
-    /* The accent, thrown from the top-left the way the product's own surfaces
-       light a dark page, so a card is recognisably from this site. */
-    background-image:
-      radial-gradient(1100px 620px at 8% -12%, rgba(56, 225, 239, 0.16), transparent 62%),
-      radial-gradient(700px 520px at 104% 118%, rgba(56, 225, 239, 0.07), transparent 60%);
     display: flex;
     flex-direction: column;
     justify-content: space-between;
     padding: 62px 68px 54px;
   }
-  .wordmark { display: flex; align-items: center; gap: 14px; }
-  .mark {
-    width: 40px; height: 40px; border-radius: 10px;
-    background: #38e1ef; color: #04060c;
-    font-size: 17px; font-weight: 800; letter-spacing: -0.04em;
-    display: flex; align-items: center; justify-content: center;
-  }
-  /* Scoped past the mark, which is also a span inside the wordmark: an
-     unscoped rule here painted the badge's letters in the badge's own
-     background colour, and a solid cyan square is not a wordmark. */
-  .wordmark > span:not(.mark) {
-    font-size: 15px; font-weight: 700; letter-spacing: 0.26em; text-transform: uppercase;
-    color: #38e1ef;
-  }
+  /* BYOKI MOTION, set as type — the same treatment as the header's wordmark
+     (src/components/Wordmark.js): BYOKI a weight heavier, MOTION opening up. */
+  .wordmark { display: flex; align-items: baseline; gap: 12px; font-size: 26px; line-height: 1; }
+  .wordmark b { font-weight: 600; letter-spacing: 0.04em; }
+  .wordmark span { font-weight: 400; letter-spacing: 0.12em; }
+  .wordmark i { width: 9px; height: 9px; border-radius: 50%; background: #e0662f; align-self: center; }
   .eyebrow {
     margin-top: 44px;
     font-size: 21px; letter-spacing: 0.16em; text-transform: uppercase;
-    color: #6b7c95;
+    color: #6f6b63;
   }
   h1 {
     margin-top: 18px;
     font-size: ${titleSize(title, titleScale)}px;
-    line-height: 1.04; letter-spacing: -0.035em; font-weight: 750;
+    line-height: 1.08; letter-spacing: -0.02em; font-weight: 600;
     max-width: 22ch;
   }
   .title-ja {
     margin-top: 14px;
-    font-size: ${subtitleSize(titleJa)}px; line-height: 1.24; font-weight: 600;
-    color: #a7b6ce;
+    font-size: ${subtitleSize(titleJa)}px; line-height: 1.3; font-weight: 500;
+    color: #45423d;
   }
-  .body { margin-top: 20px; font-size: 23px; line-height: 1.5; color: #a7b6ce; max-width: 40ch; }
+  .body { margin-top: 20px; font-size: 23px; line-height: 1.5; color: #45423d; max-width: 40ch; }
   /* The head may shrink; the foot may not. Whatever else a card loses when a
      title runs long, it does not lose the line that says what this is. */
   .head { min-height: 0; overflow: hidden; }
   .foot { display: flex; flex-direction: column; gap: 18px; flex: 0 0 auto; }
   .badges { display: flex; gap: 12px; flex-wrap: wrap; }
   .badge {
-    border: 1px solid #2b3648; border-radius: 999px;
-    padding: 9px 18px; font-size: 19px; font-weight: 600;
+    border: 1px solid #c9c4ba; border-radius: 6px;
+    padding: 9px 16px; font-size: 19px; font-weight: 500;
   }
-  .boundary { font-size: 18px; line-height: 1.45; color: #6b7c95; }
-  .boundary b { display: block; font-weight: 600; color: #8394ad; }
+  .boundary { font-size: 18px; line-height: 1.45; color: #6f6b63; }
+  .boundary b { display: block; font-weight: 500; color: #45423d; }
 </style>
 </head>
 <body>
   <div class="head">
-    <div class="wordmark"><span class="mark">3D</span><span>${escapeHtml(SITE_NAME)}</span></div>
+    <div class="wordmark" aria-label="${escapeHtml(SITE_NAME)}"><b>${escapeHtml(BRAND.words[0])}</b><span>${escapeHtml(BRAND.words[1])}</span><i></i></div>
     ${eyebrow ? `<p class="eyebrow">${escapeHtml(eyebrow)}</p>` : ''}
     <h1>${escapeHtml(title)}</h1>
     <p class="title-ja">${escapeHtml(titleJa)}</p>

@@ -1,0 +1,1189 @@
+/* ==========================================================================
+   BYOKI MOTION — the product's own surfaces (ADR 2026-09-30)
+   ==========================================================================
+
+   What lives here: the wordmark, the reading surfaces the rebrand built (the
+   landing page, the model index, About), the model card, the shared footer,
+   and the few adjustments the model header needs to carry the name.
+
+   What does not: the colours themselves. The stage tokens are `:root` in
+   base.css (mirrored in palette.js for the contrast tests) and the paper
+   tokens are `--reading-*` in shell-header.css. This file reads them.
+
+   Loaded late — after every surface sheet, before phone-touch-targets.css,
+   which keeps the last word on phone target sizes.
+
+   The design brief, in the rules below:
+   - Editorial, calm: paper, charcoal, warm grey. No gradients, no glow, no
+     shadows under cards, no pill for anything a reader must read.
+   - Orange (`--bm-change`) only where something is operated, selected or
+     changing: the CTA's arrow, a focus ring, the marked point in a motif.
+   - Type carries hierarchy by size and space first, weight second; nothing
+     heavier than 600; body text 16 px; nothing a reader must read under
+     14 px on a phone.
+   ========================================================================== */
+
+:root {
+  --bm-change: #e0662f;
+  /* Orange that is also text on paper: 5.3:1 on --reading-bg. */
+  --bm-change-ink: #b24a16;
+  --bm-stage: #121110;
+  --bm-measure: 68ch;
+  --bm-page: min(1180px, calc(100% - 32px));
+  --bm-radius: 6px;
+}
+
+/* ------------------------------------------------------------- wordmark */
+
+.wordmark {
+  display: inline-flex;
+  align-items: baseline;
+  line-height: 1;
+  color: inherit;
+  white-space: nowrap;
+}
+
+.wordmark-type {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 0.34em;
+}
+
+.wordmark-first {
+  font-weight: 600;
+  letter-spacing: 0.04em;
+}
+
+.wordmark-second {
+  display: inline-flex;
+  font-weight: 400;
+}
+
+/* MOTION opens up letter by letter — the one motion the name carries, and
+   it costs no frame. */
+.wordmark-letter { margin-right: 0.05em; }
+.wordmark-letter[data-step='1'] { margin-right: 0.07em; }
+.wordmark-letter[data-step='2'] { margin-right: 0.095em; }
+.wordmark-letter[data-step='3'] { margin-right: 0.125em; }
+.wordmark-letter[data-step='4'] { margin-right: 0.16em; }
+.wordmark-letter[data-step='5'] { margin-right: 0; }
+
+.wordmark.is-sm { font-size: 15px; }
+.wordmark.is-md { font-size: 20px; }
+.wordmark.is-lg { font-size: clamp(30px, 5vw, 44px); }
+.wordmark.is-xl { font-size: clamp(32px, 8.4vw, 92px); }
+/* At display size a 600 reads as shouting; the contrast with MOTION is enough. */
+.wordmark.is-xl .wordmark-first,
+.wordmark.is-lg .wordmark-first { font-weight: 600; }
+/* The second word a shade lighter as well as a weight lighter, so the name
+   keeps its two parts where a system font has no 500 to step through. */
+.wordmark.is-xl .wordmark-second,
+.wordmark.is-lg .wordmark-second { color: var(--reading-muted, currentColor); }
+
+/* ------------------------------------------------------------ the shell */
+
+.shell-header {
+  width: var(--bm-page);
+  margin: 0 auto;
+  padding-left: 0;
+  padding-right: 0;
+}
+
+.shell-brand {
+  font-weight: inherit;
+  letter-spacing: 0;
+}
+
+.shell-brand .wordmark.is-sm { font-size: 16px; }
+
+/* Medical | Patient: one control with two sides, where it is offered. */
+.shell-audience {
+  display: inline-flex;
+  border: 1px solid var(--shell-rule);
+  border-radius: var(--bm-radius);
+  padding: 2px;
+  gap: 2px;
+}
+
+.shell-audience .shell-nav-link {
+  border-radius: 4px;
+  padding-inline: 12px;
+}
+
+.shell-audience .shell-nav-link[aria-current='page'] {
+  background: var(--shell-ink);
+  color: var(--reading-bg);
+}
+
+/* --------------------------------------------------- the paper surfaces */
+
+html[data-route='landing'],
+html[data-route='landing'] body,
+html[data-route='explorer'],
+html[data-route='explorer'] body {
+  background: var(--reading-bg);
+  color: var(--reading-ink);
+}
+
+.bm-landing,
+.bm-page {
+  position: relative;
+  min-height: 100vh;
+  background: var(--reading-bg);
+  color: var(--reading-ink);
+  font-size: 16px;
+  line-height: 1.75;
+}
+
+.bm-landing a,
+.bm-page a {
+  color: inherit;
+}
+
+.bm-landing :focus-visible,
+.bm-page :focus-visible {
+  outline: 2px solid var(--bm-change);
+  outline-offset: 3px;
+}
+
+/* ----------------------------------------------------------------- hero */
+
+.bm-hero {
+  position: relative;
+  width: var(--bm-page);
+  margin: 0 auto;
+  /* Short enough that the first model shows above the fold on a laptop: the
+     distance from arriving to touching a model is the thing to keep small. */
+  min-height: min(58vh, 540px);
+  display: grid;
+  align-items: center;
+  padding: clamp(32px, 6vh, 72px) 0 clamp(32px, 5vh, 56px);
+  overflow: hidden;
+}
+
+.bm-hero:focus,
+.bm-models:focus { outline: none; }
+
+.bm-models { scroll-margin-top: 12px; }
+
+.bm-hero-motion {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+
+.bm-hero-motion-slot,
+.bm-hero-motion .landing-flow-field {
+  display: block;
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  opacity: 1;
+}
+
+.bm-hero-copy {
+  position: relative;
+  max-width: 760px;
+}
+
+.bm-hero-title {
+  margin: 0;
+  font-size: inherit;
+  font-weight: inherit;
+  line-height: 1;
+}
+
+.bm-hero-tagline {
+  margin: clamp(22px, 3.5vh, 34px) 0 0;
+  font-size: clamp(24px, 3.4vw, 36px);
+  line-height: 1.45;
+  font-weight: 500;
+  letter-spacing: 0.01em;
+}
+
+.bm-hero-definition {
+  margin: 10px 0 0;
+  font-size: clamp(16px, 1.6vw, 18px);
+  color: var(--reading-muted);
+}
+
+.bm-cta {
+  display: inline-flex;
+  align-items: center;
+  gap: 14px;
+  min-height: 52px;
+  margin-top: clamp(28px, 5vh, 44px);
+  padding: 0 24px;
+  border-radius: var(--bm-radius);
+  background: var(--reading-ink);
+  color: var(--reading-bg) !important;
+  font-size: 16px;
+  font-weight: 600;
+  text-decoration: none;
+  transition: background-color 160ms ease;
+}
+
+.bm-cta:hover { background: #000; }
+
+.bm-cta-arrow {
+  color: var(--bm-change);
+  font-weight: 400;
+  transition: transform 180ms ease;
+}
+
+.bm-cta:hover .bm-cta-arrow { transform: translateX(3px); }
+
+/* -------------------------------------------------------------- sections */
+
+.bm-section {
+  width: var(--bm-page);
+  margin: 0 auto;
+  padding: clamp(40px, 7vh, 72px) 0;
+  border-top: 1px solid var(--reading-rule);
+}
+
+.bm-section-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: clamp(20px, 3vh, 32px);
+}
+
+.bm-section-title {
+  margin: 0 0 clamp(20px, 3vh, 28px);
+  font-size: clamp(20px, 2.2vw, 24px);
+  line-height: 1.4;
+  font-weight: 600;
+}
+
+.bm-section-head .bm-section-title { margin: 0; }
+
+.bm-section-link {
+  display: inline-flex;
+  align-items: center;
+  min-height: 44px;
+  font-size: 15px;
+  text-decoration: underline;
+  text-underline-offset: 4px;
+  text-decoration-thickness: 1px;
+}
+
+.bm-empty {
+  margin: 0;
+  color: var(--reading-muted);
+}
+
+/* ----------------------------------------------------------- model cards */
+
+.bm-model-list {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: clamp(28px, 4vw, 44px) clamp(20px, 3vw, 32px);
+}
+
+.model-card {
+  display: grid;
+  grid-template-rows: auto 1fr;
+  gap: 16px;
+  color: inherit;
+  text-decoration: none;
+}
+
+.model-card-visual {
+  position: relative;
+  display: block;
+  aspect-ratio: 16 / 10;
+  overflow: hidden;
+  border-radius: var(--bm-radius);
+  background: var(--bm-stage);
+}
+
+.model-card-image {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  transition: transform 420ms ease;
+}
+
+.model-card:hover .model-card-image { transform: scale(1.02); }
+
+.model-card-motif {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+
+.model-card-motif-line {
+  fill: none;
+  stroke: rgba(241, 238, 232, 0.22);
+  stroke-width: 1;
+}
+
+.model-card-motif-dot { fill: rgba(241, 238, 232, 0.55); }
+.model-card-motif-dot.is-change { fill: var(--bm-change); }
+
+.model-card-text {
+  display: grid;
+  align-content: start;
+  gap: 6px;
+}
+
+.model-card-system {
+  font-size: 14px;
+  color: var(--reading-faint);
+  letter-spacing: 0.04em;
+}
+
+.model-card-name {
+  margin: 0;
+  font-size: clamp(20px, 2vw, 24px);
+  line-height: 1.4;
+  font-weight: 600;
+}
+
+.model-card:hover .model-card-name {
+  text-decoration: underline;
+  text-underline-offset: 5px;
+  text-decoration-thickness: 1px;
+}
+
+.model-card-question {
+  margin: 0;
+  font-size: 16px;
+  line-height: 1.7;
+  color: var(--reading-muted);
+}
+
+/* The first model on a list gets the width: the picture beside its words. */
+@media (min-width: 821px) {
+  .bm-model-list .model-card.is-feature {
+    grid-column: 1 / -1;
+    grid-template-columns: minmax(0, 7fr) minmax(0, 5fr);
+    grid-template-rows: none;
+    align-items: end;
+    gap: clamp(24px, 4vw, 56px);
+  }
+
+  .model-card.is-feature .model-card-name { font-size: clamp(26px, 2.8vw, 34px); }
+  .model-card.is-feature .model-card-question { font-size: 18px; }
+  .model-card.is-feature .model-card-text { padding-bottom: 8px; gap: 10px; }
+}
+
+/* ------------------------------------------ the anatomy page (#/anatomy) */
+
+/* The organ chooser was the landing hero and, in the beta, `#/organs` was
+   redirected to it — so this page, with the shared header on it, had never
+   been drawn. Its grid placed the header in a free cell. The header and the
+   footer take whole rows; the rest keeps its places one row down. */
+.public-models > .shell-header,
+.public-models > .site-footer {
+  width: 100%;
+}
+
+@media (max-width: 899px) {
+  .public-models-header { padding-top: 28px; }
+}
+
+@media (min-width: 900px) {
+  .public-models {
+    grid-template-rows: auto auto 1fr auto;
+  }
+
+  .public-models > .shell-header { grid-column: 1 / -1; grid-row: 1; }
+  .public-models-header { grid-row: 2; padding-top: 48px; }
+  .public-models-focus { grid-row: 2 / span 2; margin-top: 24px; }
+  .public-models-actions { grid-row: 3; }
+  .public-models > .site-footer { grid-column: 1 / -1; grid-row: 4; }
+}
+
+.bm-trail {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 14px;
+  letter-spacing: 0;
+  text-transform: none;
+  color: var(--reading-muted);
+}
+
+.bm-trail-parent {
+  display: inline-flex;
+  align-items: center;
+  min-height: 24px;
+  color: var(--reading-ink);
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+.bm-trail-separator { color: var(--reading-faint); }
+
+html[data-route='explorer'] .public-models-actions .landing-model-action {
+  background: var(--reading-ink);
+  border-color: var(--reading-ink);
+  color: var(--reading-bg);
+}
+
+html[data-route='explorer'] .public-models-actions .landing-model-info-link,
+html[data-route='explorer'] .public-models-actions .landing-demo-info {
+  color: var(--reading-ink);
+}
+
+/* ------------------------------------------------- anatomy, as a shelf */
+
+.bm-anatomy-line {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px 18px;
+  margin-top: clamp(32px, 5vh, 48px);
+  padding-top: 18px;
+  border-top: 1px dashed var(--reading-rule-strong);
+  font-size: 15px;
+  color: var(--reading-muted);
+}
+
+.bm-anatomy-organs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0 14px;
+}
+
+.bm-anatomy-link {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 44px;
+  /* 「脳」 is one character: the word is not the target, the box is. */
+  min-width: 44px;
+  text-decoration: underline;
+  text-underline-offset: 4px;
+  text-decoration-thickness: 1px;
+  color: var(--reading-ink);
+}
+
+/* -------------------------------------------------------------- concept */
+
+.bm-concept {
+  display: grid;
+  grid-template-columns: minmax(0, 5fr) minmax(0, 7fr);
+  gap: clamp(20px, 5vw, 72px);
+  align-items: start;
+}
+
+.bm-concept-title {
+  margin: 0;
+  font-size: clamp(24px, 3vw, 34px);
+  line-height: 1.45;
+  font-weight: 500;
+}
+
+.bm-concept-body > p {
+  margin: 0;
+  max-width: var(--bm-measure);
+  font-size: 17px;
+  color: var(--reading-muted);
+}
+
+.bm-loop {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 0;
+  margin: 28px 0 0;
+  padding: 0;
+  list-style: none;
+  font-size: 15px;
+}
+
+.bm-loop-step {
+  display: inline-flex;
+  align-items: center;
+  color: var(--reading-ink);
+}
+
+.bm-loop-step + .bm-loop-step::before {
+  content: '';
+  display: inline-block;
+  width: 28px;
+  height: 1px;
+  margin: 0 12px;
+  background: var(--reading-rule-strong);
+}
+
+.bm-loop-step.is-change {
+  color: var(--bm-change-ink);
+}
+
+/* ------------------------------------------------------------- audience */
+
+.bm-audience-columns {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: clamp(24px, 4vw, 56px);
+}
+
+.bm-audience-name {
+  margin: 0 0 8px;
+  font-size: 18px;
+  font-weight: 600;
+}
+
+.bm-audience-column p {
+  margin: 0;
+  max-width: 52ch;
+  color: var(--reading-muted);
+}
+
+.bm-audience-column .bm-audience-note {
+  margin-top: 12px;
+  font-size: 14px;
+  color: var(--reading-faint);
+}
+
+/* ---------------------------------------------------------- page heads */
+
+.bm-page-head {
+  width: var(--bm-page);
+  margin: 0 auto;
+  padding: clamp(40px, 7vh, 72px) 0 clamp(28px, 5vh, 48px);
+}
+
+.bm-page-head:focus { outline: none; }
+
+.bm-page-title {
+  margin: 0;
+  font-size: clamp(32px, 4.5vw, 48px);
+  line-height: 1.2;
+  font-weight: 500;
+}
+
+.bm-page-lead {
+  margin: 16px 0 0;
+  max-width: var(--bm-measure);
+  font-size: 17px;
+  color: var(--reading-muted);
+}
+
+.bm-shelf.is-anatomy .bm-shelf-lead {
+  margin: -12px 0 16px;
+  color: var(--reading-muted);
+}
+
+.bm-anatomy-list {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  gap: 0 24px;
+  margin: 0 0 12px;
+  padding: 0;
+  list-style: none;
+}
+
+.bm-anatomy-item {
+  display: flex;
+  align-items: baseline;
+  gap: 12px;
+  min-height: 48px;
+  padding: 10px 0;
+  border-bottom: 1px solid var(--reading-rule);
+  text-decoration: none;
+}
+
+.bm-anatomy-organ {
+  font-weight: 600;
+  min-width: 3em;
+}
+
+.bm-anatomy-title {
+  color: var(--reading-muted);
+  font-size: 15px;
+}
+
+.bm-anatomy-item:hover .bm-anatomy-organ {
+  text-decoration: underline;
+  text-underline-offset: 4px;
+}
+
+/* ---------------------------------------------------------------- About */
+
+.bm-about-tagline {
+  margin: 18px 0 0;
+  font-size: clamp(20px, 2.6vw, 28px);
+  font-weight: 500;
+}
+
+.bm-about-section {
+  width: var(--bm-page);
+  margin: 0 auto;
+  padding: clamp(28px, 5vh, 48px) 0;
+  border-top: 1px solid var(--reading-rule);
+  display: grid;
+  grid-template-columns: minmax(0, 4fr) minmax(0, 8fr);
+  gap: 8px clamp(20px, 5vw, 64px);
+}
+
+.bm-about-section:focus { outline: none; }
+
+.bm-about-section > * { grid-column: 2; }
+.bm-about-section > .bm-about-heading { grid-column: 1; grid-row: 1 / span 6; }
+
+.bm-about-heading {
+  margin: 0;
+  font-size: 18px;
+  font-weight: 600;
+  line-height: 1.5;
+}
+
+.bm-about-section p {
+  margin: 0 0 12px;
+  max-width: var(--bm-measure);
+  color: var(--reading-muted);
+}
+
+.bm-about-rule {
+  font-size: clamp(18px, 2vw, 22px);
+  color: var(--reading-ink) !important;
+  line-height: 1.6;
+}
+
+.bm-about-verdicts {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  gap: 8px 20px;
+  margin: 4px 0 0;
+}
+
+.bm-about-verdicts dt { font-weight: 600; }
+.bm-about-verdicts dd { margin: 0; color: var(--reading-muted); max-width: var(--bm-measure); }
+
+.bm-about-links {
+  margin: 4px 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.bm-about-external {
+  display: inline-flex;
+  align-items: center;
+  min-height: 44px;
+  text-decoration: underline;
+  text-underline-offset: 4px;
+  text-decoration-thickness: 1px;
+}
+
+.bm-about-next {
+  width: var(--bm-page);
+  margin: 0 auto;
+  padding: 8px 0 clamp(48px, 8vh, 80px);
+}
+
+.bm-about-next .bm-cta { margin-top: 0; }
+
+.bm-loop.is-inline { margin: 0 0 16px; }
+
+/* --------------------------------------------------------------- footer */
+
+.site-footer {
+  width: var(--bm-page);
+  margin: 0 auto;
+  padding: 36px 0 40px;
+  border-top: 1px solid var(--reading-rule);
+  display: grid;
+  grid-template-columns: minmax(0, 5fr) minmax(0, 7fr);
+  gap: 20px clamp(20px, 5vw, 64px);
+  color: var(--reading-muted);
+  font-size: 14px;
+  line-height: 1.7;
+}
+
+.site-footer-brand {
+  display: inline-flex;
+  align-items: center;
+  min-height: 44px;
+  color: var(--reading-ink);
+  text-decoration: none;
+}
+
+.site-footer-boundary { margin: 4px 0 0; max-width: 40ch; }
+
+.site-footer-nav {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px clamp(20px, 4vw, 48px);
+}
+
+.site-footer-group {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+}
+
+.site-footer-link,
+.site-footer-operator-link {
+  display: inline-flex;
+  align-items: center;
+  min-height: 40px;
+  color: var(--reading-ink);
+  text-decoration: none;
+}
+
+.site-footer-link:hover,
+.site-footer-operator-link:hover {
+  text-decoration: underline;
+  text-underline-offset: 4px;
+}
+
+.site-footer-operator {
+  grid-column: 1 / -1;
+  margin: 0;
+  padding-top: 16px;
+  border-top: 1px solid var(--reading-rule);
+}
+
+.site-footer-external { margin-left: 4px; }
+
+/* --------------------------------------------------------- the menu */
+
+.site-menu-shelf + .site-menu-shelf { margin-top: 12px; }
+
+.site-menu-shelf-title {
+  margin: 0 0 2px;
+  padding: 0 10px;
+  font-size: 12px;
+  color: var(--menu-muted);
+}
+
+/* -------------------------------------------------- the model's header */
+
+/* The home link was a 44 px square holding the icon alone (2026-09-27); it
+   now holds the mark and the name. */
+.global-scene-nav .global-nav-brand {
+  width: auto;
+  min-width: 44px;
+  gap: 9px;
+  padding: 0 10px 0 6px;
+  color: var(--ink);
+  text-decoration: none;
+}
+
+.global-scene-nav .global-nav-brand-mark {
+  width: 28px;
+  height: 28px;
+}
+
+.global-nav-brand .wordmark.is-sm { font-size: 14px; }
+
+.global-nav-product {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  margin-right: auto;
+}
+
+.global-nav-product-link {
+  display: inline-flex;
+  align-items: center;
+  min-height: 44px;
+  padding: 0 12px;
+  border-radius: var(--bm-radius);
+  color: var(--ink-dim);
+  font-size: 14px;
+  text-decoration: none;
+}
+
+.global-nav-product-link:hover {
+  color: var(--ink);
+  background: var(--control-bg);
+}
+
+/* On a phone the experiment layout opens 「空間を観察」 over the read-out strip,
+   so the strip's 「他の指標」 was painted over by the panel's own buttons —
+   measured once a disease model joined `verify:ui` (2026-09-30). While the
+   panel is open it takes the strip's place; the figures come back with it
+   closed. `visibility`, so the strip keeps its box and the camera's safe
+   area does not move. */
+@media (max-width: 720px) {
+  #ui[data-layout='experiment'].is-inspecting .rail {
+    visibility: hidden;
+  }
+}
+
+/* On a wide window the same panel opens in the rail where the console stands,
+   and the console painted over it (verify:ui, 1280×800). The console gives
+   way while the panel is open, as the read-out does on a phone. */
+@media (min-width: 721px) {
+  #ui[data-layout='experiment'].is-inspecting .console {
+    visibility: hidden;
+  }
+}
+
+/* 「他の指標」 is a 22 px line of text in the read-out; 24 px is WCAG 2.5.8's
+   floor at every width (44 on a phone is phone-touch-targets.css). */
+#ui[data-layout='experiment'] .metrics .metrics-more {
+  min-height: 24px;
+}
+
+/* The phone header is a grid (site-header.css, ≤ 720 px); the product links
+   take the place the organ row takes on an anatomy model. */
+@media (max-width: 720px) {
+  .global-scene-nav.has-site-menu > .global-nav-product {
+    grid-area: where;
+    justify-self: end;
+    margin-right: 0;
+  }
+}
+
+/* ------------------------------------------- the model's title card */
+
+/* 「病態モデル / 循環」: the kind of model (a link back to the others) and the
+   system, above the name. */
+.title-trail-system,
+.title-trail-separator {
+  /* The separator was `--ink-faint`: 3.31:1 on the anatomy card's pale ground
+     (verify:ui). A character a reader reads is text. */
+  color: var(--ink-dim);
+}
+
+/* 「心臓の解剖を確認 →」: quiet, one line, under the title. */
+.title-anatomy-check {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0 14px;
+  flex-basis: 100%;
+}
+
+/* On a disease model the title line carries its two quiet links on the same
+   row as the name when there is room — 「このモデルについて ＋」 and
+   「心臓の解剖を確認 →」 — rather than a row each: the camera frames the model
+   under the title card, and a row each cost the heart 23 px at 1280×720
+   (verify:disease). The panel the first opens is out of the flow. */
+#ui[data-layout='experiment'] .title-card.has-trail > .title-trust-fold,
+#ui[data-layout='experiment'] .title-card.has-trail > .title-anatomy-check {
+  flex-basis: auto;
+  margin-left: 12px;
+}
+
+.title-anatomy-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 32px;
+  font-size: 13px;
+  color: var(--ink-dim);
+  text-decoration: underline;
+  text-decoration-color: color-mix(in srgb, currentColor 35%, transparent);
+  text-underline-offset: 3px;
+}
+
+.title-anatomy-link:hover,
+.title-anatomy-link:focus-visible {
+  color: var(--ink);
+  text-decoration-color: currentColor;
+}
+
+.title-anatomy-arrow { text-decoration: none; }
+
+/* 「このモデルについて」: a reading panel over the model, out of the flow so
+   the camera does not reframe for it (the framing measures the title card). */
+.title-about {
+  position: relative;
+}
+
+.title-about-body {
+  position: fixed;
+  z-index: 40;
+  top: 140px;
+  left: 16px;
+  width: min(460px, calc(100vw - 32px));
+  max-height: min(64vh, 580px);
+  overflow: auto;
+  overscroll-behavior: contain;
+  padding: 14px 16px 12px;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: var(--panel-sheet);
+  box-shadow: 0 18px 40px rgba(0, 0, 0, 0.45);
+  white-space: normal;
+}
+
+/* While 「このモデルについて」 is open, its column drops the scroll fade: a mask
+   clips fixed descendants too, and the phone's sheet sits below the column. */
+#ui .top-left.is-reading-about {
+  -webkit-mask-image: none;
+  mask-image: none;
+}
+
+/* The scope inside the fold is the fold's content, not the learning view's
+   optional detail: `#ui[data-view='learning'] .model-scope:not(.is-primary)`
+   hides a non-primary scope, which emptied the fold of what the model shows
+   and does not show on every model whose scope is not primary (COPD, …). */
+#ui[data-view] .title-about .model-scope.is-embedded {
+  display: block;
+}
+
+.title-about-close {
+  display: inline-flex;
+  align-items: center;
+  min-height: 40px;
+  margin-top: 10px;
+  padding: 0 14px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--control-bg);
+  color: var(--ink);
+  font: inherit;
+  font-size: 13px;
+  cursor: pointer;
+}
+
+.title-about-close:hover { background: var(--control-hover); }
+
+.title-about .title-trust-badges {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px 10px;
+  margin-top: 12px;
+  padding-top: 10px;
+  border-top: 1px solid var(--border);
+}
+
+/* The fold's line, the same on every layout: the experiment layout styled it
+   and the others showed the browser's ▶ at body size (heart failure). */
+.title-about > .title-trust-summary {
+  list-style: none;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 28px;
+  font-size: 13px;
+  font-weight: 400;
+  color: var(--ink-dim);
+  white-space: nowrap;
+}
+
+.title-about > .title-trust-summary::-webkit-details-marker { display: none; }
+.title-about > .title-trust-summary::after { content: '＋'; font-size: 12px; opacity: 0.7; }
+.title-about[open] > .title-trust-summary::after { content: '−'; }
+.title-about > .title-trust-summary:hover { color: var(--ink); }
+
+/* The scope inside the sheet reads as part of it: no box of its own, no
+   height of its own — the sheet scrolls, once. */
+.title-about .model-scope.is-embedded,
+.title-about .model-scope.is-embedded .scope-body {
+  width: auto;
+  max-width: none;
+  max-height: none;
+  overflow: visible;
+}
+
+#ui .title-about .scope-question,
+#ui .title-about .scope-item {
+  font-size: 13px;
+  line-height: 1.65;
+}
+
+#ui .title-about .scope-section-title {
+  font-size: 12px;
+  color: var(--ink-dim);
+}
+
+/* 「このモデルについて」: what kind of model, before what it shows. */
+.title-about-lead {
+  margin: 8px 0 6px;
+  max-width: 52ch;
+  font-size: 13px;
+  line-height: 1.65;
+  color: var(--ink);
+}
+
+.title-about .model-scope.is-embedded {
+  margin-top: 4px;
+}
+
+.title-review-date {
+  font-size: 12px;
+  color: var(--ink-dim);
+}
+
+/* The copy of 「解剖を確認」 inside the sheet is for phones (below). */
+.title-about-anatomy { display: none; }
+
+/* 「今、何が起きた？」 under the chain: the why, marked as the change it is. */
+.change-explanation {
+  margin-top: 8px;
+  padding: 8px 12px 10px;
+  border-left: 2px solid var(--accent);
+  background: rgba(241, 238, 232, 0.035);
+  border-radius: 0 8px 8px 0;
+}
+
+.change-explanation[hidden] { display: none; }
+
+/* On a phone the operate card is a two-column grid (the chain beside
+   "before, over now"); the why takes the whole width under both. */
+#ui[data-layout='experiment'] .console-card[data-card='conditions'] > .console-card-body > .change-explanation {
+  grid-column: 1 / -1;
+}
+
+.change-explanation-heading {
+  margin: 0 0 4px;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--ink-dim);
+}
+
+.change-explanation-text {
+  margin: 0;
+  font-size: 14px;
+  line-height: 1.7;
+  color: var(--ink);
+}
+
+/* ------------------------------------------------ orange means change */
+
+/* The stage's accent is the product's orange, and orange is kept for what is
+   operated, selected or changing. A model's figures are its state, not a
+   change, so they are the stage's ink; the difference from the start — the
+   change the reader made — is what turns orange. Headings are not controls. */
+#ui .metric.is-key .metric-value {
+  color: var(--ink);
+}
+
+#ui[data-layout='experiment'] .metrics .metric:not([data-quiet='true']):not([data-delta='flat']) .metric-delta {
+  color: var(--accent);
+}
+
+.scene-intro-heading,
+.learn-kicker,
+.story-part,
+#ui .eyebrow {
+  color: var(--ink-dim);
+}
+
+/* ---------------------------------------------------------------- phone */
+
+@media (max-width: 820px) {
+  .bm-concept,
+  .bm-audience-columns,
+  .site-footer,
+  .bm-about-section {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .bm-about-section > * ,
+  .bm-about-section > .bm-about-heading {
+    grid-column: 1;
+    grid-row: auto;
+  }
+}
+
+@media (max-width: 600px) {
+  .bm-hero {
+    min-height: auto;
+    padding: 44px 0 48px;
+  }
+
+  .bm-cta {
+    width: 100%;
+    justify-content: center;
+  }
+
+  .bm-section-head {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 4px;
+  }
+
+  .bm-model-list { grid-template-columns: minmax(0, 1fr); }
+
+  /* Four steps do not fit one phone line, and a line that wraps starts with a
+     connector pointing at nothing. Two by two, numbered, reads in order. */
+  .bm-loop {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 10px 16px;
+    counter-reset: bm-loop;
+  }
+
+  .bm-loop-step { counter-increment: bm-loop; }
+
+  .bm-loop-step::before,
+  .bm-loop-step + .bm-loop-step::before {
+    content: counter(bm-loop) ' ';
+    display: inline-block;
+    width: auto;
+    height: auto;
+    margin: 0 10px 0 0;
+    background: none;
+    color: var(--reading-faint);
+    font-variant-numeric: tabular-nums;
+  }
+
+  .site-footer-nav {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  /* On a phone with an organ row, the name gives its room back to the row. */
+  .global-scene-nav.is-anatomy .global-nav-brand-name { display: none; }
+  .global-scene-nav.is-anatomy .global-nav-brand { padding: 0; justify-content: center; }
+  .title-anatomy-link { min-height: 44px; }
+
+  /* One row over the model on a phone, as before the rebrand: the camera
+     frames the model into the room under the title card, and two extra rows
+     here cost the ventricle a quarter of its height while the pad is in use
+     (verify:disease: 141 px against a 150 px floor at 430×932). So the
+     system (「/ 循環」) stays on wide windows and on the model's card, and
+     「解剖を確認」 moves into 「このモデルについて」's sheet. */
+  #ui[data-layout='experiment'] .title-card.has-trail > .title-anatomy-check,
+  #ui[data-layout='experiment'] .title-card .title-trail-separator,
+  #ui[data-layout='experiment'] .title-card .title-trail-system {
+    display: none;
+  }
+
+  #ui[data-layout='experiment'] .title-about-anatomy {
+    display: block;
+    margin: 12px 0 0;
+    padding-top: 10px;
+    border-top: 1px solid var(--border);
+  }
+
+  #ui[data-layout='experiment'] .title-card.has-trail > .title-trust-fold[open],
+  #ui[data-layout='experiment'] .title-card > .title-trust-fold[open] {
+    flex-basis: auto;
+  }
+
+  /* A sheet from the bottom on a phone: over the console, not under the title
+     where it would cover the model it is about. */
+  .title-about-body {
+    position: fixed;
+    top: auto;
+    left: max(10px, env(safe-area-inset-left));
+    right: max(10px, env(safe-area-inset-right));
+    bottom: max(10px, env(safe-area-inset-bottom));
+    width: auto;
+    max-height: 72vh;
+    z-index: 60;
+    font-size: 15px;
+  }
+
+  .title-about-close { min-height: 44px; }
+
+  .global-nav-product-link { padding: 0 8px; }
+}
+
+/* The narrowest phones: mark, Models, About and the menu fill the model
+   header at 320 px, and the name overlapped 「モデル」 (verify:ui). Under 375
+   the mark alone is the way home, as it is beside an organ row. */
+@media (max-width: 374px) {
+  .global-scene-nav .global-nav-brand-name { display: none; }
+  .global-scene-nav .global-nav-brand { padding: 0; justify-content: center; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .model-card-image,
+  .bm-cta-arrow { transition: none; }
+}

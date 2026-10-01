@@ -20,10 +20,19 @@ test('the tab icon is the header icon, byte for byte', () => {
   assert.doesNotMatch(html, /rel="icon" href="data:/, 'the placeholder dot is gone');
 });
 
-test('every header wears the icon, and no typed mark is left', () => {
-  assert.match(read('src/components/ShellHeader.js'), /return brandIcon\(el, className\)/);
+test('every header wears the name as type, and the model header the mark beside it', () => {
+  // BYOKI MOTION (2026-09-30): the reading header is the wordmark; the model
+  // header is the mark and the wordmark, the name giving way on a phone with
+  // an organ row. No typed `M/3`, no `3D` tile, no "← home" text.
+  const shell = read('src/components/ShellHeader.js');
+  assert.match(shell, /return brandIcon\(el, className\)/);
+  assert.match(shell, /createWordmark\(\{ size: 'sm', className: 'shell-brand-name' \}\)/);
   const scene = read('src/components/SceneSwitcher.js');
-  assert.match(scene, /\[brandMark\('global-nav-brand-mark'\)\]/, 'the 3D home link is the icon alone');
+  assert.match(
+    scene,
+    /\[brandMark\('global-nav-brand-mark'\), createWordmark\(\{ size: 'sm', className: 'global-nav-brand-name' \}\)\]/,
+    'the model header carries the mark and the name'
+  );
   assert.doesNotMatch(scene, /global-nav-brand-back|global-nav-brand-home/);
 });
 

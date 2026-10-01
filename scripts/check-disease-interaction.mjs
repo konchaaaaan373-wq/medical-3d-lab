@@ -251,12 +251,16 @@ for (const slug of SLUGS) {
   // at the bare route; opened there now, it would find no console and report
   // the lesson as a broken experiment.
   if (await page.evaluate(() => Boolean(window.__app?.lesson))) {
-    const found = await driveLesson(browser, { url: `${base}?preview=1#/${slug}`, slug, outDir, record: recordLesson, windows: lessonWindowList });
+    const drawn = [];
+    const found = await driveLesson(browser, { url: `${base}?preview=1#/${slug}`, slug, outDir, record: recordLesson, windows: lessonWindowList, drawn });
     problems.push(...found.map((problem) => `lesson: ${problem}`));
     console.log(
       `  ${slug}: lesson driven at ${lessonWindowList.map(({ width, height }) => `${width}×${height}`).join(', ')}` +
         `${recordLesson ? ', recorded' : ''} — ${found.length ? `${found.length} problem(s)` : 'no problems'}`
     );
+    // The figure's size is the one thing on this screen that is never to give
+    // way (owner's review, 2026-10-01): said as a number on every run.
+    if (drawn.length) console.log(`    figure drawn at ${drawn.map((d) => `${d.width}×${d.height} (${d.window})`).join(', ')}`);
     if (lessonOnly) {
       report.push({ slug, controlCount: 0, problems, baseline: null, diseased: null });
       continue;

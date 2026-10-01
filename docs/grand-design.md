@@ -36,6 +36,7 @@ Last updated: 2026-09-06（現在地の数値は §3 参照）
 | **いま何が公開されていて、何がロックされているか** | [`beta-release.md`](beta-release.md) |
 | 公開βを「解剖だけ」にした判断と、それが何を上書きし何を維持したか | [`architecture/adr-2026-09-08-anatomy-only-beta.md`](architecture/adr-2026-09-08-anatomy-only-beta.md) |
 | その「解剖だけ」を外した判断と、外さなかったもの | [`architecture/adr-2026-09-22-mechanism-scene-in-beta.md`](architecture/adr-2026-09-22-mechanism-scene-in-beta.md) |
+| 製品名 BYOKI MOTION、トップレベルの情報設計（Models / About / Medical・Patient）、解剖を補助の棚にしたこと、モデル画面の器 | [`architecture/adr-2026-09-30-byoki-motion.md`](architecture/adr-2026-09-30-byoki-motion.md)（名前の文字列は [`../src/data/brand.js`](../src/data/brand.js)） |
 | UI が読む「いま公開しているモデル」の一覧と契約 | [`../src/catalog/publicManifest.js`](../src/catalog/publicManifest.js)（コードが契約） |
 | 公開までのゲートと実装順（進捗台帳） | [`public-release-roadmap.md`](public-release-roadmap.md) |
 | マージ済みだが未確認・未決定・先送りの個別事項（残課題台帳） | [`follow-ups.md`](follow-ups.md) |

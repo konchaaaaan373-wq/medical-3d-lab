@@ -1,3 +1,4 @@
+import { pageTitle } from '../data/brand.js';
 import { clinicalReviewPresentation } from '../catalog/clinicalReview.js';
 import { inLanguage } from '../utils/language.js';
 import { PUBLIC_SCENES, sceneRoute, statusById } from '../catalog/index.js';
@@ -591,8 +592,8 @@ export function createTrust({ ui, accountButton = null, focusId = null }) {
   // The tab says which record this is. A reader with the model in one tab and
   // its record in another had two tabs called "model information".
   document.title = focused
-    ? `Medical 3D Lab — ${focused.scene.titleJa}`
-    : 'Medical 3D Lab — model information';
+    ? pageTitle(focused.scene.titleJa)
+    : pageTitle('model information');
 
   // Land on the record the route named, the way `#/brain-anatomy?structure=…`
   // opens on a structure instead of making the reader find it again. This

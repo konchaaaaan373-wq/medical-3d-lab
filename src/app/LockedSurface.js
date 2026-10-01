@@ -1,3 +1,4 @@
+import { BRAND } from '../data/brand.js';
 import {
   LANDING_ROUTE,
   sceneById,
@@ -42,8 +43,8 @@ export function createLockedSurface({ ui, route, accountButton = null }) {
   const link = (href, en, ja, className = 'locked-link') =>
     el('a', { class: className, href }, dual(en, ja));
 
-  const titleEn = scene?.titleEn ?? (route.kind === 'lab' ? 'Experimental Lab' : 'Medical 3D Lab');
-  const titleJa = scene?.titleJa ?? (route.kind === 'lab' ? '実験モデル' : 'Medical 3D Lab');
+  const titleEn = scene?.titleEn ?? (route.kind === 'lab' ? 'Experimental Lab' : BRAND.name);
+  const titleJa = scene?.titleJa ?? (route.kind === 'lab' ? '実験モデル' : BRAND.name);
 
   // One way out, named by the manifest. This page used to offer three: a primary
   // link to the Explorer, "Home", and a list headed "Open now" — which, with a

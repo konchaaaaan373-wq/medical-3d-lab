@@ -41,6 +41,13 @@
   z-index: 6;
 }
 
+/* 「このモデルについて」's sheet is fixed, but it lives in the top's stacking
+   context: at one level with the bottom, the bottom — later on the page — was
+   painted over the phone's sheet and took its 閉じる (lesson-drive, L-166). */
+#ui[data-layout='lesson'] .lesson-top {
+  z-index: 7;
+}
+
 /* --- top ------------------------------------------------------------------ */
 
 #ui[data-layout='lesson'] .lesson-top {
@@ -80,72 +87,54 @@
   gap: 6px;
 }
 
-/* "根拠と限界 ＋": one quiet line that opens **over** the page, so reading the
-   limits does not push the model around. */
+/* 「このモデルについて ＋」: one quiet line. What it opens is the shared sheet
+   (`.title-about-body`, brand.css), fixed over the page, so reading the limits
+   does not push the figure around. Its line is styled once for every layout
+   (`.title-about > .title-trust-summary`). */
 #ui[data-layout='lesson'] .title-trust-fold {
   position: relative;
   margin-left: 8px;
 }
 
-#ui[data-layout='lesson'] .title-trust-summary {
-  list-style: none;
-  cursor: pointer;
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  min-height: 28px;
-  font-size: 12px;
-  color: var(--ink-dim);
-  white-space: nowrap;
-}
-
-#ui[data-layout='lesson'] .title-trust-summary::-webkit-details-marker {
-  display: none;
-}
-
-#ui[data-layout='lesson'] .title-trust-summary::after {
-  content: '＋';
-  font-size: 12px;
-  opacity: 0.7;
-}
-
-#ui[data-layout='lesson'] .title-trust-fold[open] .title-trust-summary::after {
-  content: '−';
-}
-
-#ui[data-layout='lesson'] .title-trust-fold[open] > :not(summary) {
-  position: absolute;
-  left: 0;
-  width: min(560px, calc(100vw - 32px));
-  z-index: 30;
-  background: var(--panel-sheet);
-  border: 1px solid var(--border);
-  border-radius: var(--radius);
-  box-shadow: var(--shadow);
-  padding: 10px 14px;
-}
-
-#ui[data-layout='lesson'] .title-trust-fold[open] > .title-trust-badges {
-  top: 30px;
-  border-bottom-left-radius: 0;
-  border-bottom-right-radius: 0;
-  padding-bottom: 4px;
-}
-
-#ui[data-layout='lesson'] .title-trust-fold[open] > .model-scope {
-  top: 74px;
-  max-height: min(58vh, 520px);
-  overflow: auto;
-  border-top: 0;
-  border-top-left-radius: 0;
-  border-top-right-radius: 0;
-  margin: 0;
+/* The scope inside the sheet is the sheet's content: no card inside the card,
+   as on the full model (experiment-layout.css), and no blur of its own. */
+#ui[data-layout='lesson'] .title-about .model-scope.is-embedded {
+  margin-top: 8px;
+  border: 0;
+  background: none;
+  padding: 0;
+  box-shadow: none;
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
 }
 
 #ui[data-layout='lesson'] .lesson-top .title-card .title,
 #ui[data-layout='lesson'] .lesson-top .title-card .title-ja {
   font-size: 15px;
   margin: 0;
+}
+
+/* 「心臓の解剖を確認 →」 on the title line, after 「このモデルについて」, rather
+   than a row of its own: a row here is a row the figure gives up. */
+#ui[data-layout='lesson'] .title-card.has-trail > .title-anatomy-check {
+  flex-basis: auto;
+  margin-left: 4px;
+}
+
+/* On a phone the title line has no room left for it, so it moves into
+   「このモデルについて」's sheet — as on the full model (brand.css). Measured at
+   375×667: its own row narrowed the figure from 344 to 333 px. */
+@media (max-width: 720px) {
+  #ui[data-layout='lesson'] .title-card.has-trail > .title-anatomy-check {
+    display: none;
+  }
+
+  #ui[data-layout='lesson'] .title-about-anatomy {
+    display: block;
+    margin: 12px 0 0;
+    padding-top: 10px;
+    border-top: 1px solid var(--border);
+  }
 }
 
 #ui[data-layout='lesson'] .lesson-question {

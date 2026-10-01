@@ -362,17 +362,25 @@ export const BUNDLE_BUDGET_KB = {
   /**
    * All JS and CSS in the build.
    *
-   * 700 → 725 on 2026-09-29: the cardiac-output introductory lesson (its
-   * shell, its page, its scene and its stylesheet, and the full model's
-   * fourth intervention) added 23.7 kB gzipped — 696.5 kB on `main` before
-   * it, 720.2 kB with it, and a ceiling at the
-   * measured figure would fail the next change of any size. None of it is in
-   * the entry beyond the router's `?view=` (0.6 kB): the lesson loads with
-   * `#/cardiac-output`, and the full model's scene (13.8 kB) only with
-   * `?view=detail`. Redrawn on 2026-10-01 as an SVG circuit diagram in place
-   * of its 3D (owner's review): 716.1 kB.
+   * 700 → 715 with the BYOKI MOTION rebrand (2026-09-30). Main measured 696.5;
+   * the branch 711.9 before any trimming. The growth is new surfaces, not
+   * drift: the About page (3.4), the model shell's 「今、何が起きた？」 with its
+   * rules and the reader's side (≈3.7), the model card, shared footer and
+   * wordmark (≈2). The old landing page's stylesheet rules that no script
+   * renders any more were removed in the same change (CSS 52.9 → 52.7 despite
+   * the new brand sheet), which brought it to 708.2. The rest is paid for.
+   *
+   * 715 → 735 with the cardiac-output introductory lesson (#167): its shell,
+   * its page, its circuit diagram (SVG, since the owner's review of 2026-10-01)
+   * and its stylesheet, and the full model's fourth intervention. None of it is
+   * in the entry beyond the router's `?view=` (0.6 kB): the lesson loads with
+   * `#/cardiac-output`, and the full model's scene (28.4 kB with the rebrand's
+   * 「今、何が起きた？」) only with `?view=detail`. Measured 728.3 kB on top of
+   * main's rebrand (708.2): the lesson and the fourth intervention are 20.1 of
+   * it — 19.6 before the rebrand (696.5 → 716.1), and the rest the lesson's
+   * rules for the rebrand's title line and 「このモデルについて」 sheet.
    */
-  code: 725,
+  code: 735,
   /**
    * The heaviest single model's media — the geometry one reader downloads when
    * they open one scene.

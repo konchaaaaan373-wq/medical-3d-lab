@@ -1,14 +1,17 @@
-import { EXPLORER_ROUTE, LAB_ROUTE, LANDING_ROUTE, PATIENT_ROUTE } from '../catalog/index.js';
+import { ABOUT_ROUTE, LAB_ROUTE, LANDING_ROUTE, MODELS_ROUTE, PATIENT_ROUTE } from '../catalog/index.js';
+import { BRAND } from '../data/brand.js';
 import { PUBLIC_MANIFEST } from '../catalog/publicManifest.js';
 import { betaUnlocked } from '../app/releaseGate.js';
 import { PURPOSE, purposeById } from '../app/purpose.js';
 import { patientExplanationScenes } from '../access/patientPurpose.js';
 import { registerHeaderDock } from '../app/headerDock.js';
-import { organLayerNavigation } from '../app/modelNavigation.js';
+import { SHOWCASE_SYSTEM_LABELS } from '../data/modelShowcase.js';
+import { sceneById } from '../catalog/index.js';
 import { el } from '../utils/dom.js';
 import { inLanguage } from '../utils/language.js';
-import { createSiteHeaderMenu, organLayerList } from './SiteMenu.js';
+import { createSiteHeaderMenu, modelShelfList } from './SiteMenu.js';
 import { brandIcon } from './brandIcon.js';
+import { createWordmark } from './Wordmark.js';
 
 /**
  * The one header every reading surface wears.
@@ -17,14 +20,17 @@ import { brandIcon } from './brandIcon.js';
  *
  * Four. The landing page, the model index, the publication record and the
  * legal documents each built their own, and they had drifted into four
- * different products:
+ * different products — three different link sets under one old name.
  *
- * | surface | wordmark | links |
- * | --- | --- | --- |
- * | landing | `M/3` + Medical 3D Lab | 3Dモデル, モデル情報, 実験モデル |
- * | model index | Medical 3D Lab | モデル情報 |
- * | publication record | Medical 3D Lab | モデル, ホーム |
- * | legal | Medical 3D Lab | (its own set again) |
+ * ## BYOKI MOTION (2026-09-30)
+ *
+ * The top level is **Models** and **About**, and — where any model offers it
+ * — the reader's side, **Medical | Patient**. Nothing else. The product used
+ * to be addressed by function (anatomy, explorer, viewer, trust); a reader
+ * does not arrive wanting a function, they arrive wanting to understand a
+ * condition, so the header offers the models and what the product is, and
+ * the anatomy is a shelf inside Models (ADR 2026-09-30). The wordmark is set
+ * as type (`Wordmark.js`); there is no pictorial logo.
  *
  * Three different link sets, three names for the same destination, and the
  * model index with no way back to the home page at all except by guessing that
@@ -80,7 +86,8 @@ function labIsOffered() {
 }
 
 /**
- * The product's mark — the cube icon, the same drawing as the favicon.
+ * The product's mark — two states and the change between them, the same
+ * drawing as the favicon. Used where a header has no room for the wordmark.
  *
  * One function for every header. There used to be two marks for one product —
  * a typed `M/3` here and a `3D` tile on a 3D model — and before that, three.
@@ -109,26 +116,29 @@ function patientPurposeOffered() {
 /**
  * The two purposes as the product's top level, when there are two.
  *
- * Medical education is explored by system, organ and mechanism — the model
- * index under the preview unlock, the home page's organ chooser in the beta
- * (where `#/organs` *is* the home page, see `routeRedirects.js`). Patient
- * explanation is explored by the question a person brings (`#/patient`).
- *
- * @param {boolean} labOffered
+ * Medical education is explored through the model index (`#/models`) on every
+ * build; patient explanation by the question a person brings (`#/patient`).
+ * The scene header's purpose root reads this too, so the two headers cannot
+ * send one side to two places.
  */
-export function purposeDestinations(labOffered) {
+export function purposeDestinations() {
   const education = purposeById(PURPOSE.EDUCATION);
   const patient = purposeById(PURPOSE.PATIENT);
+  // Medical is explored through the model index on every build now: the index
+  // is the product's "Models", and the preview unlock only widens what it lists.
   return Object.freeze([
     Object.freeze({
       id: 'education',
-      route: labOffered ? EXPLORER_ROUTE : LANDING_ROUTE,
-      en: education.en,
-      ja: education.ja,
+      route: MODELS_ROUTE,
+      en: education.audience.en,
+      ja: education.audience.ja,
     }),
-    Object.freeze({ id: 'patient', route: PATIENT_ROUTE, en: patient.en, ja: patient.ja }),
+    Object.freeze({ id: 'patient', route: PATIENT_ROUTE, en: patient.audience.en, ja: patient.audience.ja }),
   ]);
 }
+
+/** The system a disease model sits in, as the model cards name it (循環). */
+const systemLabelOf = (sceneId) => SHOWCASE_SYSTEM_LABELS[sceneById(sceneId)?.system] ?? null;
 
 const dual = (en, ja) => [
   el('span', { class: 'lang-en', text: en }),
@@ -144,29 +154,23 @@ const dual = (en, ja) => [
  * different destinations to a reader.
  */
 export const SHELL_DESTINATIONS = Object.freeze([
-  // Gated, because in the beta it is not a destination.
-  //
-  // `#/organs` renders the same organ hero, the same organ chips and the same
-  // two actions as the landing page — 23 identical controls in the same order,
-  // measured in a browser. So "Models" and the wordmark beside it went to the
-  // same models, and a reader who pressed one from the other saw the heading
-  // change and nothing else. Two links to one page is how a header stops being
-  // usable as a landmark, so the beta keeps the wordmark and drops this. Under
-  // the preview unlock `#/organs` is the real Explorer — seventy models, search
-  // and filters — and it is a destination again. `routeRedirects.js` holds the
-  // other half of the rule.
-  Object.freeze({ id: 'models', route: EXPLORER_ROUTE, en: 'Models', ja: 'モデル', gated: true }),
-  // `公開とレビュー` (`#/trust`) is not here any more (owner's decision,
-  // 2026-09-27): it is the ledger of every model's publication and review
-  // state — the product's own working record, not a destination for a
-  // reader. A model's own sources and limits are still one press away from
-  // that model (「このモデルの根拠と限界」), where the question is asked.
+  // The model index — disease models first, the anatomy as a shelf below them.
+  // Ungated: it lists what the release opens, and under the preview unlock,
+  // everything.
+  Object.freeze({ id: 'models', route: MODELS_ROUTE, en: 'Models', ja: 'モデル' }),
+  // What BYOKI MOTION is, which models it makes and why, and who operates it.
+  Object.freeze({ id: 'about', route: ABOUT_ROUTE, en: 'About', ja: 'About' }),
+  // `公開とレビュー` (`#/trust`) is not here (owner's decision, 2026-09-27):
+  // it is the ledger of every model's publication and review state — the
+  // product's own working record, not a destination for a reader. A model's
+  // own sources and limits are one press away from that model
+  // (「このモデルについて」), where the question is asked.
   Object.freeze({ id: 'lab', route: LAB_ROUTE, en: 'Experimental', ja: '実験モデル', gated: true }),
 ]);
 
 /**
  * @param {object} options
- * @param {'home'|'models'|'education'|'patient'|'trust'|'lab'|'legal'|null} [options.current] which
+ * @param {'home'|'models'|'about'|'education'|'patient'|'trust'|'lab'|'legal'|null} [options.current] which
  *   destination the reader is on, so the header can say so. `legal` and `null`
  *   mark nothing, because a legal document is not one of the destinations and
  *   claiming otherwise would be a lie in an ARIA attribute.
@@ -195,22 +199,19 @@ export function createShellHeader({
     {
       class: 'shell-brand',
       href: LANDING_ROUTE,
-      'aria-label': inLanguage('Medical 3D Lab home', 'Medical 3D Lab トップ'),
+      'aria-label': inLanguage(`${BRAND.name} home`, `${BRAND.name} トップ`),
       ...(current === 'home' ? { 'aria-current': 'page' } : {}),
     },
-    [
-      brandMark(),
-      el('span', { class: 'shell-brand-name', text: 'Medical 3D Lab' }),
-    ]
+    [createWordmark({ size: 'sm', className: 'shell-brand-name' })]
   );
 
   // With two purposes, they are the top level and the model index is the
   // first of them rather than a third link beside them.
   const here = showPurposes && current === 'models' ? 'education' : current;
   const destinations = showPurposes
-    ? [...purposeDestinations(showLab), ...SHELL_DESTINATIONS.filter((item) => item.id !== 'models')]
+    ? [...purposeDestinations(), ...SHELL_DESTINATIONS.filter((item) => item.id !== 'models')]
     : SHELL_DESTINATIONS;
-  const links = destinations.filter((item) => !item.gated || showLab).map((item) =>
+  const link = (item) =>
     el(
       'a',
       {
@@ -219,14 +220,27 @@ export function createShellHeader({
         ...(here === item.id ? { 'aria-current': 'page' } : {}),
       },
       dual(item.en, item.ja)
-    )
-  );
+    );
+  const offered = destinations.filter((item) => !item.gated || showLab);
+  const purposeItems = offered.filter((item) => item.id === 'education' || item.id === 'patient');
+  // Medical | Patient, as one control: two sides of the same models, not two
+  // more destinations in a row of them.
+  const links = [
+    purposeItems.length
+      ? el(
+          'span',
+          { class: 'shell-audience', role: 'group', 'aria-label': inLanguage('Reader', '読み手') },
+          purposeItems.map(link)
+        )
+      : null,
+    ...offered.filter((item) => !purposeItems.includes(item)).map(link),
+  ].filter(Boolean);
 
   // The models, organ then layer. This row carries none of them, so the menu is
   // the one place in this header that does — no second door.
   const site = createSiteHeaderMenu({
     id: 'site-menu',
-    models: models.length ? [organLayerList(organLayerNavigation(models))] : null,
+    models: models.length ? [modelShelfList(models, { systemOf: systemLabelOf })] : null,
   });
   // The class the stylesheets and `check-departure` already address.
   site.utilities.classList.add('shell-actions');

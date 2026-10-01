@@ -76,9 +76,30 @@ export const EXPLORER_SLUG = 'organs';
 export const EXPLORER_ROUTE = `#/${EXPLORER_SLUG}`;
 export const LAB_SLUG = 'lab';
 export const LAB_ROUTE = `#/${LAB_SLUG}`;
-/** The list a mechanism scene's breadcrumb goes back to (`src/catalog/pathologyModels.js`). */
+/**
+ * The model index — BYOKI MOTION's "Models" (ADR 2026-09-30). Disease models
+ * first; the anatomy is a shelf below them, for when a model needs it.
+ */
+export const MODELS_SLUG = 'models';
+export const MODELS_ROUTE = `#/${MODELS_SLUG}`;
+/**
+ * The address the disease-model list had before the index was the product's
+ * "Models". It still resolves (links outlive pages) and is corrected to
+ * `MODELS_ROUTE` in the address bar (`routeRedirects.js`). A mechanism scene's
+ * breadcrumb "病態モデル" goes to the index itself.
+ */
 export const PATHOLOGY_SLUG = 'pathology';
-export const PATHOLOGY_ROUTE = `#/${PATHOLOGY_SLUG}`;
+export const PATHOLOGY_ROUTE = MODELS_ROUTE;
+/** What BYOKI MOTION is, how a model is chosen, and who operates it. */
+export const ABOUT_SLUG = 'about';
+export const ABOUT_ROUTE = `#/${ABOUT_SLUG}`;
+/**
+ * The anatomy — organs by name — as the supporting shelf it now is. An alias
+ * of `EXPLORER_SLUG`: in the beta it is the organ chooser, under the preview
+ * unlock the full index.
+ */
+export const ANATOMY_SLUG = 'anatomy';
+export const ANATOMY_ROUTE = `#/${ANATOMY_SLUG}`;
 /**
  * The patient-explanation entrance: questions a person brings, each opening a
  * model in its patient-explanation purpose (`src/app/purpose.js`). It lists
@@ -102,6 +123,9 @@ export const RESERVED_ROUTE_SLUGS = Object.freeze([
   LAB_SLUG,
   'experimental',
   PATHOLOGY_SLUG,
+  MODELS_SLUG,
+  ABOUT_SLUG,
+  ANATOMY_SLUG,
   PATIENT_SLUG,
   'trust',
   'evidence',

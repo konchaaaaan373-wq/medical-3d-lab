@@ -64,12 +64,15 @@ CLAUDE.md が禁じる「中身のない網羅」の、インフラ版です。
 | 病態シーンの操作（baseline → disease → reset）と**動画書き出し**（同意画面 → 録画 → 書き出したファイルをブラウザに再生させて 1 フレーム撮る） | `npm run verify:disease` |
 | 入門教材（`layout: 'lesson'`）の 3 幅（最初の画面・説明の各場面・手動操作・プレイヤー・キーボード。図の大きさが変わらないか、C が B の横にしか出ないか、描いた値が solver と一致するか、注意書き、図の中の文字の重なりと大きさ。**数値と文字を隠した図**も撮る）と、**固定の時計で撮る録画** | `npm run verify:disease -- <dir> <slug> --lesson-only --record-lesson`（`scripts/lib/lesson-drive.mjs`。録画なしなら最後の引数を外す） |
 | 患者説明／医学教育の目的（入口・ヘッダーの切替と現在地・直接 URL・再読み込み・戻る・キーボード・公開ゲート） | `npm run verify:purpose`（preview は `-- --dist dist-preview --preview`） |
+| ページの離れ方（読む面のその場差し替え・転送が住所欄まで直るか・モデルは別文書・veil・戻る）。**ルートや転送を変えたら走らせる** | `npm run verify:departure` |
 | hero のタッチとキーボード | `npm run verify:hero-input` |
 | ログイン周り | `npm run verify:auth` |
 | 静的サーバ（range・traversal ガード・mount） | `scripts/lib/serve-dist.mjs` |
 | Chromium の実行ファイル解決 | `scripts/lib/browser.mjs` |
 | カメラの tween が止まるまで待つ（固定時間で待たない） | `scripts/lib/camera.mjs` |
 | 端末状態の撮影 | `npm run shots:phone` / `npm run shots:anatomy` |
+| 任意の route を 1280 / 390 で撮る（読む面・モデル画面、`--click` で操作後） | `npm run shots:surfaces` |
+| モデルカードの写真（実モデルを UI なしで撮る） | `npm run posters`（`--check` で欠けを検査） |
 
 **一度きりの調査で終わらせない。** 使い捨てで測って捨てると、次の人が同じものを
 また書きます。測って意味のあったものは、上のどれかに足してください。
@@ -154,9 +157,11 @@ CLAUDE.md が禁じる「中身のない網羅」の、インフラ版です。
   **公開シーン一覧や公開判断が動く**とき（`betaPublicationProblems()` が
   空でなくなるとき）です。それ以外は出す
 
-ルーティングはハッシュ 1 本です。`#/<slug>` が 1 シーン、`#/organs`
-（別名 `#/explore`）が全身の Organ Explorer、`#/pathology` が病態モデルの一覧
-（機序シーンのパンくず「病態モデル ›」の戻り先。載るのは公開ゲートが開けたものだけ）、
+ルーティングはハッシュ 1 本です。`#/<slug>` が 1 シーン、`#/models` がモデル一覧
+（病態モデルが主、解剖は下の棚。機序シーンのパンくず「病態モデル」の戻り先。
+載るのは公開ゲートが開けたものだけ。旧 `#/pathology` は `#/models` へ正規化）、
+`#/about` が製品の説明・モデル採用ルール・運営、`#/anatomy`（= `#/organs`・`#/explore`）が
+解剖の棚（β では臓器を 1 つ実表示する選択画面、preview では全身の Organ Explorer）、
 `#/patient` が患者説明の入口（知りたいことから選ぶ。載るのは公開・版固定の医学レビュー・
 説明文が揃ったモデルだけ）。同じモデルを患者説明で開くのは `#/<slug>?purpose=patient`
 （`src/app/purpose.js`。医学教育が既定で、パラメータ無し）。1 つのシーンが画面を
@@ -187,8 +192,19 @@ export する。例: `#/cardiac-output` は入門教材、`#/cardiac-output?view
 
 ## Product definition
 
+> **BYOKI MOTION — 病態を、動かして理解する。**
+> Interactive models for understanding pathophysiology.
+> （旧名 Medical 3D Lab。2026-09-30 改名、[ADR](docs/architecture/adr-2026-09-30-byoki-motion.md)）
+
 > **Make invisible physiology visible, interactive, and understandable.**
 > 見えない病態生理を、3D で動かし、触って理解する。
+
+製品名・タグライン・説明は [`src/data/brand.js`](src/data/brand.js) の 1 か所だけが持ちます。
+画面・メタデータ・リンクプレビューに名前を書き写さないでください（`tests/brand.test.js`）。
+**主役は病態モデル、解剖は補助、3D は手段**です。見る → 動かす → 状態が変わる →
+なぜ変わったかが分かる、が中核の体験で、新しいモデルを作る条件は
+「操作や時間変化によって、静止画や文章より理解がはっきり深まるか」です
+（`docs/adding-a-scene.md` の 0 問目）。
 
 対象は心臓と脳だけではなく **人体全体** です。最終的に anatomy / physiology /
 pathology / disease progression / treatment mechanism を臓器横断的に扱います。
@@ -305,8 +321,9 @@ pathology / disease progression / treatment mechanism を臓器横断的に扱�
 かかります。** 数えたいときは `npm run verify:site` が `publishes N` を出します。
 
 **hero に出せない臓器は公開しません。**（2026-09-16 決定）
-landing hero は訪問者が最初に触る面なので、そこに出せない臓器を公開するのは、
-誰も来ない場所に置くのと同じです。`src/app/organModels.js` の
+臓器 hero は解剖の棚（`#/anatomy`）の臓器選択です（2026-09-30 まではトップの hero
+でした）。そこに出せない臓器を公開するのは、誰も来ない場所に置くのと同じです
+（トップから外れたいまも規則を保つか は F-247）。`src/app/organModels.js` の
 `ORGAN_HERO_BUILDERS` に軽量モデルがある臓器が、公開できる範囲の上限です。
 膝はこれで止まりました——調べた 6 件で**最良の表面**（6 点が 6 種類の構造を指す）を
 持ちながら、hero モデルが無いためです。技術的な制約ではなく製品判断で、
@@ -339,9 +356,11 @@ UI が読む公開一覧は [`src/catalog/publicManifest.js`](src/catalog/public
 効かず、非公開シーンのコードはそもそもバンドルに入りません。
 詳細と β の終わらせ方は [`docs/beta-release.md`](docs/beta-release.md)。
 
-トップページの hero は臓器を 1 つ実表示し、公開臓器が 2 つ以上あれば
-**日替わりで入れ替わります**。順序と対応するシーンは `src/data/landingHero.js`
-（`HERO_ORGANS` が目標、`HERO_ROTATION` が実際に見せる分）。
+トップページは臓器を表示しません（BYOKI MOTION、2026-09-30）。名前と約束と
+1 つの CTA、公開病態モデルのカード（実モデルの写真・名前・問い——`src/data/modelShowcase.js`、
+写真は `npm run posters`）、考え方、読み手、footer です。臓器を 1 つ実表示し日替わりで
+入れ替わる hero は解剖の棚（`#/anatomy`）に移りました。順序と対応するシーンは
+`src/data/landingHero.js`（`HERO_ORGANS` が目標、`HERO_ROTATION` が実際に見せる分）。
 
 ### Scene status
 

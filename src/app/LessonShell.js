@@ -75,10 +75,21 @@ export function mountLessonShell({ viewer, scene, meta, entry, ui }) {
   // In the header, where every other scene has it.
   sceneSwitcher?.dock?.('language', languageToggle.element);
   const titleCard = createTitleCard(meta);
-  // The lesson's own sources and limits, inside the one quiet "根拠と限界" line.
+  // The lesson's own sources and limits, inside the one quiet 「このモデルについて」
+  // line — placed as every other scene places it (`App.js`): part of what the
+  // fold opens, with the review row after it.
   const scopePanel = meta.modelScope ? createModelScopePanel(meta.modelScope) : null;
   const trustFold = titleCard.querySelector('.title-trust-fold');
-  if (scopePanel && trustFold) trustFold.append(scopePanel.element);
+  if (scopePanel && trustFold) {
+    const host = trustFold.querySelector('.title-about-body') ?? trustFold;
+    const badges = host.querySelector('.title-trust-badges');
+    const close = host.querySelector('.title-about-close');
+    const anatomy = host.querySelector('.title-about-anatomy');
+    scopePanel.embedIn(trustFold, host);
+    if (anatomy) host.append(anatomy);
+    if (badges) host.append(badges);
+    if (close) host.append(close);
+  }
 
   const detailHref = hashWithView(`#/${entry?.slug ?? meta.id}`, 'detail');
 

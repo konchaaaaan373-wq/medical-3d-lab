@@ -50,6 +50,7 @@ import { join } from 'node:path';
 
 import { chromiumExecutable } from './lib/browser.mjs';
 import { serveDist } from './lib/serve-dist.mjs';
+import { redirectFor } from '../src/app/routeRedirects.js';
 
 const argv = process.argv.slice(2);
 const flag = (name) => argv.includes(name);
@@ -485,13 +486,24 @@ try {
       return { reloaded: documents > before, blank, settled, ...after };
     };
 
-    // `#/organs` is deliberately not in this list any more: in the beta it is
-    // not a surface, it is a correction (`src/app/routeRedirects.js`), and it
-    // gets its own check below. `#/terms` and `#/privacy` are two routes that
-    // share a `kind`, which is the case `sameRoute` has to get right.
+    // `#/organs` is in this list again. From 2026-09-08 to 2026-09-30 the beta
+    // corrected it to the landing page; since the BYOKI MOTION rebrand it is
+    // the anatomy shelf, a page of its own, and the correction this file
+    // follows below is `#/pathology` → `#/models` (`src/app/routeRedirects.js`).
+    // `#/terms` and `#/privacy` are two routes that share a `kind`, which is
+    // the case `sameRoute` has to get right.
+    //
+    // **No two neighbours share a `data-route`.** `move()` stops waiting when
+    // the page says the expected route, so a step from one `explorer` page to
+    // another would stop at once and read the page it had not yet left —
+    // `#/organs` and `#/models` are both `explorer`, `#/about` and `#/` both
+    // `landing`.
     const READING = [
       ['#/trust', 'trust'],
       ['#/terms', 'legal'],
+      ['#/organs', 'explorer'],
+      ['#/about', 'landing'],
+      ['#/models', 'explorer'],
       ['#/', 'landing'],
       ['#/privacy', 'legal'],
     ];
@@ -525,20 +537,30 @@ try {
     // 870 ms with the page height going 1061 → 2495 → 1434 px.
     // A route with no page of its own, followed *during* a swap. The unit
     // tests fix the rule; this is the part they cannot see — that the address
-    // bar and the page agree afterwards. A swap that rendered the landing page
-    // while the hash still said `#/organs` would leave every later navigation
-    // asking the wrong question, because the shell decides what is still
-    // wanted by reading the address bar.
+    // bar and the page agree afterwards. A swap that rendered the model index
+    // while the hash still said `#/pathology` would leave every later
+    // navigation asking the wrong question, because the shell decides what is
+    // still wanted by reading the address bar.
+    //
+    // Until 2026-09-30 this followed `#/organs` to the landing page. The
+    // rebrand made `#/organs` a page again and `#/pathology` the correction,
+    // and CI went red here on the old route before anything else noticed:
+    // the check named the route rather than asking `routeRedirects.js` which
+    // one is corrected — so it is asked now.
     {
-      const seen = await move('#/organs', 'landing');
-      const landed = seen.hash === '#/' && seen.route === 'landing' && !seen.reloaded && !seen.blank;
+      const from = '#/pathology';
+      const to = redirectFor(from);
+      const seen = await move(from, 'explorer');
+      const landed = Boolean(to) && seen.hash === to && seen.route === 'explorer' && !seen.reloaded && !seen.blank;
       record(
         'a route with no page of its own corrects itself, address bar included',
         landed,
-        landed
-          ? `#/organs -> ${seen.hash} in ${seen.settled}ms, no document load`
-          : `settled at hash ${seen.hash} with data-route="${seen.route}"` +
-            `${seen.reloaded ? ', and replaced the document' : ''}`
+        !to
+          ? `${from} is not corrected any more — this check needs the route that is`
+          : landed
+            ? `${from} -> ${seen.hash} in ${seen.settled}ms, no document load`
+            : `settled at hash ${seen.hash} with data-route="${seen.route}"` +
+              `${seen.reloaded ? ', and replaced the document' : ''}`
       );
     }
     record(

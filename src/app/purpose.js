@@ -51,12 +51,17 @@ export const PURPOSES = Object.freeze([
     id: PURPOSE.EDUCATION,
     en: 'Medical education',
     ja: '医学教育',
+    // The reader's side of the Medical | Patient switch (ADR 2026-09-30). The
+    // purpose keeps its name everywhere a use is declared or a location is
+    // said; the switch names who is reading.
+    audience: Object.freeze({ en: 'Medical', ja: '医療者向け' }),
     explore: Object.freeze({ en: 'By system, organ and mechanism', ja: '系統・臓器・病態から探す' }),
   }),
   Object.freeze({
     id: PURPOSE.PATIENT,
     en: 'Patient explanation',
     ja: '患者説明',
+    audience: Object.freeze({ en: 'Patient', ja: '患者向け' }),
     explore: Object.freeze({ en: 'By the question you have', ja: '知りたいことから探す' }),
   }),
 ]);

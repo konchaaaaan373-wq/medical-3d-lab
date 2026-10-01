@@ -1,3 +1,4 @@
+import { BRAND } from '../data/brand.js';
 const SAFE_STATES = new Set([
   'idle',
   'deferred',
@@ -52,7 +53,7 @@ export function buildPublicDiagnosticText({
   browser = browserFamilyMajor(),
   steps = '',
 } = {}) {
-  const lines = ['Medical 3D Lab diagnostic'];
+  const lines = [`${BRAND.name} diagnostic`];
   const add = (label, value, max) => {
     const safe = clean(value, max);
     if (safe) lines.push(`${label}: ${safe}`);

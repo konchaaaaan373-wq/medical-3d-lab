@@ -65,6 +65,16 @@ const TEXT_FLOOR_PX = TEXT_FLOOR;
 /** How far a size may drift and still be "the same size", in px: sub-pixel layout. */
 const SAME_SIZE_PX = 0.6;
 
+/**
+ * How much of a phone's width the diagram is drawn across, at least. At
+ * 375×667 the figure is limited by height, so every row added above or below it
+ * narrows it — and "the same size all the way through" (`checkSizes`) cannot
+ * see a row that was there from the first frame. Main's 「心臓の解剖を確認」
+ * row did exactly that on merge (336 px of 375, L-165); it is 347 without it,
+ * and 362 of 390.
+ */
+const PHONE_FIGURE_SHARE = 0.92;
+
 const ready = (page) =>
   page.waitForFunction(() => window.__app?.lesson && !document.getElementById('boot-veil'), null, { timeout: 60000 });
 
@@ -111,7 +121,7 @@ const read = (page) =>
     };
     // Every word drawn in the figure, as boxes on screen — and whether the
     // strip it belongs to is one the figure shows. An SVG child set `visible`
-    // is drawn through a hidden parent (L-153), so "drawn" is asked of the
+    // is drawn through a hidden parent (L-163), so "drawn" is asked of the
     // word itself and "shown" of its strip, separately.
     const words = [...svg.querySelectorAll('text')]
       .filter((node) => {
@@ -138,6 +148,11 @@ const read = (page) =>
       state: window.__app.lesson.state(),
       figure,
       scale: Math.min(scale, figure.height / svg.viewBox.baseVal.height),
+      // The diagram as drawn: the box the page gave it, at the scale that fits.
+      drawn: (() => {
+        const fit = Math.min(scale, figure.height / svg.viewBox.baseVal.height);
+        return { width: fit * svg.viewBox.baseVal.width, height: fit * svg.viewBox.baseVal.height };
+      })(),
       strips: Number(svg.dataset.strips),
       legend: getComputedStyle(svg.querySelector('.lf-legend')).display !== 'none',
       primary: strip('primary'),
@@ -293,6 +308,80 @@ function checkNote(seen, where, problems) {
 }
 
 /** The figure with every word and number hidden, for a person to read by eye. */
+/**
+ * Open 「このモデルについて」, photograph it, close it, and say what is wrong
+ * with it: the sheet off screen, the lesson's scope not in it, no way to the
+ * anatomy anywhere on the page, the figure moved to make room (the sheet lies
+ * over the page), or 閉じる that cannot be pressed or does not close.
+ *
+ * 閉じる is pressed as a reader presses it — at its place on screen — so a
+ * panel standing over it is a problem said here rather than a click that
+ * waits out its timeout: on a phone the lesson's bottom panel stood over the
+ * sheet and took the press (L-166).
+ *
+ * @param {import('playwright').Page} page
+ * @param {() => Promise<unknown>} photograph
+ * @returns {Promise<string[]>}
+ */
+async function checkAbout(page, photograph) {
+  const figureBox = () => page.evaluate(() => {
+    const box = document.querySelector('.lesson-figure-svg').getBoundingClientRect();
+    return { top: box.top, left: box.left, width: box.width, height: box.height };
+  });
+  const before = await figureBox();
+  await page.click('.title-about > .title-trust-summary');
+  const problems = [];
+  if (!(await until(page, () => document.querySelector('.title-about')?.open))) return ['the line did not open'];
+  // Its place is set when it opens (`place()` in TitleCard.js): wait for a box.
+  await until(page, () => {
+    const box = document.querySelector('.title-about-body')?.getBoundingClientRect();
+    return box && box.width > 0 && box.height > 0;
+  });
+  const seen = await page.evaluate(() => {
+    const visible = (node) => {
+      if (!node) return false;
+      for (let at = node; at && at !== document.body; at = at.parentElement) {
+        const style = getComputedStyle(at);
+        if (style.display === 'none' || style.visibility === 'hidden') return false;
+      }
+      const box = node.getBoundingClientRect();
+      return box.width > 0 && box.height > 0;
+    };
+    const body = document.querySelector('.title-about-body');
+    const box = body.getBoundingClientRect();
+    return {
+      body: { top: box.top, bottom: box.bottom, left: box.left, right: box.right },
+      scope: Boolean(body.querySelector('.model-scope')) && visible(body.querySelector('.model-scope')),
+      anatomy: [...document.querySelectorAll('.title-anatomy-link')].filter(visible).map((node) => node.getAttribute('href')),
+      width: innerWidth,
+      height: innerHeight,
+    };
+  });
+  const { body } = seen;
+  if (body.top < 0 || body.left < 0 || body.right > seen.width + 1 || body.bottom > seen.height + 1) {
+    problems.push(`the sheet is not on screen (${Math.round(body.left)},${Math.round(body.top)}–${Math.round(body.right)},${Math.round(body.bottom)})`);
+  }
+  if (!seen.scope) problems.push('the lesson’s scope is not in the sheet');
+  if (!seen.anatomy.some((href) => /heart-anatomy/.test(href ?? ''))) problems.push('no way to the heart’s anatomy is shown, on the title line or in the sheet');
+  const after = await figureBox();
+  if (['top', 'left', 'width', 'height'].some((key) => Math.abs(after[key] - before[key]) > SAME_SIZE_PX)) {
+    problems.push(`the figure moved to make room (${Math.round(before.width)}×${Math.round(before.height)} at ${Math.round(before.top)} → ${Math.round(after.width)}×${Math.round(after.height)} at ${Math.round(after.top)})`);
+  }
+  await photograph();
+  const pressed = await page
+    .click('.title-about-close', { timeout: 5000 })
+    .then(() => null)
+    .catch((error) => (/intercepts pointer events/.test(error.message) ? error.message.match(/<[^>]+>[^\n]*?intercepts pointer events/)?.[0] ?? 'something stands over it' : error.message.split('\n')[0]));
+  if (pressed) {
+    problems.push(`閉じる cannot be pressed: ${pressed}`);
+    // Closed for the rest of the drive, as a reader could still do with Escape.
+    await page.keyboard.press('Escape');
+    return problems;
+  }
+  if (!(await until(page, () => !document.querySelector('.title-about')?.open))) problems.push('閉じる did not close it');
+  return problems;
+}
+
 async function photographWithoutWords(page, path) {
   const style = await page.addStyleTag({
     content: `.lesson-figure-svg text, .lesson-figure-svg .lf-legend { visibility: hidden !important; }
@@ -304,10 +393,15 @@ async function photographWithoutWords(page, path) {
 
 /**
  * @param {import('playwright').Browser} browser
- * @param {{ url: string, slug: string, outDir: string, record?: boolean, windows?: object[] }} options
+ * @param {{ url: string, slug: string, outDir: string, record?: boolean, windows?: object[],
+ *   drawn?: Array<{ window: string, width: number, height: number }> }} options
+ *   `drawn`, when given, is filled with the size the diagram is drawn at on each
+ *   window's first screen — printed by the caller, so a change to what stands
+ *   around the figure (a header row, a longer note) shows up as a number in the
+ *   next run rather than as a guess read off two screenshots.
  * @returns {Promise<string[]>} problems
  */
-export async function driveLesson(browser, { url, slug, outDir, record = false, windows = LESSON_WINDOWS }) {
+export async function driveLesson(browser, { url, slug, outDir, record = false, windows = LESSON_WINDOWS, drawn = null }) {
   const problems = [];
   const solved = solveLessonConditions();
   if (record) {
@@ -331,6 +425,15 @@ export async function driveLesson(browser, { url, slug, outDir, record = false, 
     // --- the first screen: the buttons, at A ------------------------------------
     let seen = await read(page);
     await page.screenshot({ path: join(outDir, `${tag}-0-first.png`) });
+    drawn?.push({ window: `${width}×${height}`, width: Math.round(seen.drawn.width), height: Math.round(seen.drawn.height) });
+    if (width <= 430 && seen.drawn.width < width * PHONE_FIGURE_SHARE) {
+      problems.push(
+        where(
+          `first screen: the figure is drawn ${Math.round(seen.drawn.width)} px wide, under ${Math.round(PHONE_FIGURE_SHARE * 100)}% of the window — ` +
+            'a row above or below it took its room'
+        )
+      );
+    }
     if (seen.modal) problems.push(where('first screen: a modal stands over the lesson'));
     if (seen.scrolls) problems.push(where('first screen: the page scrolls'));
     if (seen.state.mode !== 'manual') problems.push(where(`first screen: opens in "${seen.state.mode}", not at the buttons`));
@@ -484,6 +587,14 @@ export async function driveLesson(browser, { url, slug, outDir, record = false, 
     if (!/説明を止めました|stopped/i.test(seen.guide)) problems.push(where('hand-over: nothing says the explanation stopped and what is on screen'));
     checkSizes(seen, reference, where('hand-over'), problems);
     await page.screenshot({ path: join(outDir, `${tag}-2-handover.png`) });
+
+    // --- 「このモデルについて」 ----------------------------------------------------
+    // The lesson's scope and its review state live in the one sheet every
+    // disease model opens from its title line (main's rebrand, 2026-09-30); on
+    // a phone the way to the heart's anatomy moves in there too (L-165). Opened
+    // here because nothing else opens it: `verify:ui` measures closed folds.
+    const about = await checkAbout(page, () => page.screenshot({ path: join(outDir, `${tag}-5-about.png`) }));
+    for (const problem of about) problems.push(where(`「このモデルについて」: ${problem}`));
 
     // --- the keyboard ------------------------------------------------------------
     await page.evaluate(() => document.querySelector('.lesson-manual [data-lesson="play"]').focus());

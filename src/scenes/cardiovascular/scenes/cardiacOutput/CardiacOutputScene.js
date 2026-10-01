@@ -32,7 +32,7 @@ import {
   presentationAt,
   stageAt,
 } from './explainerStoryboard.js';
-import { changeOf, describeChange, describeEffect, movedInputs, signedDelta } from './changeSummary.js';
+import { changeOf, changeSignature, describeChange, describeEffect, movedInputs, signedDelta } from './changeSummary.js';
 import { CONTROL_DOMAIN, PRESET_IDS, REFERENCE_GEOMETRY } from '../../../../models/cardiacOutput.js';
 import {
   advanceCardiacPhase,
@@ -71,6 +71,7 @@ import {
   STAGES,
   UNSOLVED_NOTICE,
 } from '../../../../data/cardiacOutput.js';
+import { CARDIAC_OUTPUT_EXPLANATIONS, CHANGE_EXPLANATION_COPY } from '../../../../data/cardiacOutputExplanations.js';
 import { disposeObject } from '../../../../utils/dispose.js';
 
 /**
@@ -158,7 +159,8 @@ export class CardiacOutputScene {
     // middle, what was done and what came of it beside it, the choices under
     // it. Declared, not detected — see `src/styles/experiment-layout.css`.
     layout: 'experiment',
-    console: CONSOLE_LAYOUT,
+    // The console's cards and chain, and 「今、何が起きた？」's rules.
+    console: { ...CONSOLE_LAYOUT, explanations: CARDIAC_OUTPUT_EXPLANATIONS, explanationCopy: CHANGE_EXPLANATION_COPY },
     // "All figures" is the vocabulary of a dashboard; these are the model's
     // other outputs, one press away.
     metricsMore: { show: 'Other measures', showJa: '他の指標', hide: 'Fewer', hideJa: '閉じる' },
@@ -1276,6 +1278,16 @@ export class CardiacOutputScene {
    */
   getChangedInputs() {
     return movedInputs({ baseline: this.session.baseline.input, shown: this.session.view.input });
+  }
+
+  /** Which way each thing moved, for 「今、何が起きた？」 (`changeSummary.js`). */
+  getChangeSignature() {
+    return changeSignature({
+      baseline: this.session.baseline.input,
+      shown: this.session.view.input,
+      before: this.session.baseline.metrics,
+      now: this.state,
+    });
   }
 
   /**
