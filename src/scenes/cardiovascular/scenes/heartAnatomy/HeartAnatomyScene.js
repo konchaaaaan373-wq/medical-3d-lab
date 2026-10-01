@@ -269,7 +269,11 @@ export class HeartAnatomyScene {
     this.trimStrength = 0;
     /** The box round the fourteen heart parts, in world space. The trim is measured from it. */
     this.heartBox = null;
-    /** Bounds of what is drawn, cached per display state — see `getSubjectBounds`. */
+    /**
+     * Bounds of what is drawn, cached per display state — see `getSubjectBounds`.
+     * The key there (scope, hides, isolation, recipe frame) is what invalidates
+     * it; the only reset by hand is when the files arrive.
+     */
     this.subjectCache = null;
     /**
      * What a display recipe frames the camera on, when it is not everything
@@ -782,7 +786,6 @@ export class HeartAnatomyScene {
     this.hiddenVersion += 1;
     this.displayBeforeReveal = null;
     this.recipeFrame = null;
-    this.subjectCache = null;
     if (!notify || !(had || hadHidden)) return;
     for (const listener of this.listeners) listener(null);
     for (const listener of this.hoverListeners) listener(null);
@@ -874,7 +877,6 @@ export class HeartAnatomyScene {
    */
   _visibilityChanged(droppedIsolation) {
     this.hiddenVersion += 1;
-    this.subjectCache = null;
     this.displayBeforeReveal = null;
     this._applyVisibility(1 / 60, true);
     this._emitVisibility();
@@ -927,12 +929,14 @@ export class HeartAnatomyScene {
   setStructuresHidden(ids, hidden) {
     let changed = false;
     let droppedIsolation = false;
-    let widen = false;
+    let outOfScope = false;
+    let inScope = false;
     for (const id of ids) {
       const meshes = this._meshesFor(id);
       if (!meshes.length) continue;
       const key = meshes[0].userData.structureId;
-      if (!hidden && !this._inScope(key)) widen = true;
+      if (this._inScope(key)) inScope = true;
+      else outOfScope = true;
       if (this.manualHidden.has(key) === Boolean(hidden)) continue;
       if (hidden) {
         if (this.isolatedId === key) {
@@ -946,7 +950,11 @@ export class HeartAnatomyScene {
       changed = true;
     }
     // Same rule as the single setter: showing a group the heart-only view
-    // leaves out switches the aorta back on.
+    // leaves out switches the aorta back on. A group that view partly draws
+    // (the great vessels: the ascending aorta in it, the arch not) is shown in
+    // it, so hiding and showing it again does not move the reader to the
+    // other view; what it leaves out comes back with the switch.
+    const widen = !hidden && outOfScope && !inScope;
     if (widen) this._switchScope('aorta');
     if (!changed && !widen) return false;
     this._visibilityChanged(droppedIsolation);
@@ -1273,7 +1281,6 @@ export class HeartAnatomyScene {
     this._applyVisibility(1 / 60, true);
     const changed = hid.length > 0 || shown.length > 0 || turned || released || rescoped || reframed;
     if (changed) this.displayBeforeReveal = before;
-    this.subjectCache = null;
     this._emitVisibility();
     this._emitIsolation();
     if (rescoped) this._emitScope();
@@ -1320,7 +1327,6 @@ export class HeartAnatomyScene {
     this.isolatedId = before.isolatedId;
     this.manualHidden = new Set(before.hidden);
     this.hiddenVersion += 1;
-    this.subjectCache = null;
     this.setAnatomyView(before.view);
     this._applyVisibility(1 / 60, !rescoped);
     this._emitVisibility();
@@ -1389,12 +1395,15 @@ export class HeartAnatomyScene {
 
   /**
    * Which way of looking is on, and the switch that changes it, as the panel
-   * shows it. `on` is the heart with its aorta.
+   * shows it. `on` is the heart with its aorta; `next` is the way of looking
+   * pressing the switch asks for.
    */
   getDisplayScope() {
+    const on = this.scope === HEART_SCOPE_SWITCH.on;
     return {
       id: this.scope,
-      on: this.scope === HEART_SCOPE_SWITCH.on,
+      on,
+      next: on ? HEART_SCOPE_SWITCH.off : HEART_SCOPE_SWITCH.on,
       label: HEART_SCOPE_SWITCH.label,
       labelJa: HEART_SCOPE_SWITCH.labelJa,
       hint: HEART_SCOPE_SWITCH.hint,
@@ -1425,19 +1434,20 @@ export class HeartAnatomyScene {
    * the app refits to `getSubjectBounds`, which now answers for the new
    * subject.
    *
+   * This is the reader's own switch: it invalidates the way back from "Show
+   * it" as a hide does. Recipes and restores switch through `_switchScope`,
+   * keeping their own way back.
+   *
    * @param {'aorta'|'heart'} id
-   * @param {{byReader?: boolean}} [options] `byReader: false` when a display
-   *   recipe or a restore is switching on the reader's behalf; those keep their
-   *   own way back, and a reader's own switch invalidates it as a hide does.
    * @returns {{ok: boolean, changed: boolean, clearedSelection?: boolean, droppedIsolation?: boolean}}
    */
-  setDisplayScope(id, { byReader = true } = {}) {
+  setDisplayScope(id) {
     if (!HEART_SCOPES[id]) return { ok: false, changed: false };
     if (id === this.scope) return { ok: true, changed: false };
     const result = this._switchScope(id);
     // A way of looking the reader chose is framed on all of itself.
     this.recipeFrame = null;
-    if (byReader) this.displayBeforeReveal = null;
+    this.displayBeforeReveal = null;
     this._applyVisibility(1 / 60, false);
     this._emitScope();
     this._emitVisibility();
@@ -1463,7 +1473,6 @@ export class HeartAnatomyScene {
     this.hiddenVersion += 1;
     this.structureAnchors.clear();
     this._annotationSight.clear();
-    this.subjectCache = null;
     return { clearedSelection, droppedIsolation };
   }
 
@@ -1472,7 +1481,6 @@ export class HeartAnatomyScene {
     // A recipe's framing ends here even when the range does not change: the
     // view this resets to is the opening one, framed on all it draws.
     this.recipeFrame = null;
-    this.subjectCache = null;
     return this.setDisplayScope(HEART_DEFAULT_SCOPE);
   }
 
@@ -1592,7 +1600,10 @@ export class HeartAnatomyScene {
     const drawn = this.selectables.filter((mesh) => this._targetOpacityFor(mesh) > DRAWN_OPACITY);
     const heart = drawn.filter((mesh) => HEART_PART_IDS.has(mesh.userData.structureId));
     const box = new THREE.Box3();
-    for (const mesh of heart.length ? heart : drawn) box.expandByObject(mesh);
+    // With no heart part drawn (one vessel isolated, or no heart file), the
+    // subject is what the shader draws of the rest, not the meshes it fades.
+    if (heart.length) for (const mesh of heart) box.expandByObject(mesh);
+    else for (const mesh of drawn) expandByDrawnVertices(box, mesh, (point) => this._rangeAlpha(mesh, point, { target: true }));
     let withVessels = false;
     if (this.recipeFrame) {
       // The heart and what the recipe names, each as drawn; everything else
@@ -1770,6 +1781,7 @@ export class HeartAnatomyScene {
     this.statusListeners.clear();
     this.isolationListeners.clear();
     this.visibilityListeners.clear();
+    this.scopeListeners.clear();
     this._resetInteractionState();
     disposeObject(this.root);
   }
@@ -1794,11 +1806,6 @@ function cornersOf(box) {
   return { centre: box.getCenter(new THREE.Vector3()), corners };
 }
 
-/**
- * Grow a box by the vertices of a mesh that `drawn` says are drawn.
- *
- * @returns {boolean} whether any vertex was taken
- */
 /** How much of the parent "go to it" shows around a branch's origin, in source mm. */
 const FOCUS_CONTEXT_MM = Object.freeze({ min: 15, max: 35 });
 
@@ -1811,6 +1818,12 @@ function focusParentOf(entry) {
   return null;
 }
 
+/**
+ * Grow a box by the vertices of a mesh that `drawn` says are drawn. A mesh
+ * with no display range is taken whole, unless `eachVertex` asks for each.
+ *
+ * @returns {boolean} whether any vertex was taken
+ */
 function expandByDrawnVertices(box, mesh, drawn, { eachVertex = false } = {}) {
   if (!mesh.userData.range && !eachVertex) {
     box.expandByObject(mesh);

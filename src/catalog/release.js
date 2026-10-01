@@ -446,7 +446,7 @@ export const BETA_PUBLICATION_DECISIONS = Object.freeze([
     decidedAt: '2026-10-01',
     decidedBy: Object.freeze({
       name:
-        "Repository owner's approval of 2026-09-15 for what this scene names; re-pinned 2026-09-21 by Claude Code (AI engineering agent) after the scene's opening colour mode changed, and again 2026-09-24 after both files were Draco-compressed, each at the owner's direction. Re-pinned again 2026-09-29/30 and 2026-10-01 by Claude Code on the unmerged branch claude/dreamy-fermi-2ddpth as a TECHNICAL ALIGNMENT ONLY — the new vessel-file hash and scene digest — so that the branch builds and its tests run; the owner has NOT confirmed this re-pin, and it is not an anatomical, clinical or publication approval (docs/beta-publication/heart-anatomy.md, 2026-10-01)",
+        "Repository owner's approval of 2026-09-15 for what this scene names; re-pinned 2026-09-21 by Claude Code (AI engineering agent) after the scene's opening colour mode changed, and again 2026-09-24 after both files were Draco-compressed, each at the owner's direction. Re-pinned 2026-09-29/30 and 2026-10-01 by Claude Code on the branch claude/dreamy-fermi-2ddpth — the new vessel-file hash and scene digest — first as a technical alignment only, then, after review fixes, at the owner's direction of 2026-10-01 to merge the branch (which publishes this form). That direction is the owner's publication decision; it is not an anatomical or clinical review, and neither has been done (docs/beta-publication/heart-anatomy.md, 2026-10-01)",
       role: 'engineering',
     }),
     record: 'docs/beta-publication/heart-anatomy.md',
@@ -468,7 +468,7 @@ export const BETA_PUBLICATION_DECISIONS = Object.freeze([
       'hubmap-vh-m-heart': '994a86380bd30bc9744c08edd9812825ab22b340339665a422be6ba545fbbf8a',
       'hubmap-vh-m-blood-vasculature': 'f03a50620a66c3d7b6987806b9025eb12742ca57377b243f8cea6f2bcfbb231a',
     }),
-    sceneRevision: Object.freeze({ cardRevision: 28, modelDigest: 'c084f6b8ba1a5d10' }),
+    sceneRevision: Object.freeze({ cardRevision: 28, modelDigest: '110895884470177e' }),
     scope: Object.freeze({
       // The authored tour in `SCENE_POINTS`, not whatever a run measured: four
       // named parts at four recorded points, crossing both adopted files —

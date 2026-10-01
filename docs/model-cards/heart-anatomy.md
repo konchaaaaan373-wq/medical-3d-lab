@@ -109,7 +109,12 @@ with the heart's own centre as the orbit centre, and switching back returns the
 frame it left; switching back and forth lands on the same two frames. "Reset
 display" returns the aorta with its frame. Showing a structure the heart-only
 view leaves out — from the part tree, by "Unhide all" or by "Show it" — switches
-the aorta back on rather than showing a vessel floating beside a heart. The
+the aorta back on rather than showing a vessel floating beside a heart. A group
+in the tree that the heart-only view partly draws (the great vessels: the
+ascending aorta in it, the arch not) is shown in that view instead, so hiding it
+and showing it again leaves the reader where they were (review, 2026-10-01).
+With one vessel isolated, the frame is what is drawn of it, not the length of
+it the display range fades out. The
 fixed views carry their own range: *the heart and the aorta* is framed on the
 whole aorta; *the great vessels* keeps the aorta drawn but is framed on the heart
 and the arch, where those vessels meet it — framed on everything drawn they were

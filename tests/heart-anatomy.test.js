@@ -731,6 +731,7 @@ test('heart: the scene opens on the heart and its aorta, and only the brachiocep
   const built = pair();
   assert.equal(built.getDisplayScope().id, 'aorta');
   assert.equal(built.getDisplayScope().on, true);
+  assert.equal(built.getDisplayScope().next, 'heart');
   const hidden = built.getAnatomyVisibility().hidden;
   assert.deepEqual([...HEART_DEFAULT_HIDDEN].sort(), ['VH_M_brachiocephalic_vein_L', 'VH_M_brachiocephalic_vein_R']);
   assert.ok(hidden.includes('VH_M_brachiocephalic_vein_L'), 'the veins in front of the arch start out of the way');
@@ -1511,6 +1512,7 @@ test('heart: switching the aorta off draws the heart, its coronary vessels and t
   assert.equal(result.changed, true);
   assert.deepEqual(scopes, ['heart'], 'announced once');
   assert.equal(built.getDisplayScope().on, false, 'the switch reads off');
+  assert.equal(built.getDisplayScope().next, 'aorta', 'and says that pressing it puts the aorta back');
   for (const id of ['VH_M_heart_left_ventricle', 'VH_M_left_coronary_artery', 'VH_M_ascending_aorta', 'VH_M_inferior_vena_cava']) {
     assert.equal(built.isStructureVisible(id), true, `${id} stays`);
   }
@@ -1580,6 +1582,24 @@ test('heart: asking to show something the heart-only view leaves out switches th
   built.restoreDisplay();
   assert.equal(built.getDisplayScope().id, 'heart', 'and the way back puts the switch back');
   assert.deepEqual(scopes, ['heart', 'aorta', 'heart', 'aorta', 'heart', 'aorta', 'heart', 'aorta', 'heart']);
+  built.dispose();
+});
+
+test('heart: hiding and showing a group that is partly in the heart-only view keeps that view', () => {
+  // Review finding (2026-10-01): the great-vessels branch of the tree holds the
+  // ascending aorta (drawn with the heart alone) and the descending aorta (not).
+  // One press hid both; the next showed both and switched the aorta back on —
+  // so "hide, then show again" moved the reader out of the view they chose.
+  const built = pair();
+  built.setDisplayScope('heart');
+  const group = ['VH_M_ascending_aorta', 'VH_M_descending_aorta'];
+  assert.equal(built.setStructuresHidden(group, true), true);
+  assert.equal(built.setStructuresHidden(group, false), true);
+  assert.equal(built.getDisplayScope().id, 'heart', 'showing the group again keeps the heart-only view');
+  assert.ok(!built.getAnatomyVisibility().hidden.includes('VH_M_ascending_aorta'), 'and the part it draws is back');
+  // A group with nothing in this view still switches the aorta on, or the press would do nothing.
+  built.setStructuresHidden(['VH_M_descending_aorta'], false);
+  assert.equal(built.getDisplayScope().id, 'aorta');
   built.dispose();
 });
 
@@ -1929,4 +1949,50 @@ test('heart: the Japanese names keep the forms the official sources were collate
     const hits = japanese.filter((text) => text.includes(avoid));
     assert.deepEqual(hits, [], `「${avoid}」ではなく「${use}」と書く`);
   }
+});
+
+test('heart: isolating one branch frames what is drawn of it, not the mesh it was faded out of', () => {
+  // Review finding (2026-10-01): with no heart part drawn — one vessel isolated,
+  // or the heart file missing — the subject was every drawn mesh's whole box,
+  // so isolating a branch framed the part of it the shader had faded away.
+  const built = new HeartAnatomyScene({ model: fixture(), vessels: schematicFixture(), vesselLoader: null });
+  built.build();
+  for (const entry of HEART_SCHEMATIC) {
+    assert.ok(built.isolateStructure(entry.id), `${entry.id} can be isolated`);
+    const subject = new THREE.Box3().setFromPoints(built.getSubjectBounds().corners);
+    const drawn = new THREE.Box3().setFromPoints(built.getStructureBounds(entry.id).corners);
+    const whole = new THREE.Box3();
+    for (const mesh of built.meshesById.get(entry.id)) whole.expandByObject(mesh);
+    assert.ok(!whole.equals(drawn), `${entry.id}: the fixture fades it before its end, so the two differ`);
+    assert.ok(drawn.clone().expandByScalar(1e-6).containsBox(subject), `${entry.id}: framed on what is drawn`);
+  }
+  built.dispose();
+});
+
+test('heart: a disposed scene keeps no one listening for its way of looking', () => {
+  // Review finding (2026-10-01): dispose cleared every listener set but this
+  // one, so the app's reframe stayed reachable from a torn-down scene.
+  const built = pair();
+  let heard = 0;
+  built.onDisplayScope(() => { heard += 1; });
+  built.dispose();
+  built._emitScope();
+  assert.equal(heard, 0);
+});
+
+test('heart: hiding what stretches the frame re-measures the subject', () => {
+  // The subject cache is invalidated by its key alone (review, 2026-10-01).
+  // Before, a reset by hand in the visibility pass covered a hide, and no test
+  // noticed when the key's own hide counter was taken out of it.
+  const built = pair();
+  const height = () => {
+    const ys = built.getSubjectBounds().corners.map((corner) => corner.y);
+    return Math.max(...ys) - Math.min(...ys);
+  };
+  const withAorta = height();
+  assert.equal(built.setStructureHidden('VH_M_descending_aorta', true), true);
+  assert.ok(height() < withAorta, `hiding the descending aorta shortens the subject (${height().toFixed(3)} < ${withAorta.toFixed(3)})`);
+  assert.equal(built.setStructureHidden('VH_M_descending_aorta', false), true);
+  assert.ok(Math.abs(height() - withAorta) < 1e-9, 'and showing it again restores it');
+  built.dispose();
 });

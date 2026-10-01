@@ -1,4 +1,5 @@
 import * as THREE from 'three';
+import { smoothstep } from '../../../../utils/math.js';
 
 /**
  * Where a vessel is drawn to, as one rule that the renderer and every question
@@ -36,6 +37,13 @@ import * as THREE from 'three';
  * So the fade is blended, and every ranged mesh is drawn **after** every
  * other part (`RANGED_RENDER_ORDER`): by the time a faded end is blended, the
  * heart behind it is already in the frame.
+ *
+ * Among the ranged meshes themselves, a faded end still writes depth (the
+ * material is opaque; only the fragment's alpha is lowered). A review asked
+ * whether that cuts a gap where the schematic neck arteries leave the
+ * brachiocephalic trunk's faded tip. Rendered from six sides on 2026-10-01: it
+ * does not, and turning depth writes off for ranged meshes was the defect —
+ * the schematic tubes showed through the tip as a pipe inside a pipe.
  */
 
 /** Drawn after everything without a range, so a fading end blends over the heart. */
@@ -62,11 +70,6 @@ export function setReach(range, reach) {
 export function setTrim(range, trim) {
   range.trim = trim;
 }
-
-const smoothstep = (edge0, edge1, x) => {
-  const t = Math.min(1, Math.max(0, (x - edge0) / (edge1 - edge0)));
-  return t * t * (3 - 2 * t);
-};
 
 const scratch = new THREE.Vector3();
 

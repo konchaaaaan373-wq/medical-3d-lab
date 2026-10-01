@@ -329,8 +329,10 @@ export function createAnatomyPanel({
         dataset: { action: 'scope' },
         on: {
           click: () => {
+            // The scene says where the switch goes; the panel is shared and
+            // does not know any scene's ways of looking by name.
             const state = scene.getDisplayScope();
-            scene.setDisplayScope?.(state.on ? 'heart' : 'aorta');
+            if (state?.next) scene.setDisplayScope?.(state.next);
           },
         },
       }, [

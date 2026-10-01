@@ -8,12 +8,12 @@ clinician has judged this geometry or these labels**, and every surface says so
 
 | | |
 | --- | --- |
-| **Status on this branch** | **Technical re-pin only — not confirmed by the owner, not a publication decision, not a medical review.** The pins below were moved on the unmerged branch `claude/dreamy-fermi-2ddpth` (2026-09-29/30, digest again 2026-10-01) so that it builds and its tests run against the new vessel file and scene sources. Whether this scene stays published in this form is the owner's decision, still to be taken |
-| **Pins moved at** | 2026-10-01 (vessel-file hash 2026-09-29/30; scene digest 2026-10-01 after the descriptions were collated again and one Japanese word was changed; see "Technical re-pin on 2026-09-29/30") |
-| **Pins moved by** | Claude Code (AI engineering agent), on its own initiative to keep the branch consistent — **not** at the owner's direction for this step. The 2026-09-15 acceptance by the owner of what this scene named then, and the owner-directed re-pins of 2026-09-21 and 2026-09-24, are the last decisions a person took |
+| **Status** | **Merged at the owner's direction on 2026-10-01** — the owner asked for the branch to be reviewed, fixed and then merged (「レビューして修正までしたらマージ」), which publishes this form of the scene, since production deploys from `main`. **That is the owner's decision to publish; it is not an anatomical or clinical review**, and neither has been done (table below). Before that, from 2026-09-29, the pins had been moved by Claude Code on the unmerged branch as a technical alignment only, recorded as such |
+| **Pins moved at** | 2026-10-01 (vessel-file hash 2026-09-29/30; scene digest 2026-10-01 after the descriptions were collated again, one Japanese word was changed and the review fixes landed; see "Technical re-pin on 2026-09-29/30") |
+| **Pins moved by** | Claude Code (AI engineering agent). From 2026-09-29 to 2026-10-01 on its own initiative, to keep the branch consistent; the final pins, after the review fixes, at the owner's direction to merge on 2026-10-01. The 2026-09-15 acceptance by the owner of what this scene named then, and the owner-directed re-pins of 2026-09-21 and 2026-09-24, are the earlier decisions a person took |
 | **Role** | `engineering` — software behaviour, not anatomical or clinical judgement |
 | **Asset revisions** | `hubmap-vh-m-heart` @ `sha256:994a86380bd30bc9744c08edd9812825ab22b340339665a422be6ba545fbbf8a`<br>`hubmap-vh-m-blood-vasculature` @ `sha256:f03a50620a66c3d7b6987806b9025eb12742ca57377b243f8cea6f2bcfbb231a` |
-| **Scene revision** | model card revision **28**, source digest `c084f6b8ba1a5d10` |
+| **Scene revision** | model card revision **28**, source digest `110895884470177e` |
 | **Scene sources under that digest** | [`src/data/heartAnatomy.js`](../../src/data/heartAnatomy.js), [`src/scenes/cardiovascular/scenes/heartAnatomy/HeartAnatomyScene.js`](../../src/scenes/cardiovascular/scenes/heartAnatomy/HeartAnatomyScene.js), [`src/scenes/cardiovascular/scenes/heartAnatomy/displayRange.js`](../../src/scenes/cardiovascular/scenes/heartAnatomy/displayRange.js) |
 | **Adoption decision** | [`../decisions/HEART-ASSET-ADOPTION.md`](../decisions/HEART-ASSET-ADOPTION.md) |
 
@@ -49,12 +49,12 @@ technical alignment of hashes and a digest. It is not a decision that the
 scene is fit to publish, it is not an anatomical or clinical judgement, and a
 green test run is not evidence of either.** The owner asked on 2026-09-30 that
 the branch not be merged and that publication not be settled before their own
-check.
+check; on 2026-10-01 the owner directed that it be reviewed, fixed and merged.
 
 | What | State on 2026-10-01 |
 | --- | --- |
 | Asset hash and scene digest in `release.js` | moved to the branch's files (technical) |
-| Owner's confirmation of publication in this form | **not given** |
+| Owner's confirmation of publication in this form | **given 2026-10-01** as a direction to merge after review and fixes; before that, not given |
 | Anatomist review (`anatomyExpertReview`) | **not done** — pending, as for every structure here |
 | Clinical review | **not done** — pending in the registry |
 | Descriptions of the aorta and its branches | checked against one opened textbook (OpenStax *Anatomy and Physiology 2e*, §20.5, its text and, from 2026-10-01, two of its figures) and, for which vessel is a branch of which, the HuBMAP ASCT+B table; see the evidence dossier's "Reference check". The 2026-10-01 pass found one of the 2026-09-30 "not in the source" verdicts wrong (the T12 level of the aortic hiatus) and put it back. No anatomist has read them |

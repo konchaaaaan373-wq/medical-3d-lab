@@ -16,7 +16,11 @@ import { FakeElement, findByClass, installFakeDocument } from './helpers/fake-do
  */
 function fakeScene({ scopes = true } = {}) {
   const listeners = { selection: [], hover: [], status: [], isolation: [], visibility: [], scope: [] };
-  let scope = 'aorta';
+  // Ids that are not the heart's: the panel is shared, and asks the scene
+  // which way the switch goes rather than knowing (review finding, 2026-10-01).
+  const ON = 'wide';
+  const OFF = 'narrow';
+  let scope = ON;
   const asked = [];
   const scene = {
     asked,
@@ -38,13 +42,13 @@ function fakeScene({ scopes = true } = {}) {
     /** A change made somewhere else — a recipe, "Unhide all". */
     switchElsewhere(next) {
       scope = next;
-      for (const fn of listeners.scope) fn({ id: scope, on: scope === 'aorta' });
+      for (const fn of listeners.scope) fn({ id: scope, on: scope === ON, next: scope === ON ? OFF : ON });
     },
   };
   if (scopes) {
     Object.assign(scene, {
       getDisplayScope: () => ({
-        id: scope, on: scope === 'aorta', label: 'Aorta and main branches', labelJa: '大動脈・主要分枝を表示',
+        id: scope, on: scope === ON, next: scope === ON ? OFF : ON, label: 'Aorta and main branches', labelJa: '大動脈・主要分枝を表示',
         hint: 'Off shows the heart on its own.', hintJa: 'オフで心臓だけ。',
       }),
       setDisplayScope: (next) => {
@@ -113,14 +117,14 @@ test('scope switch: pressing it asks the scene, and it reads back what the scene
   const m = mount();
   try {
     m.toggle().click();
-    assert.deepEqual(m.scene.asked, ['heart']);
+    assert.deepEqual(m.scene.asked, ['narrow']);
     assert.equal(m.toggle().getAttribute('aria-checked'), 'false');
     m.toggle().click();
-    assert.deepEqual(m.scene.asked, ['heart', 'aorta']);
+    assert.deepEqual(m.scene.asked, ['narrow', 'wide']);
     assert.equal(m.toggle().getAttribute('aria-checked'), 'true');
     // Changed somewhere else — a way of looking framed on the heart — and the
     // switch follows rather than going on claiming the aorta is on.
-    m.scene.switchElsewhere('heart');
+    m.scene.switchElsewhere('narrow');
     assert.equal(m.toggle().getAttribute('aria-checked'), 'false');
   } finally {
     m.restore();

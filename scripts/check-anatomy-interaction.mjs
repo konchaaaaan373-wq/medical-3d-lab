@@ -2068,7 +2068,12 @@ try {
     // phone.
     at('reading the selected structure on the Detail tab, in the phone sheet');
     await page.locator('#anatomy-tab-detail').click();
-    await page.waitForTimeout(300);
+    // The tab's own state, not a time (CLAUDE.md: wait for state).
+    await page.waitForFunction(
+      () => document.querySelector('#anatomy-tab-detail')?.getAttribute('aria-selected') === 'true',
+      null,
+      { timeout: 10000 }
+    ).catch(() => {});
     const detail = await page.evaluate(() => {
       const body = document.querySelector('.anatomy-panel-body');
       const copy = [...body.querySelectorAll('.anatomy-copy')].find((node) => node.getClientRects().length > 0);
@@ -2090,7 +2095,11 @@ try {
       if (detail.font < 12) problems.push(`on a phone the description is set at ${detail.font}px, under the type floor`);
     }
     await page.locator('#anatomy-tab-parts').click();
-    await page.waitForTimeout(200);
+    await page.waitForFunction(
+      () => document.querySelector('#anatomy-tab-parts')?.getAttribute('aria-selected') === 'true',
+      null,
+      { timeout: 10000 }
+    ).catch(() => {});
     await shot('brain-sheet');
     await page.keyboard.press('Escape');
     await page.waitForTimeout(300);
@@ -2205,8 +2214,22 @@ try {
       return { onScreen: false };
     });
     if (archPoint?.onScreen) {
+      // Wait for the click to have been handled, not for a time: the scene
+      // picks synchronously in its own pointerup, and a listener added after
+      // it on the same canvas runs after it.
+      await scoped.evaluate(() => {
+        window.__switchClickHandled = false;
+        window.__app.viewer.renderer.domElement.addEventListener(
+          'pointerup',
+          () => { window.__switchClickHandled = true; },
+          { once: true }
+        );
+      });
       await scoped.mouse.click(archPoint.x, archPoint.y);
-      await scoped.waitForTimeout(200);
+      const handled = await scoped
+        .waitForFunction(() => window.__switchClickHandled === true, null, { timeout: 10000 })
+        .then(() => true, () => false);
+      if (!handled) problems.push(`[switch ${size}] a click where the arch was drawn never reached the model`);
       const picked = await scoped.evaluate(() => window.__app.scene.getAnatomySelection()?.id ?? null);
       if (picked === 'VH_M_aortic_arch') problems.push(`[switch ${size}] a click where the arch was drawn selected the arch it switched off`);
     } else {
@@ -2259,7 +2282,7 @@ try {
     at(`[switch ${size}] reset display`);
     if (phone) {
       await scoped.locator('.anatomy-panel-open').click();
-      await scoped.waitForTimeout(300);
+      await scoped.waitForFunction(() => document.querySelector('.anatomy-panel')?.dataset.sheet === 'open', null, { timeout: 10000 });
     }
     await scoped.locator('#anatomy-tab-display').click();
     await scoped.locator('.inspection-reset').click();
