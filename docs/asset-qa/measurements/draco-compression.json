@@ -133,24 +133,48 @@
     {
       "file": "heart/VH_M_Blood_Vasculature.glb",
       "input": {
-        "sha256": "a95ff0825431953d8fff210cf29d9e65aeed5da55f623717ab613864a9435502",
-        "bytes": 2838396
+        "sha256": "de4cc2e4d3a45f229e13caa30a4d486779bee7c29f5f7298e486e5c44f6911ab",
+        "bytes": 2985664
       },
       "output": {
-        "sha256": "de4170610a12b3cd0595be79c2254735de63b0375252448c32fefa210aad11b9",
-        "bytes": 434364
+        "sha256": "f03a50620a66c3d7b6987806b9025eb12742ca57377b243f8cea6f2bcfbb231a",
+        "bytes": 463508
       },
-      "meshNodes": 37,
-      "trianglesBefore": 153476,
-      "trianglesAfter": 153476,
+      "meshNodes": 42,
+      "trianglesBefore": 161077,
+      "trianglesAfter": 161077,
       "structureUnchanged": true,
-      "vertices": 77561,
+      "vertices": 81560,
       "maxPositionErrorUm": 12.21,
-      "meanPositionErrorUm": 2.197,
+      "meanPositionErrorUm": 2.155,
       "normalAngleP99Deg": 0.185,
       "normalAngleMaxDeg": 0.234,
       "maxVolumeChangeMl": 0.008,
       "volumes": [
+        {
+          "name": "VH_M_inferior_mesenteric_artery",
+          "closed": false,
+          "beforeMl": 0.446,
+          "afterMl": 0.446
+        },
+        {
+          "name": "VH_M_superior_mesenteric_artery",
+          "closed": false,
+          "beforeMl": 7.553,
+          "afterMl": 7.552
+        },
+        {
+          "name": "VH_M_left_renal_artery",
+          "closed": false,
+          "beforeMl": -1.84,
+          "afterMl": -1.84
+        },
+        {
+          "name": "VH_M_right_renal_artery",
+          "closed": false,
+          "beforeMl": -0.018,
+          "afterMl": -0.018
+        },
         {
           "name": "VH_M_aortic_arch",
           "closed": false,
@@ -372,13 +396,19 @@
           "closed": false,
           "beforeMl": 6.963,
           "afterMl": 6.962
+        },
+        {
+          "name": "VH_M_celiac_trunk",
+          "closed": false,
+          "beforeMl": 1.904,
+          "afterMl": 1.905
         }
       ],
       "validator": {
         "version": "2.0.0-dev.3.10",
         "errors": 0,
         "warnings": 0,
-        "infos": 39
+        "infos": 43
       }
     }
   ]

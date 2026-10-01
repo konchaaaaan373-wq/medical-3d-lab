@@ -79,6 +79,7 @@
  */
 import { existsSync, mkdirSync } from 'node:fs';
 import { chromiumExecutable } from './lib/browser.mjs';
+import { waitForCameraToSettle } from './lib/camera.mjs';
 import { differingPixels, settledPixels } from './lib/frames.mjs';
 import { serveDist } from './lib/serve-dist.mjs';
 import { join, resolve } from 'node:path';
@@ -162,11 +163,19 @@ const SCENE_POINTS = {
   // opening framing stopped being discarded (F-133), so every scene's model
   // moved. The heart's fourth point had come to name the left ventricle where
   // it is authored for the artery that runs across it.
+  // **Re-measured 2026-09-29**, because the scene now opens on the heart
+  // **and its aorta**: the subject is a column half a metre tall with the
+  // heart at its top, so every point moved. `points:anatomy --dense` hit ten
+  // structures and kept two by its own "inside" rule — the column is a few
+  // frame-percent wide — so the other two are placed by hand on hits that
+  // same sweep measured (its `--json`), in the middle of a vertical run of
+  // three hits on the same structure. Two from each file, and the descending
+  // aorta is the proof that the opening view draws the aorta at all.
   'heart-anatomy': [
-    [0.253, 0.18, 'Superior vena cava'],
-    [0.365, 0.18, 'Arch of the aorta'],
-    [0.29, 0.275, 'Ascending aorta'],
-    [0.403, 0.275, 'Left atrium'],
+    [0.328, 0.323, 'Right atrium'],
+    [0.365, 0.37, 'Right ventricle'],
+    [0.365, 0.56, 'Descending aorta'],
+    [0.328, 0.512, 'Inferior vena cava'],
   ],
   // The brain's own tour, named — which it was not until 2026-09-15, and the
   // cost of that is the reason these four carry names now.
@@ -1927,6 +1936,22 @@ try {
 
     // Select from the list while it is open, scrolled well down — the case
     // F-31 was about: the answer must not be somewhere the reader cannot see.
+    // How much list the sheet leaves under its search box, with a structure
+    // selected — the summary above it grows with a selection. A scene that put
+    // one more row into that summary (the heart's aorta switch, 2026-09-30)
+    // left **13 px**: the step below then timed out on a row the search box
+    // covered, and before a reorder of the list moved which row that was, it
+    // had passed by five pixels. Asked directly now. The floor is a row and a
+    // half; a scene without a switch leaves about two.
+    const listRoom = await page.evaluate(() => {
+      const listBody = document.querySelector('.anatomy-panel-body');
+      const search = listBody.querySelector('.anatomy-search-row');
+      return listBody.clientHeight - (search ? search.getBoundingClientRect().height : 0);
+    });
+    if (listRoom < 48) {
+      problems.push(`with a structure selected, the phone sheet leaves ${Math.round(listRoom)} px of list under the search box`);
+    }
+
     const rows = page.locator('.anatomy-tree-leaf:visible');
     const count = await rows.count();
     const deep = rows.nth(Math.min(20, count - 1));
@@ -2034,11 +2059,242 @@ try {
       problems.push(`reopening the sheet moved the list (${remembered.scroll} → ${reopened.scroll})`);
     }
     if (reopened.selected !== 1) problems.push('reopening the sheet lost the selection');
+
+    // What the reader selected can be read here: the Detail tab shows the
+    // structure's description across the sheet, at the type floor. It showed
+    // a count and a credit line and nothing else — `ui.css` still hid the
+    // description below 720 px and capped the card at 270 px, from when it
+    // floated over the scene — and no check had ever opened that tab on a
+    // phone.
+    at('reading the selected structure on the Detail tab, in the phone sheet');
+    await page.locator('#anatomy-tab-detail').click();
+    // The tab's own state, not a time (CLAUDE.md: wait for state).
+    await page.waitForFunction(
+      () => document.querySelector('#anatomy-tab-detail')?.getAttribute('aria-selected') === 'true',
+      null,
+      { timeout: 10000 }
+    ).catch(() => {});
+    const detail = await page.evaluate(() => {
+      const body = document.querySelector('.anatomy-panel-body');
+      const copy = [...body.querySelectorAll('.anatomy-copy')].find((node) => node.getClientRects().length > 0);
+      if (!copy) return null;
+      return {
+        length: copy.textContent.trim().length,
+        width: copy.getBoundingClientRect().width,
+        sheet: body.clientWidth,
+        font: parseFloat(getComputedStyle(copy).fontSize),
+      };
+    });
+    if (!detail) {
+      problems.push('on a phone the Detail tab shows no description of the selected structure');
+    } else {
+      if (detail.length < 20) problems.push(`on a phone the Detail tab's description is ${detail.length} characters long`);
+      if (detail.width < detail.sheet * 0.8) {
+        problems.push(`on a phone the description takes ${Math.round(detail.width)} of the sheet's ${detail.sheet} px`);
+      }
+      if (detail.font < 12) problems.push(`on a phone the description is set at ${detail.font}px, under the type floor`);
+    }
+    await page.locator('#anatomy-tab-parts').click();
+    await page.waitForFunction(
+      () => document.querySelector('#anatomy-tab-parts')?.getAttribute('aria-selected') === 'true',
+      null,
+      { timeout: 10000 }
+    ).catch(() => {});
     await shot('brain-sheet');
     await page.keyboard.press('Escape');
     await page.waitForTimeout(300);
     await shot('brain-phone');
   }
+  // ---------------------------------------------------------------------
+  // 11b. A scene with two ways of looking, and the switch between them.
+  //
+  // The heart opens on the heart **and its aorta** and one switch shows the
+  // heart on its own. What that switch owes the reader, driven here because
+  // none of it is visible to `node --test` — the camera, the pointer and the
+  // panel are all in the page:
+  //
+  // - what it takes away stops being selected, and stops taking clicks;
+  // - the heart then fills the frame, turning about itself;
+  // - switching back returns the frame it left, and switching again and again
+  //   lands on the same two frames rather than drifting;
+  // - a direction the reader turned to is kept across the switch;
+  // - "Reset display" puts the aorta back, with its frame.
+  //
+  // Only for a scene that offers the switch, found by its control rather than
+  // by name, at a desktop and a phone size.
+  for (const viewport of [{ width: 1280, height: 800 }, { width: 390, height: 844 }]) {
+    const size = `${viewport.width}x${viewport.height}`;
+    const phone = viewport.width <= 430;
+    const context = await browser.newContext({ viewport, isMobile: phone, hasTouch: phone });
+    const scoped = await context.newPage();
+    scoped.on('pageerror', (error) => problems.push(`[switch ${size}] uncaught error: ${error}`));
+    at(`[switch ${size}] opening`);
+    await scoped.goto(url, { waitUntil: 'networkidle' });
+    await scoped.locator('.consent-banner button').last().click({ timeout: 8000, noWaitAfter: true }).catch(() => {});
+    await scoped.waitForFunction(() => document.querySelectorAll('.anatomy-tree-leaf').length > 0, null, { timeout: 90000 });
+    const toggle = scoped.locator('.anatomy-scope-switch');
+    if (!(await toggle.count())) {
+      await context.close();
+      if (!phone) notes.push('this scene offers one way of looking, so there is no switch to drive');
+      break;
+    }
+    await waitForCameraToSettle(scoped);
+    const pose = () => scoped.evaluate(() => {
+      const { viewer } = window.__app;
+      return { position: viewer.camera.position.toArray(), target: viewer.controls.target.toArray() };
+    });
+    const apart = (a, b) => Math.max(...[...a.position, ...a.target].map((v, i) => Math.abs(v - [...b.position, ...b.target][i])));
+    const checked = () => toggle.getAttribute('aria-checked');
+    const press = async () => {
+      await toggle.click();
+      await waitForCameraToSettle(scoped);
+    };
+
+    at(`[switch ${size}] the opening state`);
+    if ((await checked()) !== 'true') problems.push(`[switch ${size}] the scene does not open with the aorta on`);
+    const opening = await pose();
+
+    // A structure the switch will take away, selected, then switched off.
+    at(`[switch ${size}] switching off with the aorta selected`);
+    await scoped.evaluate(() => window.__app.scene.selectStructure('VH_M_descending_aorta'));
+    await press();
+    if ((await checked()) !== 'false') problems.push(`[switch ${size}] the switch does not read off after pressing it`);
+    const cleared = await scoped.evaluate(() => window.__app.scene.getAnatomySelection());
+    if (cleared) problems.push(`[switch ${size}] "${cleared.name}" is still selected after the switch took it away`);
+    const card = await scoped.locator('.anatomy-panel-name.lang-en').first().textContent();
+    if (/aorta/i.test(card ?? '')) problems.push(`[switch ${size}] the card still names "${card}"`);
+    const heartOnly = await pose();
+
+    // The heart fills the frame and the camera turns about it.
+    at(`[switch ${size}] the heart on its own`);
+    const framed = await scoped.evaluate(() => {
+      const { viewer, scene } = window.__app;
+      const V = viewer.camera.position.constructor;
+      const box = scene.heartBox;
+      const canvas = viewer.renderer.domElement.getBoundingClientRect();
+      let x0 = Infinity, x1 = -Infinity, y0 = Infinity, y1 = -Infinity;
+      for (const x of [box.min.x, box.max.x]) for (const y of [box.min.y, box.max.y]) for (const z of [box.min.z, box.max.z]) {
+        const p = new V(x, y, z).project(viewer.camera);
+        x0 = Math.min(x0, p.x); x1 = Math.max(x1, p.x); y0 = Math.min(y0, p.y); y1 = Math.max(y1, p.y);
+      }
+      const target = viewer.controls.target;
+      return {
+        width: (x1 - x0) / 2, height: (y1 - y0) / 2,
+        inside: x0 > -1.02 && x1 < 1.02 && y0 > -1.02 && y1 < 1.02,
+        targetInHeart: box.clone().expandByScalar(0.05).containsPoint(target),
+        canvas: { w: canvas.width, h: canvas.height },
+      };
+    });
+    const fill = Math.max(framed.width, framed.height);
+    if (fill < 0.45) problems.push(`[switch ${size}] the heart on its own takes ${(fill * 100).toFixed(0)}% of the frame — it should be the subject`);
+    if (!framed.inside) problems.push(`[switch ${size}] the heart on its own runs off the frame`);
+    if (!framed.targetInHeart) problems.push(`[switch ${size}] the camera does not turn about the heart once the aorta is off`);
+    observed.scopeFill = { ...(observed.scopeFill ?? {}), [size]: +fill.toFixed(3) };
+
+    // A click where the arch was drawn goes through it: switched off is off.
+    at(`[switch ${size}] clicking where the arch was`);
+    const archPoint = await scoped.evaluate(() => {
+      const { viewer, scene } = window.__app;
+      const V = viewer.camera.position.constructor;
+      const rect = viewer.renderer.domElement.getBoundingClientRect();
+      // Any vertex of the arch that lands on the canvas itself — not under
+      // the summary card, which on a phone covers the arch's top and would
+      // take the click instead (the first phone run opened the sheet).
+      for (const mesh of scene.meshesById.get('VH_M_aortic_arch') ?? []) {
+        const position = mesh.geometry.getAttribute('position');
+        const vertex = new V();
+        for (let i = 0; i < position.count; i += 37) {
+          const p = vertex.fromBufferAttribute(position, i).applyMatrix4(mesh.matrixWorld).project(viewer.camera);
+          if (Math.abs(p.x) > 0.95 || Math.abs(p.y) > 0.95) continue;
+          const x = rect.left + ((p.x + 1) / 2) * rect.width;
+          const y = rect.top + ((1 - p.y) / 2) * rect.height;
+          if (document.elementFromPoint(x, y) === viewer.renderer.domElement) return { x, y, onScreen: true };
+        }
+      }
+      return { onScreen: false };
+    });
+    if (archPoint?.onScreen) {
+      // Wait for the click to have been handled, not for a time: the scene
+      // picks synchronously in its own pointerup, and a listener added after
+      // it on the same canvas runs after it.
+      await scoped.evaluate(() => {
+        window.__switchClickHandled = false;
+        window.__app.viewer.renderer.domElement.addEventListener(
+          'pointerup',
+          () => { window.__switchClickHandled = true; },
+          { once: true }
+        );
+      });
+      await scoped.mouse.click(archPoint.x, archPoint.y);
+      const handled = await scoped
+        .waitForFunction(() => window.__switchClickHandled === true, null, { timeout: 10000 })
+        .then(() => true, () => false);
+      if (!handled) problems.push(`[switch ${size}] a click where the arch was drawn never reached the model`);
+      const picked = await scoped.evaluate(() => window.__app.scene.getAnatomySelection()?.id ?? null);
+      if (picked === 'VH_M_aortic_arch') problems.push(`[switch ${size}] a click where the arch was drawn selected the arch it switched off`);
+    } else {
+      notes.push(`[switch ${size}] the arch's top is off the heart-only frame or under the interface, so the click-through was not exercised`);
+    }
+
+    // Back on: the frame it left, and no drift over repeated switching.
+    at(`[switch ${size}] switching back and forth`);
+    await press();
+    if ((await checked()) !== 'true') problems.push(`[switch ${size}] the switch does not read on again`);
+    const back = await pose();
+    if (apart(back, opening) > 0.02) problems.push(`[switch ${size}] switching back does not return the opening frame (off by ${apart(back, opening).toFixed(3)})`);
+    for (let round = 0; round < 2; round += 1) {
+      await press();
+      const off = await pose();
+      await press();
+      const on = await pose();
+      if (apart(off, heartOnly) > 0.02 || apart(on, opening) > 0.02) {
+        problems.push(`[switch ${size}] round ${round + 2} drifted (off by ${apart(off, heartOnly).toFixed(3)}, on by ${apart(on, opening).toFixed(3)})`);
+      }
+    }
+
+    // A direction the reader turned to survives the switch.
+    at(`[switch ${size}] turning, then switching`);
+    const canvasBox = await scoped.locator('canvas').first().boundingBox();
+    const cx = canvasBox.x + canvasBox.width * 0.3;
+    const cy = canvasBox.y + canvasBox.height * 0.5;
+    await scoped.mouse.move(cx, cy);
+    await scoped.mouse.down();
+    await scoped.mouse.move(cx + 120, cy, { steps: 8 });
+    await scoped.mouse.up();
+    // The orbit coasts after the button is let go, and on software GL at two
+    // frames a second the damping takes most of a minute to run out. The
+    // default 20 s timed out mid-coast the first time this ran — the camera was
+    // still moving, which is what the wait is for, not a failure.
+    await waitForCameraToSettle(scoped, { timeout: 120000 });
+    const direction = async () => {
+      const { position, target } = await pose();
+      const d = position.map((v, i) => v - target[i]);
+      const length = Math.hypot(...d);
+      return d.map((v) => v / length);
+    };
+    const turned = await direction();
+    await press();
+    const kept = await direction();
+    const angle = (Math.acos(Math.min(1, turned.reduce((sum, v, i) => sum + v * kept[i], 0))) * 180) / Math.PI;
+    if (angle > 0.5) problems.push(`[switch ${size}] switching turned the model ${angle.toFixed(2)}° away from where the reader had turned it`);
+
+    // "Reset display" is the opening display: the aorta on, the opening frame.
+    at(`[switch ${size}] reset display`);
+    if (phone) {
+      await scoped.locator('.anatomy-panel-open').click();
+      await scoped.waitForFunction(() => document.querySelector('.anatomy-panel')?.dataset.sheet === 'open', null, { timeout: 10000 });
+    }
+    await scoped.locator('#anatomy-tab-display').click();
+    await scoped.locator('.inspection-reset').click();
+    if (phone) await scoped.keyboard.press('Escape');
+    await waitForCameraToSettle(scoped);
+    if ((await checked()) !== 'true') problems.push(`[switch ${size}] "Reset display" left the aorta off`);
+    const reset = await pose();
+    if (apart(reset, opening) > 0.02) problems.push(`[switch ${size}] "Reset display" does not return the opening frame (off by ${apart(reset, opening).toFixed(3)})`);
+    if (shotsDir) await scoped.screenshot({ path: join(shotsDir, `scope-${size}.png`) });
+    await context.close();
+  }
+
   // ---------------------------------------------------------------------
   // 12. A failed load, and the way out of it.
   //

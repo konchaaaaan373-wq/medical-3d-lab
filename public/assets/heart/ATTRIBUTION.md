@@ -7,7 +7,7 @@ requires that a derivative say so.
 | File | Derived from | SHA-256 of the file here | Bytes |
 | --- | --- | --- | --- |
 | `VH_M_Heart.glb` | `v1.2/models/VH_M_Heart.glb` (SHA-256 `b1237e7e765178e9357fd2ea7ccf19d55d0bf9ca55e187886635febe28244c70`) | `994a86380bd30bc9744c08edd9812825ab22b340339665a422be6ba545fbbf8a` | 424 932 |
-| `VH_M_Blood_Vasculature.glb` | `v1.2/models/VH_M_Blood_Vasculature.glb` (SHA-256 `a31ebed6d527b1cff31942e3e50d7c074c30b574337f68c4b89e9c88e4309d0d`) | `de4170610a12b3cd0595be79c2254735de63b0375252448c32fefa210aad11b9` | 434 364 |
+| `VH_M_Blood_Vasculature.glb` | `v1.2/models/VH_M_Blood_Vasculature.glb` (SHA-256 `a31ebed6d527b1cff31942e3e50d7c074c30b574337f68c4b89e9c88e4309d0d`) | `f03a50620a66c3d7b6987806b9025eb12742ca57377b243f8cea6f2bcfbb231a` | 463 508 |
 
 Both sources were taken from
 [`hubmapconsortium/ccf-releases`](https://github.com/hubmapconsortium/ccf-releases)
@@ -38,10 +38,12 @@ kind: `ACCESSOR_VECTOR3_NON_UNIT`, a vertex normal of zero or near-zero length.
 24 068 vertices) and 33 across two meshes of the vasculature. A degenerate normal
 carries no direction, so there is nothing in it to preserve.
 
-**The vasculature file also has 67 of its 104 meshes removed.** They are the
-eye, abdominal and pelvic vessels: everything outside
-`VH_M_blood_vasculature_of_heart`, which is the publisher's own grouping and the
-only part this application has ever drawn. They were being downloaded by every
+**The vasculature file also has 62 of its 104 meshes removed.** They are the
+eye, abdominal and pelvic vessels outside `VH_M_blood_vasculature_of_heart`,
+which is the publisher's own grouping — except the five arteries leaving the
+abdominal aorta (coeliac trunk, superior and inferior mesenteric, both renal),
+kept since 2026-09-29 with their names, ids and groups because the aorta in
+that grouping has an opening for each of them. They were being downloaded by every
 reader who opened the heart and shown to none of them — 5.24 MB gzipped. Nothing
 under that node was touched, and no vertex of anything on screen moved.
 

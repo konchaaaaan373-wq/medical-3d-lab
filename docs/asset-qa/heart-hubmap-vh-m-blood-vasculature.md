@@ -308,3 +308,78 @@ this document. Both files are still candidates that have been through no asset
 pipeline — no manifest record, no licence decision, no discharged obligations,
 none of the five QA gates — and no publication decision exists.
 `betaPublicationProblems('heart-anatomy')` reports the candidate asset by name.
+
+## Re-derived 2026-09-29 — the five abdominal aortic branches are kept
+
+**Why.** The derivative kept only `VH_M_blood_vasculature_of_heart`, and the
+descending aorta in that subtree has **an opening for each artery that leaves
+the abdominal aorta** — so with the aorta shown it was a tube with five holes
+and nothing leaving it. The branches were in the publisher's file all along,
+filed under the organs they supply.
+
+**What changed.** `scripts/repair-candidate-gltf.mjs` keeps five more nodes by
+name (`keepAlso`), each with its ancestor groups, so every name, extra and
+grouping is the publisher's: `VH_M_celiac_trunk` (under the liver's arteries),
+`VH_M_superior_mesenteric_artery` and `VH_M_inferior_mesenteric_artery` (large
+intestine), `VH_M_left_renal_artery` and `VH_M_right_renal_artery` (kidney). No
+ancestor carries a transform, which the script now refuses rather than
+assumes. The removed set falls from 67 meshes to 62.
+
+| | before | after |
+| --- | --- | --- |
+| meshes kept | 37 | 42 |
+| triangles | 153,476 | 161,077 |
+| repaired file | `a95ff082…` | `de4cc2e4…` |
+| shipped (Draco) | `de417061…`, 434,364 B | `f03a5062…`, 463,508 B |
+| validator (shipped) | 0 errors, 0 warnings, 39 infos | 0 errors, 0 warnings, 43 infos |
+| max vertex movement from Draco | 12.21 µm | 12.21 µm |
+
+`npm run assets:repair:verify` and `npm run assets:compress:verify` both
+reproduce these hashes twice from the pinned source; the heart file's hashes
+did not change. Every kept mesh's positions are byte-identical to the
+publisher's before compression (`heldUnchanged.vertexPositions` in
+`measurements/normal-repair.json`).
+
+**Each branch sits in its opening — measured.** Boundary loops of the
+descending aorta against the branches' own, in the source's millimetres:
+
+| branch | aorta's opening | branch's own origin loop |
+| --- | --- | --- |
+| coeliac trunk | (12.6, 332.4, 3.6) r 5.5 | (12.5, 331.7, 4.9) r 4.1 |
+| superior mesenteric | (12.5, 317.7, 10.7) r 6.9 | **the same ring** |
+| `VH_M_left_renal_artery` | (3.2, 302.9, 9.2) r 3.1 | **the same ring** |
+| `VH_M_right_renal_artery` | (21.2, 300.1, 6.0) r 4.1 | **the same ring** |
+| inferior mesenteric | (15.2, 198.8, 27.9) r 5.0 | **the same ring** |
+
+Top to bottom that is coeliac (332), superior mesenteric (318), renal (303,
+300), inferior mesenteric (199), the aorta's end (187) — the standard order.
+The inferior mesenteric's opening is 8.0 and 10.8 (file units × 1000) above
+the two iliac openings and 11.4 above the aorta's lowest vertex. That is model
+geometry: the file is in metres only by the glTF convention and nothing
+calibrates it to the specimen, so it is not read as the specimen's anatomy or as
+a variant (`docs/model-evidence/heart-anatomy.md`, claim 15).
+
+**Found on the way: the two renal arteries' labels disagree with their
+geometry** (checked against a mirrored-file explanation in
+`docs/model-evidence/heart-anatomy.md`, claim 16). `VH_M_left_renal_artery` leaves the aorta's −x side and ends
+at (−50.6, 313.1, −10.2), at the hilum where the file's **right** renal vein
+(x −62…−33) is, passing behind the inferior vena cava; `VH_M_right_renal_artery`
+ends at x +53…+55 beside the left renal vein. +x is the patient's left in this
+file (above: the left ophthalmic veins; and the left renal vein, long, crossing
+in front of the aorta to the vena cava, is at +x too). The file is not edited;
+the scene names them by position and says so (`src/data/heartAnatomy.js`).
+
+**What the source does not have.** No iliac artery: the aorta ends with two
+openings, (5.2, 190.8, 25.0) r 3.6 on the right and (14.9, 188.0, 23.1) r 2.6
+on the left, whose outward normals point down-right and down. No right common
+carotid or right subclavian: the brachiocephalic trunk ends in a closed,
+rounded tip at (−27.0, 606.8, 25.0). The scene draws the start of those four
+schematically, from those openings and that tip — code, not this asset.
+
+**Seen.** Rendered in a browser (Chromium, SwiftShader) with the aorta shown:
+the arch and the brachiocephalic division from the front, back, both sides and
+above; the abdominal aorta from the front, back, both sides and below; the
+bifurcation from the front, back and side. Each branch leaves its opening with
+no gap and no step; the right renal artery passes behind the vena cava. The
+fade at the end of each branch, and the schematic segments, are the scene's
+and are recorded in its evidence dossier.

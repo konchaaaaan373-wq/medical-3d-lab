@@ -16,11 +16,12 @@
     "card": "docs/model-cards/heart-anatomy.md",
     "modelSources": [
       "src/data/heartAnatomy.js",
-      "src/scenes/cardiovascular/scenes/heartAnatomy/HeartAnatomyScene.js"
+      "src/scenes/cardiovascular/scenes/heartAnatomy/HeartAnatomyScene.js",
+      "src/scenes/cardiovascular/scenes/heartAnatomy/displayRange.js"
     ],
-    "cardRevision": 27,
-    "modelDigest": "5b1357058b22960b",
-    "cardUpdatedAt": "2026-09-24"
+    "cardRevision": 28,
+    "modelDigest": "110895884470177e",
+    "cardUpdatedAt": "2026-10-01"
   },
   {
     "sceneId": "circulation",
