@@ -5,8 +5,8 @@ import { resolveRoute, hashWithView } from './router.js';
 import { resolveSceneId, sceneById, systemsWithScenes } from './sceneRegistry.js';
 import { installDeparture } from './departure.js';
 import { openingMessage } from './destinationName.js';
-import { keepFrameForHandover } from './sceneHandover.js';
 import { hashWithPurpose } from './purpose.js';
+import { DEFAULT_BACKGROUND_ID, backgroundPresetById } from './inspection.js';
 import { patientExplanationAvailable } from '../access/patientPurpose.js';
 import { createSceneSwitcher } from '../components/SceneSwitcher.js';
 import { createLanguageToggle } from '../components/LanguageToggle.js';
@@ -43,17 +43,18 @@ import '../styles/lesson-layout.css';
  * and the line under the figure says what that is and what it is compared
  * with.
  *
- * ## The figure is drawn by the page
+ * ## The figure is drawn by the page — no renderer
  *
  * The lesson's figure is SVG (`lesson.figure`), laid out in the room between
- * the question and the bottom panel. The viewer's canvas stays behind the page
- * as its background and is painted only when its size changes
- * (`viewer.drawEveryFrame = false`); the frame loop still runs, because it is
- * the clock the explanation, the beat and a recording are stepped by.
+ * the question and the bottom panel. Nothing is drawn in 3D, so the shell makes
+ * no WebGL context at all (`App.js` decides on the layout before the renderer):
+ * a browser that cannot make one still opens the lesson. Its clock is one
+ * `requestAnimationFrame` loop (`createFrameClock`) — what the explanation, the
+ * beat and a recording are stepped by.
  *
- * @param {{ viewer: object, scene: object, SceneClass: Function, meta: object, entry: object, ui: HTMLElement }} options
+ * @param {{ scene: object, SceneClass: Function, meta: object, entry: object, ui: HTMLElement }} options
  */
-export function mountLessonShell({ viewer, scene, meta, entry, ui }) {
+export function mountLessonShell({ scene, meta, entry, ui }) {
   const lesson = scene.getLesson();
 
   // --- what every scene shares ---------------------------------------------
@@ -168,10 +169,11 @@ export function mountLessonShell({ viewer, scene, meta, entry, ui }) {
   languageToggle.init();
   ui.dataset.view = 'lesson';
 
-  // Nothing in 3D to turn, and nothing to repaint every frame.
-  viewer.controls.enabled = false;
-  viewer.controls.autoRotate = false;
-  viewer.drawEveryFrame = false;
+  const clock = createFrameClock();
+  // No canvas paints a background behind the page, so the page is its own
+  // ground: the default preset's colour, as every scene paints it under its
+  // canvas (`paintPageGround` in `App.js`).
+  document.documentElement.style.setProperty('--page-ground', backgroundPresetById(DEFAULT_BACKGROUND_ID).backdrop.bottom);
 
   function stateForPanel() {
     return {
@@ -183,7 +185,7 @@ export function mountLessonShell({ viewer, scene, meta, entry, ui }) {
     };
   }
 
-  viewer.onFrame((dt) => {
+  clock.onFrame((dt) => {
     if (mode === 'explaining') {
       if (playing) {
         t = Math.min(lesson.duration, t + dt);
@@ -199,27 +201,22 @@ export function mountLessonShell({ viewer, scene, meta, entry, ui }) {
     panel.render(stateForPanel());
   });
 
-  viewer.start();
+  clock.start();
 
   installDeparture({
     shownHash: window.location.hash,
     language: ui.dataset.lang === 'en' ? 'en' : 'ja',
     describe: (hash) => openingMessage(hash, ui.dataset.lang === 'en' ? 'en' : 'ja', { open: routeOpen(resolveRoute(hash)) }),
+    // No frame is carried to the next document: there is no canvas, and a
+    // picture of the page's background was all the old renderer could give.
     onDepart: () => {
-      if (!viewer?.running) return undefined;
-      try {
-        viewer.snapshot();
-        keepFrameForHandover({ canvas: viewer.renderer?.domElement, toHash: window.location.hash, fromSceneId: entry?.id ?? meta?.id ?? null });
-      } catch (error) {
-        console.warn('[handover] the outgoing frame could not be carried', error);
-      }
-      viewer.stop();
-      return () => viewer.start();
+      if (!clock.running) return undefined;
+      clock.stop();
+      return () => clock.start();
     },
   });
 
   window.__app = {
-    viewer,
     scene,
     meta,
     header: sceneSwitcher,
@@ -241,6 +238,8 @@ export function mountLessonShell({ viewer, scene, meta, entry, ui }) {
       seek: (seconds) => {
         t = Math.min(lesson.duration, Math.max(0, seconds));
       },
+      /** The clock, for a recording that steps it a fixed time per frame. */
+      clock,
       pause: () => {
         playing = false;
       },
@@ -258,4 +257,41 @@ export function mountLessonShell({ viewer, scene, meta, entry, ui }) {
     },
   };
   return window.__app;
+}
+
+/**
+ * The lesson's clock: one `requestAnimationFrame` loop handing each listener
+ * the seconds since the last frame, at most 0.1 (as the viewer's was, so a tab
+ * coming back from the background does not jump the explanation to its end).
+ * `step(dt)` runs one frame by hand, for a recording on a fixed clock.
+ */
+function createFrameClock() {
+  const listeners = [];
+  let handle = null;
+  let last = null;
+  const run = (dt) => {
+    for (const listener of listeners) listener(dt);
+  };
+  const tick = (now) => {
+    handle = requestAnimationFrame(tick);
+    const dt = last == null ? 0 : Math.min(0.1, Math.max(0, (now - last) / 1000));
+    last = now;
+    run(dt);
+  };
+  return {
+    onFrame: (listener) => listeners.push(listener),
+    start() {
+      if (handle != null) return;
+      last = null;
+      handle = requestAnimationFrame(tick);
+    },
+    stop() {
+      if (handle != null) cancelAnimationFrame(handle);
+      handle = null;
+    },
+    step: (dt) => run(dt),
+    get running() {
+      return handle != null;
+    },
+  };
 }

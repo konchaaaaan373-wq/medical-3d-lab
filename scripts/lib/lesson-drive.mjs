@@ -39,7 +39,7 @@
  *
  * `record` writes two videos per window — the explanation played through, and
  * the reader's buttons — **frame by frame on a fixed clock** (L-140): each
- * frame steps the viewer by 1/30 s, so the recording plays at the speed a
+ * frame steps the lesson's clock by 1/30 s, so the recording plays at the speed a
  * reader sees, whatever the machine that made it.
  */
 import { spawn } from 'node:child_process';
@@ -302,8 +302,10 @@ function checkAgainstSolver(strip, id, solved, where, problems, { before = null 
 /** The note on what the experiment is: on screen, and saying it. */
 function checkNote(seen, where, problems) {
   if (!seen.note) problems.push(`${where}: the note on what the experiment is is not on screen`);
-  else if (!/模式実験/.test(seen.noteText) || !/全作用は再現しません/.test(seen.noteText)) {
-    problems.push(`${where}: the note does not say it is a schematic experiment that is not the whole drug ("${seen.noteText}")`);
+  else if (!/模式実験/.test(seen.noteText) || !/全作用/.test(seen.noteText) || !/患者の反応も再現しません/.test(seen.noteText)) {
+    problems.push(
+      `${where}: the note does not say it is a schematic experiment that is neither the whole drug nor any patient ("${seen.noteText}")`
+    );
   }
 }
 
@@ -413,6 +415,31 @@ export async function driveLesson(browser, { url, slug, outDir, record = false, 
       record = false;
     }
   }
+  // --- without WebGL --------------------------------------------------------
+  // The lesson draws nothing in 3D, so a browser that cannot make a WebGL
+  // context must still open it rather than the renderer-failure page. Asked of
+  // a page whose canvases refuse every WebGL context — what a blocklisted GPU
+  // or a hardened browser gives — once, at the first window (code review,
+  // 2026-10-01: the lesson used to be mounted after the renderer was made).
+  {
+    const page = await browser.newPage({ viewport: windows[0] });
+    await page.addInitScript(() => {
+      const getContext = HTMLCanvasElement.prototype.getContext;
+      HTMLCanvasElement.prototype.getContext = function (type, ...rest) {
+        return /webgl/i.test(String(type)) ? null : getContext.call(this, type, ...rest);
+      };
+    });
+    await page.goto(url, { waitUntil: 'networkidle' });
+    const opened = await page
+      .waitForFunction(() => window.__app?.lesson && !document.getElementById('boot-veil'), null, { timeout: 30000 })
+      .then(() => true, () => false);
+    if (!opened) {
+      const shown = await page.evaluate(() => (document.querySelector('.scene-fallback') ? 'the renderer-failure page' : 'neither the lesson nor a failure page'));
+      problems.push(`without WebGL: the lesson did not open — ${shown} did`);
+    }
+    await page.close();
+  }
+
   for (const { width, height } of windows) {
     const tag = `${slug}-lesson-${width}x${height}`;
     const page = await browser.newPage({ viewport: { width, height } });
@@ -706,20 +733,27 @@ export async function recordLesson(browser, { url, width, height, file, part }) 
   try {
     await page.goto(url, { waitUntil: 'networkidle' });
     await ready(page);
-    // Take the clock: the viewer's own loop stops, and each frame is stepped by
-    // exactly 1/30 s.
+    // Take the clock: the lesson's own loop stops, and each frame is stepped by
+    // exactly 1/30 s (the lesson makes no renderer, so its clock is its own).
     await page.evaluate((fps) => {
-      const viewer = window.__app.viewer;
-      viewer.stop();
-      viewer.clock.getDelta = () => 1 / fps;
-      window.__step = () => viewer._tick();
+      const clock = window.__app.lesson.clock;
+      clock.stop();
+      window.__step = () => clock.step(1 / fps);
     }, FPS);
 
     const frames = async (seconds) => {
       for (let i = 0; i < Math.round(seconds * FPS) && !failed; i++) {
         await page.evaluate(() => window.__step());
         const frame = await page.screenshot(FRAME);
-        if (!encoder.stdin.write(frame)) await new Promise((resolve) => encoder.stdin.once('drain', resolve));
+        // A full pipe waits for the encoder to drain it — or to have gone: an
+        // encoder that died with the pipe full never drains, and the run would
+        // wait for the CI's timeout instead of saying the recording failed.
+        if (!encoder.stdin.write(frame)) {
+          await new Promise((resolve) => {
+            encoder.stdin.once('drain', resolve);
+            encoder.once('close', resolve);
+          });
+        }
       }
     };
     const press = (selector) => page.evaluate((target) => document.querySelector(target).click(), selector);

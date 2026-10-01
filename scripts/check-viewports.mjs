@@ -649,6 +649,8 @@ function measureInPage({ tolerance, floor, intent, exemptions, inlineLinks, inte
     interactiveCount: [...document.querySelectorAll(INTERACTIVE)].filter(visible).length,
     scrollHeight: doc.scrollHeight,
     hasCanvas: Boolean(document.querySelector('canvas')),
+    // A lesson makes no renderer (`App.js`), so it has no canvas by design.
+    layout: document.getElementById('ui')?.dataset.layout ?? null,
     englishOnlyAttributes: englishOnlyAttributes(),
   };
 }
@@ -2226,7 +2228,7 @@ try {
         // everything above has already measured the page as a reader finds it.
         for (const problem of await checkSiteMenu(page)) problems.push(`${where}: ${problem}`);
 
-        if (surface.needsRenderer && !measured.hasCanvas) {
+        if (surface.needsRenderer && !measured.hasCanvas && measured.layout !== 'lesson') {
           // Not a failure: a headless browser may have no GPU, and the product
           // is designed to stay usable without one. It is recorded, because a
           // scene check that silently measured the fallback every time would

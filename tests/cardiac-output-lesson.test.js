@@ -406,11 +406,24 @@ test('words: a plain phrase first and the term after it; A, B and C never only a
 test('words: the action is a schematic part of a vasopressor, never a drug given, and never said to always lower output', () => {
   assert.equal(LESSON_ACTIONS.constrict.ja, '血管を縮める作用を加える');
   assert.match(LESSON_NOTE.ja, /昇圧薬の働きの一部.*だけを取り出した模式実験/);
-  assert.match(LESSON_NOTE.ja, /実際の薬の全作用は再現しません/);
+  // …not the whole action, and no patient's response: the one disclaimer the
+  // lesson keeps on screen (the full model's says the same about patients).
+  assert.match(LESSON_NOTE.ja, /全作用も、患者の反応も再現しません/);
+  assert.match(LESSON_NOTE.en, /whole action/);
+  assert.match(LESSON_NOTE.en, /patient/);
   const everything = JSON.stringify({ LESSON_STEPS, LESSON_GUIDE, LESSON_ACTIONS, LESSON_TERMS, LESSON_NOTE });
   assert.doesNotMatch(everything, /投与|ノルアドレナリンを|必ず(拍出|心拍出|送り出す量)が?(下が|減)る|always lower/);
   // The one sentence that answers "would a real drug always do this?" says no.
   assert.match(LESSON_STEPS.result.note.ja, /必ずこうなるとは限りません/);
+});
+
+test('words: the scope names no direction for A → B — the captions read it from the solver, and the scope must agree with them whatever it is', () => {
+  // The captions and the guide choose their sentence from `outputDirection`;
+  // the scope is fixed text in 「このモデルについて」. It said 「A → B で心拍出量が
+  // 減った」, true today and contradicting the screen the day the solver says
+  // "same" or "up" — with nothing to catch it (code review, 2026-10-01).
+  const scope = JSON.stringify(LESSON_SCOPE);
+  assert.doesNotMatch(scope, /(拍出量|送り出す量)が(減っ|増え|下がっ|上がっ)た|output (fell|rose|dropped|went (up|down))/);
 });
 
 // ---------------------------------------------------------------------------

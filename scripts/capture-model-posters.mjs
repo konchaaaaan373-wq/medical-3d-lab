@@ -14,7 +14,9 @@
  * (`publicManifest.js`). So the poster is the real render: the built site,
  * the model's own opening state, the interface hidden, the camera allowed to
  * finish its framing tween before the shutter (`scripts/lib/camera.mjs` — a
- * fixed wait photographs the tween, `CLAUDE.md`).
+ * fixed wait photographs the tween, `CLAUDE.md`). A route that opens a lesson
+ * (`#/cardiac-output`) is photographed as the lesson's own figure, because that
+ * is what its card opens; the lesson makes no renderer to photograph.
  *
  * Re-run it when a model's opening look changes. The output is a JPEG at the
  * card's 16:10, small enough that a list of them is not the page's weight.
@@ -72,17 +74,29 @@ try {
     // The card's own proportion, at twice its largest displayed width.
     const page = await browser.newPage({ viewport: { width: 1200, height: 750 }, deviceScaleFactor: 1 });
     await page.goto(`${server.base}${flag('--preview') ? '?preview=1' : ''}${route}`, { waitUntil: 'load' });
-    await page.waitForSelector('#stage canvas', { timeout: 60000 });
-    // The canvas exists as soon as the viewer is built — before the scene and
-    // its asset are, and before `window.__app` is. `waitForFramingToSettle`
-    // reads a missing app as "nothing to wait for", so without this the shot
-    // could be of a stage with no model on it yet.
-    await page.waitForFunction(() => Boolean(window.__app?.viewer), null, { timeout: 60000 });
-    // Hide the interface first: the framing fits the model into the room the
-    // panels leave, and with them gone it fits the whole frame.
-    await page.addStyleTag({ content: '#ui, .build-marker, #boot-veil { display: none !important; }' });
-    await page.evaluate(() => window.dispatchEvent(new Event('resize')));
-    await waitForFramingToSettle(page).catch(() => console.warn(`  ${slug}: framing did not report settling`));
+    // A model's viewer — or a lesson (`layout: 'lesson'`), which makes no
+    // renderer: what the card opens is its figure, drawn by the page. The
+    // viewer exists before the scene and its asset are, and
+    // `waitForFramingToSettle` reads a missing app as "nothing to wait for",
+    // so the app itself is waited for, not a canvas.
+    await page.waitForFunction(() => Boolean(window.__app?.viewer || window.__app?.lesson), null, { timeout: 60000 });
+    const lesson = await page.evaluate(() => Boolean(window.__app?.lesson));
+    if (lesson) {
+      // The lesson's figure, alone and centred in the card's frame: the
+      // question, the buttons and the header are the page's, not the picture.
+      await page.addStyleTag({
+        content: `#ui > :not(.lesson-figure), .build-marker, #boot-veil { display: none !important; }
+                  #ui[data-layout='lesson'] .lesson-figure { position: fixed !important; inset: 6% 8% !important; }`,
+      });
+      await page.evaluate(() => window.dispatchEvent(new Event('resize')));
+      await page.waitForFunction(() => document.querySelector('.lesson-figure-svg')?.dataset.calm === 'true', null, { timeout: 20000 });
+    } else {
+      // Hide the interface first: the framing fits the model into the room the
+      // panels leave, and with them gone it fits the whole frame.
+      await page.addStyleTag({ content: '#ui, .build-marker, #boot-veil { display: none !important; }' });
+      await page.evaluate(() => window.dispatchEvent(new Event('resize')));
+      await waitForFramingToSettle(page).catch(() => console.warn(`  ${slug}: framing did not report settling`));
+    }
     await page.evaluate(() => new Promise((done) => requestAnimationFrame(() => requestAnimationFrame(done))));
     mkdirSync(dirname(file), { recursive: true });
     await page.screenshot({ path: file, type: 'jpeg', quality: 82 });

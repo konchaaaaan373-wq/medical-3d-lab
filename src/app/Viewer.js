@@ -37,15 +37,6 @@ export class Viewer {
     this.resizeHandlers = new Set();
     this.running = false;
     this.qualityHandlers = new Set();
-    /**
-     * Whether the scene is painted every frame. A page that draws nothing in
-     * 3D — the introductory lesson draws its figure as SVG — turns this off:
-     * the canvas is then painted once, and again only when its size changes,
-     * and stays behind the page as its background. The frame loop runs either
-     * way: it is the clock the page's own animation is stepped by.
-     */
-    this.drawEveryFrame = true;
-    this._drawPending = true;
 
     try {
       // The degradation policy is declared in `performanceBudget.js` and tested
@@ -166,7 +157,6 @@ export class Viewer {
   }
 
   resize() {
-    this._drawPending = true;
     // A held buffer wins: something is being recorded at an exact size, and
     // the window moving is not a reason to change the file.
     if (this.heldSize) {
@@ -224,10 +214,7 @@ export class Viewer {
     const elapsed = this.clock.getElapsedTime();
     this.controls.update();
     for (const handler of this.frameHandlers) handler(dt, elapsed);
-    if (this.drawEveryFrame || this._drawPending) {
-      this.composer.render();
-      this._drawPending = false;
-    }
+    this.composer.render();
     // Same task as the render, so the drawing buffer is still readable.
     for (const handler of this.afterFrameHandlers) handler(dt, elapsed);
     this._watchPerformance(dt);

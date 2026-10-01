@@ -234,7 +234,8 @@ for (const slug of SLUGS) {
     closeServer();
     process.exit(1);
   }
-  await page.waitForSelector('canvas');
+  // A scene's canvas, or a lesson — which makes no renderer and so has none.
+  await page.waitForFunction(() => Boolean(document.querySelector('canvas') || window.__app?.lesson));
   await page.waitForTimeout(2600);
   const consent = page.locator('button', { hasText: '許可しない' });
   if (await consent.count()) await consent.first().click().catch(() => {});
@@ -262,7 +263,7 @@ for (const slug of SLUGS) {
     // way (owner's review, 2026-10-01): said as a number on every run.
     if (drawn.length) console.log(`    figure drawn at ${drawn.map((d) => `${d.width}×${d.height} (${d.window})`).join(', ')}`);
     if (lessonOnly) {
-      report.push({ slug, controlCount: 0, problems, baseline: null, diseased: null });
+      report.push({ slug, controlCount: 0, problems, baseline: null, diseased: null, lessonOnly: true });
       continue;
     }
     await page.goto(`${base}?preview=1#/${slug}?view=detail`, { waitUntil: 'networkidle' });
@@ -274,8 +275,9 @@ for (const slug of SLUGS) {
       .then(() => true)
       .catch(() => false);
     if (!arrived) problems.push(`?view=detail did not open the full model (layout: ${await page.evaluate(() => window.__app?.meta?.layout ?? 'none')})`);
-    // The same settling pause every scene gets after its first load, above.
-    await page.waitForTimeout(2600);
+    // Settled when the camera has stopped framing the model — a state, not a
+    // guess at how long that takes (L-170).
+    else await waitForCameraToSettle(page);
   }
 
   // --- the first-visit introduction ----------------------------------------
@@ -1739,14 +1741,24 @@ if (dpr > 1 && exportsRecorded === 0) {
 // with no scene driven, "no export was offered" says nothing about the engine,
 // and this line said it anyway — a cause reported without being established
 // (L-15).
+//
+// A lesson driven alone (`--lesson-only`) is not a scene that drove baseline →
+// disease → reset, and nothing about exports was asked of it: the line said
+// both, of a run that had driven the full model of nothing (code review,
+// 2026-10-01; L-169).
+const driven = report.filter((entry) => !entry.lessonOnly);
+const lessonsAlone = report.length - driven.length;
 console.log(
-  `\n  ok    ${report.length} scene(s) drove baseline → disease → reset; `
-    + `${exportsRecorded} export(s) recorded and played back`
-    + (exportsOffered === 0
-      ? ` (no scene offered one — ${engineName} cannot encode a canvas here)`
-      : exportsRecorded < exportsOffered
-        ? ` of ${exportsOffered} offered`
-        : '')
+  `\n  ok    ${driven.length} scene(s) drove baseline → disease → reset`
+    + (lessonsAlone ? `; ${lessonsAlone} lesson(s) driven alone (--lesson-only: the full model was not driven)` : '')
+    + (driven.length
+      ? `; ${exportsRecorded} export(s) recorded and played back`
+        + (exportsOffered === 0
+          ? ` (no scene offered one — ${engineName} cannot encode a canvas here)`
+          : exportsRecorded < exportsOffered
+            ? ` of ${exportsOffered} offered`
+            : '')
+      : '')
 );
 
 /**

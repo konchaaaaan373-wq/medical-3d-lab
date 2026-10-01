@@ -53,8 +53,9 @@ const ATTENTION_SECONDS = 2.6;
  * fan was the vessels (owner's review, 2026-10-01). So the figure is a circuit
  * diagram (`LessonFigure`, `lessonFigureGeometry.js`) in which each of the
  * three is one part a reader can name on sight: a tube that fills, channels
- * that narrow, a needle. Nothing is drawn in 3D; the viewer's canvas only
- * paints the page's background once (`viewer.drawEveryFrame = false`).
+ * that narrow, a needle. Nothing is drawn in 3D, and the shell makes no
+ * renderer for it (`App.js` decides on the layout first): `build()` and
+ * `cameraPose` stay only so the scene has the shape every scene has.
  *
  * ## One state
  *
@@ -88,17 +89,28 @@ export class CardiacOutputLessonScene {
   /** The lesson has no 3D to turn. */
   static allowAutoRotate = false;
 
-  /** Where the viewer's camera rests; nothing is drawn in front of it. */
+  /** The shape every scene has; no camera looks at this one (no renderer is made). */
   static cameraPose = {
     position: new THREE.Vector3(0, 0, 20),
     target: new THREE.Vector3(0, 0, 0),
   };
 
-  constructor({ viewer } = {}) {
-    this.viewer = viewer;
+  /**
+   * @param {{ solve?: (input: object) => object }} [options] the solver, for a test
+   */
+  constructor({ solve } = {}) {
     this.root = new THREE.Group();
     this.root.name = 'cardiac-output-lesson';
-    this.session = new LessonSession();
+    this.session = new LessonSession(solve ? { solve } : {});
+    // Every sentence the lesson says is a claim about the solved beats ("about
+    // the same pressure", "clearly different output"). If the solver no longer
+    // supports them, or a step did not solve, the lesson is not shown at all —
+    // the scene-failure page says so — rather than shown saying them anyway.
+    // The tests hold the claims for today's solver; this holds them for the one
+    // that ships (code review, 2026-10-01).
+    if (this.session.problems.length) {
+      throw new Error(`cardiac-output lesson: its claims do not hold — ${this.session.problems.join('; ')}`);
+    }
     this.phase = 0;
     this.highlight = [];
     this.refill = 1;

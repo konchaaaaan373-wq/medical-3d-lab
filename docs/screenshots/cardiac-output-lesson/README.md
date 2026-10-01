@@ -22,7 +22,8 @@ the experiment is stands on screen, and that no word in the figure overlaps
 another or is drawn under 12 px on a phone; that on a phone the figure is drawn
 across at least 92% of the window (347×253 at 375×667, 362×264 at 390×844); and
 that 「このモデルについて」 opens on screen, holds the lesson's scope, and closes.
-Production build served locally,
+Since the code review of 2026-10-01 the lesson makes no renderer: the ground
+behind the figure is the page's own colour, not a canvas. Production build served locally,
 headless Chromium. **Not a real device** (F-238), **not a first-time reader**
 (F-239), **not medically reviewed** (F-240).
 
@@ -46,7 +47,7 @@ condition; nothing here is drawn from a figure written by hand.
 | `375-3-result-no-words.png` | 375×667 | Scene 3 with every word and number hidden: the vessels lit, the tube short of its cream start mark |
 | `375-handover.png` | 375×667 | The explanation left for the buttons half way through scene 2: the line under the figure says what is on screen now and what the cream marks are |
 | `375-about.png` | 375×667 | 「このモデルについて」 opened: the shared sheet from the foot of the screen, with the lesson's scope in it (and, on a phone, the way to the heart's anatomy further down). Over the buttons, not under them (L-166) |
-| `1440-about.png` | 1440×900 | The same sheet on a wide window, hanging from its line. The dark-grey band under its lower edge is the WebGL canvas not drawn there in headless Chromium — the full model's sheet shows it too (F-246) |
+| `1440-about.png` | 1440×900 | The same sheet on a wide window, hanging from its line |
 
 The two recordings per window (the explanation played through; the buttons —
 A, the action, C beside B, the action taken away so that C closes, and B again)

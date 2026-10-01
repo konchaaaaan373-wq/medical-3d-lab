@@ -190,9 +190,12 @@ and none qualifies its size — 「少し減りました」 put a clinical judge
 
 **What the experiment is, on screen from the first moment.** Under the figure,
 in the explanation and under the buttons alike, one line:
-「昇圧薬の働きの一部（血管を縮める作用）だけを取り出した模式実験です。実際の薬の
-全作用は再現しません。」 — next to the button that applies it and next to the
-results it changes (owner's reviews, 2026-09-30 and 2026-10-01). Scene 3 adds
+「昇圧薬の働きの一部（血管を縮める作用）だけを取り出した模式実験です。全作用も、
+患者の反応も再現しません。」 — next to the button that applies it and next to the
+results it changes (owner's reviews, 2026-09-30 and 2026-10-01). Its second
+sentence also says what the full model's on-screen disclaimer says about
+patients: before the code review of 2026-10-01 the lesson said that only inside
+「このモデルについて」, which a reader who never opens it never reads. Scene 3 adds
 「実際の昇圧薬で必ずこうなるとは限りません。」 and scene 2 says the factor
 (×1.5, read from the intervention's profile). `verify:disease` reads the line on
 screen at the first screen, at every scene and at every state of the buttons.

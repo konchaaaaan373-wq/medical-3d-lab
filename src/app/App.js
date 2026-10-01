@@ -95,28 +95,11 @@ import { emitAppEvent } from './appEvents.js';
  *   retry does — so this file neither reloads nor reconstructs anything.
  */
 export async function createApp({ stage, ui, onRetryModel = null }) {
-  const viewer = new Viewer(stage);
-
   // Which screen of the model the address asks for (`viewOf`): a scene module
   // may offer more than one — cardiac output opens its introductory lesson and
   // keeps the full model at `?view=detail`.
   const routeView = viewOf(window.location.hash);
   const SceneClass = await loadScene(resolveSceneId(), { view: routeView });
-  const scene = new SceneClass({ viewer });
-  viewer.scene.add(scene.build());
-  // Most scenes build synchronously. Asset-backed atlases expose `ready` so
-  // their first visible frame, labels and information panel all describe the
-  // loaded specimen rather than briefly pointing at an empty stage.
-  if (scene.ready) await scene.ready;
-  const allowAutoRotate = SceneClass.allowAutoRotate !== false;
-  if (!allowAutoRotate) viewer.controls.autoRotate = false;
-
-  // Visual-QA hook: `?qa` exposes the viewer and scene so a screenshot
-  // harness can set exact camera poses and cardiac phases. Dev-only surface —
-  // it renders nothing and changes nothing unless explicitly driven.
-  if (new URLSearchParams(window.location.search).has('qa')) {
-    window.__lab = { viewer, scene };
-  }
 
   // The catalogue owns how far a scene has been taken, so the badge on screen
   // cannot drift from the entry the explorer draws. A scene that does not know
@@ -151,13 +134,37 @@ export async function createApp({ stage, ui, onRetryModel = null }) {
 
   // A lesson is a different screen, not this one with parts hidden: a
   // question, the scene's figure and what to do (`LessonShell.js`). It
-  // shares the viewer, the header, the title card and the way out with every
-  // other scene, and none of the experiment console, read-out rail or data
+  // shares the header, the title card and the way out with every other
+  // scene, and none of the experiment console, read-out rail or data
   // view — which is what a first-time reader could not see past (Issue #166).
+  //
+  // Decided before the renderer is made, because a lesson draws nothing in 3D
+  // (its figure is the page's own SVG): it never builds a WebGL context, so a
+  // browser that cannot make one still opens it rather than the renderer-
+  // failure page (code review, 2026-10-01).
   if (meta.layout === 'lesson') {
+    const scene = new SceneClass({});
     const { mountLessonShell } = await import('./LessonShell.js');
-    return mountLessonShell({ viewer, scene, SceneClass, meta, entry, ui });
+    return mountLessonShell({ scene, SceneClass, meta, entry, ui });
   }
+
+  const viewer = new Viewer(stage);
+  const scene = new SceneClass({ viewer });
+  viewer.scene.add(scene.build());
+  // Most scenes build synchronously. Asset-backed atlases expose `ready` so
+  // their first visible frame, labels and information panel all describe the
+  // loaded specimen rather than briefly pointing at an empty stage.
+  if (scene.ready) await scene.ready;
+  const allowAutoRotate = SceneClass.allowAutoRotate !== false;
+  if (!allowAutoRotate) viewer.controls.autoRotate = false;
+
+  // Visual-QA hook: `?qa` exposes the viewer and scene so a screenshot
+  // harness can set exact camera poses and cardiac phases. Dev-only surface —
+  // it renders nothing and changes nothing unless explicitly driven.
+  if (new URLSearchParams(window.location.search).has('qa')) {
+    window.__lab = { viewer, scene };
+  }
+
   const defaultBackground = backgroundPresetById(meta.inspection?.background ?? DEFAULT_BACKGROUND_ID);
 
   /**

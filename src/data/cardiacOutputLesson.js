@@ -136,8 +136,12 @@ export const LESSON_TERMS = {
  * results and beside the button.
  */
 export const LESSON_NOTE = {
-  en: 'Schematic: only the vessel-narrowing part of a vasopressor’s action — not a real drug’s whole action.',
-  ja: '昇圧薬の働きの一部（血管を縮める作用）だけを取り出した模式実験です。実際の薬の全作用は再現しません。',
+  en: 'Schematic: only the vessel-narrowing part of a vasopressor’s action — not its whole action, nor any patient’s response.',
+  // Two lines at 375 px (28 characters each): the figure above has no height
+  // to give a third. It says what the full model's on-screen disclaimer says
+  // about patients, which the lesson had only inside 「このモデルについて」
+  // (code review, 2026-10-01).
+  ja: '昇圧薬の働きの一部（血管を縮める作用）だけを取り出した模式実験です。全作用も、患者の反応も再現しません。',
 };
 
 export const LESSON_ACTIONS = {
@@ -304,8 +308,12 @@ export const LESSON_SCOPE = {
   ],
   cautions: [
     {
-      text: '**That the output fell from A to B is this model’s result under this condition.** A vasopressor does not always lower cardiac output: depending on the starting condition and the drug’s other actions it may leave it unchanged or raise it.',
-      textJa: '**A → B で心拍出量が減ったのは、このモデルのこの条件での結果です。** 昇圧薬で心拍出量が必ず下がるわけではありません。開始条件や薬の他の作用によって、変わらないことも増えることもあります。',
+      // Says no direction: which way A → B went is the solver's to say, and the
+      // captions read it (`outputDirection`); a sentence here that named one
+      // would contradict them the day the solver answered otherwise (code
+      // review, 2026-10-01; `tests/cardiac-output-lesson.test.js`).
+      text: '**How the output changes from A to B is this model’s result under this condition.** A vasopressor does not always lower cardiac output: depending on the starting condition and the drug’s other actions it may leave it unchanged or raise it.',
+      textJa: '**A → B で心拍出量がどう変わるかは、このモデルのこの条件での結果です。** 昇圧薬で心拍出量が必ず下がるわけではありません。開始条件や薬の他の作用によって、変わらないことも増えることもあります。',
     },
     {
       text: '**The figure is a diagram, drawn to drawing scales.** The width of the small vessels shows how easily blood gets through them, not how much their diameter changes; the needle shows the average pressure on a 0–150 mmHg dial; the filled length of the tube shows the litres sent out per minute on a 0–6 L scale. The steps between A and B are solved conditions shown in order — not the time a drug takes to act.',

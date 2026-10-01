@@ -1,8 +1,8 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 
-import { CONTROL_DOMAIN } from '../src/models/cardiacOutput.js';
-import { solveLessonConditions } from '../src/models/cardiacOutputLesson.js';
+import { CONTROL_DOMAIN, RESULT_STATUS, solveCardiacOutput } from '../src/models/cardiacOutput.js';
+import { lessonInput, solveLessonConditions } from '../src/models/cardiacOutputLesson.js';
 import { bedCalibreFor } from '../src/scenes/cardiovascular/scenes/cardiacOutput/drawingScales.js';
 import {
   BED,
@@ -128,4 +128,21 @@ test('what is drawn is what was solved: the figure’s data is the solver’s, t
   const [alone] = stripsFor(session);
   assert.equal(alone.drawing.before.tube, tubeLength(m('A').cardiacOutputLMin));
   assert.equal(alone.drawing.before.needleAngle, needleAngle(m('A').meanArterialPressureMmHg));
+});
+
+test('fail closed: a solver that no longer supports the lesson’s claims, or does not solve, is not shown saying them', async () => {
+  const { CardiacOutputLessonScene } = await import('../src/scenes/cardiovascular/scenes/cardiacOutput/CardiacOutputLessonScene.js');
+  const isC = (input) => JSON.stringify(input) === JSON.stringify(lessonInput('C'));
+  // Today's solver: the lesson builds.
+  assert.doesNotThrow(() => new CardiacOutputLessonScene());
+  // C 20 mmHg above B: "about the same pressure" no longer holds.
+  const apart = (input) => {
+    const result = solveCardiacOutput(input);
+    if (!isC(input)) return result;
+    return { ...result, metrics: { ...result.metrics, meanArterialPressureMmHg: result.metrics.meanArterialPressureMmHg + 20 } };
+  };
+  assert.throws(() => new CardiacOutputLessonScene({ solve: apart }), /claims do not hold.*about the same/);
+  // C does not converge: no metrics to draw or to say anything about.
+  const stuck = (input) => (isC(input) ? { status: RESULT_STATUS.NONCONVERGED, input, metrics: null } : solveCardiacOutput(input));
+  assert.throws(() => new CardiacOutputLessonScene({ solve: stuck }), /claims do not hold.*condition C did not solve/);
 });
