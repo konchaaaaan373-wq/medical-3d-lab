@@ -19,13 +19,120 @@ rather than left to be inferred from the fact that the page opens.
 | **Decided by** | Repository owner's decision to publish this scene and to stop the beta being anatomy-only; carried out and recorded by Claude Code (AI engineering agent) |
 | **Role** | `engineering` — software behaviour and agreement with the model, not physiological or clinical judgement |
 | **Assets** | none. The geometry is **procedural**, so there is no external file, no licence obligation and no hash to pin |
-| **Scene revision** | model card revision **7**, source digest `62aa45633791a39c` (re-pinned twice on 2026-09-22 — see below) |
+| **Scene revision** | model card revision **11**, source digest `774fbda2f939e076` (re-taken on 2026-09-30 when the vasoconstrictor action joined the full model's menu, and on 2026-09-29 for the introductory lesson — see below; earlier pins: 7 and 9 on 2026-09-22) |
 
 The decision is pinned to that scene revision in
 [`src/catalog/release.js`](../../src/catalog/release.js). Change what the model
 solves or what a control does and `npm run revisions:check` fails until the card
 is revised, which moves the revision and closes this record until it is taken
 again.
+
+## The lesson's screen redrawn on 2026-10-01 — no model change, the pin stands
+
+**What changed.** On the owner's review of 2026-10-01 the lesson at
+`#/cardiac-output` no longer draws a 3D heart: its figure is a circuit diagram
+in which what the heart sends out per minute is the filled length of a tube,
+how hard blood gets through the small vessels is their width, and the average
+pressure is a needle — one fixed size at every scene and state, B and C stacked
+to one scale, with a legend for what each part means. The buttons now offer C
+only once the action has reached B, and taking the action away closes C. The
+note on what the experiment is (「昇圧薬の働きの一部…模式実験」) stands under the
+figure from the first moment in both modes. **No model source changed**: the
+digest is still `774fbda2f939e076`, the pin in `src/catalog/release.js` is
+unchanged, and the three conditions, their claims and the full model are as
+revision 11.
+
+**What was checked** (headless Chromium, software GL): `npm run verify:disease
+-- <dir> cardiac-output --lesson-only` at 1440×900, 390×844 and 375×667, no
+problems — the figure, the panel under it and the heart, dial, tube and vessels
+keep one size from the first screen through every scene and button state; C is
+refused at A and half way to B and closes when the action is taken away; each
+strip's pressure, output, arrows and on-screen tube length match the solver run
+in Node; the note is on screen throughout; no word in the figure overlaps
+another or falls under 12 px on a phone. Recorded frame by frame at each window.
+
+**What was not checked**: the same as before — no first-time reader (F-239),
+no clinician (F-240), no real device (F-238); the English text on a 375×667
+phone draws the figure under the 12 px floor (F-243).
+
+## Re-taken on 2026-09-30 — the vasoconstrictor action in the full model's menu (revision 11)
+
+**What changed.** On the owner's decision of 2026-09-30 (F-262) the full model
+at `?view=detail` offers the lesson's intervention as a fourth choice in its
+menu: 「昇圧薬の血管収縮作用の模式例（抵抗のみ）」 — systemic resistance ×1.5,
+the other three inputs held, applied to the preset's starting condition like
+the other two. The intervention is revision 10's, unchanged; only the menu's
+list moved, which is a model source, so the digest moved. Nothing already
+solved moved.
+
+**Where the site opens is unchanged.** The site opens on an anatomy model
+(`DEFAULT_SCENE_ID` is `brain-anatomy`), and the header's heart goes to
+`heart-anatomy` first, because the navigation puts the anatomy layer ahead of
+the mechanism layer. `#/cardiac-output` is reached from 「病態モデル › 心拍出量」;
+revision 10 changed what that route shows first, not what the site shows first
+(the owner's reading, 2026-09-30).
+
+**What was checked**: on both presets' starting conditions the action stays
+inside the verified range, raises the pressure and holds the rate
+(`tests/cardiac-output-lesson.test.js`); no label on it names a drug; the scope
+panel says it is not noradrenaline or any vasopressor's whole action.
+`npm run verify:disease` presses it in the full model's menu and reads back
+that the resistance alone moved, and up, that the screen names it, and that
+「介入なし」 returns to the preset's start.
+
+**What was not checked**: the same as revision 10 — no clinician (F-240), no
+real device (F-238). The full model's own menu has not been seen by a
+first-time reader either.
+
+## Re-taken on 2026-09-29 — the route opens an introductory lesson (revision 10)
+
+**What changed.** On the owner's brief of 2026-09-29 (Issue #166)
+`#/cardiac-output` now opens a lesson with one question — 「血圧が上がった。
+心臓から出る量も増えた？」 — built on the same solver: a low-output circulation
+(A, the reduced-contractility preset), the vasoconstrictor action of a
+vasopressor added to it (B: systemic resistance ×1.5 and nothing else), and a
+different circulation beside it (C, the reference heart) with about the same
+mean pressure and clearly more output. The full model this record was first
+taken for is **unchanged** at `#/cardiac-output?view=detail`, with a
+breadcrumb back to the lesson. Same catalogue entry, same profile, same
+prohibited uses, same `alpha` badge and `医学レビュー：未完了` chip.
+
+**Why this is re-taken and not re-pinned.** The model gained one intervention
+and the lesson's conditions joined the pinned sources, so the digest moved;
+but more than that, **what a reader meets first changed**. The engineering
+acceptance below is re-stated for the lesson: what it puts on screen is what
+the model solved, and every claim it makes about A, B and C is re-derived from
+the solver by `tests/cardiac-output-lesson.test.js`. Nothing the full model
+already solved moved; its tests, fixtures and figures are unchanged.
+
+**What was checked for the lesson** (headless Chromium, software GL):
+
+- `npm run verify:disease -- <dir> cardiac-output` drives the lesson at
+  1440×900, 390×844 and 375×667 (`scripts/lib/lesson-drive.mjs`): the first
+  screen shows the question, the model, both results and both ways in without
+  scrolling and with no modal; each of the five scenes shows its own condition
+  and words; the player pauses, steps and restarts; leaving the explanation
+  half way through the change hands the reader B and says so; the buttons add
+  and take away the vasoconstrictor action and show and hide C; "before (A)" is
+  shown only while B stands alone; the model keeps its band (≥ 150 px on a
+  phone, ≥ 360 px on a desktop) and every tag stays inside it and clear of the
+  others. It then drives the full model at `?view=detail` exactly as before.
+- The explanation and the buttons were recorded frame by frame on a fixed
+  clock at each window (`--record-lesson`).
+- (Retired on 2026-10-01 with the 3D figure, see above.)
+  `tests/cardiac-output-lesson-scene.test.js` held the 3D to the solver: the
+  vessels narrow from A to B, each stroke's length is its stroke volume at the
+  moment of comparison, B's and C's needles point the same way, and the two
+  circulations are equidistant from the camera and seen from the same angle.
+
+**What was not checked for the lesson**: no first-time reader has used it —
+which is the owner's completion condition (F-239); no clinician has read its
+three conditions, its naming of the vasoconstrictor action or its wording
+(F-240); no real device (F-238). The ×1.5 is illustrative.
+
+**It takes effect when the owner merges the change that carries it** — this
+record is written in a Draft pull request, and the publication gate reads the
+pin in `src/catalog/release.js` from the merged tree.
 
 ## Re-pinned twice on 2026-09-22, and once a displayed number moved
 

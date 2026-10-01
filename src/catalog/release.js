@@ -720,7 +720,25 @@ export const BETA_PUBLICATION_DECISIONS = Object.freeze([
     // This is a correction to a figure a reader is shown, not a presentation
     // change, so the decision record says what moved and by how much rather
     // than reporting a pin that happened to pass.
-    sceneRevision: Object.freeze({ cardRevision: 9, modelDigest: 'f635134f0823ca1c' }),
+    //
+    // **Revision 10 (2026-09-29) changed what the route opens on.** The
+    // owner's brief of that day (Issue #166) made `#/cardiac-output` an
+    // introductory lesson — one question, the vasoconstrictor action of a
+    // vasopressor added to a low-output circulation, and a different
+    // circulation beside it — with the full model unchanged at
+    // `?view=detail`. The model gained one intervention (resistance ×1.5,
+    // lesson only) and the lesson's conditions joined the pinned sources;
+    // nothing already solved moved. Re-taken rather than re-pinned: what the
+    // lesson puts on screen was driven in a browser at three windows, and the
+    // record says what was not checked (`docs/beta-publication/cardiac-output.md`).
+    // It takes effect when the owner merges the change that carries it.
+    //
+    // **Revision 11 (2026-09-30)**: the same intervention joins the full
+    // model's menu (F-262, the owner's decision). Only the menu's list moved;
+    // the full model's drive presses it and reads back that the resistance
+    // alone moved. The site still opens on anatomy — this route is reached
+    // from the disease models.
+    sceneRevision: Object.freeze({ cardRevision: 11, modelDigest: '774fbda2f939e076' }),
     scope: Object.freeze({
       structures: Object.freeze([
         'the left ventricle, built from the solved end-diastolic and end-systolic volumes rather than posed',
@@ -729,14 +747,16 @@ export const BETA_PUBLICATION_DECISIONS = Object.freeze([
         'the systemic circuit — an explicitly schematic loop, with the arteriolar resistance marked as a zone and one node standing for the right heart and the lungs',
       ]),
       views: Object.freeze([
+        'the introductory lesson the route opens on: its first screen, each of the five scenes of its explanation, and the reader\'s buttons with C beside B, at 1440×900, 390×844 and 375×667',
         'the 3D scene at its opening pose and under comparison, where the baseline heart is drawn beside the current one',
         'the Data view, with the pressure-volume loop and the pressure waveform both drawn',
         'the metric read-out, including the reference rows comparison adds',
         'the 15-second sequence, recorded through the consent screen and played back from the written file',
       ]),
       interactions: Object.freeze([
+        'the lesson\'s explanation played, paused, stepped back and forward and restarted; left for the buttons half way through the change; the vasoconstrictor action added and taken away; C shown and hidden; start over',
         'each of the four controls moved across its declared range and reset',
-        'both presets, and both interventions, including clearing one',
+        'both presets, and all three interventions (the vasoconstrictor action pressed in the menu and read back), including clearing one',
         'the lesson walked end to end, with its before/after table read on screen',
         'model reset returning the scene to the state it opened in',
       ]),
@@ -766,6 +786,9 @@ export const BETA_PUBLICATION_DECISIONS = Object.freeze([
       'one browser engine on a desktop viewport: no real iPhone Safari, and no Firefox or WebKit recording (F-184)',
       'on a phone the 3D sits under the console, the same way heart-failure does (F-188)',
       'no reader has been observed using it; whether four controls at once is the right number to hand somebody is unanswered',
+      'the introductory lesson has not been seen by a first-time reader — the owner\'s completion condition for it (F-239)',
+      'no clinician has read the lesson\'s three conditions, its naming of the vasoconstrictor action or its wording (F-240); the ×1.5 is illustrative',
+      'the lesson was driven in headless Chromium only, and recorded frame by frame; no real device (F-238)',
     ]),
   }),
 ]);

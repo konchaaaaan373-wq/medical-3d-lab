@@ -1,0 +1,699 @@
+/*
+ * The introductory lesson (`LessonShell.js`, `LessonPanel.js`, and the
+ * scene's figure, `LessonFigure.js`).
+ *
+ * Three bands and nothing else: the question on top, the figure in the middle,
+ * and under it what the experiment is and what to do. Scoped to
+ * `data-layout='lesson'` so no other scene is touched.
+ *
+ * ## The figure keeps one size
+ *
+ * The figure takes the room the other two bands leave, and the bottom band is
+ * as tall as the tallest thing it will ever hold (`lesson-stack`, below): so
+ * the figure is one size for the whole lesson at a given window — at A, while
+ * the vessels narrow, at B, beside C, explained or pressed — and changes only
+ * with the window and the language.
+ *
+ * Colours name the three circulations and nothing else:
+ *   A (start)  — slate
+ *   B (after)  — amber, the colour of the vessels' wall the action thickens
+ *   C (other)  — sky blue: a different circulation, never a shade of A or B
+ *   "start" marks while B stands alone — cream
+ */
+
+#ui[data-layout='lesson'] {
+  --lesson-a: #b9c7db;
+  --lesson-b: #ffc46b;
+  --lesson-c: #7fd4ff;
+  --lesson-before: #f4f1c8;
+  --lesson-card: rgba(9, 14, 25, 0.82);
+  --lesson-blood: #e0525e;
+  --lesson-blood-dark: #a63f57;
+  --lesson-wall: #d9a35c;
+  gap: 8px;
+}
+
+#ui[data-layout='lesson'] .lesson-top,
+#ui[data-layout='lesson'] .lesson-figure,
+#ui[data-layout='lesson'] .lesson-bottom {
+  pointer-events: auto;
+  position: relative;
+  z-index: 6;
+}
+
+/* 「このモデルについて」's sheet is fixed, but it lives in the top's stacking
+   context: at one level with the bottom, the bottom — later on the page — was
+   painted over the phone's sheet and took its 閉じる (lesson-drive, L-166). */
+#ui[data-layout='lesson'] .lesson-top {
+  z-index: 7;
+}
+
+/* --- top ------------------------------------------------------------------ */
+
+#ui[data-layout='lesson'] .lesson-top {
+  display: grid;
+  gap: 4px;
+  max-width: min(760px, 100%);
+}
+
+#ui[data-layout='lesson'] .lesson-top .title-card {
+  padding: 8px 12px;
+  background: transparent;
+  border: 0;
+  box-shadow: none;
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 2px 10px;
+  max-width: none;
+}
+
+/* The question is the heading of this screen; the card's own subtitle would say
+   it twice. The maturity is inside the fold, with the clinical-review mark, as
+   on the full model. */
+#ui[data-layout='lesson'] .lesson-top .title-card .subtitle,
+#ui[data-layout='lesson'] .lesson-top .title-card .eyebrow,
+#ui[data-layout='lesson'] .title-trust-maturity {
+  display: none;
+}
+
+#ui[data-layout='lesson'] .title-card .title-trail {
+  margin: 0;
+  font-size: 13px;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+/* 「このモデルについて ＋」: one quiet line. What it opens is the shared sheet
+   (`.title-about-body`, brand.css), fixed over the page, so reading the limits
+   does not push the figure around. Its line is styled once for every layout
+   (`.title-about > .title-trust-summary`). */
+#ui[data-layout='lesson'] .title-trust-fold {
+  position: relative;
+  margin-left: 8px;
+}
+
+/* The scope inside the sheet is the sheet's content: no card inside the card,
+   as on the full model (experiment-layout.css), and no blur of its own. */
+#ui[data-layout='lesson'] .title-about .model-scope.is-embedded {
+  margin-top: 8px;
+  border: 0;
+  background: none;
+  padding: 0;
+  box-shadow: none;
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+}
+
+#ui[data-layout='lesson'] .lesson-top .title-card .title,
+#ui[data-layout='lesson'] .lesson-top .title-card .title-ja {
+  font-size: 15px;
+  margin: 0;
+}
+
+/* 「心臓の解剖を確認 →」 on the title line, after 「このモデルについて」, rather
+   than a row of its own: a row here is a row the figure gives up. */
+#ui[data-layout='lesson'] .title-card.has-trail > .title-anatomy-check {
+  flex-basis: auto;
+  margin-left: 4px;
+}
+
+/* On a phone the title line has no room left for it, so it moves into
+   「このモデルについて」's sheet — as on the full model (brand.css). Measured at
+   375×667: its own row narrowed the figure from 344 to 333 px. */
+@media (max-width: 720px) {
+  #ui[data-layout='lesson'] .title-card.has-trail > .title-anatomy-check {
+    display: none;
+  }
+
+  #ui[data-layout='lesson'] .title-about-anatomy {
+    display: block;
+    margin: 12px 0 0;
+    padding-top: 10px;
+    border-top: 1px solid var(--border);
+  }
+}
+
+#ui[data-layout='lesson'] .lesson-question {
+  margin: 0;
+  padding: 0 12px;
+  font-size: clamp(19px, 2.1vw, 27px);
+  line-height: 1.3;
+  font-weight: var(--weight-bold);
+  letter-spacing: 0.01em;
+  text-shadow: 0 1px 8px rgba(0, 0, 0, 0.55);
+}
+
+/* --- the figure ------------------------------------------------------------- */
+
+#ui[data-layout='lesson'] .lesson-figure {
+  flex: 1 1 auto;
+  min-height: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* Scaled as a whole to the room it has, and no larger than reads well on a
+   wide screen: the same 340 × 248 drawing at every size, so a part is never
+   drawn smaller because something else on the page grew. */
+#ui[data-layout='lesson'] .lesson-figure-svg {
+  display: block;
+  width: 100%;
+  height: 100%;
+  max-width: 600px;
+  max-height: 438px;
+  overflow: visible;
+  font-family: inherit;
+}
+
+#ui[data-layout='lesson'] .lf-glow {
+  fill: none;
+  stroke: var(--lesson-b);
+  stroke-width: 1.6;
+  filter: drop-shadow(0 0 3px rgba(255, 196, 107, 0.75));
+}
+
+#ui[data-layout='lesson'] .lf-name-disc {
+  fill: transparent;
+  stroke: var(--tone, var(--lesson-a));
+  stroke-width: 1.4;
+}
+
+#ui[data-layout='lesson'] .lf-strip[data-tone='start'] { --tone: var(--lesson-a); }
+#ui[data-layout='lesson'] .lf-strip[data-tone='after'] { --tone: var(--lesson-b); }
+#ui[data-layout='lesson'] .lf-strip[data-tone='other'] { --tone: var(--lesson-c); }
+#ui[data-layout='lesson'] .lf-strip[data-tone='changing'] { --tone: var(--ink-dim); }
+
+#ui[data-layout='lesson'] .lf-name-letter {
+  fill: var(--tone, var(--lesson-a));
+  font-size: 12px;
+  font-weight: var(--weight-bold);
+}
+
+#ui[data-layout='lesson'] .lf-name {
+  fill: var(--tone, var(--lesson-a));
+  font-size: 12px;
+  font-weight: var(--weight-semibold);
+}
+
+#ui[data-layout='lesson'] .lf-name-note {
+  font-size: 12px;
+  font-weight: var(--weight-regular);
+}
+
+#ui[data-layout='lesson'] .lf-label {
+  fill: var(--ink);
+  font-size: 12px;
+}
+
+#ui[data-layout='lesson'] .lf-term {
+  fill: var(--ink-dim);
+  font-size: 12px;
+}
+
+#ui[data-layout='lesson'] .lf-bed-label {
+  fill: var(--ink);
+}
+
+#ui[data-layout='lesson'] .lf-strip.is-narrowed .lf-bed-label {
+  fill: var(--lesson-b);
+}
+
+#ui[data-layout='lesson'] .lf-pipe {
+  fill: none;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+#ui[data-layout='lesson'] .lf-artery {
+  stroke: var(--lesson-blood);
+}
+
+#ui[data-layout='lesson'] .lf-vein {
+  stroke: var(--lesson-blood-dark);
+}
+
+#ui[data-layout='lesson'] .lf-chevron {
+  fill: none;
+  stroke: rgba(255, 255, 255, 0.8);
+  stroke-width: 1.4;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+/* The small vessels: a wall the action thickens inward, a lumen it narrows. */
+#ui[data-layout='lesson'] .lf-channel-wall {
+  fill: var(--lesson-wall);
+  opacity: 0.85;
+}
+
+#ui[data-layout='lesson'] .lf-channel-lumen {
+  fill: var(--lesson-blood);
+}
+
+#ui[data-layout='lesson'] .lf-dial-face {
+  fill: rgba(9, 14, 25, 0.92);
+  stroke: var(--lesson-a);
+  stroke-width: 1.3;
+}
+
+#ui[data-layout='lesson'] .lf-dial-tick,
+#ui[data-layout='lesson'] .lf-dial-stem {
+  stroke: var(--lesson-a);
+  stroke-width: 1.2;
+}
+
+#ui[data-layout='lesson'] .lf-dial-stem {
+  stroke-width: 2.4;
+}
+
+#ui[data-layout='lesson'] .lf-needle {
+  stroke: #ffffff;
+  stroke-width: 2.2;
+  stroke-linecap: round;
+}
+
+#ui[data-layout='lesson'] .lf-needle-before,
+#ui[data-layout='lesson'] .lf-tube-before {
+  stroke: var(--lesson-before);
+  stroke-width: 2;
+  stroke-linecap: round;
+  opacity: 0.9;
+}
+
+#ui[data-layout='lesson'] .lf-dial-hub {
+  fill: #ffffff;
+}
+
+#ui[data-layout='lesson'] .lf-heart {
+  fill: #c8414b;
+  stroke: #ff8a8f;
+  stroke-width: 1;
+}
+
+#ui[data-layout='lesson'] .lf-heart-label {
+  fill: #ffffff;
+  font-size: 12px;
+  font-weight: var(--weight-semibold);
+}
+
+#ui[data-layout='lesson'] .lf-tube {
+  fill: rgba(9, 14, 25, 0.92);
+  stroke: var(--lesson-a);
+  stroke-width: 1.2;
+}
+
+#ui[data-layout='lesson'] .lf-tube-fill {
+  fill: var(--lesson-blood);
+}
+
+#ui[data-layout='lesson'] .lf-tube-tick {
+  stroke: rgba(234, 242, 255, 0.55);
+  stroke-width: 1;
+}
+
+#ui[data-layout='lesson'] .lf-value {
+  fill: var(--ink);
+}
+
+#ui[data-layout='lesson'] .lf-value-number {
+  font-size: 14px;
+  font-weight: var(--weight-bold);
+}
+
+#ui[data-layout='lesson'] .lf-co-value .lf-value-number {
+  font-size: 12px;
+}
+
+#ui[data-layout='lesson'] .lf-value-unit {
+  font-size: 12px;
+  fill: var(--ink-dim);
+}
+
+#ui[data-layout='lesson'] .lf-co-value.is-inside .lf-value-unit {
+  fill: rgba(255, 255, 255, 0.85);
+}
+
+#ui[data-layout='lesson'] .lf-value-arrow {
+  font-size: 12px;
+  font-weight: var(--weight-bold);
+}
+
+#ui[data-layout='lesson'] .lf-before-label {
+  fill: var(--lesson-before);
+  font-size: 12px;
+}
+
+/* How to read the figure, in its lower half until C takes the place. */
+#ui[data-layout='lesson'] .lf-legend-title {
+  fill: var(--ink-dim);
+  font-size: 12px;
+  font-weight: var(--weight-semibold);
+}
+
+#ui[data-layout='lesson'] .lf-legend-main {
+  fill: var(--ink);
+  font-size: 12px;
+}
+
+#ui[data-layout='lesson'] .lf-legend-sub {
+  fill: var(--ink-dim);
+  font-size: 12px;
+}
+
+/* --- bottom ------------------------------------------------------------------ */
+
+#ui[data-layout='lesson'] .lesson-bottom {
+  display: grid;
+  gap: 6px;
+  width: min(760px, 100%);
+  margin: 0 auto;
+}
+
+/* What the experiment is: on screen from the first moment, in every mode,
+   between the figure and the buttons (owner's reviews, 2026-09-30, 2026-10-01). */
+#ui[data-layout='lesson'] .lesson-note {
+  margin: 0;
+  padding: 5px 10px;
+  border-left: 3px solid var(--lesson-b);
+  border-radius: 4px;
+  background: rgba(255, 196, 107, 0.08);
+  color: var(--ink);
+  font-size: 12.5px;
+  line-height: 1.4;
+}
+
+/* Several things in one place, one of them shown: the place is as tall as the
+   tallest, so the panel never changes height with what it says. */
+#ui[data-layout='lesson'] .lesson-stack {
+  display: grid;
+}
+
+#ui[data-layout='lesson'] .lesson-stack > * {
+  grid-area: 1 / 1;
+  min-width: 0;
+}
+
+#ui[data-layout='lesson'] .lesson-sizer,
+#ui[data-layout='lesson'] .is-away {
+  visibility: hidden;
+}
+
+#ui[data-layout='lesson'] .lesson-guide {
+  margin: 0;
+  padding: 0 4px;
+  font-size: 14px;
+  line-height: 1.45;
+  color: var(--ink);
+}
+
+#ui[data-layout='lesson'] .lesson-manual {
+  display: grid;
+  gap: 8px;
+  align-content: start;
+}
+
+#ui[data-layout='lesson'] .lesson-manual-buttons {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  gap: 8px;
+}
+
+#ui[data-layout='lesson'] .lesson-manual-buttons [data-lesson='constrict'] {
+  grid-column: 1 / -1;
+}
+
+/* "Compare" is not offered until B: its place is kept, empty. */
+#ui[data-layout='lesson'] .lesson-button.is-unoffered {
+  visibility: hidden;
+}
+
+/* The way to the full model. A build that says which build it is puts its
+   marker at the bottom left: this row is where it stands, beside the link and
+   clear of every button. */
+#ui[data-layout='lesson'] .lesson-detail-row {
+  display: flex;
+  justify-content: flex-end;
+  align-items: center;
+  min-height: 24px;
+}
+
+/* A target as well as a line of text: 24 px tall at every width (WCAG 2.5.8),
+   44 on a phone (below; here rather than in phone-touch-targets.css, whose
+   `#ui .x` this layout's own rule outranks). It was 21–22, and nothing measured
+   it until the viewport matrix reached the lesson (2026-10-01). */
+#ui[data-layout='lesson'] .lesson-detail {
+  display: inline-flex;
+  align-items: center;
+  min-height: 24px;
+  font-size: 13px;
+  color: var(--ink-dim);
+  text-decoration: underline;
+  text-underline-offset: 3px;
+  padding: 2px;
+}
+
+#ui[data-layout='lesson'] .lesson-detail:hover,
+#ui[data-layout='lesson'] .lesson-detail:focus-visible {
+  color: var(--ink);
+}
+
+/* Buttons */
+
+#ui[data-layout='lesson'] .lesson-button {
+  min-height: 44px;
+  padding: 8px 14px;
+  border-radius: 999px;
+  border: 1px solid var(--accent-border);
+  background: var(--control-bg);
+  color: var(--ink);
+  font: inherit;
+  font-size: 15px;
+  font-weight: var(--weight-semibold);
+  cursor: pointer;
+}
+
+#ui[data-layout='lesson'] .lesson-button:hover {
+  background: var(--control-hover);
+}
+
+#ui[data-layout='lesson'] .lesson-button:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+#ui[data-layout='lesson'] .lesson-button.is-quiet {
+  border-color: var(--border);
+  font-weight: var(--weight-medium);
+  color: var(--ink-dim);
+}
+
+#ui[data-layout='lesson'] .lesson-button.is-toggle.is-intervention {
+  border-color: var(--lesson-b);
+  background: rgba(255, 196, 107, 0.1);
+}
+
+#ui[data-layout='lesson'] .lesson-button.is-toggle.is-intervention[aria-pressed='true'] {
+  background: rgba(255, 196, 107, 0.2);
+}
+
+#ui[data-layout='lesson'] .lesson-button.is-toggle.is-other {
+  border-color: var(--lesson-c);
+}
+
+#ui[data-layout='lesson'] .lesson-button.is-toggle.is-other[aria-pressed='true'] {
+  background: rgba(127, 212, 255, 0.16);
+}
+
+/* The explanation */
+
+#ui[data-layout='lesson'] .lesson-explaining {
+  display: grid;
+  gap: 8px;
+  align-content: start;
+}
+
+#ui[data-layout='lesson'] .lesson-caption {
+  background: var(--lesson-card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 7px 12px 8px;
+}
+
+#ui[data-layout='lesson'] .lesson-step-count {
+  margin-right: auto;
+  padding: 0 4px;
+  font-size: 13px;
+  color: var(--ink-dim);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+#ui[data-layout='lesson'] .lesson-caption-heading {
+  margin: 0 0 2px;
+  font-size: 16px;
+  line-height: 1.35;
+}
+
+#ui[data-layout='lesson'] .lesson-caption-text {
+  margin: 0;
+  font-size: 14px;
+  line-height: 1.5;
+  color: var(--ink);
+}
+
+#ui[data-layout='lesson'] .lesson-caption-note {
+  margin: 3px 0 0;
+  font-size: 12px;
+  line-height: 1.4;
+  color: var(--ink-dim);
+}
+
+#ui[data-layout='lesson'] .lesson-player {
+  display: flex;
+  gap: 6px;
+  justify-content: flex-end;
+  align-items: center;
+}
+
+#ui[data-layout='lesson'] .lesson-player > .lesson-button {
+  white-space: nowrap;
+}
+
+#ui[data-layout='lesson'] .lesson-player > .lesson-button.is-secondary {
+  flex: 1 1 auto;
+}
+
+#ui[data-layout='lesson'] .lesson-button.is-icon {
+  min-width: 44px;
+  padding: 6px 12px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+}
+
+#ui[data-layout='lesson'] .lesson-glyph {
+  font-size: 13px;
+  letter-spacing: -0.1em;
+}
+
+/* The player's names are its buttons' `aria-label` and `title`, not text in
+   the row: a name that changed with the state ("一時停止" / "再生") re-wrapped
+   the row and moved the panel under the reader's finger. */
+#ui[data-layout='lesson'] .lesson-icon-label {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+}
+
+#ui[data-layout='lesson'] [hidden] {
+  display: none !important;
+}
+
+/* --- a wide window: what to do stands in a column on the right, and the
+   figure has the full height to the left of it. ------------------------------ */
+
+@media (min-width: 1100px) and (min-aspect-ratio: 5/4) {
+  #ui[data-layout='lesson'] {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) clamp(380px, 29vw, 440px);
+    grid-template-rows: auto minmax(0, 1fr);
+    column-gap: 22px;
+  }
+
+  #ui[data-layout='lesson'] .lesson-top {
+    grid-column: 1;
+    grid-row: 1;
+  }
+
+  #ui[data-layout='lesson'] .lesson-figure {
+    grid-column: 1;
+    grid-row: 2;
+  }
+
+  #ui[data-layout='lesson'] .lesson-bottom {
+    grid-column: 2;
+    grid-row: 1 / span 2;
+    align-self: end;
+    width: auto;
+    margin: 0;
+  }
+
+}
+
+/* A phone: every row as short as it can be read, so the figure keeps its room. */
+@media (max-width: 430px) {
+  #ui[data-layout='lesson'] {
+    gap: 4px;
+  }
+
+  #ui[data-layout='lesson'] .lesson-top {
+    gap: 2px;
+  }
+
+  #ui[data-layout='lesson'] .lesson-top .title-card {
+    padding: 2px 4px 0;
+  }
+
+  #ui[data-layout='lesson'] .lesson-question {
+    padding: 0 4px;
+    font-size: 16px;
+    letter-spacing: 0;
+  }
+
+  #ui[data-layout='lesson'] .lesson-bottom {
+    gap: 5px;
+  }
+
+  #ui[data-layout='lesson'] .lesson-note {
+    padding: 3px 8px;
+    font-size: 12px;
+    line-height: 1.35;
+  }
+
+  #ui[data-layout='lesson'] .lesson-guide {
+    font-size: 13px;
+    line-height: 1.4;
+  }
+
+  #ui[data-layout='lesson'] .lesson-manual,
+  #ui[data-layout='lesson'] .lesson-manual-buttons,
+  #ui[data-layout='lesson'] .lesson-explaining {
+    gap: 6px;
+  }
+
+  #ui[data-layout='lesson'] .lesson-button {
+    font-size: 14px;
+    padding: 7px 10px;
+  }
+
+  #ui[data-layout='lesson'] .lesson-caption {
+    padding: 6px 10px 7px;
+  }
+
+  #ui[data-layout='lesson'] .lesson-caption-heading {
+    font-size: 14.5px;
+  }
+
+  #ui[data-layout='lesson'] .lesson-caption-text {
+    font-size: 13px;
+    line-height: 1.45;
+  }
+
+  #ui[data-layout='lesson'] .lesson-caption-note {
+    margin-top: 2px;
+  }
+
+  #ui[data-layout='lesson'] .lesson-detail {
+    font-size: 12px;
+    min-height: 44px;
+  }
+}

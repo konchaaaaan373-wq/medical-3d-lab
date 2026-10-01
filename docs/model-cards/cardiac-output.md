@@ -3,9 +3,9 @@
 | | |
 | --- | --- |
 | **Scene** | `cardiac-output` |
-| **Model** | [`src/models/cardiacOutput.js`](../../src/models/cardiacOutput.js) and [`src/models/cardiacInterventions.js`](../../src/models/cardiacInterventions.js), on [`src/models/cardiacMechanics.js`](../../src/models/cardiacMechanics.js) |
+| **Model** | [`src/models/cardiacOutput.js`](../../src/models/cardiacOutput.js) and [`src/models/cardiacInterventions.js`](../../src/models/cardiacInterventions.js), on [`src/models/cardiacMechanics.js`](../../src/models/cardiacMechanics.js); the introductory lesson's three conditions in [`src/models/cardiacOutputLesson.js`](../../src/models/cardiacOutputLesson.js) |
 | **Evidence** | [`docs/model-evidence/cardiac-output.md`](../model-evidence/cardiac-output.md) |
-| **Tests** | [`tests/cardiac-output-model.test.js`](../../tests/cardiac-output-model.test.js), [`tests/cardiac-output-physiology.test.js`](../../tests/cardiac-output-physiology.test.js), [`tests/cardiac-output-interventions.test.js`](../../tests/cardiac-output-interventions.test.js), [`tests/cardiac-output-learning.test.js`](../../tests/cardiac-output-learning.test.js) |
+| **Tests** | [`tests/cardiac-output-model.test.js`](../../tests/cardiac-output-model.test.js), [`tests/cardiac-output-physiology.test.js`](../../tests/cardiac-output-physiology.test.js), [`tests/cardiac-output-interventions.test.js`](../../tests/cardiac-output-interventions.test.js), [`tests/cardiac-output-learning.test.js`](../../tests/cardiac-output-learning.test.js), [`tests/cardiac-output-lesson.test.js`](../../tests/cardiac-output-lesson.test.js), [`tests/cardiac-output-lesson-figure.test.js`](../../tests/cardiac-output-lesson-figure.test.js) |
 | **Status** | see [`src/catalog/scenes.js`](../../src/catalog/scenes.js) |
 
 ## 1. What question this model answers
@@ -57,15 +57,18 @@ intervention, a lesson or the video sequence.
 
 ### Interventions
 
-Two, mutually exclusive, each a change to the inputs above rather than a
-multiplier on anything below them.
+Three, each a change to the inputs above rather than a multiplier on anything
+below them. The full model's menu offers all three, mutually exclusive; the
+third is also the introductory lesson's one intervention (§9.6), and joined the
+full model's menu in revision 11 (F-262).
 
 | Intervention | Changes | Deliberately does not change |
 | --- | --- | --- |
 | More circulating filling | stressed volume, +120 mL | resistance, elastance, rate |
 | Dobutamine, a schematic example (rate held) | elastance ×1.5 **and** resistance ×0.85, together | **rate**, filling |
+| The vasoconstrictor action of a vasopressor, schematic (resistance only) | resistance ×1.5 | elastance, rate, filling |
 
-Both are computed from the preset's starting condition, so choosing the same
+All three are computed from the preset's starting condition, so choosing the same
 one twice produces the same condition twice, and clearing one returns there.
 **Moving one input after an intervention changes that input only**: the others
 keep the values the intervention gave them, and the screen says 「ドブタミン
@@ -151,6 +154,98 @@ The sequence compares two settled conditions. The seconds between them are the
 camera's, and every frame carries a note saying so, because any one second of it
 will travel on its own as a screenshot.
 
+## 9.6 The introductory lesson — what `#/cardiac-output` opens on
+
+Since revision 10 the route opens a lesson with one question — 「血圧が上がった。
+心臓から出る量も増えた？」 — and the full model described by the rest of this
+card is one link away at `#/cardiac-output?view=detail`, unchanged. What the
+lesson teaches is one thing: **about the same blood pressure can go with
+clearly different cardiac output, so the pressure alone does not tell you
+whether the circulation is keeping up.**
+
+It uses three conditions, all inputs to the same solver inside the verified
+domain, built from the presets and one intervention
+(`src/models/cardiacOutputLesson.js`), and two comparisons that are kept apart
+on screen, in colour, in words and in how they are drawn:
+
+| | Inputs (filling mL / SVR mmHg·s/mL / Ees mmHg/mL / rate /min) | What it is | MAP | CO | SV |
+| --- | --- | --- | --- | --- | --- |
+| **A** | 710 / 1.10 / 1.20 / 70 — the reduced-contractility preset | a heart that sends out little | 70.6 | 3.75 | 53.5 |
+| **B** | 710 / **1.65** / 1.20 / 70 — A with the vasoconstrictor action | A after the intervention | 87.6 | 3.13 | 44.6 |
+| **C** | 710 / 1.10 / **2.74** / 70 — the reference condition | a different circulation, not B after anything | 89.2 | 4.74 | 67.7 |
+
+Solved 2026-09-29 at this revision; the screen shows MAP to the mmHg and CO to
+a tenth (A 71 / 3.7, B 88 / 3.1, C 89 / 4.7). **None of these figures is
+stored**: `lessonClaimProblems` re-derives from the solver that B's and C's
+mean pressures are within 3 mmHg, that their outputs differ by at least
+1 L/min and a quarter, that the vasoconstrictor action raised the pressure by
+at least 10 mmHg, and that the three share a heart rate (so one beat stands
+for a minute); a model change that breaks any of those turns the tests red.
+**Which way the output moved from A to B is not a claim** — the sentence is
+chosen from the solved direction, and the copy has one for each. **Nor is how
+much**: each says the direction "in this model" (「このモデルでは減りました」)
+and none qualifies its size — 「少し減りました」 put a clinical judgement on
+3.75 → 3.13 L/min (−16 %) that the lesson does not make (owner's review,
+2026-09-30; `tests/cardiac-output-lesson.test.js`, "words").
+
+**What the experiment is, on screen from the first moment.** Under the figure,
+in the explanation and under the buttons alike, one line:
+「昇圧薬の働きの一部（血管を縮める作用）だけを取り出した模式実験です。全作用も、
+患者の反応も再現しません。」 — next to the button that applies it and next to the
+results it changes (owner's reviews, 2026-09-30 and 2026-10-01). Its second
+sentence also says what the full model's on-screen disclaimer says about
+patients: before the code review of 2026-10-01 the lesson said that only inside
+「このモデルについて」, which a reader who never opens it never reads. Scene 3 adds
+「実際の昇圧薬で必ずこうなるとは限りません。」 and scene 2 says the factor
+(×1.5, read from the intervention's profile). `verify:disease` reads the line on
+screen at the first screen, at every scene and at every state of the buttons.
+
+**The figure is a circuit diagram, not a heart** (since the owner's review of
+2026-10-01; before it, a 3D heart whose output and resistance a reader could
+only identify by reading a caption). One circulation is one strip: the heart
+on the left, the artery along the top with a dial on it, six small vessels on
+the right, the vein back along the bottom, and under it a tube that fills with
+**what the heart sends out per minute**. A legend under the strip says what
+each part means until a second circulation takes its place.
+
+- **A → B is a before and after.** The same strip, in place, never moved or
+  resized. A is drawn inside it as cream marks (a second needle and a mark on
+  the tube labelled 「開始時」), and the values carry arrows (↑ ↓) in the
+  direction the solver went.
+- **B ↔ C is two circulations.** C comes in as a second strip under B, drawn to
+  the same scale with every part in the same column, so the two tubes compare
+  as two bars from one zero. Its name says 「別の循環（B の治療後ではない）」.
+  While C is shown, A's marks go: three things are never compared at once.
+- **C stands beside B and nothing else.** The buttons offer C only once the
+  action has reached B; asked for at A or on the way it is refused, and taking
+  the action away closes C at once (`LessonSession.canShowOther`; the A-beside-C
+  comparison the first version allowed is gone).
+- **"In the same minute"** is shown, not only said: when C comes in, both
+  tubes fill from empty together, each at the rate of its own output, and end
+  at their solved lengths — a presentation of "litres per minute", not a time
+  course; with reduced motion they are simply full.
+
+What is drawn and what it is drawn from (`lessonFigureGeometry.js`):
+
+| On screen | From | Scale |
+| --- | --- | --- |
+| The filled length of the tube | cardiac output | linear, one 0–6 L/min scale for every strip, from one zero |
+| The dial's needle | mean arterial pressure | linear, 0–150 mmHg over 180° |
+| The width of the six small vessels' lumen, all alike along their whole length | systemic resistance | drawing scale (`bedCalibreFor`, the full model's): **how easily blood gets through, not how much a vessel's diameter changes**; direction and order are the model's |
+| The heart glyph | — | one size; it beats at the solved rate, the same moment for every strip, and nothing else changes it (the action is on the vessels) |
+
+The figure is one 340 × 248 drawing the page scales as a whole, and the panel
+under it is as tall as the tallest caption and guide line it will hold, so the
+figure is one size for the whole lesson at a given window: about one unit to
+one pixel on a 375 px phone, where its smallest word is the product's 12 px
+floor. `verify:disease` measures the heart, the dial, the tube and the vessels
+at A and at every scene and button state, and B against C.
+
+Between A and B the circulation walks twelve solved conditions (resistance
+1.10 → 1.65 on the control's grid); every frame of the narrowing is a condition
+the model settled into, and the walk is a way of showing the change, not the
+time a drug takes.
+
 ## 10. What is exaggerated for visibility, and what is not
 
 Nothing medical. The controls span a wider range than a resting adult moves
@@ -219,6 +314,28 @@ septic shock with life-threatening hypotension, early noradrenaline has been
 reported to raise preload and cardiac output as well. Neither that study's
 population nor its effect sizes transfer here, and none is claimed; what it
 supports is refusing to publish the reduction.
+
+**The lesson's vasoconstrictor action is not that reduction, and must not be
+read as it** (revision 10). On the owner's decision of 2026-09-29 (Issue #166)
+the lesson changes the resistance alone and **names it as the vasoconstrictor
+action of a vasopressor, taken out on its own** — never as noradrenaline, never
+as a drug's whole effect, never as a dose. The lesson's words say that the fall
+in output from A to B is this model's result under this condition, that a
+vasopressor does not always lower cardiac output (its other actions and the
+starting condition can leave it unchanged or raise it), and that noradrenaline
+also acts on the heart and the veins, none of which is reproduced. Its
+conclusion stops at "the pressure alone cannot tell you whether the circulation
+is keeping up". An intervention that *is* noradrenaline still needs the
+venous side first (F-182).
+
+**In the full model's menu (revision 11) it keeps the same name and the same
+limits.** Its label says "schematic (resistance only)", and the scope panel
+says, beside the dobutamine entries, that it is not noradrenaline or any
+vasopressor's whole action. On both presets' starting conditions the model
+gives a rise in pressure and a fall in output (reference 89.2 → 118.6 mmHg and
+4.74 → 4.23 L/min; reduced contractility 70.6 → 87.6 mmHg and 3.75 → 3.13
+L/min). That both fall is a consequence of what is left out — the heart, the
+veins and the reflexes — and the screen does not state it as a rule.
 
 ## 13. Uncertainty
 
@@ -292,6 +409,103 @@ supports is refusing to publish the reduction.
 ## 15. Review status
 
 **Catalog status:** `alpha`
+
+### Screen, 2026-10-01 — the introductory lesson redrawn as a circuit diagram
+
+Not a model revision: no model source changed (the digest is the same), and the
+three conditions, their inputs, the claims and the words' rules are as in
+revision 11. The owner reviewed four recordings and found that **the 3D did not
+carry the lesson**: that the bright arc was what the heart sent out and the
+yellow fan was how hard it was for blood to get through could only be learned
+from the words, so the numbers and the captions were doing the teaching; on
+375×667 and 390×844 the heart and the dial shrank with the caption under them;
+and the buttons let C stand beside A.
+
+- **Rebuilt**: the figure (§9.6) — an SVG circuit diagram in place of the 3D
+  heart, one fixed size, B and C stacked to one scale, a legend saying what
+  each part means; the page (the panel under the figure holds its height); the
+  flow (the first screen is the buttons, "compare" only at B, taking the action
+  away closes C); the explanation (five scenes, 32.5 s, one thing each); the
+  words (plain words first and the term after — 「心臓が1分間に送り出す量（心拍
+  出量）」「血液の通りにくさ（血管抵抗）」「血圧の平均（平均血圧）」 — and A, B and
+  C always with 「開始時」「血管を縮めた後」「別の循環」).
+- **Kept**: the solver, the three conditions and the twelve-step walk between
+  A and B, `lessonClaimProblems`, the scope panel's limits, and the full model
+  at `?view=detail` (unchanged).
+- **Implemented / checked**: implemented; driven in headless Chromium at
+  1440×900, 390×844 and 375×667 by `verify:disease`'s lesson drive, which now
+  also reads each strip's numbers, arrows and on-screen tube length against
+  the solver run in Node, and photographs the figure with every word and number
+  hidden for a person to read. **Not checked on a real device** (F-238); **no
+  medical review** (F-240); **no first-time reader** (F-239). The English text
+  at 375×667 draws the figure below the 12 px floor (F-243).
+
+### Revision 11 — the vasoconstrictor action joins the full model's menu
+
+**A model revision** because a model source changed: `INTERVENTION_LIST` in
+`cardiacInterventions.js` gains `VASOCONSTRICTION`, on the owner's decision of
+2026-09-30 (F-262). The intervention itself is revision 10's, unchanged —
+resistance ×1.5, the other three inputs held — and nothing already solved moved.
+
+- **Offered on both presets and never refused**: the full model applies an
+  intervention to a preset's starting condition, and both start at a resistance
+  of 1.1, so ×1.5 lands at 1.65, inside the verified range (to 1.8).
+  `tests/cardiac-output-lesson.test.js` holds that, and that the pressure rises
+  and the rate is held on both.
+- **Named as the action, never the drug**: 「昇圧薬の血管収縮作用の模式例（抵抗のみ）」
+  / 「血管収縮（模式）」. No label names noradrenaline (the same test), and the
+  scope panel's fourth entry says what is not there (§12, F-182).
+- **Implemented / checked**: implemented; driven in headless Chromium by
+  `verify:disease` at the full model's windows; **not checked on a real device**
+  (F-238); **no medical review** (F-240).
+
+### Revision 10 — the introductory lesson: one question, one intervention, a different circulation beside it
+
+**A model revision** because a model source changed: `cardiacInterventions.js`
+gains the vasoconstrictor action (resistance ×1.5, the other three inputs
+declared held), and the lesson's conditions and claims
+(`cardiacOutputLesson.js`) join the sources this card describes. Nothing
+already in the model moved: the solver, its inputs, their ranges, the presets
+and the two existing interventions are as they were, and every figure the full
+model shows is bit-identical (the tests that pin them are unchanged and green).
+
+**What changed on screen.** `#/cardiac-output` opens the lesson (§9.6); the
+full model is at `?view=detail`, its operation, read-out, explanation, reel and
+first-visit introduction unchanged, with a breadcrumb back to the lesson. The
+lesson's first screen is the question, the model, mean pressure and cardiac
+output, and two ways in — 「▶ 説明を再生」 and 「自分で試す」 — with no modal. The
+full model's four inputs, table of figures, units such as dyn·s·cm⁻⁵ and its
+sources and limits are one link away rather than on the lesson's screen.
+
+**What was adopted, as an operation** (`docs/pathology-interaction-principles.md`,
+"評価の記録"):
+
+- **Two toggles and a reset** — add / take away the vasoconstrictor action;
+  compare with C / hide C; start over. No dose slider, no drug classes (the
+  brief's choice; kept as candidates for the full model, F-262). The XY pads
+  and the four single-axis controls stay in the full model.
+- **An explanation of five scenes** — A; the action added, pointed at where it
+  acts; B, pressure then output; C beside B at the same moment of the beat; the
+  conclusion — with play / pause / previous / next / from the start. It drives
+  the same session the buttons do; leaving it for the buttons hands over what
+  is on screen and says what that is and what it is compared with.
+- **Inputs and 3D**: only the systemic resistance moves between A and B (a
+  ladder of twelve solved conditions); C is the reference preset. The mapping
+  of each quantity to the drawing, and which are to scale, is in §9.6.
+- **Implemented / checked**: implemented; checked in headless Chromium at
+  1440×900, 390×844 and 375×667 by `verify:disease`'s lesson drive
+  (`scripts/lib/lesson-drive.mjs`) and recorded frame by frame. The drive also
+  measures that no word on the model covers the point it names or stands over
+  the model itself (counted in pixels with the words hidden, L-177 / L-178):
+  the vessels' tag moves below the vessels where the screen ends at their
+  right, and a circulation's name chip is shown only when two are compared.
+  **Not checked on a real device** (F-238); **no medical review** (F-240);
+  **no first-time reader** (F-239).
+- **What a first-time reader would be asked to do** (F-239): without playing
+  anything, say what the screen asks; play the explanation once, then say what
+  was changed, where it acted, what happened to the pressure and to the output
+  from A to B, whether C is B after treatment, and what B beside C shows; then
+  make B with the buttons and put C beside it. Not yet run.
 
 ### Screen, 2026-09-27 (2) — said on the model, and the blood that stays made visible
 

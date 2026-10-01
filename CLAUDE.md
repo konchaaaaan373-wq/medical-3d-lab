@@ -62,6 +62,7 @@ CLAUDE.md が禁じる「中身のない網羅」の、インフラ版です。
 | viewport × surface（overflow / 重なり / タッチ目標 / tab 巡回 / 属性の言語） | `npm run verify:ui` |
 | 解剖シーンの操作（選択・drag is not click・シート・拡大の支点） | `npm run verify:anatomy` |
 | 病態シーンの操作（baseline → disease → reset）と**動画書き出し**（同意画面 → 録画 → 書き出したファイルをブラウザに再生させて 1 フレーム撮る） | `npm run verify:disease` |
+| 入門教材（`layout: 'lesson'`）の 3 幅（最初の画面・説明の各場面・手動操作・プレイヤー・キーボード。図の大きさが変わらないか、C が B の横にしか出ないか、描いた値が solver と一致するか、注意書き、図の中の文字の重なりと大きさ、**WebGL を拒むページでも開くか**。**数値と文字を隠した図**も撮る）と、**固定の時計で撮る録画** | `npm run verify:disease -- <dir> <slug> --lesson-only --record-lesson`（`scripts/lib/lesson-drive.mjs`。録画なしなら最後の引数を外す） |
 | 患者説明／医学教育の目的（入口・ヘッダーの切替と現在地・直接 URL・再読み込み・戻る・キーボード・公開ゲート） | `npm run verify:purpose`（preview は `-- --dist dist-preview --preview`） |
 | ページの離れ方（読む面のその場差し替え・転送が住所欄まで直るか・モデルは別文書・veil・戻る）。**ルートや転送を変えたら走らせる** | `npm run verify:departure` |
 | hero のタッチとキーボード | `npm run verify:hero-input` |
@@ -163,7 +164,10 @@ CLAUDE.md が禁じる「中身のない網羅」の、インフラ版です。
 解剖の棚（β では臓器を 1 つ実表示する選択画面、preview では全身の Organ Explorer）、
 `#/patient` が患者説明の入口（知りたいことから選ぶ。載るのは公開・版固定の医学レビュー・
 説明文が揃ったモデルだけ）。同じモデルを患者説明で開くのは `#/<slug>?purpose=patient`
-（`src/app/purpose.js`。医学教育が既定で、パラメータ無し）。ルートは `src/catalog/scenes.js`
+（`src/app/purpose.js`。医学教育が既定で、パラメータ無し）。1 つのシーンが画面を
+2 つ持つときは `#/<slug>?view=<name>`（`viewOf`。シーンのモジュールが `views` を
+export する。例: `#/cardiac-output` は入門教材、`#/cardiac-output?view=detail` が
+詳しいモデル）。ルートは `src/catalog/scenes.js`
 から生成されるので、**シーンを増やしても routing に手を入れません**。
 
 ---

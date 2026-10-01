@@ -378,8 +378,17 @@ export const BUNDLE_BUDGET_KB = {
    * click, label and bound; the four schematic segments (`tube.js`, 1.5); and
    * the two ways of looking. None of it is fetched before a reader opens the
    * heart, where the two model files are 0.89 MB.
+   *
+   * 730 → 750 with the cardiac-output introductory lesson (#167): its shell,
+   * its page, its circuit diagram (SVG, since the owner's review of 2026-10-01)
+   * and its stylesheet, and the full model's fourth intervention. None of it is
+   * in the entry beyond the router's `?view=` (0.6 kB): the lesson loads with
+   * `#/cardiac-output`, and the full model's scene (28.4 kB with the rebrand's
+   * 「今、何が起きた？」) only with `?view=detail`. Measured 741.6 kB on top of
+   * main's aorta (721.8): the lesson and the fourth intervention are 19.8 of it,
+   * as they were on each main before (696.5 → 716.1, 708.2 → 728.5).
    */
-  code: 730,
+  code: 750,
   /**
    * The heaviest single model's media — the geometry one reader downloads when
    * they open one scene.

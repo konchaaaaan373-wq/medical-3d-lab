@@ -649,6 +649,8 @@ function measureInPage({ tolerance, floor, intent, exemptions, inlineLinks, inte
     interactiveCount: [...document.querySelectorAll(INTERACTIVE)].filter(visible).length,
     scrollHeight: doc.scrollHeight,
     hasCanvas: Boolean(document.querySelector('canvas')),
+    // A lesson makes no renderer (`App.js`), so it has no canvas by design.
+    layout: document.getElementById('ui')?.dataset.layout ?? null,
     englishOnlyAttributes: englishOnlyAttributes(),
   };
 }
@@ -1976,7 +1978,14 @@ try {
             // scene chrome to hide. That is the runner talking, and the rest of
             // this file is careful to record it as a note rather than a defect.
             const missing = `${where}: a scene surface with no "hide controls" control`;
+            // A lesson (`layout: 'lesson'`) draws no 3D for the controls to
+            // stand over: its figure sits between the question and the
+            // buttons, and the note on what the experiment is must stay on
+            // screen for a reader who only presses buttons (owner's review,
+            // 2026-10-01). Hiding it is not something the lesson offers.
+            const layout = await page.evaluate(() => document.getElementById('ui')?.dataset.layout ?? null);
             if (rendererDown()) notes.push(`${missing} — the renderer did not start on this engine`);
+            else if (layout === 'lesson') notes.push(`${missing} — a lesson: nothing stands over its figure, and its caveat stays on screen`);
             else problems.push(missing);
           } else if (!hideUi.offered) {
             notes.push(`${where}: the "hide controls" control is not offered here — ${hideUi.why}`);
@@ -2219,7 +2228,7 @@ try {
         // everything above has already measured the page as a reader finds it.
         for (const problem of await checkSiteMenu(page)) problems.push(`${where}: ${problem}`);
 
-        if (surface.needsRenderer && !measured.hasCanvas) {
+        if (surface.needsRenderer && !measured.hasCanvas && measured.layout !== 'lesson') {
           // Not a failure: a headless browser may have no GPU, and the product
           // is designed to stay usable without one. It is recorded, because a
           // scene check that silently measured the fallback every time would

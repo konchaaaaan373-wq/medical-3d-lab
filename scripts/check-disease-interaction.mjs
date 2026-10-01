@@ -51,6 +51,10 @@
  *   --engine <name>  chromium (default), firefox or webkit
  *   --dpr <number>   device scale factor (default 1)
  *   --dist <path>    build directory (default dist)
+ *   --record-lesson  also record a lesson's explanation and buttons as video
+ *   --lesson-window <W>x<H>  drive a lesson at this window only (repeatable;
+ *                    default the three in `lib/lesson-drive.mjs`)
+ *   --lesson-only    drive a scene's lesson and stop there, without its full model
  *   the scene slugs to drive, as arguments, after an optional output directory
  *   for the screenshots.
  */
@@ -60,6 +64,7 @@ import * as playwright from 'playwright';
 import { chromiumExecutable } from './lib/browser.mjs';
 import { pressConsoleControl } from './lib/console-controls.mjs';
 import { waitForCameraToSettle } from './lib/camera.mjs';
+import { LESSON_WINDOWS, driveLesson } from './lib/lesson-drive.mjs';
 import { serveDist } from './lib/serve-dist.mjs';
 import { videoExportOffered } from '../src/app/videoExport.js';
 import { VIDEO_MIME_CANDIDATES } from '../src/app/videoRecorder.js';
@@ -90,6 +95,32 @@ if (!['chromium', 'firefox', 'webkit'].includes(engineName)) {
   console.error(`Unknown --engine "${engineName}". Choose one of: chromium, firefox, webkit.`);
   process.exit(1);
 }
+
+// `--record-lesson`: also write the lesson's explanation and buttons as video,
+// frame by frame (see `lib/lesson-drive.mjs`). Minutes per window, so opt-in.
+const recordLessonAt = argv.indexOf('--record-lesson');
+const recordLesson = recordLessonAt >= 0;
+if (recordLesson) argv.splice(recordLessonAt, 1);
+
+// `--lesson-window 1440x900`: one of the lesson's windows rather than all three
+// — a mutation check at the window a failure was seen at, in a third of the time.
+const lessonWindows = [];
+for (let at = argv.indexOf('--lesson-window'); at >= 0; at = argv.indexOf('--lesson-window')) {
+  const [width, height] = (argv[at + 1] ?? '').split('x').map(Number);
+  if (!(width > 0 && height > 0)) {
+    console.error(`--lesson-window takes <width>x<height>, not "${argv[at + 1]}".`);
+    process.exit(2);
+  }
+  lessonWindows.push({ width, height });
+  argv.splice(at, 2);
+}
+const lessonWindowList = lessonWindows.length ? lessonWindows : LESSON_WINDOWS;
+
+// `--lesson-only`: the lesson and nothing after it — for a check of the lesson's
+// own screen, which otherwise waits a quarter of an hour on the full model.
+const lessonOnlyAt = argv.indexOf('--lesson-only');
+const lessonOnly = lessonOnlyAt >= 0;
+if (lessonOnly) argv.splice(lessonOnlyAt, 1);
 
 const distAt = argv.indexOf('--dist');
 const distDir = resolve(distAt >= 0 ? argv[distAt + 1] : 'dist');
@@ -203,13 +234,51 @@ for (const slug of SLUGS) {
     closeServer();
     process.exit(1);
   }
-  await page.waitForSelector('canvas');
+  // A scene's canvas, or a lesson — which makes no renderer and so has none.
+  await page.waitForFunction(() => Boolean(document.querySelector('canvas') || window.__app?.lesson));
   await page.waitForTimeout(2600);
   const consent = page.locator('button', { hasText: '許可しない' });
   if (await consent.count()) await consent.first().click().catch(() => {});
   await page.waitForTimeout(300);
 
   const problems = [];
+
+  // --- a lesson, then the full model --------------------------------------
+  //
+  // A route whose first screen is a lesson (`layout: 'lesson'` — the
+  // cardiac-output introduction) is driven as one, at the three windows the
+  // owner named, and everything below then drives the model's full view at
+  // `?view=detail`. Before the lesson existed this loop drove the full model
+  // at the bare route; opened there now, it would find no console and report
+  // the lesson as a broken experiment.
+  if (await page.evaluate(() => Boolean(window.__app?.lesson))) {
+    const drawn = [];
+    const found = await driveLesson(browser, { url: `${base}?preview=1#/${slug}`, slug, outDir, record: recordLesson, windows: lessonWindowList, drawn });
+    problems.push(...found.map((problem) => `lesson: ${problem}`));
+    console.log(
+      `  ${slug}: lesson driven at ${lessonWindowList.map(({ width, height }) => `${width}×${height}`).join(', ')}` +
+        `${recordLesson ? ', recorded' : ''} — ${found.length ? `${found.length} problem(s)` : 'no problems'}`
+    );
+    // The figure's size is the one thing on this screen that is never to give
+    // way (owner's review, 2026-10-01): said as a number on every run.
+    if (drawn.length) console.log(`    figure drawn at ${drawn.map((d) => `${d.width}×${d.height} (${d.window})`).join(', ')}`);
+    if (lessonOnly) {
+      report.push({ slug, controlCount: 0, problems, baseline: null, diseased: null, lessonOnly: true });
+      continue;
+    }
+    await page.goto(`${base}?preview=1#/${slug}?view=detail`, { waitUntil: 'networkidle' });
+    // A change of view leaves this document for a new one (`departure.js`),
+    // and the lesson had a canvas too: wait for the full model's own screen,
+    // not for "a canvas", which the outgoing page answers at once.
+    const arrived = await page
+      .waitForFunction(() => window.__app?.meta?.layout === 'experiment' && !document.getElementById('boot-veil'), null, { timeout: 60000 })
+      .then(() => true)
+      .catch(() => false);
+    if (!arrived) problems.push(`?view=detail did not open the full model (layout: ${await page.evaluate(() => window.__app?.meta?.layout ?? 'none')})`);
+    // Settled when the camera has stopped framing the model — a state, not a
+    // guess at how long that takes (L-170).
+    else await waitForCameraToSettle(page);
+  }
 
   // --- the first-visit introduction ----------------------------------------
   //
@@ -527,6 +596,48 @@ for (const slug of SLUGS) {
       if ((await origin()) !== 'dobutamine') problems.push('pads: the condition adjusted after dobutamine no longer says where it came from');
       await choose('reference');
       await page.waitForTimeout(800);
+
+      // The vasoconstrictor action (F-262, revision 11), pressed in the menu a
+      // reader uses: the resistance alone moves, and up; the screen names it as
+      // the action; clearing it returns to the preset's start. Waited on the
+      // session's own state, not on a time.
+      const intervention = (id) =>
+        page
+          .waitForFunction((want) => window.__app.scene.session.interventionId === want, id, { timeout: 20000 })
+          .then(() => true)
+          .catch(() => false);
+      const beforeAction = await inputs();
+      await choose('vasoconstriction');
+      if (!(await intervention('vasoconstriction'))) problems.push('the vasoconstrictor action: pressing it in the menu did not apply it');
+      const onAction = await inputs();
+      const movedByAction = movedKeys(beforeAction, onAction);
+      if (JSON.stringify(movedByAction) !== JSON.stringify(['systemicResistanceMmHgSPerMl'])) {
+        problems.push(`the vasoconstrictor action moved ${movedByAction.join(', ') || 'nothing'}, not the resistance alone`);
+      } else if (!(onAction.systemicResistanceMmHgSPerMl > beforeAction.systemicResistanceMmHgSPerMl)) {
+        problems.push('the vasoconstrictor action did not raise the resistance');
+      }
+      // What the screen commits to, for this intervention as for the others: its
+      // own button in the menu stands pressed, under its schematic name, and
+      // the "what changed" row names the one input it moved. (After the menu
+      // closes no intervention is named by name — dobutamine neither — so a
+      // check for the name in the page's text measured a promise the screen
+      // never made.)
+      const said = await page.evaluate(() => {
+        const button = document.querySelector('.model-controls-advanced button.model-choice-button[data-value="vasoconstriction"]');
+        return {
+          pressed: button?.getAttribute('aria-pressed') === 'true' || button?.classList.contains('is-selected') === true,
+          // textContent: inside the closed menu the button is not rendered, and
+          // `innerText` of what is not rendered is empty (L-150).
+          name: button?.textContent ?? '',
+          page: document.getElementById('ui').innerText,
+        };
+      });
+      if (!said.pressed) problems.push('the vasoconstrictor action: its button does not stand pressed');
+      if (!/血管収縮/.test(said.name) || !/模式/.test(said.name)) problems.push(`the vasoconstrictor action: its button reads “${said.name.replace(/\s+/g, ' ')}”, not the schematic action`);
+      if (!/血管抵抗\s*↑/.test(said.page)) problems.push('the vasoconstrictor action: nothing says the resistance went up');
+      await choose('none');
+      if (!(await intervention('none'))) problems.push('the vasoconstrictor action: 「介入なし」 did not clear it');
+      if (JSON.stringify(await inputs()) !== JSON.stringify(beforeAction)) problems.push('clearing the vasoconstrictor action did not return to the preset’s start');
     }
 
     // Covering and stability at every size. The heart may be drawn small; it
@@ -1630,14 +1741,24 @@ if (dpr > 1 && exportsRecorded === 0) {
 // with no scene driven, "no export was offered" says nothing about the engine,
 // and this line said it anyway — a cause reported without being established
 // (L-15).
+//
+// A lesson driven alone (`--lesson-only`) is not a scene that drove baseline →
+// disease → reset, and nothing about exports was asked of it: the line said
+// both, of a run that had driven the full model of nothing (code review,
+// 2026-10-01; L-169).
+const driven = report.filter((entry) => !entry.lessonOnly);
+const lessonsAlone = report.length - driven.length;
 console.log(
-  `\n  ok    ${report.length} scene(s) drove baseline → disease → reset; `
-    + `${exportsRecorded} export(s) recorded and played back`
-    + (exportsOffered === 0
-      ? ` (no scene offered one — ${engineName} cannot encode a canvas here)`
-      : exportsRecorded < exportsOffered
-        ? ` of ${exportsOffered} offered`
-        : '')
+  `\n  ok    ${driven.length} scene(s) drove baseline → disease → reset`
+    + (lessonsAlone ? `; ${lessonsAlone} lesson(s) driven alone (--lesson-only: the full model was not driven)` : '')
+    + (driven.length
+      ? `; ${exportsRecorded} export(s) recorded and played back`
+        + (exportsOffered === 0
+          ? ` (no scene offered one — ${engineName} cannot encode a canvas here)`
+          : exportsRecorded < exportsOffered
+            ? ` of ${exportsOffered} offered`
+            : '')
+      : '')
 );
 
 /**

@@ -5,6 +5,7 @@ import { tissueMaterial } from '../../../shared/materials.js';
 import { ANATOMY } from '../heartFailure/anatomy.js';
 import { PALETTE } from '../../../../data/cardiacOutput.js';
 import { clamp, lerp, smoothstep } from '../../../../utils/math.js';
+import { bedCalibreFor } from './drawingScales.js';
 
 /**
  * The loop the ventricle is part of, drawn as a circuit rather than as anatomy.
@@ -374,12 +375,8 @@ export function buildCircuit({ compact = false } = {}) {
       // show one change in cardiac output twice and make it look larger than
       // the model said.
       const particleSpeed = 0.55 + flow * 1.25;
-      // The bed narrows with the lumped resistance. Poiseuille would make the
-      // radius go as the fourth root of 1/R — a narrowing too small to see
-      // across this range — so the calibre is a drawing scale over the
-      // control's range, labelled as such; its direction and its order are
-      // the model's.
-      const calibre = lerp(1.5, 0.45, resistance);
+      // The bed narrows with the lumped resistance (`bedCalibreFor`).
+      const calibre = bedCalibreFor(metrics.systemicResistanceMmHgSPerMl, resistanceDomain);
       // Most of the circulating volume sits in the veins, so that is where
       // more filling is drawn: a fuller venous run. A drawing scale again.
       const venousCalibre = lerp(0.7, 1.45, filling);

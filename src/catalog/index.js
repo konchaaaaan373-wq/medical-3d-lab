@@ -260,10 +260,20 @@ export function resolveSceneId(hash = '') {
  * Falls back to the same scene `resolveSceneId` does, so an id that arrives
  * here without passing through it cannot load one scene while the navigation
  * marks another as current.
+ *
+ * `view` names another screen of the same model, for a scene module that
+ * exports `views` (`#/cardiac-output?view=detail`): each is a loader,
+ * `() => Promise<SceneClass>`, so a reader of one screen does not download the
+ * other. A view the module does not have opens its default screen — a stale
+ * link still lands on the model.
+ *
+ * @param {string} id
+ * @param {{ view?: string|null }} [options]
  */
-export async function loadScene(id) {
+export async function loadScene(id, { view = null } = {}) {
   const entry = sceneById(id) ?? sceneById(DEFAULT_SCENE_ID);
   const module = await entry.load();
+  if (view && Object.hasOwn(module.views ?? {}, view)) return module.views[view]();
   return module.default;
 }
 

@@ -37,6 +37,7 @@ export const INTERVENTION_IDS = Object.freeze({
   NONE: 'none',
   VOLUME_LOADING: 'volume-loading',
   DOBUTAMINE: 'dobutamine',
+  VASOCONSTRICTION: 'vasoconstriction',
 });
 
 /**
@@ -106,12 +107,52 @@ export const INTERVENTION_PROFILES = Object.freeze({
     }),
     unchanged: Object.freeze(['heartRatePerMin', 'fillingVolumeMl']),
   }),
+
+  /**
+   * The vasoconstrictor action of a vasopressor, taken out on its own.
+   *
+   * **One input, and it is the resistance.** A real vasopressor is never only
+   * this: noradrenaline also acts on the heart (β1 — contractility and rate),
+   * constricts veins as well as arterioles (which moves the stressed volume),
+   * and in a person the baroreflex answers the rise in pressure by slowing
+   * the heart. None of that is here, and none of it is claimed. What is here
+   * is the one action the introductory lesson is about — the small vessels of
+   * the whole body narrowing together — as a change to the lumped systemic
+   * resistance, so that what the pressure and the output then do is whatever
+   * the solver makes of it. It is a schematic experiment, not a drug.
+   *
+   * The direction (vascular resistance up) is the defining action of a
+   * vasoconstrictor. The size, ×1.5, is chosen for the lesson and is not a
+   * dose: it is not derived from any dose-response relationship and no
+   * coefficient is fitted to anything. It keeps the lesson's starting
+   * condition inside the verified domain, and it is the size at which the
+   * lesson's pressure lands near the reference circulation's
+   * (`src/models/cardiacOutputLesson.js` checks that from the solver).
+   *
+   * `requiresPreset` is null: the direction is not a finding about one
+   * population, as dobutamine's is. Applied to a condition whose resistance is
+   * already above 1.2 mmHg·s/mL it leaves the verified domain and is refused;
+   * the detailed experiment applies it to a preset's starting condition, and
+   * both presets start at 1.1, so there it is always offered.
+   *
+   * **In the detailed experiment's menu since 2026-09-30** (owner's decision,
+   * F-237), under the same name: the action, not the drug. Noradrenaline
+   * itself is still not offered (F-182).
+   */
+  [INTERVENTION_IDS.VASOCONSTRICTION]: Object.freeze({
+    id: INTERVENTION_IDS.VASOCONSTRICTION,
+    requiresPreset: null,
+    effects: Object.freeze({ systemicResistanceMmHgSPerMl: Object.freeze({ multiply: 1.5 }) }),
+    unchanged: Object.freeze(['fillingVolumeMl', 'contractilityEesMmHgPerMl', 'heartRatePerMin']),
+  }),
 });
 
+/** The detailed experiment's intervention menu, in the order it offers them. */
 export const INTERVENTION_LIST = Object.freeze([
   INTERVENTION_IDS.NONE,
   INTERVENTION_IDS.VOLUME_LOADING,
   INTERVENTION_IDS.DOBUTAMINE,
+  INTERVENTION_IDS.VASOCONSTRICTION,
 ]);
 
 /**

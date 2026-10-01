@@ -103,8 +103,15 @@ export const SURFACES = [
   { id: 'scene-layers', route: '#/heart-anatomy', label: 'Scene (organ with layers)', needsRenderer: true },
   // A disease model — the product's centre since 2026-09-30: the model shell's
   // header (mark, name, Models · About), its title line, 「このモデルについて」,
-  // 「解剖を確認」 and the two console cards, at every width.
-  { id: 'scene-disease', route: '#/cardiac-output', label: 'Disease model', needsRenderer: true },
+  // 「解剖を確認」 and the two console cards, at every width. On cardiac-output
+  // that shell is the full model, one view in (`?view=detail`): the bare route
+  // opens the introductory lesson, measured on its own below.
+  { id: 'scene-disease', route: '#/cardiac-output?view=detail', label: 'Disease model', needsRenderer: true },
+  // The introductory lesson (`layout: 'lesson'`): a figure between a question
+  // and its buttons, with nothing over it — so no "hide controls" to measure
+  // (`scripts/check-viewports.mjs` says why in its note) — and everything
+  // else every scene owes, at every width.
+  { id: 'scene-lesson', route: '#/cardiac-output', label: 'Disease model, introductory lesson', needsRenderer: true },
 ];
 
 /**

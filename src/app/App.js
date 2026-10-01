@@ -4,7 +4,7 @@ import { loadScene, sceneById, systemsWithScenes, resolveSceneId } from './scene
 import { SCENES, structureFunctionScene } from '../catalog/index.js';
 import { RELEASED_SCENES } from '../catalog/release.js';
 import { betaUnlocked, routeOpen, sceneOpen } from './releaseGate.js';
-import { resolveRoute, structureOf } from './router.js';
+import { hashWithView, resolveRoute, structureOf, viewOf } from './router.js';
 import { hasDataOnlySurface } from './dataView.js';
 import { installDeparture } from './departure.js';
 import { openingMessage } from './destinationName.js';
@@ -95,9 +95,60 @@ import { emitAppEvent } from './appEvents.js';
  *   retry does — so this file neither reloads nor reconstructs anything.
  */
 export async function createApp({ stage, ui, onRetryModel = null }) {
-  const viewer = new Viewer(stage);
+  // Which screen of the model the address asks for (`viewOf`): a scene module
+  // may offer more than one — cardiac output opens its introductory lesson and
+  // keeps the full model at `?view=detail`.
+  const routeView = viewOf(window.location.hash);
+  const SceneClass = await loadScene(resolveSceneId(), { view: routeView });
 
-  const SceneClass = await loadScene(resolveSceneId());
+  // The catalogue owns how far a scene has been taken, so the badge on screen
+  // cannot drift from the entry the explorer draws. A scene that does not know
+  // its own status is not a special case — it simply reads it from here.
+  //
+  // The same is true of the name. The catalogue's textbook title is what the
+  // explorer, the search, the landing page and the crawlable metadata all show,
+  // so the header over the 3D reads it too; a scene's own `meta.title` is only
+  // the fallback for a scene the catalogue does not know.
+  const entry = sceneById(resolveSceneId());
+  // A non-default view names the default one in its breadcrumb, so the way
+  // back to it is on screen rather than only behind the Back button.
+  const DefaultSceneClass = routeView ? await loadScene(resolveSceneId()) : SceneClass;
+  const viewTrail =
+    DefaultSceneClass !== SceneClass && DefaultSceneClass.meta?.viewName
+      ? { href: hashWithView(window.location.hash, null), name: DefaultSceneClass.meta.viewName }
+      : null;
+  const meta = {
+    ...SceneClass.meta,
+    status: entry?.status ?? SceneClass.meta.status ?? 'production',
+    title: entry?.titleEn ?? SceneClass.meta.title,
+    titleJa: entry?.titleJa ?? SceneClass.meta.titleJa,
+    ...(viewTrail ? { viewTrail } : {}),
+  };
+  document.title = `${meta.title} — medical-3d-lab`;
+  ui.dataset.scene = meta.id;
+  // A declared arrangement, for scenes whose subject is not a progression — see
+  // `src/styles/experiment-layout.css`. Absent, the shell is laid out as it
+  // always was.
+  if (meta.layout) ui.dataset.layout = meta.layout;
+  else delete ui.dataset.layout;
+
+  // A lesson is a different screen, not this one with parts hidden: a
+  // question, the scene's figure and what to do (`LessonShell.js`). It
+  // shares the header, the title card and the way out with every other
+  // scene, and none of the experiment console, read-out rail or data
+  // view — which is what a first-time reader could not see past (Issue #166).
+  //
+  // Decided before the renderer is made, because a lesson draws nothing in 3D
+  // (its figure is the page's own SVG): it never builds a WebGL context, so a
+  // browser that cannot make one still opens it rather than the renderer-
+  // failure page (code review, 2026-10-01).
+  if (meta.layout === 'lesson') {
+    const scene = new SceneClass({});
+    const { mountLessonShell } = await import('./LessonShell.js');
+    return mountLessonShell({ scene, SceneClass, meta, entry, ui });
+  }
+
+  const viewer = new Viewer(stage);
   const scene = new SceneClass({ viewer });
   viewer.scene.add(scene.build());
   // Most scenes build synchronously. Asset-backed atlases expose `ready` so
@@ -114,28 +165,6 @@ export async function createApp({ stage, ui, onRetryModel = null }) {
     window.__lab = { viewer, scene };
   }
 
-  // The catalogue owns how far a scene has been taken, so the badge on screen
-  // cannot drift from the entry the explorer draws. A scene that does not know
-  // its own status is not a special case — it simply reads it from here.
-  //
-  // The same is true of the name. The catalogue's textbook title is what the
-  // explorer, the search, the landing page and the crawlable metadata all show,
-  // so the header over the 3D reads it too; a scene's own `meta.title` is only
-  // the fallback for a scene the catalogue does not know.
-  const entry = sceneById(resolveSceneId());
-  const meta = {
-    ...SceneClass.meta,
-    status: entry?.status ?? SceneClass.meta.status ?? 'production',
-    title: entry?.titleEn ?? SceneClass.meta.title,
-    titleJa: entry?.titleJa ?? SceneClass.meta.titleJa,
-  };
-  document.title = `${meta.title} — medical-3d-lab`;
-  ui.dataset.scene = meta.id;
-  // A declared arrangement, for scenes whose subject is not a progression — see
-  // `src/styles/experiment-layout.css`. Absent, the shell is laid out as it
-  // always was.
-  if (meta.layout) ui.dataset.layout = meta.layout;
-  else delete ui.dataset.layout;
   const defaultBackground = backgroundPresetById(meta.inspection?.background ?? DEFAULT_BACKGROUND_ID);
 
   /**

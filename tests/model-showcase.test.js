@@ -126,8 +126,11 @@ test('posters are photographed at the scene\'s own route, not at its showcase ke
   }
   assert.throws(() => posterTargets({ showcase: { 'no-such-scene': { poster: 'p.jpg' } } }), /not a scene/);
   assert.deepEqual(posterTargets({ only: ['copd'], showcase: { 'copd-hyperinflation': { poster: 'p.jpg' } } }).map((t) => t.id), ['copd-hyperinflation'], '--only takes the slug too');
-  // And the script asks this, and waits for the app before the camera.
+  // And the script asks this, and waits for the app before the camera — a
+  // model's viewer, or a lesson, which makes no renderer and is photographed
+  // as its own figure once that has stopped moving.
   const script = readFileSync(new URL('../scripts/capture-model-posters.mjs', import.meta.url), 'utf8');
   assert.match(script, /posterTargets\(/);
-  assert.match(script, /waitForFunction\(\(\) => Boolean\(window\.__app\?\.viewer\)/);
+  assert.match(script, /waitForFunction\(\(\) => Boolean\(window\.__app\?\.viewer \|\| window\.__app\?\.lesson\)/);
+  assert.match(script, /lesson-figure-svg'\)\?\.dataset\.calm === 'true'/);
 });
