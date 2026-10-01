@@ -123,8 +123,18 @@ test('every chip is named by its organ, in both languages', () => {
   }
 });
 
-test('the model on screen is the one page marked, whichever it is', () => {
-  for (const model of PUBLIC_MANIFEST.models) {
+/**
+ * Anatomy is navigated organ by organ; a disease model is not (ADR 2026-09-30).
+ * On an anatomy model the row is the organs and the organ's layers; on a
+ * disease model the header carries the product's top level (Models · About)
+ * and the title card carries where the model sits and its 「解剖を確認」.
+ */
+const isAnatomyModel = (model) => model.layer === 'anatomy';
+
+test('on an anatomy model, the model on screen is the one page marked', () => {
+  const anatomy = PUBLIC_MANIFEST.models.filter(isAnatomyModel);
+  assert.ok(anatomy.length >= 2, 'this test needs published anatomy models');
+  for (const model of anatomy) {
     const { element } = mount(publishedGroups(), model.sceneId);
     const pageMarks = [...chips(element), ...layerLinks(element)].filter(
       (link) => link.getAttribute('aria-current') === 'page'
@@ -148,13 +158,26 @@ test('the model on screen is the one page marked, whichever it is', () => {
   }
 });
 
-test('an organ with more than one model names its layers; one with a single model does not', () => {
+test('on a disease model, the header is the product — no organ row, no layer row', () => {
+  const disease = PUBLIC_MANIFEST.models.filter((model) => !isAnatomyModel(model));
+  assert.ok(disease.length >= 1, 'this test needs a published disease model (cardiac output)');
+  for (const model of disease) {
+    const { element } = mount(publishedGroups(), model.sceneId);
+    assert.equal(strip(element), null, `${model.sceneId}: 脳 心臓 肺 肝臓 is not this model's navigation`);
+    assert.equal(layerRow(element), null, `${model.sceneId}: its anatomy is reached from its title card`);
+    const product = findByClass(element, 'global-nav-product-link').map((link) => link.getAttribute('href'));
+    assert.deepEqual(product, ['#/models', '#/about']);
+    assert.ok(element.classList.contains('is-disease-model'));
+  }
+});
+
+test('an anatomy model on an organ with more than one model names its layers; one with a single model does not', () => {
   const organs = organsOf(PUBLIC_MANIFEST.models);
   assert.ok(
     [...organs.values()].some((models) => models.length > 1),
     'this test needs an organ with two published models (the heart: anatomy and cardiac output)'
   );
-  for (const model of PUBLIC_MANIFEST.models) {
+  for (const model of PUBLIC_MANIFEST.models.filter(isAnatomyModel)) {
     const siblings = organs.get(model.organId);
     const { element } = mount(publishedGroups(), model.sceneId);
     if (siblings.length === 1) {
@@ -173,10 +196,14 @@ test('an organ with more than one model names its layers; one with a single mode
   }
 });
 
-test('a layer that is not anatomy says which layer it is', () => {
+test('from the anatomy, a layer that is not anatomy says which layer it is', () => {
   const mechanism = PUBLIC_MANIFEST.models.find((model) => model.layer === 'mechanism');
   assert.ok(mechanism, 'this test needs a published mechanism scene');
-  const { element } = mount(publishedGroups(), mechanism.sceneId);
+  const anatomySibling = PUBLIC_MANIFEST.models.find(
+    (model) => isAnatomyModel(model) && model.organId === mechanism.organId
+  );
+  assert.ok(anatomySibling, 'the mechanism scene has its organ\'s anatomy published beside it');
+  const { element } = mount(publishedGroups(), anatomySibling.sceneId);
   const link = layerLinks(element).find((candidate) => candidate.getAttribute('href') === mechanism.route);
   const [kind] = findByClass(link, 'global-nav-layer-kind');
   assert.ok(kind, 'the mechanism link carries its layer');

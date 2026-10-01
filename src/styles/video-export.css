@@ -21,7 +21,7 @@
 .video-consent-scrim {
   position: absolute;
   inset: 0;
-  background: rgba(2, 4, 9, 0.78);
+  background: rgba(11, 10, 8, 0.78);
   backdrop-filter: blur(3px);
 }
 

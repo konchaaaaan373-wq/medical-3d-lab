@@ -261,7 +261,8 @@ function measureInPage({ tolerance, floor, intent, exemptions, inlineLinks, inte
   function englishOnlyAttributes() {
     if (document.getElementById('ui')?.dataset?.lang !== 'ja') return [];
     // Proper nouns and file formats are the same word in both languages.
-    const SAME_IN_BOTH = /^(PNG|JPEG|JPG|SVG|WebP|GLB|CSV|Medical 3D Lab)$/i;
+    // The product's name is one of them (`src/data/brand.js`).
+    const SAME_IN_BOTH = /^(PNG|JPEG|JPG|SVG|WebP|GLB|CSV|BYOKI MOTION)$/i;
     const found = [];
     const seen = new Set();
     for (const element of document.querySelectorAll('[aria-label], [title], [placeholder]')) {
@@ -1834,6 +1835,19 @@ try {
       deviceScaleFactor: 1,
       reducedMotion: 'reduce',
     });
+    // Every scene's first-visit introduction is marked seen before any page
+    // loads: this matrix measures the screen a returning reader works in,
+    // and the introduction is `verify:disease`'s to measure. A state, not a
+    // wait — the first version waited 1.5 s for it to open, and at 1280 px
+    // the renderer took longer, so the introduction opened after the check had
+    // moved on and covered 22 controls (L-156).
+    await context.addInitScript((ids) => {
+      try {
+        for (const id of ids) localStorage.setItem(`m3l:intro-seen:${id}`, '1');
+      } catch {
+        /* storage unavailable: the fallback below closes it */
+      }
+    }, surfaces.filter((surface) => surface.needsRenderer).map((surface) => surface.route.replace(/^#\/?/, '').split('?')[0]));
     const page = await context.newPage();
     const lifecycleTrace = createLifecycleTrace(page, viewport);
     const fullTabWalk = viewport.width === narrowest || viewport.width === widest;
@@ -1904,6 +1918,14 @@ try {
             .catch(() => notes.push(`${where}: the loading veil never cleared`));
         }
         await page.waitForTimeout(surface.needsRenderer ? 800 : 300);
+        // A first-visit introduction makes everything behind it inert until it
+        // is closed (`SceneIntro`). It is marked seen above; one that opens
+        // anyway is a problem with that marking, closed the way a reader
+        // closes it so the rest of the surface is still measured.
+        if (surface.needsRenderer && (await page.locator('.scene-intro:not([hidden])').count())) {
+          problems.push(`${where}: the first-visit introduction opened although it was marked seen`);
+          await page.locator('.scene-intro-skip').first().click({ timeout: 5_000 }).catch(() => {});
+        }
         await lifecycleTrace?.snapshot('surface-ready-for-measurement');
 
         // A route that declares a correction has to have made it, in the

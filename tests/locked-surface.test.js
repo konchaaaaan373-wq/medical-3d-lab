@@ -117,7 +117,7 @@ test('the locked page offers exactly one model, and it is one that is open', () 
   assert.equal(hrefs[0], openModelDestination().route, 'the primary is the destination the manifest names');
   assert.equal(hrefs[1], '#/', 'and the second is home');
 
-  const openRoutes = new Set(['#/organs', ...RELEASED_SCENES.map((scene) => `#/${scene.slug}`)]);
+  const openRoutes = new Set(['#/models', ...RELEASED_SCENES.map((scene) => `#/${scene.slug}`)]);
   assert.equal(openRoutes.has(hrefs[0]), true, `${hrefs[0]} is a route the release opens`);
 });
 
@@ -128,10 +128,12 @@ test('one open model is linked directly, because a catalogue of one is a page to
     { route: '#/brain-anatomy', en: 'Open the 3D brain model', ja: '脳の3Dモデルを見る' }
   );
 
-  // And two is a real choice, so it becomes the Explorer with no edit here.
+  // And two is a real choice, so it becomes the model index with no edit here
+  // — `#/models`, not `#/organs`: the anatomy shelf does not list the disease
+  // models that are open (BYOKI MOTION, 2026-09-30).
   const two = { count: 2, models: [single.models[0], { organId: 'heart', titleEn: 'y', titleJa: 'y', route: '#/heart-anatomy' }] };
-  assert.equal(openModelDestination(two).route, '#/organs');
-  assert.equal(openModelDestination({ count: 0, models: [] }).route, '#/organs');
+  assert.equal(openModelDestination(two).route, '#/models');
+  assert.equal(openModelDestination({ count: 0, models: [] }).route, '#/models');
 });
 
 test('the badge and the copy are written for the reader, not for the release process', () => {

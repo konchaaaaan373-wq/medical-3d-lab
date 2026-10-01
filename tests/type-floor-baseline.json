@@ -59,24 +59,13 @@
       ".public-models-appbar .explorer-shell-link": 11
     },
     "landing.css": {
-      ".landing-hero-facts dd": 11,
       ".landing-demo-kicker": 11,
       ".landing-demo-case": 9,
       ".landing-demo-drag-hint": 10,
       ".landing-demo-structure[data-state='hint'] .landing-demo-structure-name": 11.5,
       ".landing-demo-structure-link": 11,
       ".landing-demo-structure-where": 11,
-      ".landing-demo-state-index": 10,
-      ".landing-demo-metric-unit": 10,
-      ".landing-demo-metric-change": 10,
-      ".landing-scene-system": 11,
-      ".landing-signal-chain li": 10,
-      ".landing-state-badge": 11,
-      ".landing-nav-actions .ui-toggle": 10,
-      ".landing-eyebrow": 10,
-      ".landing-demo-metric-label": 10,
-      ".landing-demo-detail": 10,
-      ".landing-footer-operator": 11
+      ".landing-demo-state-index": 10
     },
     "legal.css": {
       ".legal-updated": 11.5,

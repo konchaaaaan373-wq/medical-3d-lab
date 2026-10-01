@@ -1,3 +1,4 @@
+import { BRAND } from '../data/brand.js';
 import { el } from '../utils/dom.js';
 
 /**
@@ -500,7 +501,7 @@ export function createPatientGuidePanel({
 function buildPatientHandout(guide) {
   return el('article', { class: 'patient-handout', 'aria-hidden': 'true' }, [
     el('header', { class: 'patient-handout-head' }, [
-      el('div', { class: 'patient-handout-brand', text: 'Medical 3D Lab' }),
+      el('div', { class: 'patient-handout-brand', text: BRAND.name }),
       el('h1', { class: 'patient-handout-title' }, [
         el('span', { class: 'lang-en', text: guide.title }),
         el('span', { class: 'lang-ja', text: guide.titleJa }),

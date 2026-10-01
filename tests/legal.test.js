@@ -229,10 +229,22 @@ test('legal: the pages are reachable from the shell and need no renderer', () =>
   assert.match(surfaces, /import\('\.\/Legal\.js'\)/);
   assert.match(surfaces, /legal: 'legal'/, 'and it renders on its own document state');
 
-  for (const source of [read('src/app/Landing.js'), read('src/app/Trust.js')]) {
-    for (const slug of LEGAL_SLUGS) {
-      assert.ok(source.includes(`href: '#/${slug}'`), `no link to #/${slug}`);
-    }
+  // Every legal page has a link in the shared link lists, and every reading
+  // surface either wears the shared footer that renders them or links them
+  // itself (BYOKI MOTION, 2026-09-30: one footer instead of one per surface).
+  const lists = read('src/components/SiteMenu.js');
+  for (const slug of LEGAL_SLUGS) {
+    assert.ok(lists.includes(`href: '#/${slug}'`), `no shared link to #/${slug}`);
+  }
+  const footer = read('src/components/SiteFooter.js');
+  assert.match(footer, /LEGAL_LINKS\.map/);
+  assert.match(footer, /SUPPORT_LINKS\.map/);
+  for (const path of ['src/app/Landing.js', 'src/app/About.js', 'src/app/PathologyIndex.js']) {
+    assert.match(read(path), /createSiteFooter\(\)/, `${path} has no footer with the legal links`);
+  }
+  const trust = read('src/app/Trust.js');
+  for (const slug of LEGAL_SLUGS) {
+    assert.ok(trust.includes(`href: '#/${slug}'`), `Trust: no link to #/${slug}`);
   }
 });
 

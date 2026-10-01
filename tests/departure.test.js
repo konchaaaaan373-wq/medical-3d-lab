@@ -146,6 +146,30 @@ test('takedown: a restored page arrives with the veil still in it', () => {
   }
 });
 
+test('an old name for the page on screen is a stay, and the address bar is corrected anyway', () => {
+  // `#/pathology` renders the same page as `#/models`, so from the model index
+  // an old link is a 'stay' — the branch that never reaches the swap path's
+  // correction. Without one here, `#/pathology` stayed in the address bar.
+  const { windowRef, veils, restore } = scene('#/models');
+  const replaced = [];
+  windowRef.history = { state: null, replaceState: (_state, _title, url) => replaced.push(url) };
+  try {
+    assert.equal(hashChangeAction('#/pathology', '#/models', { canSwap: true }), 'stay');
+    windowRef.go('#/pathology');
+    assert.deepEqual(replaced, ['#/models']);
+    assert.equal(veils().length, 0, 'nothing to cover: the page is the right one');
+    assert.equal(windowRef.location.reloads, 0);
+    // The query is the reader's and survives.
+    windowRef.go('#/pathology?purpose=patient');
+    assert.deepEqual(replaced, ['#/models', '#/models?purpose=patient']);
+    // A route with no old name is left alone.
+    windowRef.go('#/models');
+    assert.equal(replaced.length, 2);
+  } finally {
+    restore();
+  }
+});
+
 test('takedown: the backstop offers to ask again rather than revealing the old answer', () => {
   const { windowRef, clock, veils, restore } = scene('#/brain-anatomy', { backstopMs: 50 });
   try {

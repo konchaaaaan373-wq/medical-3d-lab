@@ -3,7 +3,8 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import * as THREE from 'three';
 
-import { createLanding } from '../src/app/Landing.js';
+import { createLanding, createPublicModelsExplorer } from '../src/app/Landing.js';
+import { BRAND } from '../src/data/brand.js';
 import { createLandingOrganHero } from '../src/app/landingOrganHero.js';
 import { nameNearestToCentre } from '../src/app/landingOrganViewport.js';
 import { mountLandingOrganViewport, shouldLoadDetail } from '../src/app/landingOrganViewport.js';
@@ -173,6 +174,10 @@ test('landing: switching to reduced motion cancels the already queued frame', ()
     rotate() {},
     beginPath() {},
     ellipse() {},
+    arc() {},
+    moveTo() {},
+    lineTo() {},
+    stroke() {},
     fill() {},
     restore() {},
   };
@@ -254,7 +259,11 @@ test('landing: the shell stays readable while the hero dynamically mounts a real
   assert.match(css, /\.landing-demo-state-grid\.is-organs/);
 });
 
-test('landing: the public models are live organs, not a card index', () => {
+test('landing: BYOKI MOTION opens on its disease models, not on an organ', () => {
+  // ADR 2026-09-30. The front door says what the product is and puts a
+  // disease model a press away; the anatomy is one line under the models.
+  // The literals are kept rather than read from the manifest on both sides,
+  // so that widening the release has to come here and be looked at.
   const restoreDocument = installFakeDocument();
   const previousWindow = globalThis.window;
   globalThis.window = {};
@@ -262,34 +271,65 @@ test('landing: the public models are live organs, not a card index', () => {
   try {
     const ui = new FakeElement('div');
     const mounted = createLanding({ ui });
+    assert.equal(PUBLIC_MANIFEST.count, 5);
+    assert.equal(PUBLIC_MANIFEST.organs.length, 4);
+
+    // The name, the promise and one action.
+    const title = findByClass(mounted.element, 'bm-hero-title');
+    assert.equal(title.length, 1);
+    assert.ok(collectText(title[0]).includes(BRAND.name), 'the h1 says BYOKI MOTION to assistive tech');
+    const ctas = findByClass(mounted.element, 'bm-cta');
+    assert.equal(ctas.length, 1, 'one primary action, not a row of them');
+    assert.equal(ctas[0].getAttribute('href'), '#/models');
+
+    // The disease models the release opens, each a card that is one link.
+    const cards = findByClass(mounted.element, 'model-card');
+    const disease = PUBLIC_MANIFEST.models.filter((model) => model.layer !== 'anatomy');
+    assert.deepEqual(cards.map((card) => card.getAttribute('href')), disease.map((model) => model.route));
+    assert.deepEqual(cards.map((card) => card.getAttribute('href')), ['#/cardiac-output']);
+
+    // No organ in 3D on the front door, and no anatomy model as a card.
+    assert.equal(findByClass(mounted.element, 'landing-demo-viewport').length, 0);
+    assert.equal(findByClass(mounted.element, 'landing-demo-state').length, 0);
+
+    // The anatomy is still reachable from here — as a shelf, not the subject.
+    const organs = findByClass(mounted.element, 'bm-anatomy-link');
+    assert.deepEqual(
+      organs.map((link) => link.getAttribute('href')),
+      PUBLIC_MANIFEST.models.filter((model) => model.layer === 'anatomy').map((model) => model.route)
+    );
+    assert.equal(organs.length, 4);
+
+    // Neco is the operator, named once at the foot — not a section of the page.
+    assert.equal(findByClass(mounted.element, 'landing-neco').length, 0);
+    assert.equal(findByClass(mounted.element, 'site-footer-operator').length, 1);
+  } finally {
+    restoreDocument();
+    if (previousWindow === undefined) delete globalThis.window;
+    else globalThis.window = previousWindow;
+  }
+});
+
+test('anatomy page: the published organs are one live model and a chooser, not a card index', () => {
+  // What the landing hero used to guarantee, kept where the organ hero now
+  // lives (`#/anatomy`): **one organ, live**, never a grid of cards as the
+  // published set grows. The chooser is over *organs* — five models sit on
+  // four organs since `cardiac-output` became the heart's second model.
+  const restoreDocument = installFakeDocument();
+  const previousWindow = globalThis.window;
+  globalThis.window = {};
+
+  try {
+    const ui = new FakeElement('div');
+    const mounted = createPublicModelsExplorer({ ui, manifest: PUBLIC_MANIFEST });
     const controls = findByClass(mounted.element, 'landing-demo-state');
     const viewports = findByClass(mounted.element, 'landing-demo-viewport');
     const links = findByClass(mounted.element, 'landing-cta');
 
-    // What this test is for has not changed: the landing page shows **one
-    // organ, live**, and never turns into a grid of cards as the published set
-    // grows — which is the failure mode each new model makes more tempting.
-    // The literals are kept rather than read from the manifest on both sides,
-    // so that widening the release has to come here and be looked at.
-    //
-    // **Models and organs are not the same count any more**, and this used to
-    // assert they were. `cardiac-output` was published on 2026-09-22 and is
-    // the heart's second model, so five models sit on four organs. The
-    // chooser is over *organs* — it swaps what is in the viewport — so it is
-    // the organ count it has to match. Asserting the model count was true
-    // while every organ had exactly one model, and it was never the rule.
-    assert.equal(PUBLIC_MANIFEST.count, 5);
-    assert.equal(PUBLIC_MANIFEST.organs.length, 4);
     assert.equal(findByClass(mounted.element, 'landing-scene-card').length, 0);
     assert.equal(viewports.length, 1, 'one organ on screen, however many are published');
-    // The chooser the design always said a second model would bring: with one
-    // published organ there was nothing to choose between and no control was
-    // drawn. There is one control per published organ, and they are controls
-    // over the single live viewport rather than cards standing in for it.
     assert.equal(controls.length, PUBLIC_MANIFEST.organs.length);
     assert.equal(controls.length, 4);
-    // The link follows whichever organ the rotation put up today, rather than
-    // being pinned to the brain.
     const shown = mounted.organHero.organ;
     const entry = HERO_ROTATION.find((item) => item.organ === shown);
     assert.ok(entry, `${shown} is on screen but not in the rotation`);

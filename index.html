@@ -13,11 +13,12 @@
     <!-- Replaced at start-up with the scene or the explorer; this is what a
          crawler or a JS-less browser sees. Japanese is the product default;
          LanguageToggle changes `lang` together with the visible copy. -->
-    <title>Medical 3D Lab — 3D medical models</title>
+    <title>BYOKI MOTION — 病態を、動かして理解する。</title>
     <meta
       name="description"
-      content="Web-based 3D medical models for anatomy, physiology and disease, developed for clear patient explanation and medical education."
+      content="病態生理の因果関係を、操作と動きで理解するインタラクティブ医学モデル集。Interactive models for understanding pathophysiology."
     />
+    <meta name="theme-color" content="#f6f4ef" />
     <!-- The product icon. Same drawing as the header mark (src/components/brandIcon.js). -->
     <link rel="icon" type="image/svg+xml" href="./favicon.svg" />
     <link rel="apple-touch-icon" href="./apple-touch-icon.png" />
@@ -52,7 +53,7 @@
     </div>
     <script>
       (function () {
-        var DOCUMENT_ROUTES = ['', 'commerce', 'evidence', 'experimental', 'explore', 'home', 'lab', 'organs', 'pathology', 'patient', 'privacy', 'support', 'terms', 'trust'];
+        var DOCUMENT_ROUTES = ['', 'about', 'anatomy', 'commerce', 'evidence', 'experimental', 'explore', 'home', 'lab', 'models', 'organs', 'pathology', 'patient', 'privacy', 'support', 'terms', 'trust'];
         var slug = String(location.hash || '').replace(/^#\/?/, '').split('?')[0].trim();
         if (DOCUMENT_ROUTES.indexOf(slug) !== -1) return;
         var veil = document.getElementById('boot-veil');
@@ -61,7 +62,7 @@
         // Deliberately generic. The organ's name needs the catalogue, which is
         // in the bundle; `main.js` replaces this the moment it knows, and the
         // departing document's veil already said the name.
-        label.textContent = ja ? '3Dモデルを読み込んでいます' : 'Loading 3D model';
+        label.textContent = ja ? 'モデルを読み込んでいます' : 'Loading the model';
         veil.hidden = false;
       })();
     </script>

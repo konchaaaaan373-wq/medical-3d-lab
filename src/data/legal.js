@@ -39,12 +39,12 @@ const TERMS = {
       headingJa: '1. 本サービスの性質',
       headingEn: '1. What this service is',
       bodyJa: [
-        'Medical 3D Lab（以下「本サービス」）は、病態生理を理解するための教育目的の 3D 可視化ツールです。',
+        'BYOKI MOTION（以下「本サービス」。旧名称 Medical 3D Lab）は、病態生理を理解するための教育目的のインタラクティブ医学モデル集です。',
         '本サービスが提示するモデル・数値・グラフ・教材は、いずれも教育用の概念モデルから導かれたものであり、個別の患者に対する診断・治療方針の決定・予後予測を行うものではありません。臨床判断には使用しないでください。',
         '各モデルの成熟度と臨床レビューの状態は、製品内の「医学的信頼性」ページで確認できます。レビュー済みであることは、そのモデルが完全であることを意味しません。',
       ],
       bodyEn: [
-        'Medical 3D Lab is an educational 3D visualisation tool for understanding physiology and disease.',
+        'BYOKI MOTION (formerly Medical 3D Lab) is an educational collection of interactive models for understanding pathophysiology.',
         'Every model, number, plot and lesson it shows derives from an educational conceptual model. It does not diagnose, select treatment for, or predict outcomes for an individual patient, and must not be used for clinical decisions.',
         'The maturity and clinical-review state of each model is published on the in-product Trust page. "Reviewed" does not mean complete.',
       ],

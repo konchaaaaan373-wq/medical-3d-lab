@@ -87,3 +87,22 @@ test('the renderer-failure page hands the reader no developer instructions', () 
     assert.doesNotMatch(all, /TypeError|Error:/);
   });
 });
+
+test('the renderer-failure page sends "public models" to the model index, not the anatomy shelf', () => {
+  // Since BYOKI MOTION `#/organs` is the anatomy shelf and lists no disease
+  // model, so a reader whose model failed and asked for the public ones was
+  // shown anatomy only. `#/models` lists every published model.
+  withFakeDom(() => {
+    const ui = new FakeElement('div');
+    createSceneFailureFallback({ ui, sceneId: 'cardiac-output' });
+    const hrefs = [];
+    const walk = (node) => {
+      const href = node.getAttribute?.('href');
+      if (href) hrefs.push(href);
+      for (const child of node.children ?? []) walk(child);
+    };
+    walk(ui);
+    assert.ok(hrefs.includes('#/models'), `links: ${hrefs.join(', ')}`);
+    assert.equal(hrefs.includes('#/organs'), false);
+  });
+});

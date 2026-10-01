@@ -31,7 +31,7 @@ import { el } from '../utils/dom.js';
  */
 export function createModelScopePanel(scope) {
   const body = el('div', { class: 'scope-body' }, [
-    section('What this model is for', 'このモデルが答えること', [
+    section('What this model shows', 'このモデルが示すこと', [
       el('p', { class: 'scope-question' }, [
         el('span', { class: 'lang-en', text: scope.question }),
         el('span', { class: 'lang-ja', text: scope.questionJa }),
@@ -43,13 +43,13 @@ export function createModelScopePanel(scope) {
     // `excludes` drew the heading with nothing under it, so the sentence those
     // scenes most need on screen ("there is no infarction here — no necrosis,
     // no scar") was declared, tested as data, and never shown to anybody.
-    section('What it does not represent', '表現していないこと', [
+    section('What it does not show', '示さないこと', [
       list(scope.excludes ?? scope.limits, 'scope-excludes'),
     ]),
     scope.cautions?.length
-      ? section('Where it will mislead', '誤解しやすいところ', [list(scope.cautions, 'scope-cautions')])
+      ? section('Simplifications — where it can mislead', '単純化していること・誤解しやすいところ', [list(scope.cautions, 'scope-cautions')])
       : null,
-    section('Where the numbers came from', '数値の出どころ', [
+    section('Evidence and references', '根拠と出典', [
       list(scope.sources, 'scope-sources'),
       scope.evidence
         ? el('p', { class: 'scope-evidence' }, [
@@ -75,12 +75,32 @@ export function createModelScopePanel(scope) {
     element.classList.toggle('is-open', open);
   });
 
+  let container = null;
   return {
     element,
     /** Opened by a lesson or a story step that has just made a claim. */
     open() {
+      if (container) {
+        container.open = true;
+        return;
+      }
       if (!body.hidden) return;
       toggle.click();
+    },
+    /**
+     * Put the panel inside a fold that already opens and closes — 「このモデル
+     * について」 — so the reader does not open it twice: the panel's own toggle
+     * goes and its body shows, and `open()` opens the fold instead.
+     *
+     * @param {HTMLDetailsElement} fold
+     * @param {HTMLElement} [host] where inside the fold the panel goes
+     */
+    embedIn(fold, host = fold) {
+      container = fold;
+      toggle.remove();
+      body.hidden = false;
+      element.classList.add('is-open', 'is-embedded');
+      host.append(element);
     },
   };
 }

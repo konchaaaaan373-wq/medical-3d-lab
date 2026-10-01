@@ -120,6 +120,13 @@ export const SITE_SURFACE_PATHS = Object.freeze([
     reason: 'The same icon rendered at 180 px on its own ground, for home screens that do not take SVG.',
   }),
   Object.freeze({
+    path: 'posters/',
+    reason:
+      'Model-card pictures: screenshots of our own built models, taken by scripts/capture-model-posters.mjs ' +
+      '(`npm run posters`). Named in src/data/modelShowcase.js; tests/model-showcase.test.js fails when one it ' +
+      'names is missing. No third-party content — the render is of assets already recorded in the manifest.',
+  }),
+  Object.freeze({
     path: '.gitkeep',
     reason:
       'Keeps public/ in git when it would otherwise be empty. Zero bytes, and it ships — which is how this ' +

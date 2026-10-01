@@ -231,3 +231,36 @@ export function describeEffect({ baseline, shown, before, now }) {
 
   return { cause, heart, results };
 }
+
+/**
+ * Which way each thing moved, at the precision the reader is shown.
+ *
+ * The input to 「今、何が起きた？」 (`src/app/changeExplanation.js`): the moved
+ * inputs with their direction, and the direction of the heart's volumes and
+ * the two figures — each rounded exactly as the read-out and the chain round
+ * it (whole mL and mmHg, tenths of a L/min). So an explanation can never say
+ * "cardiac output fell" beside a read-out that still says 4.7: a change too
+ * small to show is `same`, and the rules are written to be true of that.
+ *
+ * @param {{ baseline: object, shown: object, before: object, now: object }} condition
+ * @returns {null | { moved: Record<string, 'up'|'down'>, results: Record<string, 'up'|'down'|'same'> }}
+ */
+export function changeSignature({ baseline, shown, before, now }) {
+  const moved = movedInputs({ baseline, shown });
+  if (moved.length === 0) return null;
+  const direction = (from, to, digits) => {
+    const a = Number(Number(from).toFixed(digits));
+    const b = Number(Number(to).toFixed(digits));
+    return b > a ? 'up' : b < a ? 'down' : 'same';
+  };
+  return {
+    moved: Object.fromEntries(moved.map((entry) => [entry.id, entry.direction])),
+    results: {
+      edv: direction(before.edvMl, now.edvMl, 0),
+      esv: direction(before.esvMl, now.esvMl, 0),
+      sv: direction(before.strokeVolumeMl, now.strokeVolumeMl, 0),
+      co: direction(before.cardiacOutputLMin, now.cardiacOutputLMin, 1),
+      map: direction(before.meanArterialPressureMmHg, now.meanArterialPressureMmHg, 0),
+    },
+  };
+}

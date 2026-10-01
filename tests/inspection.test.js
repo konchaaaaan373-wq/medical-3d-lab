@@ -213,10 +213,13 @@ test('fixed dark instruments retain their own contrast on pale renderer backgrou
     controls.indexOf('.model-controls.is-tactile {'),
     controls.indexOf('.model-controls.is-tactile .model-controls-title')
   );
+  // The stage's own ink and orange (BYOKI MOTION, 2026-09-30), declared as
+  // values — a token that names itself (`--accent: var(--accent)`) is invalid
+  // at computed-value time and silently drops the colour (L-153).
   for (const block of [navigationTokens, tactileTokens]) {
-    assert.match(block, /--ink:\s*#eaf2ff/);
-    assert.match(block, /--ink-dim:\s*#a7b6ce/);
-    assert.match(block, /--accent:\s*#38e1ef/);
+    assert.match(block, /--ink:\s*#f1eee8/);
+    assert.match(block, /--ink-dim:\s*#bcb6ac/);
+    assert.match(block, /--accent:\s*#f0894a/);
   }
 });
 
