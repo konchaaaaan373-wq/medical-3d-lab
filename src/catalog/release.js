@@ -468,7 +468,7 @@ export const BETA_PUBLICATION_DECISIONS = Object.freeze([
       'hubmap-vh-m-heart': '994a86380bd30bc9744c08edd9812825ab22b340339665a422be6ba545fbbf8a',
       'hubmap-vh-m-blood-vasculature': 'f03a50620a66c3d7b6987806b9025eb12742ca57377b243f8cea6f2bcfbb231a',
     }),
-    sceneRevision: Object.freeze({ cardRevision: 28, modelDigest: 'eda80801ba2b981a' }),
+    sceneRevision: Object.freeze({ cardRevision: 28, modelDigest: 'c084f6b8ba1a5d10' }),
     scope: Object.freeze({
       // The authored tour in `SCENE_POINTS`, not whatever a run measured: four
       // named parts at four recorded points, crossing both adopted files —

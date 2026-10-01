@@ -773,7 +773,7 @@ const ANATOMY = Object.freeze({
   }),
   VH_M_aortic_arch: Object.freeze({
     en: 'Continues the ascending aorta as an arc to the left and becomes the descending aorta, typically at the level of the disc between the fourth and fifth thoracic vertebrae. It gives off three major branches: the brachiocephalic trunk first, then the left common carotid and the left subclavian arteries. The ligamentum arteriosum — the remnant of the fetal ductus arteriosus, which joined the pulmonary trunk to the aorta — is not in this model.',
-    ja: '上行大動脈に続いて左へ弓なりに曲がり、典型的には第 4・第 5 胸椎の間の椎間円板の高さで下行大動脈に続きます。3 本の主要な分枝を出し、最初が腕頭動脈、続いて左総頸動脈、左鎖骨下動脈です。胎生期の動脈管（肺動脈幹と大動脈を結んでいた血管）の遺残である動脈管索は、このモデルにありません。',
+    ja: '上行大動脈に続いて左へ弓なりに曲がり、典型的には第 4・第 5 胸椎の間の椎間板の高さで下行大動脈に続きます。3 本の主要な分枝を出し、最初が腕頭動脈、続いて左総頸動脈、左鎖骨下動脈です。胎生期の動脈管（肺動脈幹と大動脈を結んでいた血管）の遺残である動脈管索は、このモデルにありません。',
   }),
   VH_M_descending_aorta: Object.freeze({
     en: 'Continues the arch downward close to the bodies of the vertebrae and passes through the aortic hiatus of the diaphragm, typically at the level of the twelfth thoracic vertebra. Above the hiatus it is called the thoracic aorta and below it the abdominal aorta, which runs to the left of the vertebral column and typically divides into the two common iliac arteries at the level of the fourth lumbar vertebra. The source records the whole length as one structure, so it is selected as one here. Its smaller branches — intercostal, lumbar and others — are not in the source and are not drawn.',

@@ -25,6 +25,7 @@ import { fitPoseToSafeArea, orbitLimitsForSubject } from '../src/app/framing.js'
 import { devAssetById } from '../src/catalog/devAssets.js';
 import { assetById } from '../src/catalog/assetManifest.js';
 import { betaPublicationProblems } from '../src/catalog/release.js';
+import * as heartData from '../src/data/heartAnatomy.js';
 
 /**
  * The heart scene, against a fixture rather than against the candidate GLB.
@@ -1894,5 +1895,38 @@ test('heart: the schematic segments start inside the vessel they leave, and fade
     assert.ok(entry.reach.visibleMm <= length + 1, `${entry.id}: fully faded by its own end`);
     assert.ok(entry.reach.fadeMm >= 8, `${entry.id}: fades rather than stops`);
     assert.ok(entry.radiusMm.start >= entry.radiusMm.body && entry.radiusMm.body >= entry.radiusMm.end, `${entry.id}: tapers`);
+  }
+});
+
+test('heart: the Japanese names keep the forms the official sources were collated to', () => {
+  // Collated 2026-10-01 against the MHLW disease-name, modifier and procedure
+  // masters, the 2024 national-examination blueprint and the published question
+  // booklets (docs/model-evidence/heart-anatomy.md, "日本語の用語の照合"). Each
+  // form below is absent from every one of them while the form beside it is
+  // used, and the rest of the site writes the form beside it. This holds the
+  // scene to what was checked; it is not 解剖学用語, which was not opened.
+  const AVOID = Object.freeze({
+    椎間円板: '椎間板',
+    頚: '頸',
+    腹大動脈: '腹部大動脈',
+    胸大動脈: '胸部大動脈',
+    冠状動脈: '冠動脈',
+  });
+  const strings = [];
+  const walk = (value) => {
+    if (typeof value === 'string') strings.push(value);
+    else if (Array.isArray(value)) value.forEach(walk);
+    else if (value && typeof value === 'object') Object.values(value).forEach(walk);
+  };
+  walk(Object.values(heartData).filter((value) => typeof value !== 'function'));
+  for (const entry of HEART_STRUCTURES) {
+    const info = heartStructureInfo(entry.id);
+    strings.push(info.nameJa ?? '', info.descriptionJa ?? '', heartAnatomyNote(entry.id)?.ja ?? '');
+  }
+  const japanese = strings.filter((text) => /[ぁ-んァ-ヶ一-龯]/.test(text));
+  assert.ok(japanese.length > 100, `the walk reaches the scene's Japanese text (${japanese.length} strings)`);
+  for (const [avoid, use] of Object.entries(AVOID)) {
+    const hits = japanese.filter((text) => text.includes(avoid));
+    assert.deepEqual(hits, [], `「${avoid}」ではなく「${use}」と書く`);
   }
 });

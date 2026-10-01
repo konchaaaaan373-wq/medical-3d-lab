@@ -73,6 +73,7 @@ coordinates.
 | --- | --- |
 | `19-detail-ima-phone.png` | 390×844, the inferior mesenteric artery's Detail tab: it leaves the front of the aorta a little to the left (from OpenStax's figure of the abdominal arteries), and the model's lower origin is still said to differ from the textbook's |
 | `19-detail-descending-aorta-phone.png` | 390×844, the descending aorta's Detail tab: the T12 level of the aortic hiatus put back, with 「典型的には」 |
+| `19-detail-arch-phone.png` | 390×844, the arch's Detail tab after the Japanese terms were collated: 「椎間板」 where it read 「椎間円板」. The 「この表示では見えません」 beside the name is because the structure was selected by script and the sheet opened over the whole model, not a fault of the switch |
 
 **These are not a review either.** No anatomist has looked at the branches, the
 schematic segments or the descriptions.

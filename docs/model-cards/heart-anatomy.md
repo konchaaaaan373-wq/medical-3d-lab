@@ -450,7 +450,14 @@ What was measured in this repository, and is therefore a fact about the files:
 What has not been established: no anatomist and no clinician has looked at this
 geometry or these labels — including the aortic branches, the renal naming and
 the schematic segments added on 2026-09-29; the boundaries the source drew are
-trusted as drawn; the Japanese names are deliberate but unreviewed.
+trusted as drawn; the Japanese names are deliberate but unreviewed. On
+2026-10-01 their spelling was collated against official usage (the MHLW
+disease-name, modifier and procedure masters, the national-examination
+blueprint and question booklets): most are used there as written, one was
+changed (椎間円板 → 椎間板), and about twenty-five — the cardiac veins and the
+small branches among them — appear in none of those and stay unverified. **None
+has been checked against 解剖学用語**, which could not be opened here (evidence
+dossier, "日本語の用語の照合").
 
 ## 6. Presentation choices
 

@@ -9,11 +9,11 @@ clinician has judged this geometry or these labels**, and every surface says so
 | | |
 | --- | --- |
 | **Status on this branch** | **Technical re-pin only — not confirmed by the owner, not a publication decision, not a medical review.** The pins below were moved on the unmerged branch `claude/dreamy-fermi-2ddpth` (2026-09-29/30, digest again 2026-10-01) so that it builds and its tests run against the new vessel file and scene sources. Whether this scene stays published in this form is the owner's decision, still to be taken |
-| **Pins moved at** | 2026-10-01 (vessel-file hash 2026-09-29/30; scene digest 2026-10-01 after the descriptions were collated again; see "Technical re-pin on 2026-09-29/30") |
+| **Pins moved at** | 2026-10-01 (vessel-file hash 2026-09-29/30; scene digest 2026-10-01 after the descriptions were collated again and one Japanese word was changed; see "Technical re-pin on 2026-09-29/30") |
 | **Pins moved by** | Claude Code (AI engineering agent), on its own initiative to keep the branch consistent — **not** at the owner's direction for this step. The 2026-09-15 acceptance by the owner of what this scene named then, and the owner-directed re-pins of 2026-09-21 and 2026-09-24, are the last decisions a person took |
 | **Role** | `engineering` — software behaviour, not anatomical or clinical judgement |
 | **Asset revisions** | `hubmap-vh-m-heart` @ `sha256:994a86380bd30bc9744c08edd9812825ab22b340339665a422be6ba545fbbf8a`<br>`hubmap-vh-m-blood-vasculature` @ `sha256:f03a50620a66c3d7b6987806b9025eb12742ca57377b243f8cea6f2bcfbb231a` |
-| **Scene revision** | model card revision **28**, source digest `eda80801ba2b981a` |
+| **Scene revision** | model card revision **28**, source digest `c084f6b8ba1a5d10` |
 | **Scene sources under that digest** | [`src/data/heartAnatomy.js`](../../src/data/heartAnatomy.js), [`src/scenes/cardiovascular/scenes/heartAnatomy/HeartAnatomyScene.js`](../../src/scenes/cardiovascular/scenes/heartAnatomy/HeartAnatomyScene.js), [`src/scenes/cardiovascular/scenes/heartAnatomy/displayRange.js`](../../src/scenes/cardiovascular/scenes/heartAnatomy/displayRange.js) |
 | **Adoption decision** | [`../decisions/HEART-ASSET-ADOPTION.md`](../decisions/HEART-ASSET-ADOPTION.md) |
 
@@ -59,7 +59,7 @@ check.
 | Clinical review | **not done** — pending in the registry |
 | Descriptions of the aorta and its branches | checked against one opened textbook (OpenStax *Anatomy and Physiology 2e*, §20.5, its text and, from 2026-10-01, two of its figures) and, for which vessel is a branch of which, the HuBMAP ASCT+B table; see the evidence dossier's "Reference check". The 2026-10-01 pass found one of the 2026-09-30 "not in the source" verdicts wrong (the T12 level of the aortic hiatus) and put it back. No anatomist has read them |
 | Renal arteries shown by position | a mirrored file was ruled out by measurement; the publisher's female model has the two labels agreeing with their geometry, and its v1.4 male model keeps the same two meshes and labels (evidence claim 16, 2026-10-01); no anatomist has confirmed the reading |
-| Japanese terminology | not checked against an anatomical terminology source (those hosts are refused by this environment's network policy); a general dictionary (JMdict) was used for meaning only |
+| Japanese terminology | spelling collated on 2026-10-01 against official MHLW usage (disease-name, modifier and procedure masters; the 2024 examination blueprint; examination question booklets) — one word changed, about twenty-five not found in any of them; **not checked against 解剖学用語 or 医学用語辞典**, whose hosts are refused by this environment's network policy |
 | Real devices | none; Chromium with touch emulation only |
 
 **Why the branch changed.** The owner asked for the heart model to show the
