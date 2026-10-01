@@ -369,8 +369,17 @@ export const BUNDLE_BUDGET_KB = {
    * wordmark (≈2). The old landing page's stylesheet rules that no script
    * renders any more were removed in the same change (CSS 52.9 → 52.7 despite
    * the new brand sheet), which brought it to 708.2. The rest is paid for.
+   *
+   * 715 → 730 with the heart's aorta and its branches (2026-10-01). Main
+   * measured 708.7; the branch 721.8. Almost all of it is the heart scene's own
+   * lazy chunk (16.2 → 26.8): the bilingual textbook account of the aorta and
+   * its twelve branches, collated against the sources the evidence dossier
+   * names; the display range written once for the shader and once for every
+   * click, label and bound; the four schematic segments (`tube.js`, 1.5); and
+   * the two ways of looking. None of it is fetched before a reader opens the
+   * heart, where the two model files are 0.89 MB.
    */
-  code: 715,
+  code: 730,
   /**
    * The heaviest single model's media — the geometry one reader downloads when
    * they open one scene.
