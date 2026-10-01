@@ -5,7 +5,7 @@
 | **Scene** | `cardiac-output` |
 | **Model** | [`src/models/cardiacOutput.js`](../../src/models/cardiacOutput.js) and [`src/models/cardiacInterventions.js`](../../src/models/cardiacInterventions.js), on [`src/models/cardiacMechanics.js`](../../src/models/cardiacMechanics.js); the introductory lesson's three conditions in [`src/models/cardiacOutputLesson.js`](../../src/models/cardiacOutputLesson.js) |
 | **Evidence** | [`docs/model-evidence/cardiac-output.md`](../model-evidence/cardiac-output.md) |
-| **Tests** | [`tests/cardiac-output-model.test.js`](../../tests/cardiac-output-model.test.js), [`tests/cardiac-output-physiology.test.js`](../../tests/cardiac-output-physiology.test.js), [`tests/cardiac-output-interventions.test.js`](../../tests/cardiac-output-interventions.test.js), [`tests/cardiac-output-learning.test.js`](../../tests/cardiac-output-learning.test.js), [`tests/cardiac-output-lesson.test.js`](../../tests/cardiac-output-lesson.test.js), [`tests/cardiac-output-lesson-scene.test.js`](../../tests/cardiac-output-lesson-scene.test.js) |
+| **Tests** | [`tests/cardiac-output-model.test.js`](../../tests/cardiac-output-model.test.js), [`tests/cardiac-output-physiology.test.js`](../../tests/cardiac-output-physiology.test.js), [`tests/cardiac-output-interventions.test.js`](../../tests/cardiac-output-interventions.test.js), [`tests/cardiac-output-learning.test.js`](../../tests/cardiac-output-learning.test.js), [`tests/cardiac-output-lesson.test.js`](../../tests/cardiac-output-lesson.test.js), [`tests/cardiac-output-lesson-figure.test.js`](../../tests/cardiac-output-lesson-figure.test.js) |
 | **Status** | see [`src/catalog/scenes.js`](../../src/catalog/scenes.js) |
 
 ## 1. What question this model answers
@@ -188,38 +188,60 @@ and none qualifies its size — 「少し減りました」 put a clinical judge
 3.75 → 3.13 L/min (−16 %) that the lesson does not make (owner's review,
 2026-09-30; `tests/cardiac-output-lesson.test.js`, "words").
 
-**Beside every result the action made, the caveat.** While any of the
-vasoconstrictor action is on — B, or a step of the walk to it, in the
-explanation and under the buttons alike — the results carry one line:
-「血管抵抗だけを 1.5 倍にした模式実験。実際の昇圧薬の全作用は再現しません。」, with
-the factor read from the intervention's profile. A reader who only presses the
-button used to see the output fall with that caveat folded away in 「根拠と限界」.
-`verify:disease` reads it on screen at every B moment and its absence at A.
+**What the experiment is, on screen from the first moment.** Under the figure,
+in the explanation and under the buttons alike, one line:
+「昇圧薬の働きの一部（血管を縮める作用）だけを取り出した模式実験です。実際の薬の
+全作用は再現しません。」 — next to the button that applies it and next to the
+results it changes (owner's reviews, 2026-09-30 and 2026-10-01). Scene 3 adds
+「実際の昇圧薬で必ずこうなるとは限りません。」 and scene 2 says the factor
+(×1.5, read from the intervention's profile). `verify:disease` reads the line on
+screen at the first screen, at every scene and at every state of the buttons.
 
-- **A → B is a before and after.** The same circulation, drawn in place; A is
-  drawn inside it as cream marks (a needle, a sleeve round the blood sent out,
-  a sleeve round each small vessel) and read as a separate "介入前（A）" row.
-- **B ↔ C is two circulations.** C stands beside B as its own heart and its
-  own vessels, never as cream marks, with "B の治療後ではない、はじめから別の
-  循環" on its row. While C is shown, A's marks go: three things are never
-  compared at once.
+**The figure is a circuit diagram, not a heart** (since the owner's review of
+2026-10-01; before it, a 3D heart whose output and resistance a reader could
+only identify by reading a caption). One circulation is one strip: the heart
+on the left, the artery along the top with a dial on it, six small vessels on
+the right, the vein back along the bottom, and under it a tube that fills with
+**what the heart sends out per minute**. A legend under the strip says what
+each part means until a second circulation takes its place.
 
-What is drawn and what it is drawn from:
+- **A → B is a before and after.** The same strip, in place, never moved or
+  resized. A is drawn inside it as cream marks (a second needle and a mark on
+  the tube labelled 「開始時」), and the values carry arrows (↑ ↓) in the
+  direction the solver went.
+- **B ↔ C is two circulations.** C comes in as a second strip under B, drawn to
+  the same scale with every part in the same column, so the two tubes compare
+  as two bars from one zero. Its name says 「別の循環（B の治療後ではない）」.
+  While C is shown, A's marks go: three things are never compared at once.
+- **C stands beside B and nothing else.** The buttons offer C only once the
+  action has reached B; asked for at A or on the way it is refused, and taking
+  the action away closes C at once (`LessonSession.canShowOther`; the A-beside-C
+  comparison the first version allowed is gone).
+- **"In the same minute"** is shown, not only said: when C comes in, both
+  tubes fill from empty together, each at the rate of its own output, and end
+  at their solved lengths — a presentation of "litres per minute", not a time
+  course; with reduced motion they are simply full.
+
+What is drawn and what it is drawn from (`lessonFigureGeometry.js`):
 
 | On screen | From | Scale |
 | --- | --- | --- |
-| The heart | the solved cavity volume at each phase | to scale, as in the full model |
-| The small vessels of the whole body, all narrowing together along their length | systemic resistance | drawing scale (`bedCalibreFor`, the full model's); direction and order are the model's |
-| The bright length out of the aortic valve | EDV − V(phase) while ejecting, the stroke volume after | in proportion (0.1 units per mL); how long it stays at the valve after ejection is presentation timing, so two circulations can be compared at one moment |
-| The dial's needle | mean arterial pressure | linear, 0–150 mmHg over 240° |
-| How fast blood moves in the vessels | cardiac output | drawing scale (`flowRateFor`, the full model's) |
+| The filled length of the tube | cardiac output | linear, one 0–6 L/min scale for every strip, from one zero |
+| The dial's needle | mean arterial pressure | linear, 0–150 mmHg over 180° |
+| The width of the six small vessels' lumen, all alike along their whole length | systemic resistance | drawing scale (`bedCalibreFor`, the full model's): **how easily blood gets through, not how much a vessel's diameter changes**; direction and order are the model's |
+| The heart glyph | — | one size; it beats at the solved rate, the same moment for every strip, and nothing else changes it (the action is on the vessels) |
+
+The figure is one 340 × 248 drawing the page scales as a whole, and the panel
+under it is as tall as the tallest caption and guide line it will hold, so the
+figure is one size for the whole lesson at a given window: about one unit to
+one pixel on a 375 px phone, where its smallest word is the product's 12 px
+floor. `verify:disease` measures the heart, the dial, the tube and the vessels
+at A and at every scene and button state, and B against C.
 
 Between A and B the circulation walks twelve solved conditions (resistance
 1.10 → 1.65 on the control's grid); every frame of the narrowing is a condition
 the model settled into, and the walk is a way of showing the change, not the
-time a drug takes. The explanation holds the beat at the moment of comparison
-(just after ejection, every stroke whole and still at its valve) — a pause of
-the drawing's clock that changes no value.
+time a drug takes.
 
 ## 10. What is exaggerated for visibility, and what is not
 
@@ -384,6 +406,36 @@ veins and the reflexes — and the screen does not state it as a rule.
 ## 15. Review status
 
 **Catalog status:** `alpha`
+
+### Screen, 2026-10-01 — the introductory lesson redrawn as a circuit diagram
+
+Not a model revision: no model source changed (the digest is the same), and the
+three conditions, their inputs, the claims and the words' rules are as in
+revision 11. The owner reviewed four recordings and found that **the 3D did not
+carry the lesson**: that the bright arc was what the heart sent out and the
+yellow fan was how hard it was for blood to get through could only be learned
+from the words, so the numbers and the captions were doing the teaching; on
+375×667 and 390×844 the heart and the dial shrank with the caption under them;
+and the buttons let C stand beside A.
+
+- **Rebuilt**: the figure (§9.6) — an SVG circuit diagram in place of the 3D
+  heart, one fixed size, B and C stacked to one scale, a legend saying what
+  each part means; the page (the panel under the figure holds its height); the
+  flow (the first screen is the buttons, "compare" only at B, taking the action
+  away closes C); the explanation (five scenes, 32.5 s, one thing each); the
+  words (plain words first and the term after — 「心臓が1分間に送り出す量（心拍
+  出量）」「血液の通りにくさ（血管抵抗）」「血圧の平均（平均血圧）」 — and A, B and
+  C always with 「開始時」「血管を縮めた後」「別の循環」).
+- **Kept**: the solver, the three conditions and the twelve-step walk between
+  A and B, `lessonClaimProblems`, the scope panel's limits, and the full model
+  at `?view=detail` (unchanged).
+- **Implemented / checked**: implemented; driven in headless Chromium at
+  1440×900, 390×844 and 375×667 by `verify:disease`'s lesson drive, which now
+  also reads each strip's numbers, arrows and on-screen tube length against
+  the solver run in Node, and photographs the figure with every word and number
+  hidden for a person to read. **Not checked on a real device** (F-238); **no
+  medical review** (F-240); **no first-time reader** (F-239). The English text
+  at 375×667 draws the figure below the 12 px floor (F-243).
 
 ### Revision 11 — the vasoconstrictor action joins the full model's menu
 

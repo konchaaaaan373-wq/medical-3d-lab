@@ -60,6 +60,13 @@ AORTA_SEGMENTS.arch.endT            // 描画側が曲線を sample するとき
 `buildSegmentedPath()` までは使っていません。**名前が意味を持つのは、テストがその
 意味を測っているときだけ**です。
 
+**2026-10-01 追記**: 所有者のレビューで、入門教材は 3D の心臓をやめて循環回路の
+模式図（SVG）になり、`lessonCirculation.js` とこのガードのテストは消えました。
+図には曲線の座標がもう無く、部品は `lessonFigureGeometry.js` の名前付きの定数
+（`PIPES`・`HEART`・`BED`・`DIAL`・`TUBE`）で、利用側（`LessonFigure.js`）はその名前で
+引きます。`tests/cardiac-output-lesson-figure.test.js` の「one size, fixed places」が、
+部品が帯の中にあり血圧計が細い血管と離れていることを測ります。
+
 ---
 
 ## Rule 2 — Local coordinates
@@ -183,6 +190,13 @@ zoom のアンカー 4 件で、**両方を同時に緑にしないと意味が�
 camera from its first frame」と、`tests/cardiac-output-lesson.test.js` の
 「tags: … and as the caption says it」（1 mL 減・3.5 L/分の合成例）。どちらも
 修正を戻すと赤。
+
+**2026-10-01 追記**: 3D の教材は SVG の模式図になり（上の例を参照）、向きも
+タグも無くなりました。残った規則は同じ形で守っています: 図の属性を書くのは
+`LessonFigure.js` の `render` 1 か所、出力の向きは図の矢印も説明文も
+`directionOf(…, 0.1)`（`outputDirection`）の 1 回の比較から。ガードは
+`tests/cardiac-output-lesson.test.js` の「figure data: B alone carries A as cream
+"start" marks, with the solved directions」（図の矢印の向き＝説明文の向き）。
 
 ## Rule 4 — Physiology vs presentation
 

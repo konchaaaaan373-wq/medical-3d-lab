@@ -369,7 +369,8 @@ export const BUNDLE_BUDGET_KB = {
    * measured figure would fail the next change of any size. None of it is in
    * the entry beyond the router's `?view=` (0.6 kB): the lesson loads with
    * `#/cardiac-output`, and the full model's scene (13.8 kB) only with
-   * `?view=detail`.
+   * `?view=detail`. Redrawn on 2026-10-01 as an SVG circuit diagram in place
+   * of its 3D (owner's review): 716.1 kB.
    */
   code: 725,
   /**

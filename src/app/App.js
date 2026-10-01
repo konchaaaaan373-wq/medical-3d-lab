@@ -148,7 +148,7 @@ export async function createApp({ stage, ui, onRetryModel = null }) {
   else delete ui.dataset.layout;
 
   // A lesson is a different screen, not this one with parts hidden: a
-  // question, the model, two results and two ways in (`LessonShell.js`). It
+  // question, the scene's figure and what to do (`LessonShell.js`). It
   // shares the viewer, the header, the title card and the way out with every
   // other scene, and none of the experiment console, read-out rail or data
   // view — which is what a first-time reader could not see past (Issue #166).

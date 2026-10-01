@@ -1,16 +1,34 @@
 /**
  * The introductory lesson's words: the question, the names of the three
- * circulations, the buttons, the five scenes of the explanation, the short
- * tags on the model and the lesson's own "sources & limits".
+ * circulations and of the three things the figure shows, the buttons, the five
+ * scenes of the explanation, the line that says what to do next, and the
+ * lesson's own "sources & limits".
  *
  * No figure is written here. Every number a sentence carries is a placeholder
  * (`{mapA}`, `{coB}` …) filled from the solved beats at the moment it is shown
  * (`lessonStoryboard.js`), and which way the output moved from A to B is read
  * from the solution, not assumed — so there is a sentence for each direction.
  *
- * Two comparisons, two vocabularies. A → B is "before / after the
- * intervention" (介入前・介入後); B ↔ C is "a different circulation"
- * (別の循環). No sentence uses one vocabulary for the other.
+ * ## Words a first-time reader knows come first
+ *
+ * The owner's rule (2026-10-01): a plain phrase first, the technical term after
+ * it in brackets — 「心臓が1分間に送り出す量（心拍出量）」「血液の通りにくさ
+ * （血管抵抗）」「血圧の平均（平均血圧）」 — and the three circulations are
+ * never only a letter: 「開始時」「血管を縮めた後」「別の循環」 stand beside A, B
+ * and C wherever they are named.
+ *
+ * ## Two comparisons, two vocabularies
+ *
+ * A → B is "before / after the action" (開始時・血管を縮めた後). B ↔ C is "a
+ * different circulation" (別の循環). No sentence uses one vocabulary for the
+ * other, and C is said not to be B after treatment wherever it is introduced.
+ *
+ * ## What is never said
+ *
+ * Nothing here says a drug was given (「ノルアドレナリンを投与する」), that
+ * a vasopressor always lowers the output, or that anything the model does not
+ * compute — tissue or organ blood flow — got better or worse.
+ * `tests/cardiac-output-lesson.test.js` holds these words to that.
  */
 
 /** What the screen asks. The whole lesson answers this and nothing else. */
@@ -26,65 +44,111 @@ export const LESSON_VIEW_NAMES = {
 };
 
 /**
- * The three circulations. `role` is what it is to the others; `name` says what
- * it is. `tone` is the colour family the chip, the read-out card and the tag
- * share, so a reader can match them without reading.
+ * The three circulations. `role` is the short name that always stands beside
+ * the letter; `note` is what has to be said with it where it is introduced.
+ * `tone` is the colour family its name tag and its row in the figure share.
  */
 export const LESSON_CONDITION_COPY = {
   A: {
     letter: 'A',
     tone: 'start',
-    role: { en: 'Start', ja: '開始状態' },
-    name: { en: 'A heart that sends out little', ja: '心臓から送り出す量が少ない循環' },
+    role: { en: 'Start', ja: '開始時' },
+    note: null,
   },
   B: {
     letter: 'B',
     tone: 'after',
-    role: { en: 'After the intervention', ja: '介入後' },
-    name: { en: 'A + the vasoconstrictor action', ja: 'A＋血管収縮作用' },
+    role: { en: 'After narrowing', ja: '血管を縮めた後' },
+    note: null,
   },
   C: {
     letter: 'C',
     tone: 'other',
     role: { en: 'A different circulation', ja: '別の循環' },
-    name: {
-      en: 'Not B after treatment — a different circulation from the start',
-      ja: 'B の治療後ではない、はじめから別の循環',
-    },
+    note: { en: 'not B after treatment', ja: 'B の治療後ではない' },
   },
 };
 
-/** The "before" marks drawn while B is shown alone: they are A. */
-export const BEFORE_MARK = { en: 'Before (A)', ja: '介入前（A）' };
+/** While the vessels are narrowing or widening, between A and B. */
+export const LESSON_CHANGING = { letter: '…', tone: 'changing', role: { en: 'Changing', ja: '変化中' } };
 
-/** The two results, named for a reader first and by abbreviation second. */
-export const LESSON_READOUT = {
-  map: { label: { en: 'Mean blood pressure', ja: '平均血圧' }, abbr: 'MAP', unit: { en: 'mmHg', ja: 'mmHg' } },
-  co: { label: { en: 'Cardiac output', ja: '心拍出量' }, abbr: 'CO', unit: { en: 'L/min', ja: 'L/分' } },
-  changing: { en: 'changing…', ja: '変化中…' },
-  group: { en: 'Results', ja: '計算結果' },
-  // Under the results whenever the vasoconstrictor action is on — from the
-  // first step of the walk to A's return, in the explanation and under the
-  // reader's buttons alike — because a reader who only presses the button sees
-  // the output fall and nothing else. {factor} is the intervention's own
-  // multiplier, read from the model, not written here (owner's review,
-  // 2026-09-30).
-  caveat: {
-    en: 'A schematic experiment: only the vascular resistance, ×{factor}. A real vasopressor’s whole action is not reproduced.',
-    ja: '血管抵抗だけを {factor} 倍にした模式実験。実際の昇圧薬の全作用は再現しません。',
+/**
+ * The three things the figure shows, named for a reader first and by the
+ * technical term second. `short` is what fits beside the part in the figure;
+ * `full` is how a sentence names it.
+ */
+export const LESSON_TERMS = {
+  output: {
+    short: { en: 'Output/min', ja: '1分間に送り出す量' },
+    full: {
+      en: 'blood the heart sends out per minute (cardiac output)',
+      ja: '心臓が1分間に送り出す量（心拍出量）',
+    },
+    unit: { en: 'L', ja: 'L' },
   },
+  pressure: {
+    short: { en: 'Avg. pressure', ja: '血圧の平均' },
+    // Beside the dial there is room for a short term only; the full one is in
+    // the figure's legend and every sentence.
+    term: { en: '(MAP)', ja: '（平均血圧）' },
+    full: { en: 'average blood pressure (mean arterial pressure)', ja: '血圧の平均（平均血圧）' },
+    unit: { en: 'mmHg', ja: 'mmHg' },
+  },
+  resistance: {
+    full: {
+      en: 'how hard it is for blood to get through (vascular resistance)',
+      ja: '血液の通りにくさ（血管抵抗）',
+    },
+  },
+  heart: { en: 'Heart', ja: '心臓' },
+  /**
+   * How to read the figure: in its lower half while one circulation is shown.
+   * One row per part, the plain words first and the term after them — what
+   * a first-time reader could not tell from the 3D version without a caption
+   * (owner's review, 2026-10-01).
+   */
+  legend: {
+    title: { en: 'Reading the figure', ja: '図の読み方' },
+    bed: {
+      main: { en: 'Vessel width = how easily blood passes', ja: '細い血管の太さ ＝ 血液の通りやすさ' },
+      sub: {
+        en: 'narrower: higher vascular resistance',
+        ja: '細いほど、血液の通りにくさ（血管抵抗）が大きい',
+      },
+    },
+    dial: { main: { en: 'Needle = average blood pressure (MAP)', ja: '針 ＝ 血圧の平均（平均血圧）' } },
+    tube: {
+      main: { en: 'Filled length = blood sent out per minute', ja: '管の満ちた長さ ＝ 心臓が1分間に送り出す量' },
+      sub: { en: '(cardiac output), 0–6 L', ja: '（心拍出量）、0〜6 L の目盛り' },
+    },
+  },
+  bed: { en: 'Small vessels of the body', ja: '全身の細い血管' },
+  bedNarrowed: { en: 'Small vessels: harder to pass', ja: '全身の細い血管が通りにくい' },
+  /** The cream marks on B's gauge and tube while B stands alone: they are A. */
+  before: { en: 'Start', ja: '開始時' },
+};
+
+/**
+ * The note under the figure, on screen from the first moment, in the
+ * explanation and under the reader's buttons alike: what the one action is and
+ * is not (owner's reviews, 2026-09-30 and 2026-10-01). A reader who only
+ * presses the button and a reader who only watches both read it beside the
+ * results and beside the button.
+ */
+export const LESSON_NOTE = {
+  en: 'Schematic: only the vessel-narrowing part of a vasopressor’s action — not a real drug’s whole action.',
+  ja: '昇圧薬の働きの一部（血管を縮める作用）だけを取り出した模式実験です。実際の薬の全作用は再現しません。',
 };
 
 export const LESSON_ACTIONS = {
   play: { en: '▶ Play the explanation', ja: '▶ 説明を再生' },
   replay: { en: '↺ Play again', ja: '↺ もう一度再生' },
-  tryIt: { en: 'Try it yourself', ja: '自分で試す' },
-  constrict: { en: 'Add the vasoconstrictor action', ja: '昇圧薬の血管収縮作用を加える' },
-  release: { en: 'Take the vasoconstrictor action away', ja: '血管収縮作用を戻す' },
-  showOther: { en: 'Compare with circulation C', ja: '別の循環 C と比べる' },
-  hideOther: { en: 'Hide C', ja: 'C を隠す' },
-  reset: { en: 'Start over', ja: '最初に戻す' },
-  detail: { en: 'Full model — four conditions, all figures, sources →', ja: '詳しいモデルへ（4つの条件・数表・根拠と限界）→' },
+  tryIt: { en: 'Try it', ja: '自分で試す' },
+  constrict: { en: 'Add the vessel-narrowing action', ja: '血管を縮める作用を加える' },
+  release: { en: 'Take the action away', ja: '作用を戻す' },
+  showOther: { en: 'Compare with a different circulation', ja: '別の循環と比べる' },
+  hideOther: { en: 'Hide the other circulation', ja: '別の循環を隠す' },
+  detail: { en: 'Full model (four conditions, all figures) →', ja: '詳しいモデルへ（4つの条件・数表）→' },
   player: {
     group: { en: 'Explanation player', ja: '説明の再生' },
     restart: { en: 'From the start', ja: '最初から' },
@@ -93,152 +157,120 @@ export const LESSON_ACTIONS = {
     resume: { en: 'Play', ja: '再生' },
     next: { en: 'Next scene', ja: '次の場面' },
   },
+  controls: { en: 'Try it yourself', ja: '自分で試す' },
 };
 
 /**
- * The one short line under the question that says what to do next.
- * `{…}` are filled from the solved state (`lessonGuide` in the storyboard).
+ * The line under the figure that says what to do next, from the state the
+ * reader is in. `{…}` are filled from the solved state (`guideFor`).
  */
 export const LESSON_GUIDE = {
-  idle: {
-    en: 'Play the explanation, or add the drug’s vasoconstrictor action yourself.',
-    ja: '説明を再生するか、自分で昇圧薬の血管収縮作用を加えてみましょう。',
+  start: {
+    en: 'Press “Add the vessel-narrowing action”, or ▶ to play the explanation.',
+    ja: '「血管を縮める作用を加える」を押してみましょう。▶ で説明も再生できます。',
   },
-  manualStart: {
-    en: 'Press “Add the vasoconstrictor action” and watch the small vessels on the right.',
-    ja: '「血管収縮作用を加える」を押して、右側の細い血管を見てください。',
-  },
-  changing: { en: 'Adding the vasoconstrictor action…', ja: '血管収縮作用を加えています…' },
-  releasing: { en: 'Taking the vasoconstrictor action away…', ja: '血管収縮作用を戻しています…' },
+  changing: { en: 'The small vessels of the whole body are narrowing…', ja: '全身の細い血管を縮めています…' },
+  releasing: { en: 'Taking the action away…', ja: '作用を戻しています…' },
   // Said as a direction in this model, never as a size: "a little" carried a
   // clinical judgement of 3.75 → 3.13 L/min that this lesson does not make
-  // (owner's review, 2026-09-30). `tests/cardiac-output-lesson.test.js`
-  // holds these words to that.
+  // (owner's review, 2026-09-30).
   afterDown: {
-    en: 'Pressure went up; in this model, the output went down. Next, compare with C.',
-    ja: '血圧は上がり、送り出す量はこのモデルでは減りました。次は C と比べてみましょう。',
+    en: 'Pressure up; in this model, the blood sent out per minute went down. Next, compare with another circulation.',
+    ja: '血圧は上がり、1分間に送り出す量はこのモデルでは減りました。次は別の循環と比べましょう。',
   },
   afterSame: {
-    en: 'Pressure went up; in this model, the output barely changed. Next, compare with C.',
-    ja: '血圧は上がり、送り出す量はこのモデルではほとんど変わりません。次は C と比べてみましょう。',
+    en: 'Pressure up; in this model, the blood sent out per minute barely changed. Next, compare with another circulation.',
+    ja: '血圧は上がり、1分間に送り出す量はこのモデルではほとんど変わりません。次は別の循環と比べましょう。',
   },
   afterUp: {
-    en: 'Pressure went up; in this model, the output went up too. Next, compare with C.',
-    ja: '血圧は上がり、送り出す量もこのモデルでは増えました。次は C と比べてみましょう。',
+    en: 'Pressure up; in this model, the blood sent out per minute went up too. Next, compare with another circulation.',
+    ja: '血圧は上がり、1分間に送り出す量もこのモデルでは増えました。次は別の循環と比べましょう。',
   },
-  pairBC: {
-    en: 'B and C: about the same pressure — C sends out clearly more.',
-    ja: 'B と C は血圧がほぼ同じ。送り出す量は C の方がはっきり多い。',
-  },
-  pairAC: {
-    en: 'A and C differ in both. Add the vasoconstrictor action to A and compare again.',
-    ja: 'A と C は血圧も送り出す量も違います。A に血管収縮作用を加えて、もう一度比べましょう。',
+  pair: {
+    en: 'About the same average pressure — yet in the same minute, C sends out more.',
+    ja: '血圧の平均はほぼ同じ。でも同じ1分間に送り出す量は、別の循環（C）の方が多い。',
   },
   /** After the explanation is stopped: what is on screen, and what it is compared with. */
   stoppedAlone: {
-    en: 'Explanation stopped. Now: {now}. Compared with: before (A).',
-    ja: '説明を止めました。いま：{now}。比較元：介入前の A。',
+    en: 'Explanation stopped. Now: {now}. The cream marks are the start (A).',
+    ja: '説明を止めました。いま：{now}。クリーム色の印は開始時（A）です。',
   },
   stoppedStart: {
-    en: 'Explanation stopped. Now: {now}. Nothing is being compared.',
-    ja: '説明を止めました。いま：{now}。比べている相手はありません。',
+    en: 'Explanation stopped. Now: {now}. Press “Add the vessel-narrowing action”.',
+    ja: '説明を止めました。いま：{now}。「血管を縮める作用を加える」を押してみましょう。',
   },
   stoppedPair: {
     en: 'Explanation stopped. {now} and C — a different circulation — side by side.',
-    ja: '説明を止めました。{now} と、別の循環 C を並べています。',
+    ja: '説明を止めました。{now} と、別の循環（C）を並べています。',
   },
 };
 
 /**
- * The five scenes of the explanation. One sentence-pair each, said while the
- * model shows it: `heading` is what the scene is, `text` what to see.
+ * The five scenes of the explanation. One thing each: `heading` is what the
+ * scene is, `text` what to see. Kept to about three lines on a 375 px phone
+ * (`lesson-drive` measures that none of them overflows its place).
  *
- * `result` has one text per direction the output can take from A to B, and
- * the storyboard picks the one the solver's answer calls for.
+ * `result` has one text per direction the output can take from A to B, and the
+ * storyboard picks the one the solver's answer calls for.
  */
 export const LESSON_STEPS = {
   start: {
-    heading: { en: 'A: a heart that sends out little', ja: 'A：心臓から送り出す量が少ない循環' },
+    heading: { en: 'Start (A): heart, vessels, pressure', ja: '開始時（A）：心臓・細い血管・血圧' },
+    // How to read the figure, said once while every part is lit: the needle
+    // is the pressure, the tube is what is sent out per minute.
     text: {
-      en: 'An imaginary circulation whose heart contracts weakly. Each beat sends out only a little blood (the bright red length): {coA} L a minute, at a mean pressure of {mapA} mmHg.',
-      ja: '心臓の縮む力が弱い、仮想の循環です。1回に送り出す血液（明るい赤の長さ）が少なく、1分間で {coA} L。平均血圧は {mapA} mmHg。',
+      en: 'The heart sends blood through the body’s small vessels and back. The needle is the average pressure; the tube, what is sent out per minute.',
+      ja: '心臓が送り出した血液は、全身の細い血管を通って戻ります。針は血圧の平均、下の管は1分間に送り出す量です。',
     },
+    note: null,
   },
   constrict: {
-    heading: { en: 'Add the vasoconstrictor action of a vasopressor', ja: '昇圧薬の血管収縮作用を加える' },
+    heading: { en: 'Add the vessel-narrowing action', ja: '血管を縮める作用を加える' },
     text: {
-      en: 'What changes is not the heart but the small vessels of the whole body: they all narrow together, and blood flows through them less easily (vascular resistance ↑).',
-      ja: '変えるのは心臓ではなく、全身の細い血管です。すべてが一斉に細くなり、血液が流れにくくなります（血管抵抗↑）。',
+      en: 'All the small vessels narrow together, so blood passes less easily (vascular resistance ×{factor}). Nothing is done to the heart.',
+      ja: '全身の細い血管がまとめて細くなり、血液の通りにくさ（血管抵抗）が {factor} 倍になります。心臓には何もしていません。',
     },
-    note: {
-      en: 'Not one vessel narrowing in one place.',
-      ja: '1本の血管の一か所が狭くなるのとは違います。',
-    },
+    note: null,
   },
   result: {
-    heading: { en: 'B: the pressure went up. And the output?', ja: 'B：血圧は上がった。送り出す量は？' },
+    heading: { en: 'After narrowing (B): the pressure went up', ja: '血管を縮めた後（B）：血圧は上がった' },
     text: {
       down: {
-        en: 'Mean pressure {mapA} → {mapB} mmHg. Cardiac output did not rise; in this model it went down, {coA} → {coB} L/min — against narrower vessels this heart sends out less per beat.',
-        ja: '平均血圧は {mapA} → {mapB} mmHg。心拍出量は増えず、このモデルでは {coA} → {coB} L/分に減りました。細くなった血管へは、この心臓は押し出しにくくなります。',
+        en: 'Average pressure {mapA} → {mapB} mmHg. But in this model the blood sent out per minute went down: {coA} → {coB} L.',
+        ja: '血圧の平均は {mapA}→{mapB} mmHg。でも心臓が1分間に送り出す量は、このモデルでは {coA}→{coB} L に減りました。',
       },
       same: {
-        en: 'Mean pressure {mapA} → {mapB} mmHg. In this model cardiac output barely moved: {coA} → {coB} L/min.',
-        ja: '平均血圧は {mapA} → {mapB} mmHg。心拍出量はこのモデルでは {coA} → {coB} L/分で、ほとんど変わりません。',
+        en: 'Average pressure {mapA} → {mapB} mmHg. In this model the blood sent out per minute barely changed: {coA} → {coB} L.',
+        ja: '血圧の平均は {mapA}→{mapB} mmHg。心臓が1分間に送り出す量は、このモデルでは {coA}→{coB} L でほとんど変わりません。',
       },
       up: {
-        en: 'Mean pressure {mapA} → {mapB} mmHg, and in this model cardiac output rose too: {coA} → {coB} L/min.',
-        ja: '平均血圧は {mapA} → {mapB} mmHg に上がり、心拍出量もこのモデルでは {coA} → {coB} L/分に増えました。',
+        en: 'Average pressure {mapA} → {mapB} mmHg, and in this model the blood sent out per minute went up too: {coA} → {coB} L.',
+        ja: '血圧の平均は {mapA}→{mapB} mmHg。心臓が1分間に送り出す量も、このモデルでは {coA}→{coB} L に増えました。',
       },
     },
+    // One line on a phone. "In this model" is in the sentence above it; this is
+    // the answer to "would a real vasopressor always do this?".
     note: {
-      en: 'This model’s result under this condition — not a rule for every vasopressor.',
-      ja: 'このモデルのこの条件での結果で、どの昇圧薬にも当てはまる決まりではありません。',
+      en: 'A real vasopressor does not always do this.',
+      ja: '実際の昇圧薬で必ずこうなるとは限りません。',
     },
   },
   other: {
-    heading: { en: 'C: a different circulation', ja: 'C：B とは別の循環' },
+    heading: { en: 'C: a separate circulation, not B treated', ja: '別の循環（C）：B の治療後ではない' },
     text: {
-      en: 'C is not B after treatment, and not another action of the drug. It is a different circulation from the start: a heart that contracts normally, vessels that are not narrowed.',
-      ja: 'C は B の治療後でも、薬の別の作用でもありません。心臓の縮む力が保たれ、血管も細くない、はじめから別の循環です。',
+      en: 'Different from the start: vessels not narrowed, a heart that pushes harder. Average pressure about B’s: {mapB} and {mapC} mmHg.',
+      ja: '血管を縮めておらず、心臓の押し出す力が強い、はじめから別の循環です。血圧の平均は B とほぼ同じ（{mapB} と {mapC} mmHg）。',
     },
-    note: {
-      en: 'Both are stopped at the same moment of the beat, and share one heart rate ({hr}/min).',
-      ja: '2つを拍動の同じ瞬間で止めています。心拍数はどちらも {hr} 回/分。',
-    },
+    note: null,
   },
   conclusion: {
     heading: { en: 'About the same pressure, different output', ja: '同じ程度の血圧でも、送り出す量は違う' },
     text: {
-      en: 'Mean pressure B {mapB}, C {mapC} mmHg; cardiac output B {coB}, C {coC} L/min. The pressure alone cannot tell you whether the circulation is keeping up.',
-      ja: '平均血圧は B {mapB}・C {mapC} mmHg とほぼ同じなのに、心拍出量は B {coB}・C {coC} L/分。血圧の数字だけでは、循環が保たれているかを判断できません。',
+      en: 'Same minute, same heart rate ({hr}/min): B {coB} L, C {coC} L. Pressure alone cannot tell whether the circulation is keeping up.',
+      ja: '同じ1分間・同じ心拍数（{hr} 回/分）で、B は {coB} L、C は {coC} L。血圧の数字だけでは、循環が保たれているかは判断できません。',
     },
-    // What the caveat under the results does not already say. It said "only
-    // the vasoconstrictor action, not noradrenaline's whole action" too, which
-    // the results now carry at every B moment (owner's review, 2026-09-30).
-    note: {
-      en: 'Doses and organ blood flow are not computed either.',
-      ja: '投与量や臓器の血流も、このモデルは計算していません。',
-    },
+    note: null,
   },
-};
-
-/** Short tags on the model, beside the part they name. */
-export const LESSON_TAGS = {
-  // Two lines, like the vessels' tag below: on one, it is wider than the room
-  // left of the heart on a phone and stood over the heart's wall.
-  heart: { en: 'Heart\n(left ventricle)', ja: '心臓\n（左心室）' },
-  ejected: { en: 'Blood sent out this beat', ja: '1回に送り出された血液' },
-  bed: { en: 'Small vessels of the whole body', ja: '全身の細い血管' },
-  // Two lines on purpose: on one, it is wider than the room right of the
-  // vessels at 1440×900 beside the side column, and was pushed back over the
-  // very point it names (lesson-drive's "covers the point it names").
-  bedNarrowing: { en: 'All narrow together\n→ resistance ↑', ja: '一斉に細くなる\n＝血管抵抗↑' },
-  gauge: { en: 'Mean blood pressure', ja: '平均血圧' },
-  gaugeUp: { en: 'Pressure ↑', ja: '血圧↑' },
-  ejectedLess: { en: 'Sent out per beat ↓', ja: '1回に送り出す量↓' },
-  ejectedSame: { en: 'Sent out per beat: about the same', ja: '1回に送り出す量：ほぼ同じ' },
-  ejectedMore: { en: 'Sent out per beat ↑', ja: '1回に送り出す量↑' },
 };
 
 /**
@@ -252,8 +284,8 @@ export const LESSON_SCOPE = {
     '血圧が上がれば、心臓から送り出す量も増えたと言えるか。——1つの模式実験と1つの比較で示します。',
   answers: [
     {
-      text: 'A and C are imaginary teaching circulations, not patients. B is A with one input changed: the systemic resistance, ×1.5, standing for a vasopressor’s vasoconstrictor action. Every figure is computed by the same circulation model the full model uses.',
-      textJa: 'A と C は教材用の仮想の循環で、患者ではありません。B は A の入力を 1 つだけ変えたもの——昇圧薬の血管収縮作用として体血管抵抗を 1.5 倍——です。表示する数値はすべて、詳しいモデルと同じ循環モデルの計算結果です。',
+      text: 'A and C are imaginary teaching circulations, not patients. B is A with one input changed: the systemic resistance, ×1.5, standing for the vessel-narrowing part of a vasopressor’s action. Every figure is computed by the same circulation model the full model uses.',
+      textJa: 'A と C は教材用の仮想の循環で、患者ではありません。B は A の入力を 1 つだけ変えたもの——昇圧薬の働きのうち血管を縮める作用として、体血管抵抗を 1.5 倍——です。表示する数値はすべて、詳しいモデルと同じ循環モデルの計算結果です。',
     },
     {
       text: 'C is a separate circulation shown for comparison. It is not B after treatment and not another effect of the drug.',
@@ -276,8 +308,8 @@ export const LESSON_SCOPE = {
       textJa: '**A → B で心拍出量が減ったのは、このモデルのこの条件での結果です。** 昇圧薬で心拍出量が必ず下がるわけではありません。開始条件や薬の他の作用によって、変わらないことも増えることもあります。',
     },
     {
-      text: '**The drawing is to a drawing scale.** The vessels’ width, the length of the blood sent out and the gauge’s needle show computed values on scales chosen for the picture. The steps between A and B are solved conditions shown in order — not the time a drug takes to act.',
-      textJa: '**描画は描画用の尺度です。** 血管の太さ・送り出された血液の長さ・血圧計の針は、計算値を絵のための尺度で示しています。A と B の間の段階は計算した条件を順に並べたもので、薬が効くまでの時間経過ではありません。',
+      text: '**The figure is a diagram, drawn to drawing scales.** The width of the small vessels shows how easily blood gets through them, not how much their diameter changes; the needle shows the average pressure on a 0–150 mmHg dial; the filled length of the tube shows the litres sent out per minute on a 0–6 L scale. The steps between A and B are solved conditions shown in order — not the time a drug takes to act.',
+      textJa: '**図は模式図で、描画用の尺度で描いています。** 細い血管の太さは血液の通りやすさを表し、血管の直径がどれだけ変わるかではありません。針は 0〜150 mmHg の目盛りで血圧の平均を、管の満ちた長さは 0〜6 L の目盛りで1分間に送り出す量を示します。A と B の間の段階は計算した条件を順に並べたもので、薬が効くまでの時間経過ではありません。',
     },
     {
       text: 'The conclusion is only this: the pressure alone cannot tell you whether the circulation is keeping up. Nothing here says which treatment to choose.',
@@ -295,6 +327,6 @@ export const LESSON_SCOPE = {
 };
 
 export const LESSON_DISCLAIMER_SHORT = {
-  en: 'Schematic teaching model — only the vasoconstrictor action, no reflexes.',
-  ja: '模式的な教育用モデルです（血管収縮作用のみ・反射なし）。',
+  en: 'Schematic teaching model — only the vessel-narrowing action, no reflexes.',
+  ja: '模式的な教育用モデルです（血管を縮める作用のみ・反射なし）。',
 };

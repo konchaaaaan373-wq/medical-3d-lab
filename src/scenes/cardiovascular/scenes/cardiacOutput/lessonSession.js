@@ -27,6 +27,17 @@ import { interventionLadder, lessonClaimProblems, lessonInput } from '../../../.
  * Once C stands beside B the comparison is B ↔ C — two separate circulations —
  * and A's marks go, so three things are never compared at once.
  *
+ * ## C stands beside B and nothing else
+ *
+ * The lesson compares C with B: about the same pressure, a different output.
+ * A beside C is a comparison it has nothing to say about, and a reader who
+ * pressed "compare" before the action reached B used to get exactly that
+ * (owner's review, 2026-10-01). So C is shown **only while the main
+ * circulation is at B** (`canShowOther`): asked for anywhere else it is
+ * refused, and the moment the main circulation leaves B — the action taken
+ * away, a rung set by the explanation — C is closed. That holds for every way
+ * in, the buttons and the explanation alike, because both come through here.
+ *
  * Pure: no `three`, no DOM.
  */
 
@@ -94,6 +105,11 @@ export class LessonSession {
     return this.rung > 0 && !this.showOther ? this.ladder[0] : null;
   }
 
+  /** Whether C may stand beside the main circulation now: only at B, and not on the way anywhere. */
+  get canShowOther() {
+    return this.rung === this.lastRung && this.target === this.lastRung;
+  }
+
   /**
    * Send the main circulation to A or B. The reader's press walks there over
    * `MANUAL_WALK_SECONDS`; `immediate` puts it there now.
@@ -105,6 +121,8 @@ export class LessonSession {
     this.target = id === 'B' ? this.lastRung : 0;
     this._clock = 0;
     if (immediate) this.rung = this.target;
+    // Leaving B closes C at once: the walk back to A is never drawn beside C.
+    if (this.target !== this.lastRung) this.showOther = false;
   }
 
   /**
@@ -119,11 +137,19 @@ export class LessonSession {
     this.rung = rung;
     this.target = rung;
     this._clock = 0;
+    if (rung !== this.lastRung) this.showOther = false;
   }
 
-  /** @param {boolean} shown */
+  /**
+   * Show or close C. Showing it is refused anywhere but at B
+   * (`canShowOther`); closing it always works.
+   *
+   * @param {boolean} shown
+   * @returns {boolean} whether C is shown now
+   */
   setShowOther(shown) {
-    this.showOther = Boolean(shown);
+    this.showOther = Boolean(shown) && this.canShowOther;
+    return this.showOther;
   }
 
   /** Back to A, alone. */

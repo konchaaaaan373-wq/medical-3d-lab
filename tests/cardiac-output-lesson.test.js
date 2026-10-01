@@ -29,22 +29,24 @@ import { LessonSession, MANUAL_WALK_SECONDS } from '../src/scenes/cardiovascular
 import {
   LESSON_DURATION,
   LESSON_TIMELINE,
+  allGuides,
   captionFor,
+  figureSummary,
   guideFor,
   lessonValues,
   outputDirection,
   presentationAt,
-  readoutFor,
   stepIndexAt,
-  tagWords,
+  stripsFor,
 } from '../src/scenes/cardiovascular/scenes/cardiacOutput/lessonStoryboard.js';
 import {
   LESSON_ACTIONS,
   LESSON_CONDITION_COPY,
   LESSON_GUIDE,
+  LESSON_NOTE,
   LESSON_SCOPE,
   LESSON_STEPS,
-  LESSON_TAGS,
+  LESSON_TERMS,
 } from '../src/data/cardiacOutputLesson.js';
 
 /**
@@ -233,11 +235,12 @@ test('session: opens at A alone, with nothing to compare against', () => {
   assert.deepEqual(session.problems, []);
   assert.equal(session.primaryId, 'A');
   assert.equal(session.showOther, false);
+  assert.equal(session.canShowOther, false);
   assert.equal(session.reference, null);
   assert.deepEqual(session.primary.input, lessonInput('A'));
 });
 
-test('session: the reader’s press walks every rung to B, and "before" is A', () => {
+test('session: the reader’s press walks every rung to B, and "start" is A', () => {
   const session = new LessonSession();
   session.setPrimary('B');
   assert.equal(session.walking, true);
@@ -249,71 +252,107 @@ test('session: the reader’s press walks every rung to B, and "before" is A', (
     seen.add(session.rung);
     if (session.rung > 0 && session.rung < session.lastRung) {
       assert.equal(session.primaryId, null, 'between A and B it is neither');
+      assert.equal(session.canShowOther, false, 'C cannot be brought in on the way');
     }
   }
   assert.equal(session.primaryId, 'B');
   assert.ok(elapsed <= MANUAL_WALK_SECONDS + 0.1, `the walk took ${elapsed.toFixed(2)} s`);
   assert.equal(seen.size, session.lastRung + 1, 'no rung is skipped at 60 frames a second');
   assert.equal(session.reference, session.ladder[0], 'B alone is compared with A');
+  assert.equal(session.canShowOther, true, 'at B, C may come in');
   assert.deepEqual(session.primary.input, lessonInput('B'));
 });
 
-test('session: with C beside it the comparison is B ↔ C, and A’s marks go', () => {
+test('session: C stands beside B and nothing else — refused at A and on the way, closed when B is left', () => {
+  // Owner's review, 2026-10-01: the buttons let a reader put C beside A, a
+  // comparison the lesson has nothing to say about.
   const session = new LessonSession();
-  session.setPrimary('B', { immediate: true });
-  session.setShowOther(true);
-  assert.equal(session.reference, null, 'three things are never compared at once');
-  const readout = readoutFor(session);
-  assert.equal(readout.primary.id, 'B');
-  assert.equal(readout.primary.reference, null);
-  assert.equal(readout.other.id, 'C');
-  assert.equal(readout.other.map, lessonValues(solved).mapC);
-  assert.equal(readout.other.co, lessonValues(solved).coC);
+  assert.equal(session.setShowOther(true), false, 'refused at A');
+  assert.equal(session.showOther, false);
 
-  session.reset();
+  session.setPrimary('B');
+  session.tick(MANUAL_WALK_SECONDS / 3);
+  assert.equal(session.primaryId, null);
+  assert.equal(session.setShowOther(true), false, 'refused while the vessels are still narrowing');
+
+  session.setPrimary('B', { immediate: true });
+  assert.equal(session.setShowOther(true), true, 'allowed at B');
+  assert.equal(session.reference, null, 'beside C, A’s marks go: three things are never compared at once');
+
+  // Taking the action away closes C at once — before the walk back starts.
+  session.setPrimary('A');
+  assert.equal(session.showOther, false, 'C closed the moment the action is taken away');
+  while (session.walking) session.tick(1 / 60);
   assert.equal(session.primaryId, 'A');
+  assert.equal(session.showOther, false);
+
+  // The explanation's drive obeys the same rule: a rung off B closes C.
+  session.setRung(session.lastRung);
+  session.setShowOther(true);
+  session.setRung(session.lastRung - 1);
   assert.equal(session.showOther, false);
 });
 
-test('session: the read-out for B alone carries A as "before", with the solved directions', () => {
-  const session = new LessonSession();
-  session.setPrimary('B', { immediate: true });
-  const { primary } = readoutFor(session);
-  const values = lessonValues(solved);
-  assert.equal(primary.map, values.mapB);
-  assert.equal(primary.co, values.coB);
-  assert.equal(primary.reference.id, 'A');
-  assert.equal(primary.reference.map, values.mapA);
-  assert.equal(primary.reference.co, values.coA);
-  assert.equal(primary.reference.mapDirection, 'up');
-  assert.equal(primary.reference.coDirection, outputDirection(solved));
+test('session: no sequence of the reader’s presses ever shows C beside anything but B', () => {
+  // Every order of the two buttons, pressed at every moment of a walk: the
+  // invariant is checked after each step rather than at the ends.
+  let seed = 7;
+  const next = () => (seed = (seed * 48271) % 2147483647) / 2147483647;
+  for (let run = 0; run < 200; run++) {
+    const session = new LessonSession();
+    for (let step = 0; step < 40; step++) {
+      const roll = next();
+      if (roll < 0.35) session.setPrimary(session.targetId === 'B' ? 'A' : 'B');
+      else if (roll < 0.7) session.setShowOther(!session.showOther);
+      else session.tick(next() * 0.6);
+      if (session.showOther) {
+        assert.equal(session.rung, session.lastRung, `run ${run}, step ${step}: C shown at rung ${session.rung}`);
+        assert.equal(session.targetId, 'B', `run ${run}, step ${step}: C shown while heading back to A`);
+      }
+    }
+  }
 });
 
-test('session: while the vasoconstrictor action is on, the results say what it is and is not', () => {
-  // Owner's review, 2026-09-30: a reader who only presses the button saw the
-  // output fall with nothing beside it saying that only the resistance moved.
+test('figure data: B alone carries A as cream "start" marks, with the solved directions', () => {
   const session = new LessonSession();
-  assert.equal(readoutFor(session).caveat, null, 'A, nothing applied: nothing to qualify');
-
-  session.setPrimary('B');
-  session.tick(MANUAL_WALK_SECONDS / 4);
-  assert.equal(session.primaryId, null, 'part way through the walk');
-  assert.ok(readoutFor(session).caveat, 'from the first step of the walk');
-
   session.setPrimary('B', { immediate: true });
-  const { caveat } = readoutFor(session);
-  const factor = INTERVENTION_PROFILES[INTERVENTION_IDS.VASOCONSTRICTION].effects.systemicResistanceMmHgSPerMl.multiply;
-  assert.match(caveat.ja, new RegExp(`血管抵抗だけを ${String(factor).replace('.', '\\.')} 倍`), 'the factor is the model’s own');
-  assert.match(caveat.ja, /模式実験/);
-  assert.match(caveat.ja, /実際の昇圧薬の全作用は再現しません/);
-  assert.ok(caveat.en.includes(`×${factor}`));
+  const [strip, ...rest] = stripsFor(session);
+  const values = lessonValues(solved);
+  assert.equal(rest.length, 0);
+  assert.equal(strip.id, 'B');
+  assert.equal(strip.values.map, values.mapB);
+  assert.equal(strip.values.co, values.coB);
+  assert.equal(strip.values.mapDirection, 'up');
+  assert.equal(strip.values.coDirection, outputDirection(solved));
+  assert.ok(strip.drawing.before, 'A is drawn as the start marks');
+  assert.equal(strip.narrowed, true);
 
   session.setShowOther(true);
-  assert.ok(readoutFor(session).caveat, 'B beside C is still B');
-
-  session.setPrimary('A', { immediate: true });
-  assert.equal(readoutFor(session).caveat, null, 'A beside C: the action is off again');
+  const [b, c] = stripsFor(session);
+  assert.equal(b.drawing.before, null, 'beside C, no start marks');
+  assert.equal(b.values.mapDirection, null);
+  assert.equal(c.id, 'C');
+  assert.equal(c.values.map, values.mapC);
+  assert.equal(c.values.co, values.coC);
+  assert.equal(c.narrowed, false, 'C’s vessels are not narrowed');
+  assert.equal(c.copy.note.ja, 'B の治療後ではない');
 });
+
+test('figure data: said in words for a screen reader, the plain name first and the term after', () => {
+  const session = new LessonSession();
+  session.setPrimary('B', { immediate: true });
+  session.setShowOther(true);
+  const said = figureSummary(stripsFor(session));
+  const values = lessonValues(solved);
+  assert.match(said.ja, /血管を縮めた後（B）/);
+  assert.match(said.ja, /別の循環（C）/);
+  assert.ok(said.ja.includes(`血圧の平均（平均血圧） ${values.mapB} mmHg`));
+  assert.ok(said.ja.includes(`心臓が1分間に送り出す量（心拍出量） ${values.coC} L`));
+});
+
+// ---------------------------------------------------------------------------
+// The words
+// ---------------------------------------------------------------------------
 
 test('words: the change from A to B is said as a direction in this model, never as a size', () => {
   // "少し減りました" put a clinical judgement on 3.75 → 3.13 L/min (−16 %)
@@ -334,11 +373,51 @@ test('words: the change from A to B is said as a direction in this model, never 
   }
 });
 
+test('words: a plain phrase first and the term after it; A, B and C never only a letter', () => {
+  // Owner's review, 2026-10-01.
+  assert.equal(LESSON_TERMS.output.full.ja, '心臓が1分間に送り出す量（心拍出量）');
+  assert.equal(LESSON_TERMS.resistance.full.ja, '血液の通りにくさ（血管抵抗）');
+  assert.equal(LESSON_TERMS.pressure.full.ja, '血圧の平均（平均血圧）');
+  assert.deepEqual(
+    ['A', 'B', 'C'].map((id) => LESSON_CONDITION_COPY[id].role.ja),
+    ['開始時', '血管を縮めた後', '別の循環']
+  );
+  // Where a sentence names a circulation by its letter, its name stands beside it.
+  for (const step of Object.values(LESSON_STEPS)) {
+    const heading = step.heading.ja;
+    for (const [id, name] of [['A', '開始時'], ['B', '血管を縮めた後'], ['C', '別の循環']]) {
+      if (heading.includes(`（${id}）`)) assert.ok(heading.includes(`${name}（${id}）`), `"${heading}" names ${id} by its letter alone`);
+    }
+  }
+  // The technical terms are never on screen without the plain words in front of
+  // them. A legend row is one reading across its two lines.
+  const { legend, ...terms } = LESSON_TERMS;
+  const rows = Object.values(legend)
+    .filter((row) => row.main)
+    .map((row) => ({ en: `${row.main.en}${row.sub?.en ?? ''}`, ja: `${row.main.ja}${row.sub?.ja ?? ''}` }));
+  const everything = JSON.stringify({ LESSON_STEPS, LESSON_GUIDE, LESSON_ACTIONS, terms, rows, LESSON_NOTE });
+  for (const [term, plain] of [['心拍出量', '送り出す量（心拍出量）'], ['血管抵抗', '通りにくさ（血管抵抗）'], ['平均血圧', '（平均血圧）']]) {
+    const bare = everything.split(term).length - 1;
+    const paired = everything.split(plain).length - 1;
+    assert.equal(bare, paired, `"${term}" appears ${bare - paired} time(s) without the plain words before it`);
+  }
+});
+
+test('words: the action is a schematic part of a vasopressor, never a drug given, and never said to always lower output', () => {
+  assert.equal(LESSON_ACTIONS.constrict.ja, '血管を縮める作用を加える');
+  assert.match(LESSON_NOTE.ja, /昇圧薬の働きの一部.*だけを取り出した模式実験/);
+  assert.match(LESSON_NOTE.ja, /実際の薬の全作用は再現しません/);
+  const everything = JSON.stringify({ LESSON_STEPS, LESSON_GUIDE, LESSON_ACTIONS, LESSON_TERMS, LESSON_NOTE });
+  assert.doesNotMatch(everything, /投与|ノルアドレナリンを|必ず(拍出|心拍出|送り出す量)が?(下が|減)る|always lower/);
+  // The one sentence that answers "would a real drug always do this?" says no.
+  assert.match(LESSON_STEPS.result.note.ja, /必ずこうなるとは限りません/);
+});
+
 // ---------------------------------------------------------------------------
 // The explanation
 // ---------------------------------------------------------------------------
 
-test('explanation: five scenes in the order the lesson is told, contiguous', () => {
+test('explanation: five scenes in the order the lesson is told, contiguous, about half a minute', () => {
   assert.deepEqual(
     LESSON_TIMELINE.map((scene) => scene.id),
     ['start', 'constrict', 'result', 'other', 'conclusion']
@@ -346,24 +425,31 @@ test('explanation: five scenes in the order the lesson is told, contiguous', () 
   let at = 0;
   for (const scene of LESSON_TIMELINE) {
     assert.equal(scene.at, at);
-    assert.ok(scene.duration >= 7, `${scene.id} leaves time to read (${scene.duration} s)`);
+    assert.ok(scene.duration >= 5, `${scene.id} leaves time to read (${scene.duration} s)`);
     at = scene.until;
   }
   assert.equal(LESSON_DURATION, at);
-  assert.ok(LESSON_DURATION <= 60, 'a short explanation');
+  // The owner asked for about 20–30 s, and not at the cost of reading time.
+  assert.ok(LESSON_DURATION >= 20 && LESSON_DURATION <= 35, `${LESSON_DURATION} s`);
 });
 
-test('explanation: A first, the change inside scene 2, B after; C only in the last two; tags two at most', () => {
+test('explanation: A first, the change inside scene 2, B after; C only in the last two, and only at B', () => {
   const session = new LessonSession();
   const last = session.lastRung;
   for (let t = 0; t < LESSON_DURATION; t += 0.25) {
     const shown = presentationAt(t, last);
-    assert.ok(shown.tags.length <= 2, `${shown.step.id}: ${shown.tags.length} tags at once`);
     if (shown.step.id === 'start') assert.equal(shown.rung, 0);
     if (['result', 'other', 'conclusion'].includes(shown.step.id)) assert.equal(shown.rung, last);
     assert.equal(shown.showOther, ['other', 'conclusion'].includes(shown.step.id), `C at ${t}`);
+    if (shown.showOther) assert.equal(shown.rung, last, 'C beside B only');
     // Point first: the change never starts the moment its scene does.
     if (shown.step.id === 'constrict' && shown.into < 1) assert.equal(shown.rung, 0);
+    // Both tubes fill together when C arrives, and are full by the end of the scene.
+    if (shown.step.id === 'other' && shown.into < 0.5) assert.equal(shown.refill, 0);
+    if (shown.step.id === 'conclusion') assert.equal(shown.refill, 1);
+    // The session takes what the explanation sets, by the same rule as the buttons.
+    session.setRung(shown.rung);
+    assert.equal(session.setShowOther(shown.showOther), shown.showOther, `the session refused the explanation at ${t}`);
   }
   // Seeking lands on the same condition every time.
   const constrict = LESSON_TIMELINE[1];
@@ -372,11 +458,11 @@ test('explanation: A first, the change inside scene 2, B after; C only in the la
 });
 
 /**
- * Counting words are not figures: 「1回」「1分間」「1本」「1か所」「2つ」 say "one
- * beat", "a minute", "one vessel", "one place", "both". Everything else with a
- * digit in it has to be a solved figure.
+ * Counting words are not figures: 「1分間」「1回」「4つ」 say "a minute", "one
+ * beat", "four". Everything else with a digit in it has to be a solved figure
+ * or a scale the figure is drawn on.
  */
-const COUNTING_WORDS = /[12](?:回|分間|本|か所|つ)/g;
+const COUNTING_WORDS = /[1-4](?:回|分間|本|か所|つ)|per minute|0–6 L|0〜6 L/g;
 
 test('explanation: every figure in a sentence is a solved figure', () => {
   const values = lessonValues(solved);
@@ -395,29 +481,29 @@ test('explanation: every figure in a sentence is a solved figure', () => {
   // The copy itself writes no figure down. (A letter like "A" or a unit is not a figure.)
   const copyNumbers = JSON.stringify(LESSON_STEPS).replace(COUNTING_WORDS, '').match(/(?<![{\w])\d+(?:\.\d+)?/g) ?? [];
   assert.deepEqual(copyNumbers, [], 'LESSON_STEPS carries no number of its own');
+  // The factor in scene 2 is the model's own.
+  const factor = INTERVENTION_PROFILES[INTERVENTION_IDS.VASOCONSTRICTION].effects.systemicResistanceMmHgSPerMl.multiply;
+  assert.ok(captionFor('constrict', solved).text.ja.includes(`${factor} 倍`));
 });
 
 test('explanation: the words keep the two comparisons apart', () => {
-  // C is said to be a different circulation, and not B treated.
-  assert.match(LESSON_CONDITION_COPY.C.name.ja, /治療後ではない/);
-  assert.match(LESSON_STEPS.other.text.ja, /治療後でも、薬の別の作用でもありません/);
-  // B is said to be A with the intervention.
-  assert.match(LESSON_CONDITION_COPY.B.name.ja, /^A＋/);
-  // "Before" is A's word only; C's words never use it.
-  assert.doesNotMatch(JSON.stringify(LESSON_CONDITION_COPY.C), /介入前|before/i);
-  // The intervention is named as the vasoconstrictor action, not as a drug's whole effect.
-  assert.match(LESSON_ACTIONS.constrict.ja, /血管収縮作用/);
-  assert.doesNotMatch(LESSON_ACTIONS.constrict.ja, /ノルアドレナリン/);
+  // C is said to be a different circulation, and not B treated, wherever it is introduced.
+  assert.match(LESSON_CONDITION_COPY.C.note.ja, /治療後ではない/);
+  assert.match(LESSON_STEPS.other.heading.ja, /治療後ではない/);
+  assert.match(LESSON_STEPS.other.text.ja, /はじめから別の循環/);
+  // "Start" is A's word only; C's words never use it.
+  assert.doesNotMatch(JSON.stringify(LESSON_CONDITION_COPY.C), /開始|start/i);
+  // The conclusion compares at one heart rate, as the claims check holds.
+  assert.match(LESSON_STEPS.conclusion.text.ja, /同じ心拍数/);
 });
 
 test('explanation: nothing it does not compute is said to have changed', () => {
   // Tissue perfusion, oxygen delivery, lactate and capillary refill are out of
   // the model. They may be named only where the lesson says it does not
-  // compute them — the scope panel and the closing note.
-  const unmodelled = /灌流|酸素供給|乳酸|CRT|perfusion|oxygen delivery|lactate|capillary refill/i;
-  const said = JSON.stringify({ LESSON_STEPS, LESSON_TAGS, LESSON_GUIDE, LESSON_ACTIONS });
-  const stripped = said.replace(JSON.stringify(LESSON_STEPS.conclusion.note).slice(1, -1), '');
-  assert.doesNotMatch(stripped, unmodelled);
+  // compute them — the scope panel.
+  const unmodelled = /灌流|酸素供給|乳酸|CRT|perfusion|oxygen delivery|lactate|capillary refill|臓器の血流|organ blood flow/i;
+  const said = JSON.stringify({ LESSON_STEPS, LESSON_TERMS, LESSON_GUIDE, LESSON_ACTIONS, LESSON_NOTE });
+  assert.doesNotMatch(said, unmodelled);
   assert.match(JSON.stringify(LESSON_SCOPE.excludes), unmodelled, 'and the scope says it is not computed');
   // No dose on any word.
   assert.doesNotMatch(said, /\d\s*(µg|mcg|mg|γ|mL\/h)/);
@@ -425,39 +511,25 @@ test('explanation: nothing it does not compute is said to have changed', () => {
 
 test('guide: one line for each state, and an interrupted explanation says what the reader now has', () => {
   const base = { solved, targetId: 'A', showOther: false };
-  assert.equal(guideFor({ ...base, mode: 'idle', primaryId: 'A' }), LESSON_GUIDE.idle);
-  assert.equal(guideFor({ ...base, mode: 'manual', primaryId: 'A' }), LESSON_GUIDE.manualStart);
-  assert.equal(guideFor({ ...base, mode: 'manual', primaryId: null, targetId: 'B' }), LESSON_GUIDE.changing);
-  assert.equal(guideFor({ ...base, mode: 'manual', primaryId: 'B', showOther: true }), LESSON_GUIDE.pairBC);
-  assert.equal(guideFor({ ...base, mode: 'manual', primaryId: 'A', showOther: true }), LESSON_GUIDE.pairAC);
+  assert.equal(guideFor({ ...base, primaryId: 'A' }), LESSON_GUIDE.start);
+  assert.match(LESSON_GUIDE.start.ja, /「血管を縮める作用を加える」を押して/, 'the first screen says what can be pressed');
+  assert.equal(guideFor({ ...base, primaryId: null, targetId: 'B' }), LESSON_GUIDE.changing);
+  assert.equal(guideFor({ ...base, primaryId: null, targetId: 'A' }), LESSON_GUIDE.releasing);
+  assert.equal(guideFor({ ...base, primaryId: 'B', targetId: 'B', showOther: true }), LESSON_GUIDE.pair);
 
-  const stoppedAlone = guideFor({ ...base, mode: 'manual', primaryId: 'B', stopped: true });
-  assert.match(stoppedAlone.ja, /いま：B（A＋血管収縮作用）/);
-  assert.match(stoppedAlone.ja, /比較元：介入前の A/);
-  // Beside C, the words are "side by side", never "compared with" — C is not
-  // a before.
-  const stoppedPair = guideFor({ ...base, mode: 'manual', primaryId: 'B', showOther: true, stopped: true });
-  assert.match(stoppedPair.ja, /別の循環 C を並べています/);
-  assert.doesNotMatch(stoppedPair.ja, /比較元/);
+  const stoppedAlone = guideFor({ ...base, primaryId: 'B', targetId: 'B', stopped: true });
+  assert.match(stoppedAlone.ja, /いま：血管を縮めた後（B）/);
+  assert.match(stoppedAlone.ja, /開始時（A）/);
+  // Beside C, the words are "side by side" — C is not a before.
+  const stoppedPair = guideFor({ ...base, primaryId: 'B', targetId: 'B', showOther: true, stopped: true });
+  assert.match(stoppedPair.ja, /別の循環（C）を並べています/);
+  assert.doesNotMatch(stoppedPair.ja, /開始時/);
   // Half way through the walk, the reader is handed B (the walk finishes there).
-  const stoppedWalking = guideFor({ ...base, mode: 'manual', primaryId: null, targetId: 'B', stopped: true });
-  assert.match(stoppedWalking.ja, /いま：B/);
-});
-
-test('tags: the change in one beat’s output is said as the solver has it, and as the caption says it', () => {
-  const direction = directionOf(metrics('A').strokeVolumeMl, metrics('B').strokeVolumeMl, 1);
-  const expected = { down: LESSON_TAGS.ejectedLess, up: LESSON_TAGS.ejectedMore, same: LESSON_TAGS.ejectedSame }[direction];
-  assert.equal(tagWords('ejectedChange', solved), expected);
-  // One direction on one screen: the tag beside the arch and the caption under
-  // the model are read from the same comparison at the same precision.
-  const caption = { down: 'ejectedLess', up: 'ejectedMore', same: 'ejectedSame' }[outputDirection(solved)];
-  assert.equal(tagWords('ejectedChange', solved), LESSON_TAGS[caption]);
-  // And where a beat's volume and a minute's output would round differently —
-  // one mL less per beat, the same 3.5 L/min — the tag follows the caption.
-  const near = {
-    A: { metrics: { strokeVolumeMl: 50, cardiacOutputLMin: 3.5 } },
-    B: { metrics: { strokeVolumeMl: 49, cardiacOutputLMin: 3.45 } },
-  };
-  assert.equal(outputDirection(near), 'same');
-  assert.equal(tagWords('ejectedChange', near), LESSON_TAGS.ejectedSame);
+  const stoppedWalking = guideFor({ ...base, primaryId: null, targetId: 'B', stopped: true });
+  assert.match(stoppedWalking.ja, /いま：血管を縮めた後（B）/);
+  // Every line the guide can say is among those the page sizes its place by.
+  const sized = allGuides(solved).map((line) => line.ja);
+  for (const line of [LESSON_GUIDE.start, LESSON_GUIDE.changing, LESSON_GUIDE.releasing, LESSON_GUIDE.pair, stoppedAlone, stoppedPair]) {
+    assert.ok(sized.includes(line.ja), `"${line.ja}" is not among the lines the panel is sized for`);
+  }
 });

@@ -1,16 +1,24 @@
 /*
- * The introductory lesson (`LessonShell.js`, `LessonPanel.js`).
+ * The introductory lesson (`LessonShell.js`, `LessonPanel.js`, and the
+ * scene's figure, `LessonFigure.js`).
  *
- * Three bands and nothing else: the question on top, the model in the middle
- * (nothing drawn over it but short tags beside the parts they name), the two
- * results and what to do under it. Scoped to `data-layout='lesson'` so no other
- * scene is touched.
+ * Three bands and nothing else: the question on top, the figure in the middle,
+ * and under it what the experiment is and what to do. Scoped to
+ * `data-layout='lesson'` so no other scene is touched.
+ *
+ * ## The figure keeps one size
+ *
+ * The figure takes the room the other two bands leave, and the bottom band is
+ * as tall as the tallest thing it will ever hold (`lesson-stack`, below): so
+ * the figure is one size for the whole lesson at a given window — at A, while
+ * the vessels narrow, at B, beside C, explained or pressed — and changes only
+ * with the window and the language.
  *
  * Colours name the three circulations and nothing else:
  *   A (start)  — slate
- *   B (after)  — amber, the colour of the small vessels the action narrows
+ *   B (after)  — amber, the colour of the vessels' wall the action thickens
  *   C (other)  — sky blue: a different circulation, never a shade of A or B
- *   "before"   — cream, the colour the full model already uses for "before"
+ *   "start" marks while B stands alone — cream
  */
 
 #ui[data-layout='lesson'] {
@@ -19,10 +27,14 @@
   --lesson-c: #7fd4ff;
   --lesson-before: #f4f1c8;
   --lesson-card: rgba(9, 14, 25, 0.82);
+  --lesson-blood: #e0525e;
+  --lesson-blood-dark: #a63f57;
+  --lesson-wall: #d9a35c;
   gap: 8px;
 }
 
 #ui[data-layout='lesson'] .lesson-top,
+#ui[data-layout='lesson'] .lesson-figure,
 #ui[data-layout='lesson'] .lesson-bottom {
   pointer-events: auto;
   position: relative;
@@ -146,50 +158,307 @@
   text-shadow: 0 1px 8px rgba(0, 0, 0, 0.55);
 }
 
-#ui[data-layout='lesson'] .lesson-guide {
-  margin: 0;
-  padding: 0 12px;
-  font-size: 14px;
-  line-height: 1.45;
-  color: var(--ink-dim);
-  text-shadow: 0 1px 6px rgba(0, 0, 0, 0.6);
+/* --- the figure ------------------------------------------------------------- */
+
+#ui[data-layout='lesson'] .lesson-figure {
+  flex: 1 1 auto;
+  min-height: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 
-/* --- bottom ---------------------------------------------------------------- */
+/* Scaled as a whole to the room it has, and no larger than reads well on a
+   wide screen: the same 340 × 248 drawing at every size, so a part is never
+   drawn smaller because something else on the page grew. */
+#ui[data-layout='lesson'] .lesson-figure-svg {
+  display: block;
+  width: 100%;
+  height: 100%;
+  max-width: 600px;
+  max-height: 438px;
+  overflow: visible;
+  font-family: inherit;
+}
+
+#ui[data-layout='lesson'] .lf-glow {
+  fill: none;
+  stroke: var(--lesson-b);
+  stroke-width: 1.6;
+  filter: drop-shadow(0 0 3px rgba(255, 196, 107, 0.75));
+}
+
+#ui[data-layout='lesson'] .lf-name-disc {
+  fill: transparent;
+  stroke: var(--tone, var(--lesson-a));
+  stroke-width: 1.4;
+}
+
+#ui[data-layout='lesson'] .lf-strip[data-tone='start'] { --tone: var(--lesson-a); }
+#ui[data-layout='lesson'] .lf-strip[data-tone='after'] { --tone: var(--lesson-b); }
+#ui[data-layout='lesson'] .lf-strip[data-tone='other'] { --tone: var(--lesson-c); }
+#ui[data-layout='lesson'] .lf-strip[data-tone='changing'] { --tone: var(--ink-dim); }
+
+#ui[data-layout='lesson'] .lf-name-letter {
+  fill: var(--tone, var(--lesson-a));
+  font-size: 12px;
+  font-weight: var(--weight-bold);
+}
+
+#ui[data-layout='lesson'] .lf-name {
+  fill: var(--tone, var(--lesson-a));
+  font-size: 12px;
+  font-weight: var(--weight-semibold);
+}
+
+#ui[data-layout='lesson'] .lf-name-note {
+  font-size: 12px;
+  font-weight: var(--weight-regular);
+}
+
+#ui[data-layout='lesson'] .lf-label {
+  fill: var(--ink);
+  font-size: 12px;
+}
+
+#ui[data-layout='lesson'] .lf-term {
+  fill: var(--ink-dim);
+  font-size: 12px;
+}
+
+#ui[data-layout='lesson'] .lf-bed-label {
+  fill: var(--ink);
+}
+
+#ui[data-layout='lesson'] .lf-strip.is-narrowed .lf-bed-label {
+  fill: var(--lesson-b);
+}
+
+#ui[data-layout='lesson'] .lf-pipe {
+  fill: none;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+#ui[data-layout='lesson'] .lf-artery {
+  stroke: var(--lesson-blood);
+}
+
+#ui[data-layout='lesson'] .lf-vein {
+  stroke: var(--lesson-blood-dark);
+}
+
+#ui[data-layout='lesson'] .lf-chevron {
+  fill: none;
+  stroke: rgba(255, 255, 255, 0.8);
+  stroke-width: 1.4;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+/* The small vessels: a wall the action thickens inward, a lumen it narrows. */
+#ui[data-layout='lesson'] .lf-channel-wall {
+  fill: var(--lesson-wall);
+  opacity: 0.85;
+}
+
+#ui[data-layout='lesson'] .lf-channel-lumen {
+  fill: var(--lesson-blood);
+}
+
+#ui[data-layout='lesson'] .lf-dial-face {
+  fill: rgba(9, 14, 25, 0.92);
+  stroke: var(--lesson-a);
+  stroke-width: 1.3;
+}
+
+#ui[data-layout='lesson'] .lf-dial-tick,
+#ui[data-layout='lesson'] .lf-dial-stem {
+  stroke: var(--lesson-a);
+  stroke-width: 1.2;
+}
+
+#ui[data-layout='lesson'] .lf-dial-stem {
+  stroke-width: 2.4;
+}
+
+#ui[data-layout='lesson'] .lf-needle {
+  stroke: #ffffff;
+  stroke-width: 2.2;
+  stroke-linecap: round;
+}
+
+#ui[data-layout='lesson'] .lf-needle-before,
+#ui[data-layout='lesson'] .lf-tube-before {
+  stroke: var(--lesson-before);
+  stroke-width: 2;
+  stroke-linecap: round;
+  opacity: 0.9;
+}
+
+#ui[data-layout='lesson'] .lf-dial-hub {
+  fill: #ffffff;
+}
+
+#ui[data-layout='lesson'] .lf-heart {
+  fill: #c8414b;
+  stroke: #ff8a8f;
+  stroke-width: 1;
+}
+
+#ui[data-layout='lesson'] .lf-heart-label {
+  fill: #ffffff;
+  font-size: 12px;
+  font-weight: var(--weight-semibold);
+}
+
+#ui[data-layout='lesson'] .lf-tube {
+  fill: rgba(9, 14, 25, 0.92);
+  stroke: var(--lesson-a);
+  stroke-width: 1.2;
+}
+
+#ui[data-layout='lesson'] .lf-tube-fill {
+  fill: var(--lesson-blood);
+}
+
+#ui[data-layout='lesson'] .lf-tube-tick {
+  stroke: rgba(234, 242, 255, 0.55);
+  stroke-width: 1;
+}
+
+#ui[data-layout='lesson'] .lf-value {
+  fill: var(--ink);
+}
+
+#ui[data-layout='lesson'] .lf-value-number {
+  font-size: 14px;
+  font-weight: var(--weight-bold);
+}
+
+#ui[data-layout='lesson'] .lf-co-value .lf-value-number {
+  font-size: 12px;
+}
+
+#ui[data-layout='lesson'] .lf-value-unit {
+  font-size: 12px;
+  fill: var(--ink-dim);
+}
+
+#ui[data-layout='lesson'] .lf-co-value.is-inside .lf-value-unit {
+  fill: rgba(255, 255, 255, 0.85);
+}
+
+#ui[data-layout='lesson'] .lf-value-arrow {
+  font-size: 12px;
+  font-weight: var(--weight-bold);
+}
+
+#ui[data-layout='lesson'] .lf-before-label {
+  fill: var(--lesson-before);
+  font-size: 12px;
+}
+
+/* How to read the figure, in its lower half until C takes the place. */
+#ui[data-layout='lesson'] .lf-legend-title {
+  fill: var(--ink-dim);
+  font-size: 12px;
+  font-weight: var(--weight-semibold);
+}
+
+#ui[data-layout='lesson'] .lf-legend-main {
+  fill: var(--ink);
+  font-size: 12px;
+}
+
+#ui[data-layout='lesson'] .lf-legend-sub {
+  fill: var(--ink-dim);
+  font-size: 12px;
+}
+
+/* --- bottom ------------------------------------------------------------------ */
 
 #ui[data-layout='lesson'] .lesson-bottom {
   display: grid;
-  grid-template-columns: auto minmax(0, 620px);
-  grid-template-areas:
-    'readout actions'
-    'readout detail';
-  justify-content: center;
-  align-items: end;
-  gap: 8px 18px;
-  width: min(1320px, 100%);
+  gap: 6px;
+  width: min(760px, 100%);
   margin: 0 auto;
 }
 
-#ui[data-layout='lesson'] .lesson-readout {
-  grid-area: readout;
-  align-self: end;
-  min-width: 300px;
+/* What the experiment is: on screen from the first moment, in every mode,
+   between the figure and the buttons (owner's reviews, 2026-09-30, 2026-10-01). */
+#ui[data-layout='lesson'] .lesson-note {
+  margin: 0;
+  padding: 5px 10px;
+  border-left: 3px solid var(--lesson-b);
+  border-radius: 4px;
+  background: rgba(255, 196, 107, 0.08);
+  color: var(--ink);
+  font-size: 12.5px;
+  line-height: 1.4;
 }
 
-#ui[data-layout='lesson'] .lesson-entries,
-#ui[data-layout='lesson'] .lesson-manual,
-#ui[data-layout='lesson'] .lesson-explaining {
-  grid-area: actions;
+/* Several things in one place, one of them shown: the place is as tall as the
+   tallest, so the panel never changes height with what it says. */
+#ui[data-layout='lesson'] .lesson-stack {
+  display: grid;
+}
+
+#ui[data-layout='lesson'] .lesson-stack > * {
+  grid-area: 1 / 1;
+  min-width: 0;
+}
+
+#ui[data-layout='lesson'] .lesson-sizer,
+#ui[data-layout='lesson'] .is-away {
+  visibility: hidden;
+}
+
+#ui[data-layout='lesson'] .lesson-guide {
+  margin: 0;
+  padding: 0 4px;
+  font-size: 14px;
+  line-height: 1.45;
+  color: var(--ink);
+}
+
+#ui[data-layout='lesson'] .lesson-manual {
+  display: grid;
+  gap: 8px;
+  align-content: start;
+}
+
+#ui[data-layout='lesson'] .lesson-manual-buttons {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  gap: 8px;
+}
+
+#ui[data-layout='lesson'] .lesson-manual-buttons [data-lesson='constrict'] {
+  grid-column: 1 / -1;
+}
+
+/* "Compare" is not offered until B: its place is kept, empty. */
+#ui[data-layout='lesson'] .lesson-button.is-unoffered {
+  visibility: hidden;
+}
+
+/* The way to the full model. A build that says which build it is puts its
+   marker at the bottom left: this row is where it stands, beside the link and
+   clear of every button. */
+#ui[data-layout='lesson'] .lesson-detail-row {
+  display: flex;
+  justify-content: flex-end;
+  align-items: center;
+  min-height: 24px;
 }
 
 #ui[data-layout='lesson'] .lesson-detail {
-  grid-area: detail;
-  justify-self: end;
   font-size: 13px;
   color: var(--ink-dim);
   text-decoration: underline;
   text-underline-offset: 3px;
-  padding: 4px 2px;
+  padding: 2px;
 }
 
 #ui[data-layout='lesson'] .lesson-detail:hover,
@@ -197,162 +466,11 @@
   color: var(--ink);
 }
 
-/* The results: a column per result, a row per circulation */
-
-#ui[data-layout='lesson'] .lesson-readout {
-  background: var(--lesson-card);
-  border: 1px solid var(--border);
-  border-radius: var(--radius);
-  padding: 6px 12px 8px;
-}
-
-#ui[data-layout='lesson'] .lesson-table {
-  width: 100%;
-  border-collapse: collapse;
-  font-variant-numeric: tabular-nums;
-}
-
-/* What the vasoconstrictor action is and is not, under the figures it made. */
-#ui[data-layout='lesson'] .lesson-caveat {
-  margin: 4px 0 0;
-  padding-top: 4px;
-  border-top: 1px solid var(--border);
-  color: var(--ink-dim);
-  font-size: 12px;
-  line-height: 1.35;
-}
-
-#ui[data-layout='lesson'] .lesson-table thead th {
-  font-size: 12px;
-  font-weight: var(--weight-medium);
-  color: var(--ink-dim);
-  text-align: left;
-  padding: 0 6px 3px;
-  white-space: nowrap;
-}
-
-#ui[data-layout='lesson'] .lesson-table tbody th {
-  text-align: left;
-  font-weight: var(--weight-regular);
-  padding: 4px 6px 4px 0;
-  vertical-align: middle;
-}
-
-#ui[data-layout='lesson'] .lesson-table td {
-  padding: 4px 6px;
-  white-space: nowrap;
-  vertical-align: middle;
-}
-
-#ui[data-layout='lesson'] .lesson-row + .lesson-row th,
-#ui[data-layout='lesson'] .lesson-row + .lesson-row td {
-  border-top: 1px solid var(--border);
-}
-
-#ui[data-layout='lesson'] .lesson-row-name {
-  display: block;
-  margin-top: 2px;
-  font-size: 12px;
-  line-height: 1.3;
-  color: var(--ink-dim);
-  max-width: 17em;
-}
-
-#ui[data-layout='lesson'] .lesson-result-abbr {
-  margin-left: 4px;
-  font-size: 12px;
-  color: var(--ink-faint);
-}
-
-#ui[data-layout='lesson'] .lesson-result-number {
-  font-size: 24px;
-  font-weight: var(--weight-bold);
-  color: var(--ink);
-  line-height: 1.1;
-}
-
-#ui[data-layout='lesson'] .lesson-result-unit {
-  margin-left: 4px;
-  font-size: 12px;
-  color: var(--ink-dim);
-}
-
-#ui[data-layout='lesson'] .lesson-result-arrow {
-  margin-left: 4px;
-  font-size: 15px;
-  font-weight: var(--weight-bold);
-  color: var(--ink);
-}
-
-/* "Before" is a comparison, not a result: its own row, cream, smaller. */
-#ui[data-layout='lesson'] .lesson-row.is-before th,
-#ui[data-layout='lesson'] .lesson-row.is-before td {
-  padding-top: 2px;
-  padding-bottom: 2px;
-  border-top-style: dashed !important;
-}
-
-#ui[data-layout='lesson'] .lesson-row.is-before .lesson-result-number {
-  font-size: 15px;
-  font-weight: var(--weight-medium);
-  color: var(--lesson-before);
-}
-
-#ui[data-layout='lesson'] .lesson-before-label {
-  font-size: 12px;
-  color: var(--lesson-before);
-}
-
-#ui[data-layout='lesson'] .lesson-before-swatch {
-  display: inline-block;
-  width: 10px;
-  height: 10px;
-  margin-right: 6px;
-  border-radius: 2px;
-  background: var(--lesson-before);
-  opacity: 0.85;
-  vertical-align: -1px;
-}
-
-/* Chips: which circulation — on the card, and over the model */
-
-#ui[data-layout='lesson'] .lesson-chip,
-#ui[data-layout='lesson'] .lesson-unit-chip {
-  display: inline-flex;
-  align-items: baseline;
-  gap: 6px;
-  padding: 2px 9px 3px;
-  border-radius: 999px;
-  border: 1px solid var(--tone, var(--lesson-a));
-  color: var(--tone, var(--lesson-a));
-  background: rgba(6, 10, 18, 0.78);
-  font-size: 13px;
-  white-space: nowrap;
-}
-
-#ui[data-layout='lesson'] .is-start { --tone: var(--lesson-a); }
-#ui[data-layout='lesson'] .is-after { --tone: var(--lesson-b); }
-#ui[data-layout='lesson'] .is-other { --tone: var(--lesson-c); }
-#ui[data-layout='lesson'] .is-changing { --tone: var(--ink-dim); }
-
-#ui[data-layout='lesson'] .lesson-chip-letter {
-  font-size: 15px;
-  font-weight: var(--weight-bold);
-}
-
 /* Buttons */
-
-#ui[data-layout='lesson'] .lesson-entries,
-#ui[data-layout='lesson'] .lesson-manual {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
-  justify-content: flex-end;
-}
 
 #ui[data-layout='lesson'] .lesson-button {
   min-height: 44px;
-  padding: 8px 16px;
+  padding: 8px 14px;
   border-radius: 999px;
   border: 1px solid var(--accent-border);
   background: var(--control-bg);
@@ -372,16 +490,6 @@
   outline-offset: 2px;
 }
 
-#ui[data-layout='lesson'] .lesson-button.is-primary {
-  background: var(--accent);
-  border-color: var(--accent);
-  color: var(--accent-ink);
-}
-
-#ui[data-layout='lesson'] .lesson-button.is-primary:hover {
-  background: var(--accent-hover);
-}
-
 #ui[data-layout='lesson'] .lesson-button.is-quiet {
   border-color: var(--border);
   font-weight: var(--weight-medium);
@@ -390,10 +498,11 @@
 
 #ui[data-layout='lesson'] .lesson-button.is-toggle.is-intervention {
   border-color: var(--lesson-b);
+  background: rgba(255, 196, 107, 0.1);
 }
 
 #ui[data-layout='lesson'] .lesson-button.is-toggle.is-intervention[aria-pressed='true'] {
-  background: rgba(255, 196, 107, 0.18);
+  background: rgba(255, 196, 107, 0.2);
 }
 
 #ui[data-layout='lesson'] .lesson-button.is-toggle.is-other {
@@ -409,72 +518,58 @@
 #ui[data-layout='lesson'] .lesson-explaining {
   display: grid;
   gap: 8px;
+  align-content: start;
 }
 
 #ui[data-layout='lesson'] .lesson-caption {
   background: var(--lesson-card);
   border: 1px solid var(--border);
   border-radius: var(--radius);
-  padding: 9px 14px 10px;
+  padding: 7px 12px 8px;
 }
 
-#ui[data-layout='lesson'] .lesson-caption-head {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  font-size: 12px;
-  color: var(--ink-faint);
-}
-
-#ui[data-layout='lesson'] .lesson-dots {
-  display: flex;
-  gap: 5px;
-  list-style: none;
-  margin: 0;
-  padding: 0;
-}
-
-#ui[data-layout='lesson'] .lesson-dots li {
-  width: 18px;
-  height: 4px;
-  border-radius: 2px;
-  background: rgba(160, 180, 210, 0.28);
-}
-
-#ui[data-layout='lesson'] .lesson-dots li.is-done {
-  background: rgba(160, 180, 210, 0.6);
-}
-
-#ui[data-layout='lesson'] .lesson-dots li.is-current {
-  background: var(--accent);
+#ui[data-layout='lesson'] .lesson-step-count {
+  margin-right: auto;
+  padding: 0 4px;
+  font-size: 13px;
+  color: var(--ink-dim);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
 }
 
 #ui[data-layout='lesson'] .lesson-caption-heading {
-  margin: 4px 0 2px;
-  font-size: 17px;
+  margin: 0 0 2px;
+  font-size: 16px;
   line-height: 1.35;
 }
 
 #ui[data-layout='lesson'] .lesson-caption-text {
   margin: 0;
   font-size: 14px;
-  line-height: 1.55;
+  line-height: 1.5;
   color: var(--ink);
 }
 
 #ui[data-layout='lesson'] .lesson-caption-note {
-  margin: 5px 0 0;
+  margin: 3px 0 0;
   font-size: 12px;
-  line-height: 1.45;
+  line-height: 1.4;
   color: var(--ink-dim);
 }
 
 #ui[data-layout='lesson'] .lesson-player {
   display: flex;
-  flex-wrap: wrap;
   gap: 6px;
   justify-content: flex-end;
   align-items: center;
+}
+
+#ui[data-layout='lesson'] .lesson-player > .lesson-button {
+  white-space: nowrap;
+}
+
+#ui[data-layout='lesson'] .lesson-player > .lesson-button.is-secondary {
+  flex: 1 1 auto;
 }
 
 #ui[data-layout='lesson'] .lesson-button.is-icon {
@@ -482,6 +577,7 @@
   padding: 6px 12px;
   display: inline-flex;
   align-items: center;
+  justify-content: center;
   gap: 6px;
 }
 
@@ -490,77 +586,41 @@
   letter-spacing: -0.1em;
 }
 
+/* The player's names are its buttons' `aria-label` and `title`, not text in
+   the row: a name that changed with the state ("一時停止" / "再生") re-wrapped
+   the row and moved the panel under the reader's finger. */
 #ui[data-layout='lesson'] .lesson-icon-label {
-  font-size: 13px;
-  font-weight: var(--weight-medium);
-}
-
-/* --- tags on the model ------------------------------------------------------ */
-
-#ui[data-layout='lesson'] .lesson-tags {
-  position: fixed;
-  inset: 0;
-  pointer-events: none;
-  z-index: 4;
-  overflow: hidden;
-}
-
-#ui[data-layout='lesson'] .lesson-tag-item > * {
   position: absolute;
-  left: 0;
-  top: 0;
-}
-
-#ui[data-layout='lesson'] .lesson-tag {
-  padding: 3px 9px 4px;
-  border-radius: 6px;
-  background: rgba(6, 10, 18, 0.84);
-  border: 1px solid rgba(234, 242, 255, 0.35);
-  color: var(--ink);
-  font-size: 13px;
-  line-height: 1.3;
-  /* A tag breaks only where its words say so. */
-  white-space: pre-line;
-}
-
-#ui[data-layout='lesson'] .lesson-tag-line {
+  width: 1px;
   height: 1px;
-  background: rgba(234, 242, 255, 0.65);
-  transform-origin: 0 50%;
-}
-
-#ui[data-layout='lesson'] .lesson-tag-dot {
-  width: 8px;
-  height: 8px;
-  border-radius: 50%;
-  background: #ffffff;
-  box-shadow: 0 0 0 2px rgba(6, 10, 18, 0.6);
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
 }
 
 #ui[data-layout='lesson'] [hidden] {
   display: none !important;
 }
 
-/* A build that says which build it is keeps its marker clear of the buttons. */
-body.has-build-marker #ui[data-layout='lesson'] .lesson-bottom {
-  margin-bottom: 34px;
-}
-
-/* --- a wide window: the results and what to do stand in a column on the right,
-   and the model has the full height to the left of it. ------------------------ */
+/* --- a wide window: what to do stands in a column on the right, and the
+   figure has the full height to the left of it. ------------------------------ */
 
 @media (min-width: 1100px) and (min-aspect-ratio: 5/4) {
   #ui[data-layout='lesson'] {
     display: grid;
     grid-template-columns: minmax(0, 1fr) clamp(380px, 29vw, 440px);
     grid-template-rows: auto minmax(0, 1fr);
-    column-gap: 18px;
+    column-gap: 22px;
   }
 
   #ui[data-layout='lesson'] .lesson-top {
     grid-column: 1;
     grid-row: 1;
-    align-self: start;
+  }
+
+  #ui[data-layout='lesson'] .lesson-figure {
+    grid-column: 1;
+    grid-row: 2;
   }
 
   #ui[data-layout='lesson'] .lesson-bottom {
@@ -569,66 +629,18 @@ body.has-build-marker #ui[data-layout='lesson'] .lesson-bottom {
     align-self: end;
     width: auto;
     margin: 0;
-    display: flex;
-    flex-direction: column;
-    align-items: stretch;
-    gap: 10px;
-    max-height: 100%;
-    overflow: auto;
   }
 
-  #ui[data-layout='lesson'] .lesson-entries,
-  #ui[data-layout='lesson'] .lesson-manual,
-  #ui[data-layout='lesson'] .lesson-player {
-    justify-content: stretch;
-  }
-
-  #ui[data-layout='lesson'] .lesson-entries > .lesson-button,
-  #ui[data-layout='lesson'] .lesson-manual > .lesson-button {
-    flex: 1 1 100%;
-  }
-
-  #ui[data-layout='lesson'] .lesson-player > .lesson-button {
-    flex: 1 1 auto;
-  }
-
-  #ui[data-layout='lesson'] .lesson-detail {
-    align-self: flex-end;
-  }
 }
 
-/* --- narrower windows ------------------------------------------------------ */
-
-@media (max-width: 900px) {
-  #ui[data-layout='lesson'] .lesson-readout {
-    min-width: 0;
-  }
-
-  #ui[data-layout='lesson'] .lesson-bottom {
-    grid-template-columns: minmax(0, 1fr);
-    grid-template-areas:
-      'readout'
-      'actions'
-      'detail';
-    gap: 6px;
-  }
-
-  #ui[data-layout='lesson'] .lesson-entries,
-  #ui[data-layout='lesson'] .lesson-manual,
-  #ui[data-layout='lesson'] .lesson-player {
-    justify-content: stretch;
-  }
-
-  #ui[data-layout='lesson'] .lesson-entries > .lesson-button,
-  #ui[data-layout='lesson'] .lesson-manual > .lesson-button {
-    flex: 1 1 40%;
-  }
-}
-
-/* A phone: every row as short as it can be read, so the model keeps its band. */
+/* A phone: every row as short as it can be read, so the figure keeps its room. */
 @media (max-width: 430px) {
   #ui[data-layout='lesson'] {
     gap: 4px;
+  }
+
+  #ui[data-layout='lesson'] .lesson-top {
+    gap: 2px;
   }
 
   #ui[data-layout='lesson'] .lesson-top .title-card {
@@ -637,161 +649,54 @@ body.has-build-marker #ui[data-layout='lesson'] .lesson-bottom {
 
   #ui[data-layout='lesson'] .lesson-question {
     padding: 0 4px;
-    font-size: 18px;
-  }
-
-  #ui[data-layout='lesson'] .lesson-guide {
-    padding: 0 4px;
-    font-size: 13px;
-    line-height: 1.35;
-  }
-
-  #ui[data-layout='lesson'] .lesson-question {
     font-size: 16px;
     letter-spacing: 0;
   }
 
-  #ui[data-layout='lesson'] .lesson-readout {
-    padding: 3px 8px 4px;
+  #ui[data-layout='lesson'] .lesson-bottom {
+    gap: 5px;
   }
 
-  #ui[data-layout='lesson'] .lesson-row-name,
-  #ui[data-layout='lesson'] .lesson-result-abbr {
-    display: none;
-  }
-
-  #ui[data-layout='lesson'] .lesson-table thead th {
+  #ui[data-layout='lesson'] .lesson-note {
+    padding: 3px 8px;
     font-size: 12px;
-    padding-bottom: 1px;
+    line-height: 1.35;
   }
 
-  #ui[data-layout='lesson'] .lesson-table tbody th,
-  #ui[data-layout='lesson'] .lesson-table td {
-    padding-top: 2px;
-    padding-bottom: 2px;
+  #ui[data-layout='lesson'] .lesson-guide {
+    font-size: 13px;
+    line-height: 1.4;
   }
 
-  #ui[data-layout='lesson'] .lesson-result-number {
-    font-size: 19px;
-  }
-
-  #ui[data-layout='lesson'] .lesson-result-unit {
-    font-size: 12px;
-  }
-
-  #ui[data-layout='lesson'] .lesson-table .lesson-chip {
-    font-size: 12px;
-    padding: 0 6px 1px;
+  #ui[data-layout='lesson'] .lesson-manual,
+  #ui[data-layout='lesson'] .lesson-manual-buttons,
+  #ui[data-layout='lesson'] .lesson-explaining {
+    gap: 6px;
   }
 
   #ui[data-layout='lesson'] .lesson-button {
     font-size: 14px;
-    padding: 8px 10px;
+    padding: 7px 10px;
   }
 
   #ui[data-layout='lesson'] .lesson-caption {
-    padding: 7px 10px 8px;
+    padding: 6px 10px 7px;
   }
 
   #ui[data-layout='lesson'] .lesson-caption-heading {
-    font-size: 15px;
+    font-size: 14.5px;
   }
 
   #ui[data-layout='lesson'] .lesson-caption-text {
     font-size: 13px;
-    line-height: 1.5;
+    line-height: 1.45;
   }
 
   #ui[data-layout='lesson'] .lesson-caption-note {
-    font-size: 12px;
-  }
-
-  /* The player's words go; its glyphs and names stay for a screen reader. */
-  #ui[data-layout='lesson'] .lesson-icon-label {
-    position: absolute;
-    width: 1px;
-    height: 1px;
-    overflow: hidden;
-    clip: rect(0 0 0 0);
-    white-space: nowrap;
-  }
-
-  #ui[data-layout='lesson'] .lesson-player {
-    flex-wrap: nowrap;
-  }
-
-  #ui[data-layout='lesson'] .lesson-player > .lesson-button.is-secondary {
-    flex: 1 1 auto;
-  }
-
-  #ui[data-layout='lesson'] .lesson-bottom[data-mode='explaining'] .lesson-detail {
-    display: none;
-  }
-
-  #ui[data-layout='lesson'] .lesson-tag {
-    font-size: 12px;
-    padding: 2px 7px 3px;
-  }
-
-  #ui[data-layout='lesson'] .lesson-chip,
-  #ui[data-layout='lesson'] .lesson-unit-chip {
-    font-size: 12px;
-    padding: 1px 7px 2px;
-  }
-}
-
-/* A short phone, while the explanation plays: the breadcrumb line steps aside
-   so the two circulations keep a band. It is back the moment the explanation
-   is closed, with "根拠と限界" in it. */
-@media (max-width: 430px) and (max-height: 740px) {
-  #ui[data-layout='lesson'] .lesson-top[data-mode='explaining'] .title-card {
-    display: none;
-  }
-
-  /* The caveat under the results costs two lines here, and the model's band
-     is what pays (L-142's floor, 150 px). The step count moves onto the
-     heading's line and the dots go — "3 / 5" says the same — and the gaps
-     close a little; the caveat itself stays whole. */
-  #ui[data-layout='lesson'] .lesson-caption {
-    display: grid;
-    grid-template-columns: minmax(0, 1fr) auto;
-    column-gap: 8px;
-  }
-
-  #ui[data-layout='lesson'] .lesson-caption-head {
-    grid-column: 2;
-    grid-row: 1;
-    align-self: start;
-    margin-top: 5px;
-  }
-
-  #ui[data-layout='lesson'] .lesson-dots {
-    display: none;
-  }
-
-  #ui[data-layout='lesson'] .lesson-caption-heading {
-    grid-column: 1;
-    grid-row: 1;
     margin-top: 2px;
-  }
-
-  #ui[data-layout='lesson'] .lesson-caption-text,
-  #ui[data-layout='lesson'] .lesson-caption-note {
-    grid-column: 1 / -1;
-  }
-
-  #ui[data-layout='lesson'] .lesson-caveat {
-    margin-top: 2px;
-    padding-top: 3px;
-    line-height: 1.3;
-  }
-
-  #ui[data-layout='lesson'] .lesson-manual {
-    gap: 6px;
   }
 
   #ui[data-layout='lesson'] .lesson-detail {
-    padding-top: 2px;
-    padding-bottom: 2px;
+    font-size: 12px;
   }
 }

@@ -2,39 +2,48 @@
 
 「血圧が上がった。心臓から出る量も増えた？」 — what `#/cardiac-output` opens on
 (the full model is at `#/cardiac-output?view=detail`; its only change is a
-fourth intervention in its menu, the same vasoconstrictor action).
+fourth intervention in its menu, the same vessel-narrowing action).
+
+Since the owner's review of 2026-10-01 the lesson draws **a circuit diagram,
+not a 3D heart**: the heart on the left, the artery along the top with a dial
+on it (the average pressure), six small vessels on the right whose width shows
+how easily blood gets through them, the vein back along the bottom, and under
+it a tube that fills with what the heart sends out per minute. A legend under
+the strip says what each part means until C takes its place.
 
 Driven, not posed: every file here was written by
-`npm run verify:disease -- <dir> cardiac-output --lesson-only`
-(`scripts/lib/lesson-drive.mjs`) on 2026-09-30, after the owner's review (the
-caveat under the results while the vasoconstrictor action is on, and the change
-said as "in this model" rather than as a size), in a run that also asserted, at
-each of these moments and with the camera at rest, that the model keeps its
-band, that every word on it is inside that band, clear of the others, not over
-the point it names and not standing over the model itself (L-145, L-146), and
-that the state reached is the one the button or the scene says. Production
-build served locally, headless Chromium, software GL.
-**Not a real device** (F-238), **not a first-time reader** (F-239), **not
-medically reviewed** (F-240).
+`npm run verify:disease -- <dir> cardiac-output --lesson-only --record-lesson`
+(`scripts/lib/lesson-drive.mjs`) on 2026-10-01, in a run that also asserted, at
+each of these moments, that the figure and its parts are the size they were on
+the first screen, that each strip's numbers, arrows and on-screen tube length
+are the solver's, that C is never beside anything but B, that the note on what
+the experiment is stands on screen, and that no word in the figure overlaps
+another or is drawn under 12 px on a phone. Production build served locally,
+headless Chromium. **Not a real device** (F-238), **not a first-time reader**
+(F-239), **not medically reviewed** (F-240).
 
 Every figure on screen is the circulation model's own result for that
 condition; nothing here is drawn from a figure written by hand.
 
 | File | Window | Moment |
 | --- | --- | --- |
-| `1440-0-first.png` | 1440×900 | First screen: the question, the model with its four parts named, A's mean pressure and output, 「▶ 説明を再生」「自分で試す」, the way to the full model. No modal, no scroll |
-| `1440-2-constrict.png` | 1440×900 | Scene 2 of 5: the vasoconstrictor action added — all the small vessels of the body narrow together (not one narrowing). The needle and A's needle (cream) on the dial |
-| `1440-3-result.png` | 1440×900 | Scene 3: B. Pressure 71 → 88 mmHg; in this model the output went down, 3.7 → 3.1 L/min; the bright length (blood sent out this beat) inside A's cream sleeve, held at the same moment of the beat. Under the results: 「血管抵抗だけを 1.5 倍にした模式実験。実際の昇圧薬の全作用は再現しません。」 |
-| `1440-4-other.png` | 1440×900 | Scene 4: C beside B — a separate circulation, not B after treatment. Same moment of the beat, same view of both; about the same needle, clearly different bright length |
-| `1440-5-conclusion.png` | 1440×900 | Scene 5: the conclusion, and its limits in one line |
-| `1440-handover.png` | 1440×900 | The explanation left for the buttons half way through scene 2: the line under the question says what is on screen now and what it is compared with |
-| `390-0-first.png` | 390×844 | First screen on a phone. The vessels' name stands below them: the screen ends at their right |
-| `390-4-other.png` | 390×844 | Scene 4 on a phone: B and C side by side, which draws them larger than one above the other in this band |
-| `375-4-other.png` | 375×667 | The tightest window the owner named, scene 4 (F-241: the model's band is 151 px here, against a floor of 150) |
-| `375-BC.png` | 375×667 | The same pair reached with the buttons |
+| `1440-0-first.png` | 1440×900 | First screen: the question, A as a circuit with its parts named, the legend, the note on what the experiment is, 「血管を縮める作用を加える」 and 「▶ 説明を再生」. No modal, no scroll; "compare" is not offered yet |
+| `1440-2-constrict.png` | 1440×900 | Scene 2 of 5: the action added — all six small vessels narrow together, lit (not one narrowing, not fewer vessels) |
+| `1440-3-result.png` | 1440×900 | Scene 3: B. The needle up from the cream needle of the start (71 → 88 mmHg ↑); the tube shorter than the cream 「開始時」 mark (3.7 → 3.1 L ↓, "in this model"); 「実際の昇圧薬で必ずこうなるとは限りません。」 |
+| `1440-4-other.png` | 1440×900 | Scene 4: C under B — 「別の循環（B の治療後ではない）」, same scale, every part in the same column; about the same needle, a clearly longer tube |
+| `1440-5-conclusion.png` | 1440×900 | Scene 5: the conclusion — same minute, same heart rate, different output; the pressure alone cannot tell |
+| `1440-BC-no-words.png` | 1440×900 | B and C with **every word and number hidden**: the needles alike, the tubes not, B's vessels narrower |
+| `390-0-first.png` | 390×844 | First screen on a phone |
+| `390-BC.png` | 390×844 | B and C, reached with the buttons |
+| `375-0-first.png` | 375×667 | First screen on the smallest window the owner named: the figure at about one unit to one pixel, its smallest word 12 px |
+| `375-B.png` | 375×667 | B with the buttons; 「別の循環と比べる」 now offered |
+| `375-BC.png` | 375×667 | B and C with the buttons |
+| `375-BC-no-words.png` | 375×667 | The same with every word and number hidden |
+| `375-3-result-no-words.png` | 375×667 | Scene 3 with every word and number hidden: the vessels lit, the tube short of its cream start mark |
+| `375-handover.png` | 375×667 | The explanation left for the buttons half way through scene 2: the line under the figure says what is on screen now and what the cream marks are |
 
-The two recordings per window (the explanation played through; the buttons)
-are not committed — they are 5–12 MB each. Regenerate them with
-`npm run verify:disease -- <dir> cardiac-output --record-lesson`: frames are
-stepped at 1/30 s of the lesson's own clock, so they play at the speed a reader
-sees rather than at software GL's 3–5 frames a second (L-140).
+The two recordings per window (the explanation played through; the buttons —
+A, the action, C beside B, the action taken away so that C closes, and B again)
+are not committed. Regenerate them with the command above: frames are stepped
+at 1/30 s of the lesson's own clock, so they play at the speed a reader sees
+(L-140).

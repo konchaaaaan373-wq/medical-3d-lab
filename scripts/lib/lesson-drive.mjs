@@ -8,35 +8,46 @@
  * What a first-time reader meets, at the three windows the owner named
  * (1440×900, 390×844, 375×667):
  *
- * - the first screen shows the question, the model, both results and both
- *   ways in, without scrolling, and no modal stands over it;
- * - the explanation plays every scene in order on the same model, and its
- *   player pauses, steps back and forward, and starts again;
- * - the model keeps a band at every scene — a band that collapsed to a
- *   hundred pixels on a 375×667 phone while two circulations were side by
- *   side is what this was written after — and every tag on it stays inside
- *   that band and clear of the other tags;
- * - leaving the explanation for the buttons hands over the state and says
- *   what it is; the two buttons and "start over" do what they say, and "before"
- *   is shown only while B stands alone;
- * - the way to the full model is there and says where it goes.
+ * - the first screen shows the question, the figure, the note on what the
+ *   experiment is, and the two things to press — and "compare" is not one of
+ *   them yet — without scrolling, and no modal stands over it;
+ * - **the figure keeps one size**: the heart, the dial, the tube and the
+ *   vessels are measured at A and again at every scene of the explanation and
+ *   every state of the buttons, and so is the bottom panel. A figure that
+ *   shrank as a caption grew is what the owner's review of 2026-10-01 found;
+ *   B and C, one above the other, are measured to be drawn at one scale;
+ * - **C stands beside B and nothing else**: pressed at A and half way to B,
+ *   "compare" does nothing; taking the action away while C is shown closes C
+ *   at once and returns to A;
+ * - **what is drawn is what was solved**: each strip's numbers, arrows and
+ *   drawn lengths are compared with the solver's own results, run here in
+ *   Node — the tube's filled length is measured on screen in pixels and read
+ *   back as litres;
+ * - the note on what the experiment is stands on screen in the explanation
+ *   and under the buttons alike;
+ * - no word in the figure stands on another, or outside it, and the smallest
+ *   is drawn at the product's 12 px floor;
+ * - the explanation plays every scene in order, its player pauses, steps back
+ *   and forward and starts again, and leaving it for the buttons hands over
+ *   the state and says what it is.
+ *
+ * It also photographs the figure **with every word and number hidden**, for
+ * a person to answer the owner's question by eye: can the place that changed,
+ * and that B and C send out different amounts, be read without them?
  *
  * ## Recordings
  *
  * `record` writes two videos per window — the explanation played through, and
- * the reader's buttons — **frame by frame on a fixed clock**. Headless software
- * GL draws this scene at 3–5 frames a second on a desktop window, and the
- * viewer clamps a frame's time step to 0.1 s, so a live screen recording plays
- * the beat at under half speed and the explanation takes twice as long as it
- * does for a reader. Stepping the viewer at 1/30 s and encoding each frame
- * gives the timing a reader sees; what it cannot show is how smooth a real
- * device is, which is a different question.
+ * the reader's buttons — **frame by frame on a fixed clock** (L-140): each
+ * frame steps the viewer by 1/30 s, so the recording plays at the speed a
+ * reader sees, whatever the machine that made it.
  */
 import { spawn } from 'node:child_process';
 import { existsSync, readdirSync, rmSync } from 'node:fs';
 import { join } from 'node:path';
 
-import { waitForCameraToSettle } from './camera.mjs';
+import { solveLessonConditions } from '../../src/models/cardiacOutputLesson.js';
+import { TEXT_FLOOR, TUBE, needleAngle, tubeLength } from '../../src/scenes/cardiovascular/scenes/cardiacOutput/lessonFigureGeometry.js';
 
 export const LESSON_WINDOWS = Object.freeze([
   Object.freeze({ width: 1440, height: 900 }),
@@ -44,8 +55,15 @@ export const LESSON_WINDOWS = Object.freeze([
   Object.freeze({ width: 375, height: 667 }),
 ]);
 
-/** The smallest band, in px, the model may be left in on each kind of window. */
-const MIN_BAND = { phone: 150, desktop: 360 };
+/**
+ * The product's smallest text, in px (`tests/type-floor.test.js`). The figure
+ * is drawn about one unit to one pixel on a phone, so its floor in units is
+ * the same number, and one constant holds both.
+ */
+const TEXT_FLOOR_PX = TEXT_FLOOR;
+
+/** How far a size may drift and still be "the same size", in px: sub-pixel layout. */
+const SAME_SIZE_PX = 0.6;
 
 const ready = (page) =>
   page.waitForFunction(() => window.__app?.lesson && !document.getElementById('boot-veil'), null, { timeout: 60000 });
@@ -53,64 +71,99 @@ const ready = (page) =>
 /** The lesson's own view of itself, and what is on the page. */
 const read = (page) =>
   page.evaluate(() => {
-    const rect = (selector) => {
-      const node = document.querySelector(selector);
-      if (!node || node.hidden || node.closest('[hidden]')) return null;
+    const rect = (node) => {
+      if (!node) return null;
       const box = node.getBoundingClientRect();
-      return box.width && box.height ? { top: box.top, bottom: box.bottom, left: box.left, right: box.right, height: box.height } : null;
+      return { top: box.top, bottom: box.bottom, left: box.left, right: box.right, width: box.width, height: box.height };
     };
-    const tags = [...document.querySelectorAll('.lesson-tags .lesson-tag-item:not([hidden])')].map((item) => {
-      const box = item.querySelector(':scope > .lesson-tag, :scope > .lesson-unit-chip').getBoundingClientRect();
-      // The points it names, as drawn: the dot at the end of each line.
-      const dots = [...item.querySelectorAll(':scope > .lesson-tag-dot:not([hidden])')].map((dot) => {
-        const r = dot.getBoundingClientRect();
-        return { x: r.left + r.width / 2, y: r.top + r.height / 2 };
+    const shown = (selector) => {
+      const node = document.querySelector(selector);
+      if (!node || node.closest('[hidden], .is-away, [inert]')) return null;
+      const style = getComputedStyle(node);
+      if (style.visibility === 'hidden' || style.display === 'none') return null;
+      const box = rect(node);
+      return box.width && box.height ? box : null;
+    };
+    const svg = document.querySelector('.lesson-figure-svg');
+    const figure = rect(svg);
+    const strip = (slot) => {
+      const group = svg.querySelector(`.lf-strip[data-slot="${slot}"]`);
+      if (!group || getComputedStyle(group).display === 'none') return null;
+      const part = (selector) => rect(group.querySelector(selector));
+      return {
+        id: group.dataset.id,
+        map: group.dataset.map,
+        co: group.dataset.co,
+        lumen: Number(group.dataset.lumen),
+        needleAngle: Number(group.dataset.needleAngle),
+        tube: Number(group.dataset.tube),
+        beforeTube: group.dataset.beforeTube ? Number(group.dataset.beforeTube) : null,
+        mapArrow: group.querySelector('.lf-map-value .lf-value-arrow')?.textContent ?? '',
+        coArrow: group.querySelector('.lf-co-value .lf-value-arrow')?.textContent ?? '',
+        // The heart's outline beats; its name does not, and stands at its middle.
+        heart: part('.lf-heart-label'),
+        dial: part('.lf-dial-face'),
+        tubeBox: part('.lf-tube'),
+        fill: part('.lf-tube-fill'),
+        bed: part('.lf-bed'),
+        disc: part('.lf-name-disc'),
+      };
+    };
+    // Every word drawn in the figure, as boxes on screen — and whether the
+    // strip it belongs to is one the figure shows. An SVG child set `visible`
+    // is drawn through a hidden parent (L-153), so "drawn" is asked of the
+    // word itself and "shown" of its strip, separately.
+    const words = [...svg.querySelectorAll('text')]
+      .filter((node) => {
+        const style = getComputedStyle(node);
+        return style.display !== 'none' && style.visibility !== 'hidden' && node.textContent.trim() && !node.closest('[display="none"]');
+      })
+      .map((node) => {
+        const group = node.closest('.lf-strip');
+        const groupStyle = group ? getComputedStyle(group) : null;
+        return {
+          text: node.textContent.trim(),
+          box: rect(node),
+          size: Number.parseFloat(getComputedStyle(node).fontSize),
+          strip: group?.dataset.slot ?? null,
+          stripShown: !group || (groupStyle.display !== 'none' && groupStyle.visibility !== 'hidden'),
+        };
       });
-      return { key: item.dataset.tag, top: box.top, bottom: box.bottom, left: box.left, right: box.right, dots };
-    });
-    const text = (selector) => document.querySelector(selector)?.innerText?.trim() ?? '';
+    const scale = figure.width / svg.viewBox.baseVal.width;
+    const text = (selector) => {
+      const node = document.querySelector(selector);
+      return node && !node.closest('.is-away, [inert]') ? node.innerText?.trim() ?? '' : '';
+    };
     return {
       state: window.__app.lesson.state(),
-      band: window.__app.lesson.band(),
-      question: rect('.lesson-question'),
-      readout: rect('.lesson-readout'),
-      play: rect('[data-lesson="play"]'),
-      tryIt: rect('[data-lesson="try"]'),
-      caption: text('.lesson-caption-heading'),
-      // What the vasoconstrictor action is and is not, under the results.
-      caveat: text('.lesson-readout .lesson-caveat'),
-      guide: text('.lesson-guide'),
-      rows: [...document.querySelectorAll('.lesson-row')].map((row) => row.dataset.card),
+      figure,
+      scale: Math.min(scale, figure.height / svg.viewBox.baseVal.height),
+      strips: Number(svg.dataset.strips),
+      legend: getComputedStyle(svg.querySelector('.lf-legend')).display !== 'none',
+      primary: strip('primary'),
+      other: strip('other'),
+      words,
+      bottom: rect(document.querySelector('.lesson-bottom')),
+      question: shown('.lesson-question'),
+      note: shown('.lesson-note'),
+      noteText: text('.lesson-note'),
+      constrict: shown('[data-lesson="constrict"]'),
+      compare: shown('[data-lesson="other"]'),
+      compareDisabled: document.querySelector('[data-lesson="other"]')?.disabled ?? null,
+      play: shown('.lesson-manual [data-lesson="play"]'),
+      caption: text('.lesson-caption-live .lesson-caption-heading'),
+      guide: text('.lesson-guide-stack > .lesson-guide:not(.lesson-sizer)'),
       modal: Boolean(document.querySelector('.scene-intro:not([hidden])')),
       detail: document.querySelector('[data-lesson="detail"]')?.getAttribute('href') ?? null,
       scrolls: document.documentElement.scrollHeight > innerHeight + 1,
-      tags,
       width: innerWidth,
       height: innerHeight,
     };
   });
 
 /**
- * Wait for the lesson to arrive somewhere — a state, never a time (L-123,
- * L-143). The walk from A to B is 1.4 s of the lesson's own clock, and on
- * software GL at three frames a second that is several seconds of wall time.
- */
-const arrive = (page, { primaryId, showOther }) =>
-  page
-    .waitForFunction(
-      ({ primaryId, showOther }) => {
-        const state = window.__app.lesson.state();
-        return state.primaryId === primaryId && (showOther == null || state.showOther === showOther);
-      },
-      { primaryId, showOther },
-      { timeout: 20000 }
-    )
-    .then(() => true)
-    .catch(() => false);
-
-/**
- * Wait for what the lesson says to be true — never for a time. Resolves true
- * or false; the checks that follow say what was wrong.
+ * Wait for what the lesson says to be true — never for a time (L-123,
+ * L-143). Resolves true or false; the checks that follow say what was wrong.
  */
 const until = (page, predicate, arg) =>
   page
@@ -119,94 +172,134 @@ const until = (page, predicate, arg) =>
     .catch(() => false);
 
 /**
- * The camera at rest before anything is measured: showing or hiding C refits
- * and tweens it, and a band, a tag or a pixel read mid-tween is a reading of
- * nothing (CLAUDE.md, the 124 px vs 0 px example). A camera that never
- * settles is reported, not waited through.
+ * Wait for the lesson to arrive somewhere **and for the figure to have drawn
+ * it**. The press that brings C in sets the session at once, before the next
+ * frame has drawn anything or started C's tube filling — so "C shown, tube
+ * full" was true for one moment with the figure still showing B alone, and a
+ * check that waited for the session alone read that moment.
  */
-async function settled(page, where, problems) {
-  const ok = await waitForCameraToSettle(page)
-    .then(() => true)
-    .catch(() => false);
-  if (!ok) problems.push(`${where}: the camera never came to rest, so nothing here was measured at rest`);
-}
+const arrive = (page, { primaryId, showOther }) =>
+  until(
+    page,
+    ({ primaryId, showOther }) => {
+      const state = window.__app.lesson.state();
+      const svg = document.querySelector('.lesson-figure-svg');
+      const drawn = Number(svg?.dataset.strips);
+      return (
+        svg?.dataset.calm === 'true' &&
+        state.primaryId === primaryId &&
+        (showOther == null || state.showOther === showOther) &&
+        drawn === (state.showOther ? 2 : 1) &&
+        state.refill === 1
+      );
+    },
+    { primaryId, showOther }
+  );
 
 const inside = (box, width, height) => box && box.top >= 0 && box.left >= 0 && box.bottom <= height + 1 && box.right <= width + 1;
+const same = (a, b) => a && b && Math.abs(a.width - b.width) <= SAME_SIZE_PX && Math.abs(a.height - b.height) <= SAME_SIZE_PX;
 
-function checkBand(seen, where, problems) {
-  const phone = seen.width <= 430;
-  const height = seen.band.bottom - seen.band.top;
-  const floor = phone ? MIN_BAND.phone : MIN_BAND.desktop;
-  if (height < floor) problems.push(`${where}: the model is left a ${Math.round(height)} px band (at least ${floor} px expected)`);
-  seen.tags.forEach((tag, i) => {
-    if (tag.top < seen.band.top - 2 || tag.bottom > seen.band.bottom + 2 || tag.left < -1 || tag.right > seen.width + 1) {
-      problems.push(`${where}: a tag on the model stands outside the band the panels leave`);
+/** The sizes that must never change: of the figure, its fixed parts, and the panel under it. */
+function sizesOf(seen) {
+  return {
+    figure: seen.figure,
+    bottom: seen.bottom,
+    heart: seen.primary?.heart,
+    name: seen.primary?.disc,
+    dial: seen.primary?.dial,
+    tube: seen.primary?.tubeBox,
+    bed: seen.primary?.bed,
+  };
+}
+
+function checkSizes(seen, reference, where, problems) {
+  const now = sizesOf(seen);
+  for (const [name, box] of Object.entries(now)) {
+    if (!same(box, reference[name])) {
+      problems.push(
+        `${where}: the ${name} is drawn ${box ? `${Math.round(box.width)}×${Math.round(box.height)}` : 'nowhere'}, ` +
+          `not the ${Math.round(reference[name].width)}×${Math.round(reference[name].height)} it is at the start`
+      );
     }
-    // A tag pushed back into the band can land on the very point it names —
-    // at 1440×900 「一斉に細くなる＝血管抵抗↑」 did, and on the edge of the
-    // vessels with it, with every other check here green.
-    if (tag.dots.some((dot) => dot.x > tag.left + 1 && dot.x < tag.right - 1 && dot.y > tag.top + 1 && dot.y < tag.bottom - 1)) {
-      problems.push(`${where}: the tag "${tag.key}" covers the point it names`);
+  }
+  // The main circulation never moves either.
+  if (seen.primary && reference.name && Math.abs(seen.primary.disc.top - reference.nameTop) > SAME_SIZE_PX) {
+    problems.push(`${where}: the main circulation moved (${Math.round(reference.nameTop)} → ${Math.round(seen.primary.disc.top)} px)`);
+  }
+}
+
+/** The words in the figure: inside it, clear of one another, at the floor or above. */
+function checkWords(seen, where, problems) {
+  const { figure, words, scale } = seen;
+  const smallest = Math.min(...words.map((word) => word.size)) * scale;
+  if (seen.width <= 430 && smallest < TEXT_FLOOR_PX - 0.25) {
+    problems.push(`${where}: the smallest word in the figure is drawn at ${smallest.toFixed(1)} px (floor ${TEXT_FLOOR_PX})`);
+  }
+  words.forEach((word, i) => {
+    if (!word.stripShown) problems.push(`${where}: "${word.text}" is drawn although its circulation (${word.strip}) is not shown`);
+    const box = word.box;
+    if (box.left < figure.left - 1 || box.right > figure.right + 1 || box.top < figure.top - 1 || box.bottom > figure.bottom + 1) {
+      problems.push(`${where}: "${word.text}" stands outside the figure`);
     }
-    for (const other of seen.tags.slice(i + 1)) {
-      const overlap = Math.min(tag.right, other.right) - Math.max(tag.left, other.left) > 2 && Math.min(tag.bottom, other.bottom) - Math.max(tag.top, other.top) > 2;
-      if (overlap) problems.push(`${where}: two tags on the model overlap`);
+    for (const other of words.slice(i + 1)) {
+      const w = Math.min(box.right, other.box.right) - Math.max(box.left, other.box.left);
+      const h = Math.min(box.bottom, other.box.bottom) - Math.max(box.top, other.box.top);
+      if (w > 1.5 && h > 1.5) problems.push(`${where}: "${word.text}" and "${other.text}" overlap`);
     }
   });
 }
 
 /**
- * How much of each word on the model stands over the model itself. The tags
- * are hidden, the page is photographed, and every pixel under each tag's box
- * is sorted into model or background: the circulations are drawn in warm or
- * bright colours on a blue-black ground, so "red clearly above blue, or bright"
- * is the model. The glow round a highlighted part counts as model, which errs
- * towards reporting. Decoded in the page, as `lib/frames.mjs` does.
- *
- * A tag may reach over the model a little — its line has to start somewhere —
- * but one that stands on what it is about hides it (L-146).
+ * What is drawn against what was solved: the numbers, the arrows, and the
+ * lengths as the screen has them.
  */
-const MODEL_UNDER_TAG = 0.2;
-async function checkCover(page, seen, where, problems) {
-  const boxes = seen.tags.map(({ key, left, top, right, bottom }) => ({ key, left, top, right, bottom }));
-  if (!boxes.length) return;
-  await page.evaluate(() => document.querySelector('.lesson-tags')?.style.setProperty('visibility', 'hidden'));
-  const shot = await page.screenshot({ type: 'png' });
-  await page.evaluate(() => document.querySelector('.lesson-tags')?.style.removeProperty('visibility'));
-  const shares = await page.evaluate(
-    async ({ url, boxes }) => {
-      const image = await new Promise((done, fail) => {
-        const img = new Image();
-        img.onload = () => done(img);
-        img.onerror = fail;
-        img.src = url;
-      });
-      const canvas = document.createElement('canvas');
-      canvas.width = image.width;
-      canvas.height = image.height;
-      const context = canvas.getContext('2d', { willReadFrequently: true });
-      context.drawImage(image, 0, 0);
-      const scale = image.width / innerWidth;
-      return boxes.map(({ key, left, top, right, bottom }) => {
-        const x = Math.max(0, Math.round(left * scale));
-        const y = Math.max(0, Math.round(top * scale));
-        const w = Math.min(image.width, Math.round(right * scale)) - x;
-        const h = Math.min(image.height, Math.round(bottom * scale)) - y;
-        if (w <= 0 || h <= 0) return { key, share: 0 };
-        const data = context.getImageData(x, y, w, h).data;
-        let model = 0;
-        for (let i = 0; i < data.length; i += 4) {
-          const [r, g, b] = [data[i], data[i + 1], data[i + 2]];
-          if ((r > 60 && r > b + 12) || r + g + b > 330) model += 1;
-        }
-        return { key, share: model / (w * h) };
-      });
-    },
-    { url: `data:image/png;base64,${shot.toString('base64')}`, boxes }
-  );
-  for (const { key, share } of shares) {
-    if (share > MODEL_UNDER_TAG) problems.push(`${where}: the tag "${key}" stands over the model (${Math.round(share * 100)}% of it)`);
+function checkAgainstSolver(strip, id, solved, where, problems, { before = null } = {}) {
+  if (!strip) {
+    problems.push(`${where}: no strip for ${id}`);
+    return;
   }
+  const m = solved[id].metrics;
+  if (strip.id !== id) problems.push(`${where}: the strip shows "${strip.id}", expected ${id}`);
+  if (strip.map !== String(Math.round(m.meanArterialPressureMmHg))) problems.push(`${where}: ${id}'s pressure reads ${strip.map}, solved ${m.meanArterialPressureMmHg.toFixed(1)}`);
+  if (strip.co !== m.cardiacOutputLMin.toFixed(1)) problems.push(`${where}: ${id}'s output reads ${strip.co}, solved ${m.cardiacOutputLMin.toFixed(2)}`);
+  if (Math.abs(strip.tube - tubeLength(m.cardiacOutputLMin)) > 0.02) problems.push(`${where}: ${id}'s tube is drawn ${strip.tube} units, not its solved output's length`);
+  if (Math.abs(strip.needleAngle - needleAngle(m.meanArterialPressureMmHg)) > 0.01) problems.push(`${where}: ${id}'s needle is not at its solved pressure`);
+  // Read back off the screen: the filled length over the tube's, in litres.
+  const shownLitres = (strip.fill.width / strip.tubeBox.width) * TUBE.maxLitres;
+  if (Math.abs(shownLitres - m.cardiacOutputLMin) > 0.06) {
+    problems.push(`${where}: ${id}'s tube is filled to ${shownLitres.toFixed(2)} L on screen, solved ${m.cardiacOutputLMin.toFixed(2)} L`);
+  }
+  if (before) {
+    const a = solved[before].metrics;
+    const mapArrow = m.meanArterialPressureMmHg > a.meanArterialPressureMmHg ? '↑' : '↓';
+    const coDirection = Math.round(m.cardiacOutputLMin * 10) - Math.round(a.cardiacOutputLMin * 10);
+    const coArrow = coDirection > 0 ? '↑' : coDirection < 0 ? '↓' : '→';
+    if (strip.mapArrow !== mapArrow) problems.push(`${where}: the pressure's arrow says "${strip.mapArrow}", the solver went ${mapArrow}`);
+    if (strip.coArrow !== coArrow) problems.push(`${where}: the output's arrow says "${strip.coArrow}", the solver went ${coArrow}`);
+    if (strip.beforeTube == null || Math.abs(strip.beforeTube - tubeLength(a.cardiacOutputLMin)) > 0.02) {
+      problems.push(`${where}: the start (A) mark on the tube is missing or not at A's solved output`);
+    }
+  } else if (strip.mapArrow || strip.coArrow || strip.beforeTube != null) {
+    problems.push(`${where}: ${id} carries a comparison with the start that is not on screen`);
+  }
+}
+
+/** The note on what the experiment is: on screen, and saying it. */
+function checkNote(seen, where, problems) {
+  if (!seen.note) problems.push(`${where}: the note on what the experiment is is not on screen`);
+  else if (!/模式実験/.test(seen.noteText) || !/全作用は再現しません/.test(seen.noteText)) {
+    problems.push(`${where}: the note does not say it is a schematic experiment that is not the whole drug ("${seen.noteText}")`);
+  }
+}
+
+/** The figure with every word and number hidden, for a person to read by eye. */
+async function photographWithoutWords(page, path) {
+  const style = await page.addStyleTag({
+    content: `.lesson-figure-svg text, .lesson-figure-svg .lf-legend { visibility: hidden !important; }
+              .lesson-bottom, .lesson-top { visibility: hidden !important; }`,
+  });
+  await page.screenshot({ path });
+  await style.evaluate((node) => node.remove());
 }
 
 /**
@@ -216,10 +309,10 @@ async function checkCover(page, seen, where, problems) {
  */
 export async function driveLesson(browser, { url, slug, outDir, record = false, windows = LESSON_WINDOWS }) {
   const problems = [];
+  const solved = solveLessonConditions();
   if (record) {
-    // Ask the encoder first, with one real frame: the drive and the recordings
-    // take half an hour, and an encoder that cannot read the frames used to
-    // say so only at the end of it (L-144).
+    // Ask the encoder first, with one real frame: an encoder that cannot read
+    // the frames used to say so only at the end of a long run (L-144).
     const refused = await probeEncoder(browser, outDir);
     if (refused) {
       problems.push(`recording: the encoder refused a frame before anything was recorded: ${refused}`);
@@ -234,27 +327,83 @@ export async function driveLesson(browser, { url, slug, outDir, record = false, 
     await page.goto(url, { waitUntil: 'networkidle' });
     await ready(page);
     const where = (moment) => `${width}×${height} ${moment}`;
-    await settled(page, where('first screen'), problems);
 
-    // --- the first screen -----------------------------------------------------
+    // --- the first screen: the buttons, at A ------------------------------------
     let seen = await read(page);
     await page.screenshot({ path: join(outDir, `${tag}-0-first.png`) });
     if (seen.modal) problems.push(where('first screen: a modal stands over the lesson'));
     if (seen.scrolls) problems.push(where('first screen: the page scrolls'));
-    for (const [name, box] of Object.entries({ question: seen.question, results: seen.readout, play: seen.play, 'try it': seen.tryIt })) {
-      if (!inside(box, width, height)) problems.push(where(`first screen: ${name} is not on screen without scrolling`));
+    if (seen.state.mode !== 'manual') problems.push(where(`first screen: opens in "${seen.state.mode}", not at the buttons`));
+    for (const [name, box] of Object.entries({ question: seen.question, figure: seen.figure, note: seen.note, constrict: seen.constrict, play: seen.play })) {
+      if (!inside(box, width, height)) problems.push(where(`first screen: the ${name} is not on screen without scrolling`));
     }
-    for (const [name, box] of Object.entries({ play: seen.play, 'try it': seen.tryIt })) {
+    for (const [name, box] of Object.entries({ constrict: seen.constrict, play: seen.play })) {
       if (box && box.height < 44) problems.push(where(`first screen: "${name}" is ${Math.round(box.height)} px tall, under 44`));
     }
+    if (seen.compare || !seen.compareDisabled) problems.push(where('first screen: "compare with a different circulation" is offered before B'));
     if (!/view=detail/.test(seen.detail ?? '')) problems.push(where('first screen: no way to the full model'));
-    if (seen.caveat) problems.push(where('first screen: the caveat about the vasoconstrictor action is shown before it is applied'));
     if (seen.state.problems.length) problems.push(where(`the lesson's claims do not hold: ${seen.state.problems.join('; ')}`));
-    checkBand(seen, where('first screen'), problems);
-    await checkCover(page, seen, where('first screen'), problems);
+    if (seen.strips !== 1 || !seen.legend) problems.push(where('first screen: not one circulation with the legend under it'));
+    checkNote(seen, where('first screen'), problems);
+    checkWords(seen, where('first screen'), problems);
+    checkAgainstSolver(seen.primary, 'A', solved, where('first screen'), problems);
+    const reference = { ...sizesOf(seen), nameTop: seen.primary.disc.top, lumen: seen.primary.lumen };
+
+    // --- C is refused anywhere but at B ------------------------------------------
+    await page.evaluate(() => document.querySelector('[data-lesson="other"]').click());
+    seen = await read(page);
+    if (seen.state.showOther) problems.push(where('buttons: "compare" put C beside A'));
+
+    // --- the reader's buttons -----------------------------------------------------
+    await page.click('[data-lesson="constrict"]');
+    await until(page, () => window.__app.lesson.state().walking);
+    await page.evaluate(() => document.querySelector('[data-lesson="other"]').click());
+    seen = await read(page);
+    if (seen.state.showOther) problems.push(where('buttons: "compare" put C beside a circulation half way to B'));
+    checkSizes(seen, reference, where('buttons, while the vessels narrow'), problems);
+    await arrive(page, { primaryId: 'B', showOther: false });
+    seen = await read(page);
+    if (seen.state.primaryId !== 'B') problems.push(where('buttons: the action did not arrive at B'));
+    if (!seen.compare) problems.push(where('buttons: at B, "compare with a different circulation" is not offered'));
+    checkNote(seen, where('buttons, B'), problems);
+    checkSizes(seen, reference, where('buttons, B'), problems);
+    checkWords(seen, where('buttons, B'), problems);
+    checkAgainstSolver(seen.primary, 'B', solved, where('buttons, B'), problems, { before: 'A' });
+    if (seen.primary.lumen >= reference.lumen) problems.push(where('buttons, B: the vessels are not drawn narrower than at A'));
+    await page.screenshot({ path: join(outDir, `${tag}-3-B.png`) });
+
+    await page.click('[data-lesson="other"]');
+    await arrive(page, { primaryId: 'B', showOther: true });
+    seen = await read(page);
+    if (!seen.state.showOther || seen.strips !== 2) problems.push(where('buttons: C did not come in beside B'));
+    if (seen.legend) problems.push(where('buttons: the legend still stands where C should be'));
+    checkNote(seen, where('buttons, B and C'), problems);
+    checkSizes(seen, reference, where('buttons, B and C'), problems);
+    checkWords(seen, where('buttons, B and C'), problems);
+    checkAgainstSolver(seen.primary, 'B', solved, where('buttons, B and C'), problems);
+    checkAgainstSolver(seen.other, 'C', solved, where('buttons, B and C'), problems);
+    // One scale for both: the same parts at the same size.
+    for (const part of ['heart', 'dial', 'tubeBox', 'bed', 'disc']) {
+      if (!same(seen.primary?.[part], seen.other?.[part])) problems.push(where(`buttons, B and C: B's ${part} and C's are not drawn to one scale`));
+    }
+    if (seen.other && seen.primary && seen.other.fill.width - seen.primary.fill.width < 25) {
+      problems.push(where(`buttons, B and C: C's tube is only ${Math.round(seen.other.fill.width - seen.primary.fill.width)} px longer than B's`));
+    }
+    await page.screenshot({ path: join(outDir, `${tag}-4-BC.png`) });
+    await photographWithoutWords(page, join(outDir, `${tag}-4-BC-no-words.png`));
+
+    // Taking the action away with C shown: C goes at once, and the walk ends at A.
+    await page.click('[data-lesson="constrict"]');
+    seen = await read(page);
+    if (seen.state.showOther) problems.push(where('buttons: taking the action away left C on screen'));
+    await arrive(page, { primaryId: 'A', showOther: false });
+    seen = await read(page);
+    if (seen.state.primaryId !== 'A' || seen.state.showOther) problems.push(where('buttons: taking the action away did not return to A alone'));
+    if (seen.compare) problems.push(where('buttons: back at A, "compare" is offered again'));
+    checkSizes(seen, reference, where('buttons, back at A'), problems);
 
     // --- the explanation, scene by scene ---------------------------------------
-    await page.click('[data-lesson="play"]');
+    await page.click('.lesson-manual [data-lesson="play"]');
     await until(page, () => window.__app.lesson.state().mode === 'explaining');
     seen = await read(page);
     if (seen.state.mode !== 'explaining' || !seen.state.playing) problems.push(where('play: the explanation did not start'));
@@ -271,53 +420,61 @@ export async function driveLesson(browser, { url, slug, outDir, record = false, 
         page,
         ({ id, primaryId, showOther }) => {
           const state = window.__app.lesson.state();
-          return state.step === id && state.primaryId === primaryId && state.showOther === showOther;
+          const svg = document.querySelector('.lesson-figure-svg');
+          const drawn = Number(svg?.dataset.strips);
+          return svg?.dataset.calm === 'true' && state.step === id && state.primaryId === primaryId && state.showOther === showOther && drawn === (showOther ? 2 : 1) && state.refill === 1;
         },
         { id: step.id, primaryId: step.id === 'start' ? 'A' : 'B', showOther: pair }
       );
-      await settled(page, where(`scene ${index + 1}`), problems);
+      const moment = where(`scene ${index + 1}`);
       seen = await read(page);
-      if (seen.state.step !== step.id) problems.push(where(`scene ${index + 1}: showed "${seen.state.step}", expected "${step.id}"`));
-      if (!seen.caption) problems.push(where(`scene ${index + 1}: no words under the model`));
-      if (seen.state.showOther !== pair) problems.push(where(`scene ${index + 1}: C ${pair ? 'missing' : 'shown too early'}`));
-      if (pair && !seen.rows.includes('C')) problems.push(where(`scene ${index + 1}: C has no row in the results`));
-      if (step.id === 'result' && !seen.rows.includes('before')) problems.push(where('scene 3: B is not read against "before (A)"'));
-      if (pair && seen.rows.includes('before')) problems.push(where(`scene ${index + 1}: "before (A)" is shown beside C`));
-      // Beside every result the action made, in the explanation too (owner's review, 2026-09-30).
-      const applied = step.id !== 'start';
-      if (applied && !/模式実験/.test(seen.caveat)) problems.push(where(`scene ${index + 1}: B is on screen and nothing under the results says it is a schematic experiment`));
-      if (!applied && seen.caveat) problems.push(where(`scene ${index + 1}: the caveat is shown for A`));
-      checkBand(seen, where(`scene ${index + 1}`), problems);
-      await checkCover(page, seen, where(`scene ${index + 1}`), problems);
+      if (seen.state.step !== step.id) problems.push(`${moment}: showed "${seen.state.step}", expected "${step.id}"`);
+      if (!seen.caption) problems.push(`${moment}: no words under the figure`);
+      if (seen.state.showOther !== pair) problems.push(`${moment}: C ${pair ? 'missing' : 'shown too early'}`);
+      checkNote(seen, moment, problems);
+      checkSizes(seen, reference, moment, problems);
+      checkWords(seen, moment, problems);
+      if (step.id === 'start') checkAgainstSolver(seen.primary, 'A', solved, moment, problems);
+      else if (!pair) checkAgainstSolver(seen.primary, 'B', solved, moment, problems, { before: 'A' });
+      else {
+        checkAgainstSolver(seen.primary, 'B', solved, moment, problems);
+        checkAgainstSolver(seen.other, 'C', solved, moment, problems);
+      }
       await page.screenshot({ path: join(outDir, `${tag}-1-${index + 1}-${step.id}.png`) });
+      if (step.id === 'result' || step.id === 'other') {
+        await photographWithoutWords(page, join(outDir, `${tag}-1-${index + 1}-${step.id}-no-words.png`));
+      }
     }
 
     // --- the player -----------------------------------------------------------
-    await page.evaluate(() => window.__app.lesson.seek(10));
+    // Each press is read once the lesson has drawn the frame after it: the
+    // scene a press lands on is set by the next frame, not by the click.
+    const step = () => page.evaluate(() => window.__app.lesson.state());
+    const landed = (id) => until(page, (wanted) => window.__app.lesson.state().step === wanted, id);
+    await page.evaluate((at) => window.__app.lesson.seek(at), timeline[1].at + 1);
+    await landed(timeline[1].id);
     await page.click('[data-lesson="toggle"]');
-    let state = (await read(page)).state;
-    if (!state.playing) problems.push(where('player: ▶ did not resume'));
+    if (!(await until(page, () => window.__app.lesson.state().playing))) problems.push(where('player: ▶ did not resume'));
     await page.click('[data-lesson="toggle"]');
-    state = (await read(page)).state;
-    if (state.playing) problems.push(where('player: ❚❚ did not pause'));
+    if (!(await until(page, () => !window.__app.lesson.state().playing))) problems.push(where('player: ❚❚ did not pause'));
     await page.click('[data-lesson="next"]');
-    state = (await read(page)).state;
-    if (state.step !== timeline[2].id) problems.push(where(`player: "next" went to ${state.step}`));
-    await page.evaluate(() => window.__app.lesson.seek(window.__app.lesson.timeline[2].at + 0.5));
+    if (!(await landed(timeline[2].id))) problems.push(where(`player: "next" went to ${(await step()).step}`));
+    await page.evaluate((at) => window.__app.lesson.seek(at), timeline[2].at + 0.5);
+    await landed(timeline[2].id);
     await page.click('[data-lesson="previous"]');
-    state = (await read(page)).state;
-    if (state.step !== timeline[1].id) problems.push(where(`player: "previous" went to ${state.step}`));
+    if (!(await landed(timeline[1].id))) problems.push(where(`player: "previous" went to ${(await step()).step}`));
     await page.click('[data-lesson="restart"]');
-    state = (await read(page)).state;
-    if (!(state.t < 1 && state.playing)) problems.push(where('player: "from the start" did not restart'));
+    if (!(await until(page, () => window.__app.lesson.state().t < 1 && window.__app.lesson.state().playing))) {
+      problems.push(where('player: "from the start" did not restart'));
+    }
+    let state;
 
     // --- handing over, half way through the change -----------------------------
     const constrict = timeline.find((step) => step.id === 'constrict');
     await page.evaluate((at) => {
       window.__app.lesson.seek(at);
       window.__app.lesson.pause();
-    }, constrict.at + 3.1);
-    // Half way through the walk: between A and B, which is the point of the check.
+    }, constrict.at + 2.2);
     await until(page, () => window.__app.lesson.state().step === 'constrict' && window.__app.lesson.state().primaryId === null);
     await page.click('[data-lesson="try-from-player"]');
     await arrive(page, { primaryId: 'B' });
@@ -325,44 +482,11 @@ export async function driveLesson(browser, { url, slug, outDir, record = false, 
     if (seen.state.mode !== 'manual') problems.push(where('hand-over: the buttons did not take over'));
     if (seen.state.primaryId !== 'B') problems.push(where(`hand-over: left at ${seen.state.primaryId}, expected B`));
     if (!/説明を止めました|stopped/i.test(seen.guide)) problems.push(where('hand-over: nothing says the explanation stopped and what is on screen'));
+    checkSizes(seen, reference, where('hand-over'), problems);
     await page.screenshot({ path: join(outDir, `${tag}-2-handover.png`) });
 
-    // --- the reader's buttons ---------------------------------------------------
-    await page.click('[data-lesson="reset"]');
-    await arrive(page, { primaryId: 'A', showOther: false });
-    seen = await read(page);
-    if (seen.state.primaryId !== 'A' || seen.state.showOther) problems.push(where('start over: not back at A alone'));
-    await page.click('[data-lesson="constrict"]');
-    await arrive(page, { primaryId: 'B' });
-    await settled(page, where('buttons, B'), problems);
-    seen = await read(page);
-    if (seen.state.primaryId !== 'B') problems.push(where('buttons: the vasoconstrictor action did not arrive at B'));
-    if (!seen.rows.includes('before')) problems.push(where('buttons: B alone is not read against "before (A)"'));
-    if (!/模式実験/.test(seen.caveat) || !/全作用は再現しません/.test(seen.caveat)) {
-      problems.push(where(`buttons: B's results do not say what the action is and is not (“${seen.caveat}”)`));
-    }
-    checkBand(seen, where('buttons, B'), problems);
-    await checkCover(page, seen, where('buttons, B'), problems);
-    await page.screenshot({ path: join(outDir, `${tag}-3-B.png`) });
-    await page.click('[data-lesson="other"]');
-    await arrive(page, { primaryId: 'B', showOther: true });
-    await settled(page, where('buttons, B and C'), problems);
-    seen = await read(page);
-    if (!seen.state.showOther || !seen.rows.includes('C')) problems.push(where('buttons: C did not appear'));
-    if (seen.rows.includes('before')) problems.push(where('buttons: "before (A)" is shown beside C'));
-    if (!/模式実験/.test(seen.caveat)) problems.push(where('buttons: beside C, B\'s results lost the caveat'));
-    checkBand(seen, where('buttons, B and C'), problems);
-    await checkCover(page, seen, where('buttons, B and C'), problems);
-    await page.screenshot({ path: join(outDir, `${tag}-4-BC.png`) });
-    await page.click('[data-lesson="constrict"]');
-    await arrive(page, { primaryId: 'A' });
-    seen = await read(page);
-    if (seen.state.primaryId !== 'A') problems.push(where('buttons: taking the action away did not return to A'));
-    if (seen.caveat) problems.push(where('buttons: back at A, the caveat is still shown'));
-
     // --- the keyboard ------------------------------------------------------------
-    await page.click('[data-lesson="reset"]');
-    await page.evaluate(() => document.querySelector('[data-lesson="play-from-manual"]').focus());
+    await page.evaluate(() => document.querySelector('.lesson-manual [data-lesson="play"]').focus());
     await page.keyboard.press('Enter');
     await until(page, () => window.__app.lesson.state().mode === 'explaining');
     state = (await read(page)).state;
@@ -471,7 +595,6 @@ export async function recordLesson(browser, { url, width, height, file, part }) 
   try {
     await page.goto(url, { waitUntil: 'networkidle' });
     await ready(page);
-    await waitForCameraToSettle(page).catch(() => {});
     // Take the clock: the viewer's own loop stops, and each frame is stepped by
     // exactly 1/30 s.
     await page.evaluate((fps) => {
@@ -492,12 +615,13 @@ export async function recordLesson(browser, { url, width, height, file, part }) 
 
     await frames(1.5);
     if (part === 'explanation') {
-      await press('[data-lesson="play"]');
+      await press('.lesson-manual [data-lesson="play"]');
       const duration = await page.evaluate(() => window.__app.lesson.duration);
       await frames(duration + 1.5);
     } else {
-      await press('[data-lesson="try"]');
-      await frames(2.5);
+      // A, the action, B; C beside B; the action taken away (C closes, back to
+      // A); and once more to B.
+      await frames(1.5);
       await press('[data-lesson="constrict"]');
       await frames(5);
       await press('[data-lesson="other"]');
@@ -505,9 +629,7 @@ export async function recordLesson(browser, { url, width, height, file, part }) 
       await press('[data-lesson="constrict"]');
       await frames(4);
       await press('[data-lesson="constrict"]');
-      await frames(4);
-      await press('[data-lesson="reset"]');
-      await frames(2);
+      await frames(4.5);
     }
   } finally {
     encoder.stdin.end();

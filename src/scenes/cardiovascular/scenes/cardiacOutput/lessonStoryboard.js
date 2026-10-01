@@ -1,26 +1,27 @@
 import { directionOf } from '../../../../models/cardiacOutputLesson.js';
 import { INTERVENTION_IDS, INTERVENTION_PROFILES } from '../../../../models/cardiacInterventions.js';
 import {
+  LESSON_CHANGING,
   LESSON_CONDITION_COPY,
   LESSON_GUIDE,
-  LESSON_READOUT,
   LESSON_STEPS,
-  LESSON_TAGS,
+  LESSON_TERMS,
 } from '../../../../data/cardiacOutputLesson.js';
+import { circulationDrawing } from './lessonFigureGeometry.js';
 
 /**
  * The introductory lesson's explanation: five scenes, played on the same
- * model the reader's buttons drive (`LessonSession`).
+ * figure and the same session the reader's buttons drive (`LessonSession`).
  *
- *   1. A — a heart that sends out little
- *   2. the vasoconstrictor action is added, where it acts (the small vessels)
- *   3. B — read the pressure, then the output
- *   4. C beside B, stopped at the same moment of the beat
+ *   1. start (A) — how the heart, the small vessels and the pressure connect
+ *   2. the vessel-narrowing action is added: all the small vessels narrow
+ *   3. after (B) — the pressure went up; what the heart sends out per minute
+ *   4. C beside B — a different circulation, not B after treatment
  *   5. about the same pressure, different output
  *
- * Each scene **points, then shows, then leaves time to read** (the owner's rule
- * from the earlier explanation, 2026-09-27): its tags name the part first, the
- * change happens a moment later, and the rest of the scene is left to look at.
+ * One thing per scene (owner's review, 2026-10-01). Each **points, then
+ * shows, then leaves time to read**: what a scene is about lights up first, its
+ * change happens a moment later, and the rest of the scene is for reading.
  *
  * Everything here is a function of the explanation's own clock `t`, so
  * seeking — back a scene, forward a scene, from the start — lands on exactly
@@ -33,67 +34,18 @@ import {
  *
  * - `rung`: where the main circulation is — 'A' or 'B' — or `walk`, the window
  *   (seconds into the scene) over which it walks from A to B.
- * - `other`: whether C stands beside it, from `otherFrom` seconds in.
- * - `highlight`: parts brightened (presentation only).
- * - `tags`: short words on the model — at most two at once.
- * - `holdFrom`: from this many seconds in, the beat is held at the moment of
- *   comparison (the end of ejection), so what one beat sent out can be compared
- *   at the same instant. Presentation: the solved rate does not change.
+ * - `other`: whether C stands beside it.
+ * - `refill`: the window over which both tubes fill from empty together, so
+ *   "in the same minute" is something seen (presentation; the solved outputs
+ *   do not change).
+ * - `highlight`: the parts the scene is about (presentation only).
  */
 const SCENES = [
-  {
-    id: 'start',
-    duration: 8,
-    rung: 'A',
-    other: false,
-    highlight: ['ejected'],
-    tags: [
-      { id: 'heart', unit: 'primary', part: 'heart', words: 'heart' },
-      { id: 'ejected', unit: 'primary', part: 'ejected', words: 'ejected' },
-    ],
-  },
-  {
-    id: 'constrict',
-    duration: 9,
-    walk: { from: 1.6, to: 4.6 },
-    other: false,
-    highlight: ['bed'],
-    tags: [{ id: 'bed', unit: 'primary', part: 'bed', words: 'bedNarrowing' }],
-  },
-  {
-    id: 'result',
-    duration: 11,
-    rung: 'B',
-    other: false,
-    highlight: ['gauge', 'ejected'],
-    holdFrom: 3,
-    tags: [
-      { id: 'gauge', unit: 'primary', part: 'gauge', words: 'gaugeUp' },
-      { id: 'ejected', unit: 'primary', part: 'ejected', words: 'ejectedChange' },
-    ],
-  },
-  {
-    id: 'other',
-    duration: 11,
-    rung: 'B',
-    other: true,
-    highlight: ['ejected'],
-    holdFrom: 3.5,
-    // "Stopped at the same moment" is the scene's note. As a tag it stood over
-    // both hearts on a phone, where there is least room for them.
-    tags: [],
-  },
-  {
-    // No tag: the words are in the caption, and a label stretched across two
-    // circulations crossed the one it was not about. What is pointed at glows.
-    id: 'conclusion',
-    duration: 11,
-    rung: 'B',
-    other: true,
-    highlight: ['gauge', 'ejected'],
-    holdFrom: 0,
-    tags: [],
-  },
+  { id: 'start', duration: 5.5, rung: 'A', other: false, highlight: ['heart', 'bed', 'dial', 'tube'] },
+  { id: 'constrict', duration: 6.5, walk: { from: 1.0, to: 3.4 }, other: false, highlight: ['bed'] },
+  { id: 'result', duration: 7.5, rung: 'B', other: false, highlight: ['dial', 'tube'] },
+  { id: 'other', duration: 6.5, rung: 'B', other: true, refill: { from: 0.6, to: 2.8 }, highlight: ['tube'] },
+  { id: 'conclusion', duration: 6.5, rung: 'B', other: true, highlight: ['dial', 'tube'] },
 ];
 
 export const LESSON_TIMELINE = Object.freeze(
@@ -112,42 +64,43 @@ export function stepIndexAt(t) {
   return index < 0 ? LESSON_TIMELINE.length - 1 : index;
 }
 
-/** The scene playing at `t`. */
-export const stepAt = (t) => LESSON_TIMELINE[stepIndexAt(t)];
 
 const smooth = (k) => k * k * (3 - 2 * k);
+const progress = (into, window) => Math.min(1, Math.max(0, (into - window.from) / (window.to - window.from)));
 
 /**
- * What the model and the drawing are at `t`.
+ * What the model and the figure are at `t`.
  *
  * @param {number} t seconds into the explanation
  * @param {number} lastRung the index of B on the session's ladder
  * @returns {{ step: object, index: number, into: number, rung: number, showOther: boolean,
- *   highlight: string[], tags: object[], hold: boolean }}
+ *   highlight: string[], refill: number }}
  */
 export function presentationAt(t, lastRung) {
   const index = stepIndexAt(t);
   const step = LESSON_TIMELINE[index];
   const into = Math.max(0, t - step.at);
   let rung = step.rung === 'B' ? lastRung : 0;
-  if (step.walk) {
-    const k = Math.min(1, Math.max(0, (into - step.walk.from) / (step.walk.to - step.walk.from)));
-    rung = Math.round(smooth(k) * lastRung);
-  }
+  if (step.walk) rung = Math.round(smooth(progress(into, step.walk)) * lastRung);
   return {
     step,
     index,
     into,
     rung,
     showOther: Boolean(step.other),
+    // The first moment of a scene points; the change comes after.
     highlight: step.highlight ?? [],
-    tags: step.tags ?? [],
-    hold: step.holdFrom != null && into >= step.holdFrom,
+    refill: step.refill ? smooth(progress(into, step.refill)) : 1,
   };
 }
 
 const whole = (value) => String(Math.round(value));
 const tenth = (value) => Number(value).toFixed(1);
+
+/** The vessel-narrowing action's own factor, read from the model. */
+export function interventionFactor() {
+  return String(INTERVENTION_PROFILES[INTERVENTION_IDS.VASOCONSTRICTION].effects.systemicResistanceMmHgSPerMl.multiply);
+}
 
 /**
  * The figures a sentence may carry, at the precision the screen shows them.
@@ -164,6 +117,7 @@ export function lessonValues(solved) {
     coB: tenth(m('B').cardiacOutputLMin),
     coC: tenth(m('C').cardiacOutputLMin),
     hr: whole(m('B').heartRatePerMin),
+    factor: interventionFactor(),
   };
 }
 
@@ -199,93 +153,111 @@ export function captionFor(stepId, solved) {
   };
 }
 
-/**
- * The words of a tag, resolved against the solved beats where they depend on
- * them (which way one beat's output went).
- *
- * @param {string} words a key of `LESSON_TAGS`, or `ejectedChange`
- * @param {{ A: object, B: object }} solved
- */
-export function tagWords(words, solved) {
-  if (words === 'ejectedChange') {
-    // The same direction the caption and the guide say, at the same
-    // precision: read per beat and per minute at two resolutions, the tag
-    // could say "less" beside a caption saying "about the same". A and B share
-    // a heart rate (`lessonClaimProblems` holds it), so the two directions are
-    // one.
-    const direction = outputDirection(solved);
-    return LESSON_TAGS[direction === 'down' ? 'ejectedLess' : direction === 'up' ? 'ejectedMore' : 'ejectedSame'];
-  }
-  return LESSON_TAGS[words];
-}
-
-/** "B（A＋血管収縮作用）" — a condition, said in full. */
+/** "血管を縮めた後（B）" — a condition, said in full. */
 export function conditionName(id) {
   const copy = LESSON_CONDITION_COPY[id];
   if (!copy) return null;
-  return { en: `${copy.letter} (${copy.name.en})`, ja: `${copy.letter}（${copy.name.ja}）` };
+  return { en: `${copy.role.en} (${copy.letter})`, ja: `${copy.role.ja}（${copy.letter}）` };
 }
 
 /**
- * The one line under the question that says what to do next, from the state
- * the reader is in. `stopped` is set when the explanation was interrupted and
- * says what the reader now has and what it is compared with.
+ * The one line under the figure that says what to do next, from the state the
+ * reader is in. `stopped` is set when the explanation was interrupted and says
+ * what the reader now has and what it is compared with.
  *
- * @param {{ mode: 'idle'|'manual'|'playing', primaryId: 'A'|'B'|null, targetId: 'A'|'B',
- *   showOther: boolean, solved: object, stopped?: boolean }} state
+ * @param {{ primaryId: 'A'|'B'|null, targetId: 'A'|'B', showOther: boolean, solved: object, stopped?: boolean }} state
  * @returns {{ en: string, ja: string }}
  */
-export function guideFor({ mode, primaryId, targetId, showOther, solved, stopped = false }) {
+export function guideFor({ primaryId, targetId, showOther, solved, stopped = false }) {
   if (stopped) {
-    // Two comparisons, two sentences: B beside C is "side by side", and only A
-    // is ever "what it is compared with" (before the intervention).
     const id = primaryId ?? targetId;
     const now = conditionName(id);
     const template = showOther ? LESSON_GUIDE.stoppedPair : id === 'B' ? LESSON_GUIDE.stoppedAlone : LESSON_GUIDE.stoppedStart;
     return { en: template.en.replace('{now}', now.en), ja: template.ja.replace('{now}', now.ja) };
   }
-  if (mode === 'idle') return LESSON_GUIDE.idle;
   if (primaryId === null) return targetId === 'B' ? LESSON_GUIDE.changing : LESSON_GUIDE.releasing;
-  if (showOther) return primaryId === 'B' ? LESSON_GUIDE.pairBC : LESSON_GUIDE.pairAC;
-  if (primaryId === 'A') return LESSON_GUIDE.manualStart;
+  if (showOther) return LESSON_GUIDE.pair;
+  if (primaryId === 'A') return LESSON_GUIDE.start;
   const direction = outputDirection(solved);
   return direction === 'down' ? LESSON_GUIDE.afterDown : direction === 'up' ? LESSON_GUIDE.afterUp : LESSON_GUIDE.afterSame;
 }
 
 /**
- * The read-out: one card for the main circulation and, while it is shown, one
- * for C. The main card carries its comparison — A, "before" — only while that
- * is the comparison on screen (`LessonSession.reference`).
+ * Every line the guide can say for these solved beats — for the page to keep
+ * the guide's place the height of the longest, so the figure above it never
+ * changes size when the line does.
+ *
+ * @param {{ A: object, B: object, C: object }} solved
+ */
+export function allGuides(solved) {
+  const states = [
+    { primaryId: 'A', targetId: 'A', showOther: false },
+    { primaryId: null, targetId: 'B', showOther: false },
+    { primaryId: null, targetId: 'A', showOther: false },
+    { primaryId: 'B', targetId: 'B', showOther: false },
+    { primaryId: 'B', targetId: 'B', showOther: true },
+  ];
+  return [
+    ...states.map((state) => guideFor({ ...state, solved })),
+    ...states
+      .filter((state) => state.primaryId)
+      .map((state) => guideFor({ ...state, solved, stopped: true })),
+  ];
+}
+
+/**
+ * What the figure draws: one strip for the main circulation and, while it is
+ * shown, one for C. The main strip carries its comparison — A, as cream "start"
+ * marks — only while that is the comparison on screen
+ * (`LessonSession.reference`).
  *
  * @param {import('./lessonSession.js').LessonSession} session
  */
-export function readoutFor(session) {
-  const card = (id, result, reference) => ({
-    id,
-    walking: id === null,
-    map: whole(result.metrics.meanArterialPressureMmHg),
-    co: tenth(result.metrics.cardiacOutputLMin),
-    reference: reference
-      ? {
-          id: 'A',
-          map: whole(reference.metrics.meanArterialPressureMmHg),
-          co: tenth(reference.metrics.cardiacOutputLMin),
-          mapDirection: directionOf(reference.metrics.meanArterialPressureMmHg, result.metrics.meanArterialPressureMmHg, 1),
-          coDirection: directionOf(reference.metrics.cardiacOutputLMin, result.metrics.cardiacOutputLMin, 0.1),
-        }
-      : null,
-  });
-  return {
-    primary: card(session.primaryId, session.primary, session.reference),
-    other: session.showOther ? card('C', session.other, null) : null,
-    // While any of the vasoconstrictor action is on — B, or a step of the walk
-    // between A and B — the results carry what it is and is not.
-    caveat: session.rung > 0 ? interventionCaveat() : null,
+export function stripsFor(session) {
+  const strip = (slot, id, result, reference) => {
+    const m = result.metrics;
+    return {
+      slot,
+      id: id ?? 'changing',
+      copy: id ? LESSON_CONDITION_COPY[id] : LESSON_CHANGING,
+      drawing: circulationDrawing(result, reference),
+      values: {
+        map: whole(m.meanArterialPressureMmHg),
+        co: tenth(m.cardiacOutputLMin),
+        mapDirection: reference ? directionOf(reference.metrics.meanArterialPressureMmHg, m.meanArterialPressureMmHg, 1) : null,
+        coDirection: reference ? directionOf(reference.metrics.cardiacOutputLMin, m.cardiacOutputLMin, 0.1) : null,
+      },
+      // For a check: what this strip was drawn from, unrounded.
+      solved: {
+        meanArterialPressureMmHg: m.meanArterialPressureMmHg,
+        cardiacOutputLMin: m.cardiacOutputLMin,
+        systemicResistanceMmHgSPerMl: m.systemicResistanceMmHgSPerMl,
+        heartRatePerMin: m.heartRatePerMin,
+      },
+      narrowed: (result.metrics.systemicResistanceMmHgSPerMl ?? 0) > session.ladder[0].metrics.systemicResistanceMmHgSPerMl,
+    };
   };
+  const strips = [strip('primary', session.primaryId, session.primary, session.reference)];
+  if (session.showOther) strips.push(strip('other', 'C', session.other, null));
+  return strips;
 }
 
-/** The caveat under the results, with the intervention's own factor in it. */
-export function interventionCaveat() {
-  const factor = INTERVENTION_PROFILES[INTERVENTION_IDS.VASOCONSTRICTION].effects.systemicResistanceMmHgSPerMl.multiply;
-  return both(LESSON_READOUT.caveat, fillWith({ factor: String(factor) }));
+/**
+ * The figure, said in words for a screen reader: the strips in order, each
+ * with its two results — the plain name first, the term after.
+ *
+ * @param {ReturnType<typeof stripsFor>} strips
+ * @returns {{ en: string, ja: string }}
+ */
+export function figureSummary(strips) {
+  const say = (strip, language) => {
+    const copy = strip.copy;
+    const name = copy.letter === '…' ? copy.role[language] : `${copy.role[language]}（${copy.letter}）`;
+    const pressure = LESSON_TERMS.pressure.full[language];
+    const output = LESSON_TERMS.output.full[language];
+    return language === 'ja'
+      ? `${name}：${pressure} ${strip.values.map} mmHg、${output} ${strip.values.co} L。`
+      : `${name.replace('（', ' (').replace('）', ')')}: ${pressure} ${strip.values.map} mmHg; ${output} ${strip.values.co} L.`;
+  };
+  return { en: strips.map((strip) => say(strip, 'en')).join(' '), ja: strips.map((strip) => say(strip, 'ja')).join('') };
 }

@@ -27,6 +27,34 @@ solves or what a control does and `npm run revisions:check` fails until the card
 is revised, which moves the revision and closes this record until it is taken
 again.
 
+## The lesson's screen redrawn on 2026-10-01 — no model change, the pin stands
+
+**What changed.** On the owner's review of 2026-10-01 the lesson at
+`#/cardiac-output` no longer draws a 3D heart: its figure is a circuit diagram
+in which what the heart sends out per minute is the filled length of a tube,
+how hard blood gets through the small vessels is their width, and the average
+pressure is a needle — one fixed size at every scene and state, B and C stacked
+to one scale, with a legend for what each part means. The buttons now offer C
+only once the action has reached B, and taking the action away closes C. The
+note on what the experiment is (「昇圧薬の働きの一部…模式実験」) stands under the
+figure from the first moment in both modes. **No model source changed**: the
+digest is still `774fbda2f939e076`, the pin in `src/catalog/release.js` is
+unchanged, and the three conditions, their claims and the full model are as
+revision 11.
+
+**What was checked** (headless Chromium, software GL): `npm run verify:disease
+-- <dir> cardiac-output --lesson-only` at 1440×900, 390×844 and 375×667, no
+problems — the figure, the panel under it and the heart, dial, tube and vessels
+keep one size from the first screen through every scene and button state; C is
+refused at A and half way to B and closes when the action is taken away; each
+strip's pressure, output, arrows and on-screen tube length match the solver run
+in Node; the note is on screen throughout; no word in the figure overlaps
+another or falls under 12 px on a phone. Recorded frame by frame at each window.
+
+**What was not checked**: the same as before — no first-time reader (F-239),
+no clinician (F-240), no real device (F-238); the English text on a 375×667
+phone draws the figure under the 12 px floor (F-243).
+
 ## Re-taken on 2026-09-30 — the vasoconstrictor action in the full model's menu (revision 11)
 
 **What changed.** On the owner's decision of 2026-09-30 (F-237) the full model
@@ -91,7 +119,8 @@ already solved moved; its tests, fixtures and figures are unchanged.
   others. It then drives the full model at `?view=detail` exactly as before.
 - The explanation and the buttons were recorded frame by frame on a fixed
   clock at each window (`--record-lesson`).
-- `tests/cardiac-output-lesson-scene.test.js` holds the 3D to the solver: the
+- (Retired on 2026-10-01 with the 3D figure, see above.)
+  `tests/cardiac-output-lesson-scene.test.js` held the 3D to the solver: the
   vessels narrow from A to B, each stroke's length is its stroke volume at the
   moment of comparison, B's and C's needles point the same way, and the two
   circulations are equidistant from the camera and seen from the same angle.
