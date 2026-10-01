@@ -38,7 +38,7 @@
  * ## Recordings
  *
  * `record` writes two videos per window — the explanation played through, and
- * the reader's buttons — **frame by frame on a fixed clock** (L-140): each
+ * the reader's buttons — **frame by frame on a fixed clock** (L-172): each
  * frame steps the lesson's clock by 1/30 s, so the recording plays at the speed a
  * reader sees, whatever the machine that made it.
  */
@@ -178,7 +178,7 @@ const read = (page) =>
 
 /**
  * Wait for what the lesson says to be true — never for a time (L-123,
- * L-143). Resolves true or false; the checks that follow say what was wrong.
+ * L-175). Resolves true or false; the checks that follow say what was wrong.
  */
 const until = (page, predicate, arg) =>
   page
@@ -408,7 +408,7 @@ export async function driveLesson(browser, { url, slug, outDir, record = false, 
   const solved = solveLessonConditions();
   if (record) {
     // Ask the encoder first, with one real frame: an encoder that cannot read
-    // the frames used to say so only at the end of a long run (L-144).
+    // the frames used to say so only at the end of a long run (L-176).
     const refused = await probeEncoder(browser, outDir);
     if (refused) {
       problems.push(`recording: the encoder refused a frame before anything was recorded: ${refused}`);
@@ -661,7 +661,7 @@ function ffmpegPath() {
 /**
  * One setting for the encoder, so the probe asks exactly what the recording
  * will. `pipe:0`, not `-`: the bundled build has the `file` and `pipe`
- * protocols only, and `-` is the `fd` protocol (L-144).
+ * protocols only, and `-` is the `fd` protocol (L-176).
  */
 const FPS = 30;
 function encoderArgs(file) {

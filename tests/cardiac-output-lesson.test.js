@@ -88,7 +88,7 @@ test('the vasoconstrictor action is refused, not clamped, where it would leave t
 });
 
 test('the detailed experiment offers the vasoconstrictor action — as the action, on both presets, never refused', () => {
-  // The owner's decision of 2026-09-30 (F-237): the full model's menu gains it,
+  // The owner's decision of 2026-09-30 (F-262): the full model's menu gains it,
   // under the lesson's name — the action, schematic, resistance only — and
   // never as noradrenaline (F-182).
   assert.ok(INTERVENTION_LIST.includes(INTERVENTION_IDS.VASOCONSTRICTION));

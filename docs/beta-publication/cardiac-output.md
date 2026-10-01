@@ -57,7 +57,7 @@ phone draws the figure under the 12 px floor (F-243).
 
 ## Re-taken on 2026-09-30 — the vasoconstrictor action in the full model's menu (revision 11)
 
-**What changed.** On the owner's decision of 2026-09-30 (F-237) the full model
+**What changed.** On the owner's decision of 2026-09-30 (F-262) the full model
 at `?view=detail` offers the lesson's intervention as a fourth choice in its
 menu: 「昇圧薬の血管収縮作用の模式例（抵抗のみ）」 — systemic resistance ×1.5,
 the other three inputs held, applied to the preset's starting condition like

@@ -719,7 +719,7 @@ export const BETA_PUBLICATION_DECISIONS = Object.freeze([
     // It takes effect when the owner merges the change that carries it.
     //
     // **Revision 11 (2026-09-30)**: the same intervention joins the full
-    // model's menu (F-237, the owner's decision). Only the menu's list moved;
+    // model's menu (F-262, the owner's decision). Only the menu's list moved;
     // the full model's drive presses it and reads back that the resistance
     // alone moved. The site still opens on anatomy — this route is reached
     // from the disease models.

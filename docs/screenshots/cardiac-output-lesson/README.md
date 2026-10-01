@@ -53,4 +53,4 @@ The two recordings per window (the explanation played through; the buttons —
 A, the action, C beside B, the action taken away so that C closes, and B again)
 are not committed. Regenerate them with the command above: frames are stepped
 at 1/30 s of the lesson's own clock, so they play at the speed a reader sees
-(L-140).
+(L-172).

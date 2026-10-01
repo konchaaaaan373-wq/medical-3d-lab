@@ -136,7 +136,7 @@ export const INTERVENTION_PROFILES = Object.freeze({
    * both presets start at 1.1, so there it is always offered.
    *
    * **In the detailed experiment's menu since 2026-09-30** (owner's decision,
-   * F-237), under the same name: the action, not the drug. Noradrenaline
+   * F-262), under the same name: the action, not the drug. Noradrenaline
    * itself is still not offered (F-182).
    */
   [INTERVENTION_IDS.VASOCONSTRICTION]: Object.freeze({

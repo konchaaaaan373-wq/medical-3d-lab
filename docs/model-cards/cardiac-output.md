@@ -60,7 +60,7 @@ intervention, a lesson or the video sequence.
 Three, each a change to the inputs above rather than a multiplier on anything
 below them. The full model's menu offers all three, mutually exclusive; the
 third is also the introductory lesson's one intervention (§9.6), and joined the
-full model's menu in revision 11 (F-237).
+full model's menu in revision 11 (F-262).
 
 | Intervention | Changes | Deliberately does not change |
 | --- | --- | --- |
@@ -444,7 +444,7 @@ and the buttons let C stand beside A.
 
 **A model revision** because a model source changed: `INTERVENTION_LIST` in
 `cardiacInterventions.js` gains `VASOCONSTRICTION`, on the owner's decision of
-2026-09-30 (F-237). The intervention itself is revision 10's, unchanged —
+2026-09-30 (F-262). The intervention itself is revision 10's, unchanged —
 resistance ×1.5, the other three inputs held — and nothing already solved moved.
 
 - **Offered on both presets and never refused**: the full model applies an
@@ -482,7 +482,7 @@ sources and limits are one link away rather than on the lesson's screen.
 
 - **Two toggles and a reset** — add / take away the vasoconstrictor action;
   compare with C / hide C; start over. No dose slider, no drug classes (the
-  brief's choice; kept as candidates for the full model, F-237). The XY pads
+  brief's choice; kept as candidates for the full model, F-262). The XY pads
   and the four single-axis controls stay in the full model.
 - **An explanation of five scenes** — A; the action added, pointed at where it
   acts; B, pressure then output; C beside B at the same moment of the beat; the
@@ -496,7 +496,7 @@ sources and limits are one link away rather than on the lesson's screen.
   1440×900, 390×844 and 375×667 by `verify:disease`'s lesson drive
   (`scripts/lib/lesson-drive.mjs`) and recorded frame by frame. The drive also
   measures that no word on the model covers the point it names or stands over
-  the model itself (counted in pixels with the words hidden, L-145 / L-146):
+  the model itself (counted in pixels with the words hidden, L-177 / L-178):
   the vessels' tag moves below the vessels where the screen ends at their
   right, and a circulation's name chip is shown only when two are compared.
   **Not checked on a real device** (F-238); **no medical review** (F-240);

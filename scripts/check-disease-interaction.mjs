@@ -597,7 +597,7 @@ for (const slug of SLUGS) {
       await choose('reference');
       await page.waitForTimeout(800);
 
-      // The vasoconstrictor action (F-237, revision 11), pressed in the menu a
+      // The vasoconstrictor action (F-262, revision 11), pressed in the menu a
       // reader uses: the resistance alone moves, and up; the screen names it as
       // the action; clearing it returns to the preset's start. Waited on the
       // session's own state, not on a time.
