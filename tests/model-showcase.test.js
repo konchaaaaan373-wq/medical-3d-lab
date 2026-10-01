@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { existsSync } from 'node:fs';
+import { existsSync, readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 
 import { MODEL_SHOWCASE, SHOWCASE_SYSTEM_LABELS, showcaseFor } from '../src/data/modelShowcase.js';
@@ -111,4 +111,23 @@ test('a model card says, in words, when the model is not production — no pill,
   } finally {
     restore();
   }
+});
+
+test('posters are photographed at the scene\'s own route, not at its showcase key', async () => {
+  // `MODEL_SHOWCASE` is keyed by scene id; the route is the slug. They differ
+  // for some scenes, and the capture script used to open `#/<id>` — the
+  // router's default scene, photographed under the wrong model's name.
+  const { posterTargets } = await import('../scripts/lib/posters.mjs');
+  const [copd] = posterTargets({ showcase: { 'copd-hyperinflation': { poster: 'posters/x.jpg' } } });
+  assert.equal(copd.route, '#/copd');
+  for (const target of posterTargets()) {
+    const { sceneById, sceneRoute } = await import('../src/catalog/index.js');
+    assert.equal(target.route, sceneRoute(sceneById(target.id)), target.id);
+  }
+  assert.throws(() => posterTargets({ showcase: { 'no-such-scene': { poster: 'p.jpg' } } }), /not a scene/);
+  assert.deepEqual(posterTargets({ only: ['copd'], showcase: { 'copd-hyperinflation': { poster: 'p.jpg' } } }).map((t) => t.id), ['copd-hyperinflation'], '--only takes the slug too');
+  // And the script asks this, and waits for the app before the camera.
+  const script = readFileSync(new URL('../scripts/capture-model-posters.mjs', import.meta.url), 'utf8');
+  assert.match(script, /posterTargets\(/);
+  assert.match(script, /waitForFunction\(\(\) => Boolean\(window\.__app\?\.viewer\)/);
 });

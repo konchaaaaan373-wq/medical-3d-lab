@@ -81,6 +81,14 @@ L-95 と L-96 は「別件を直したら、触っていない検査が赤くな
   枠内に固定。3 つとも、修正を戻して赤を確認しています。(4) `scripts/capture-surfaces.mjs`
   が、モデルでは `waitForFramingToSettle`（`scripts/lib/camera.mjs`）を、どの面でも
   写す範囲の画像の `decode()` を待ちます——黒い板が写ったら、それは本当に壊れています。
+  **同じ穴が `npm run posters` にも 2 つありました**（PR #168 の Codex レビュー）:
+  `#stage canvas` は viewer を作った時点で現れ、`window.__app` はその後なので、
+  `waitForFramingToSettle` は「app が無い＝待つものが無い」と即座に返り得ました。
+  そして `MODEL_SHOWCASE` のキー（scene id）をそのまま route にしていたため、
+  id と slug が違うシーン（`copd-hyperinflation` は `#/copd`）の写真は既定シーンを
+  別の名前で撮るところでした。いまは `scripts/lib/posters.mjs` がカタログで route を
+  引き、スクリプトは app を待ってからカメラを待ちます（`tests/model-showcase.test.js`、
+  どちらも戻して赤を確認）。
 - **一般形**: **「信頼・読み上げ・装飾」は検査が見ていない面です。** 数値と配置を
   測る検査はそろっていても、矛盾した文言・届かない読み上げ・ずれた装飾は、
   誰かが**読む**まで残ります。

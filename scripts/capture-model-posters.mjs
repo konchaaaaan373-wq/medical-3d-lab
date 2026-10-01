@@ -21,13 +21,13 @@
  *
  * Options:
  *   --dist <dir>    built site to serve (default: dist)
- *   --only <slug>   one model (repeatable)
+ *   --only <id>     one model, by scene id or slug (repeatable)
  *   --preview       unlock unpublished scenes (build with VITE_ALLOW_PREVIEW=1)
  *   --check         write nothing; exit 1 if a named poster file is missing
  */
 import { existsSync, mkdirSync } from 'node:fs';
 import { dirname, resolve } from 'node:path';
-import { MODEL_SHOWCASE } from '../src/data/modelShowcase.js';
+import { posterTargets } from './lib/posters.mjs';
 
 const argv = process.argv.slice(2);
 const flag = (name) => argv.includes(name);
@@ -37,10 +37,13 @@ const value = (name, fallback) => {
 };
 const values = (name) => argv.flatMap((item, i) => (item === name && argv[i + 1] ? [argv[i + 1]] : []));
 
-const only = values('--only');
-const wanted = Object.entries(MODEL_SHOWCASE)
-  .filter(([slug, entry]) => entry.poster && (!only.length || only.includes(slug)))
-  .map(([slug, entry]) => ({ slug, file: resolve('public', entry.poster) }));
+// By scene id, opened at the scene's own route — the two are not always the
+// same word (`scripts/lib/posters.mjs`).
+const wanted = posterTargets({ only: values('--only') }).map(({ id, route, poster }) => ({
+  slug: id,
+  route,
+  file: resolve('public', poster),
+}));
 
 if (flag('--check')) {
   const missing = wanted.filter((item) => !existsSync(item.file));
@@ -65,11 +68,16 @@ const BROWSER_ARGS = [
 const server = await serveDist(value('--dist', 'dist'));
 const browser = await chromium.launch({ executablePath: chromiumExecutable(chromium), args: BROWSER_ARGS });
 try {
-  for (const { slug, file } of wanted) {
+  for (const { slug, route, file } of wanted) {
     // The card's own proportion, at twice its largest displayed width.
     const page = await browser.newPage({ viewport: { width: 1200, height: 750 }, deviceScaleFactor: 1 });
-    await page.goto(`${server.base}${flag('--preview') ? '?preview=1' : ''}#/${slug}`, { waitUntil: 'load' });
+    await page.goto(`${server.base}${flag('--preview') ? '?preview=1' : ''}${route}`, { waitUntil: 'load' });
     await page.waitForSelector('#stage canvas', { timeout: 60000 });
+    // The canvas exists as soon as the viewer is built — before the scene and
+    // its asset are, and before `window.__app` is. `waitForFramingToSettle`
+    // reads a missing app as "nothing to wait for", so without this the shot
+    // could be of a stage with no model on it yet.
+    await page.waitForFunction(() => Boolean(window.__app?.viewer), null, { timeout: 60000 });
     // Hide the interface first: the framing fits the model into the room the
     // panels leave, and with them gone it fits the whole frame.
     await page.addStyleTag({ content: '#ui, .build-marker, #boot-veil { display: none !important; }' });
