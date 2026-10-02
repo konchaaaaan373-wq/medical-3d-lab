@@ -387,6 +387,11 @@ export const BUNDLE_BUDGET_KB = {
    * 「今、何が起きた？」) only with `?view=detail`. Measured 741.6 kB on top of
    * main's aorta (721.8): the lesson and the fourth intervention are 19.8 of it,
    * as they were on each main before (696.5 → 716.1, 708.2 → 728.5).
+   *
+   * 748.4 with the lesson's figure as a 3D model (2026-10-02; the flat diagram
+   * kept as the fallback where WebGL is refused): +6.8 kB, all in the lesson's
+   * own chunk. Left at 750 — it fits — but the next change that adds code here
+   * will need this line.
    */
   code: 750,
   /**

@@ -35,16 +35,17 @@ import { circulationDrawing } from './lessonFigureGeometry.js';
  * - `rung`: where the main circulation is — 'A' or 'B' — or `walk`, the window
  *   (seconds into the scene) over which it walks from A to B.
  * - `other`: whether C stands beside it.
- * - `refill`: the window over which both tubes fill from empty together, so
- *   "in the same minute" is something seen (presentation; the solved outputs
- *   do not change).
  * - `highlight`: the parts the scene is about (presentation only).
  */
 const SCENES = [
-  { id: 'start', duration: 5.5, rung: 'A', other: false, highlight: ['heart', 'bed', 'dial', 'tube'] },
+  // The heart pumping is the first thing to see; lighting every part at once pointed at nothing.
+  { id: 'start', duration: 5.5, rung: 'A', other: false, highlight: ['heart'] },
   { id: 'constrict', duration: 6.5, walk: { from: 1.0, to: 3.4 }, other: false, highlight: ['bed'] },
   { id: 'result', duration: 7.5, rung: 'B', other: false, highlight: ['dial', 'tube'] },
-  { id: 'other', duration: 6.5, rung: 'B', other: true, refill: { from: 0.6, to: 2.8 }, highlight: ['tube'] },
+  // C arrives as it is, already flowing: nothing in it fills from empty
+  // (owner's review, 2026-10-02 — a length growing again from zero reads as the
+  // blood having stopped). What differs is lit: its vessels and its heart.
+  { id: 'other', duration: 6.5, rung: 'B', other: true, highlight: ['heart', 'bed'] },
   { id: 'conclusion', duration: 6.5, rung: 'B', other: true, highlight: ['dial', 'tube'] },
 ];
 
@@ -74,7 +75,7 @@ const progress = (into, window) => Math.min(1, Math.max(0, (into - window.from) 
  * @param {number} t seconds into the explanation
  * @param {number} lastRung the index of B on the session's ladder
  * @returns {{ step: object, index: number, into: number, rung: number, showOther: boolean,
- *   highlight: string[], refill: number }}
+ *   highlight: string[] }}
  */
 export function presentationAt(t, lastRung) {
   const index = stepIndexAt(t);
@@ -90,7 +91,6 @@ export function presentationAt(t, lastRung) {
     showOther: Boolean(step.other),
     // The first moment of a scene points; the change comes after.
     highlight: step.highlight ?? [],
-    refill: step.refill ? smooth(progress(into, step.refill)) : 1,
   };
 }
 
@@ -227,13 +227,22 @@ export function stripsFor(session) {
         mapDirection: reference ? directionOf(reference.metrics.meanArterialPressureMmHg, m.meanArterialPressureMmHg, 1) : null,
         coDirection: reference ? directionOf(reference.metrics.cardiacOutputLMin, m.cardiacOutputLMin, 0.1) : null,
       },
-      // For a check: what this strip was drawn from, unrounded.
+      // What this strip is drawn from, unrounded — and what a check reads.
       solved: {
         meanArterialPressureMmHg: m.meanArterialPressureMmHg,
         cardiacOutputLMin: m.cardiacOutputLMin,
         systemicResistanceMmHgSPerMl: m.systemicResistanceMmHgSPerMl,
         heartRatePerMin: m.heartRatePerMin,
+        strokeVolumeMl: m.strokeVolumeMl,
       },
+      // A, while it is the comparison on screen: the 3D figure draws it as cream marks.
+      before: reference
+        ? {
+            mapMmHg: reference.metrics.meanArterialPressureMmHg,
+            outputLMin: reference.metrics.cardiacOutputLMin,
+            resistance: reference.metrics.systemicResistanceMmHgSPerMl,
+          }
+        : null,
       narrowed: (result.metrics.systemicResistanceMmHgSPerMl ?? 0) > session.ladder[0].metrics.systemicResistanceMmHgSPerMl,
     };
   };

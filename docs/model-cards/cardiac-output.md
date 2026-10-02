@@ -200,46 +200,63 @@ patients: before the code review of 2026-10-01 the lesson said that only inside
 (×1.5, read from the intervention's profile). `verify:disease` reads the line on
 screen at the first screen, at every scene and at every state of the buttons.
 
-**The figure is a circuit diagram, not a heart** (since the owner's review of
-2026-10-01; before it, a 3D heart whose output and resistance a reader could
-only identify by reading a caption). One circulation is one strip: the heart
-on the left, the artery along the top with a dial on it, six small vessels on
-the right, the vein back along the bottom, and under it a tube that fills with
-**what the heart sends out per minute**. A legend under the strip says what
-each part means until a second circulation takes its place.
+**The figure is one circulation as a 3D model, and the model carries the
+lesson** (owner's review, 2026-10-02: the flat diagram of 2026-10-01 had to be
+read to be understood; before it, a 3D heart whose output and resistance a
+reader could only identify from a caption). One circulation stands upright: the
+heart at the bottom, the artery up its right side with a dial on it, the small
+vessels of the whole body across the top as a bundle of twelve between two
+collecting vessels, the vein down the left — and inside the loop a graduated
+jug for **what the heart sends out per minute**. Red cells flow round it all
+the time, leaving the heart in a surge on each squeeze. One line under the
+figure says what the two instruments are (「針：血圧の平均　容器の高さ：1分間に
+送り出す量」); on the model there are only the two part names and the two values
+(`LessonStage3D.js`, `lessonModel3D.js`).
 
-- **A → B is a before and after.** The same strip, in place, never moved or
-  resized. A is drawn inside it as cream marks (a second needle and a mark on
-  the tube labelled 「開始時」), and the values carry arrows (↑ ↓) in the
-  direction the solver went.
-- **B ↔ C is two circulations.** C comes in as a second strip under B, drawn to
-  the same scale with every part in the same column, so the two tubes compare
-  as two bars from one zero. Its name says 「別の循環（B の治療後ではない）」.
-  While C is shown, A's marks go: three things are never compared at once.
-- **C stands beside B and nothing else.** The buttons offer C only once the
-  action has reached B; asked for at A or on the way it is refused, and taking
-  the action away closes C at once (`LessonSession.canShowOther`; the A-beside-C
-  comparison the first version allowed is gone).
-- **"In the same minute"** is shown, not only said: when C comes in, both
-  tubes fill from empty together, each at the rate of its own output, and end
-  at their solved lengths — a presentation of "litres per minute", not a time
-  course; with reduced motion they are simply full.
+- **One camera, never moved.** An orthographic camera looks from one direction
+  at two places fixed from the first frame: the main circulation (A, then B)
+  on the left, the compared one (C) on the right. Nothing zooms out when C
+  arrives, and the two are drawn at one scale by construction (no
+  nearer-is-bigger). The places stand along the camera's screen-right, so C
+  stands at B's height (`docs/organ-3d-playbook.md`, U).
+- **A → B is a before and after, on the model.** All twelve small vessels
+  narrow at once along their whole length; the cells slow; the needle turns
+  71 → 88; the level moves 3.7 → 3.1. A stays drawn in cream while B is
+  compared with it — a second needle, a ring on the jug, a pale sleeve at the
+  vessels' old width. Everything moves **from where it is**: nothing is emptied
+  and refilled, because a length growing again from zero reads as the blood
+  having stopped (owner's review, 2026-10-02).
+- **B ↔ C is two circulations.** C appears in the right-hand place already
+  flowing, its jug already at its level. Its name, over it, says
+  「C 別の循環／薬を加えた後ではありません」. While C is shown A's cream marks go:
+  three things are never compared at once.
+- **C stands beside B and nothing else**: offered only once the action has
+  reached B, refused at A or on the way, and closed at once when the action is
+  taken away (`LessonSession.canShowOther`).
+- **With reduced motion** the heart rests and the cells stand; the needle, the
+  level and the vessels' width still say everything the lesson says.
+- **Where WebGL is refused** the lesson still opens, with the same
+  circulations drawn flat (`LessonFigure.js`, the 2026-10-01 diagram).
 
-What is drawn and what it is drawn from (`lessonFigureGeometry.js`):
+What is drawn and what it is drawn from (`lessonModel3D.js`):
 
 | On screen | From | Scale |
 | --- | --- | --- |
-| The filled length of the tube | cardiac output | linear, one 0–6 L/min scale for every strip, from one zero |
+| The level in the jug | cardiac output | linear, one 0–6 L/min jug for every circulation, from one floor. **A scale, not a reservoir**: the jug is not connected to the vessels |
+| How fast the red cells move | cardiac output | linear (a drawing scale); their number is fixed |
 | The dial's needle | mean arterial pressure | linear, 0–150 mmHg over 180° |
-| The width of the six small vessels' lumen, all alike along their whole length | systemic resistance | drawing scale (`bedCalibreFor`, the full model's): **how easily blood gets through, not how much a vessel's diameter changes**; direction and order are the model's |
-| The heart glyph | — | one size; it beats at the solved rate, the same moment for every strip, and nothing else changes it (the action is on the vessels) |
+| The width of the twelve small vessels, all alike along their whole length | systemic resistance | drawing scale (`bedCalibreFor`, the full model's): **how easily blood gets through, not how much a vessel's diameter changes**; direction and order are the model's; the number of vessels is the drawing's |
+| How deep the heart squeezes | stroke volume | linear, deepest at 70 mL (a drawing scale). B squeezes less than A **although the heart was not changed** — it pushes against narrower vessels — and scene 2 says 「心臓には何もしていません」; C squeezes deepest (its contractility is higher). The timing of the squeeze within the beat is fixed (F-261) |
+| The heart's shape | — | the whole-body heart landmark (`organs/heart.js`, prototype), not the full model's ventricle |
 
-The figure is one 340 × 248 drawing the page scales as a whole, and the panel
-under it is as tall as the tallest caption and guide line it will hold, so the
-figure is one size for the whole lesson at a given window: about one unit to
-one pixel on a 375 px phone, where its smallest word is the product's 12 px
-floor. `verify:disease` measures the heart, the dial, the tube and the vessels
-at A and at every scene and button state, and B against C.
+The figure keeps one size for the whole lesson at a given window: the panel
+under it is as tall as the tallest caption and guide line it will hold, and
+the camera is fitted to the box the page gives the figure. The heart is drawn
+about 76 px tall at 375×667, 109 px at 390×844 and 235 px at 1440×900; C's
+level stands about 13, 18 and 39 px above B's. `verify:disease` boxes the
+heart, the dial, the jug and the vessels on the page at A and at every scene
+and button state, B against C, and reads the level and the needle **back off
+the screen** against the solver (`scripts/lib/lesson-drive.mjs`).
 
 Between A and B the circulation walks twelve solved conditions (resistance
 1.10 → 1.65 on the control's grid); every frame of the narrowing is a condition
@@ -409,6 +426,45 @@ veins and the reflexes — and the screen does not state it as a rule.
 ## 15. Review status
 
 **Catalog status:** `alpha`
+
+### Screen, 2026-10-02 — the introductory lesson as a 3D model of the circulation
+
+Not a model revision: no model source changed (the digest is the same), and the
+three conditions, their inputs, the claims and the words' rules are as in
+revision 11. The owner stopped polishing the flat diagram as the finished form
+and asked for **the 3D model to carry the lesson**: the heart and the small
+vessels of the whole body in one clear model; first the heart sending blood
+out, then the small vessels narrowing on the model; B against A, and C beside
+B, from one viewpoint at one scale; no camera move that makes the heart small,
+and no length growing again from zero; C said plainly not to be after a drug;
+the numbers and the words there to confirm what the model shows.
+
+- **Designed first, then built**: stills from four prototypes and a 32 s
+  motion plan, criticised before implementing (phone size, a sleeve too faint
+  to see, B's shallower squeeze read as a weakened heart, the jug read as blood
+  collected somewhere, C appearing). §9.6 records the result.
+- **Rebuilt**: the figure (`LessonStage3D.js`, `lessonModel3D.js`: one
+  orthographic camera, two fixed places, an upright circulation with a jug and
+  a dial, red cells, cream marks for A); the words on it (two part names and two
+  values on the model, the circulations' names above, what the instruments are
+  below); the scene texts, shorter; C arrives as it is, and nothing fills from
+  empty — in the flat fallback too.
+- **Kept**: the solver, the three conditions and the twelve-step walk,
+  `lessonClaimProblems` (the scene still refuses to open if they fail), the
+  session and the buttons' rules, the note on what the experiment is, the
+  scope panel's limits (its figure caution rewritten for the 3D), the flat
+  figure as the fallback where WebGL is refused, and the full model at
+  `?view=detail` (unchanged).
+- **Implemented / checked**: implemented; unit tests for the drawing scales and
+  the unit (`tests/cardiac-output-lesson-3d.test.js`); driven in headless
+  Chromium at 1440×900, 390×844 and 375×667 by `verify:disease`'s lesson drive,
+  which boxes the parts on the page through the camera, reads the level and the
+  needle back off the screen against the solver run in Node, samples every
+  frame of the walk back to A for a level that leaves the range between B's and
+  A's, checks that C arrives at its level, and photographs the figure without
+  words. Each of those guards was broken on purpose and went red. **Not checked
+  on a real device** (F-238); **no medical review** (F-240); **no first-time
+  reader** (F-239); the English labels on the 3D figure are unread (F-243).
 
 ### Screen, 2026-10-01 — the introductory lesson redrawn as a circuit diagram
 

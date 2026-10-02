@@ -16,7 +16,8 @@
  * finish its framing tween before the shutter (`scripts/lib/camera.mjs` — a
  * fixed wait photographs the tween, `CLAUDE.md`). A route that opens a lesson
  * (`#/cardiac-output`) is photographed as the lesson's own figure, because that
- * is what its card opens; the lesson makes no renderer to photograph.
+ * is what its card opens: the shell makes no viewer for it, and the figure
+ * draws itself (in 3D, or flat where WebGL is refused).
  *
  * Re-run it when a model's opening look changes. The output is a JPEG at the
  * card's 16:10, small enough that a list of them is not the page's weight.
@@ -74,8 +75,8 @@ try {
     // The card's own proportion, at twice its largest displayed width.
     const page = await browser.newPage({ viewport: { width: 1200, height: 750 }, deviceScaleFactor: 1 });
     await page.goto(`${server.base}${flag('--preview') ? '?preview=1' : ''}${route}`, { waitUntil: 'load' });
-    // A model's viewer — or a lesson (`layout: 'lesson'`), which makes no
-    // renderer: what the card opens is its figure, drawn by the page. The
+    // A model's viewer — or a lesson (`layout: 'lesson'`), for which the shell
+    // makes no viewer: what the card opens is its figure, which draws itself. The
     // viewer exists before the scene and its asset are, and
     // `waitForFramingToSettle` reads a missing app as "nothing to wait for",
     // so the app itself is waited for, not a canvas.
@@ -89,7 +90,8 @@ try {
                   #ui[data-layout='lesson'] .lesson-figure { position: fixed !important; inset: 6% 8% !important; }`,
       });
       await page.evaluate(() => window.dispatchEvent(new Event('resize')));
-      await page.waitForFunction(() => document.querySelector('.lesson-figure-svg')?.dataset.calm === 'true', null, { timeout: 20000 });
+      // Refitted to the frame and at rest: the vessels, the needle and the level arrived.
+      await page.waitForFunction(() => document.querySelector('[data-lesson-figure]')?.dataset.calm === 'true', null, { timeout: 20000 });
     } else {
       // Hide the interface first: the framing fits the model into the room the
       // panels leave, and with them gone it fits the whole frame.

@@ -24,7 +24,9 @@ import { LessonSession } from '../src/scenes/cardiovascular/scenes/cardiacOutput
 import { stripsFor } from '../src/scenes/cardiovascular/scenes/cardiacOutput/lessonStoryboard.js';
 
 /**
- * The introductory lesson's figure, against what it is for: that a reader who
+ * The introductory lesson's **flat** figure — drawn where a browser cannot
+ * make a WebGL context; everywhere else the figure is the 3D circulation,
+ * tested in `cardiac-output-lesson-3d.test.js` — against what it is for: that a reader who
  * does not read the numbers can still see **where** the action works (all the
  * small vessels, narrower) and **how much** each heart sends out in a minute —
  * and that two circulations, one above the other, differ on screen only by
