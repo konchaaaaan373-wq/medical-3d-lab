@@ -335,7 +335,7 @@ test('figure data: B alone carries A as cream "start" marks, with the solved dir
   assert.equal(c.values.map, values.mapC);
   assert.equal(c.values.co, values.coC);
   assert.equal(c.narrowed, false, 'C’s vessels are not narrowed');
-  assert.equal(c.copy.note.ja, 'B の治療後ではない');
+  assert.equal(c.copy.note.ja, '薬を加えた後ではありません');
 });
 
 test('figure data: said in words for a screen reader, the plain name first and the term after', () => {
@@ -457,9 +457,6 @@ test('explanation: A first, the change inside scene 2, B after; C only in the la
     if (shown.showOther) assert.equal(shown.rung, last, 'C beside B only');
     // Point first: the change never starts the moment its scene does.
     if (shown.step.id === 'constrict' && shown.into < 1) assert.equal(shown.rung, 0);
-    // Both tubes fill together when C arrives, and are full by the end of the scene.
-    if (shown.step.id === 'other' && shown.into < 0.5) assert.equal(shown.refill, 0);
-    if (shown.step.id === 'conclusion') assert.equal(shown.refill, 1);
     // The session takes what the explanation sets, by the same rule as the buttons.
     session.setRung(shown.rung);
     assert.equal(session.setShowOther(shown.showOther), shown.showOther, `the session refused the explanation at ${t}`);
@@ -500,9 +497,13 @@ test('explanation: every figure in a sentence is a solved figure', () => {
 });
 
 test('explanation: the words keep the two comparisons apart', () => {
-  // C is said to be a different circulation, and not B treated, wherever it is introduced.
-  assert.match(LESSON_CONDITION_COPY.C.note.ja, /治療後ではない/);
-  assert.match(LESSON_STEPS.other.heading.ja, /治療後ではない/);
+  // C is said to be a different circulation, and not one after a drug, wherever
+  // it is introduced: on its name in the figure, and in the scene that brings it
+  // (owner's review, 2026-10-02).
+  assert.match(LESSON_CONDITION_COPY.C.note.ja, /薬を加えた後ではありません/);
+  assert.match(LESSON_CONDITION_COPY.C.note.en, /not after any drug/);
+  assert.match(LESSON_STEPS.other.heading.ja, /別の循環（C）/);
+  assert.match(LESSON_STEPS.other.text.ja, /薬を加えた後ではなく/);
   assert.match(LESSON_STEPS.other.text.ja, /はじめから別の循環/);
   // "Start" is A's word only; C's words never use it.
   assert.doesNotMatch(JSON.stringify(LESSON_CONDITION_COPY.C), /開始|start/i);
@@ -525,7 +526,7 @@ test('explanation: nothing it does not compute is said to have changed', () => {
 test('guide: one line for each state, and an interrupted explanation says what the reader now has', () => {
   const base = { solved, targetId: 'A', showOther: false };
   assert.equal(guideFor({ ...base, primaryId: 'A' }), LESSON_GUIDE.start);
-  assert.match(LESSON_GUIDE.start.ja, /「血管を縮める作用を加える」を押して/, 'the first screen says what can be pressed');
+  assert.match(LESSON_GUIDE.start.ja, /「血管を縮める作用を加える」を押す/, 'the first screen says what can be pressed');
   assert.equal(guideFor({ ...base, primaryId: null, targetId: 'B' }), LESSON_GUIDE.changing);
   assert.equal(guideFor({ ...base, primaryId: null, targetId: 'A' }), LESSON_GUIDE.releasing);
   assert.equal(guideFor({ ...base, primaryId: 'B', targetId: 'B', showOther: true }), LESSON_GUIDE.pair);

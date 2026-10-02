@@ -65,7 +65,7 @@ export const LESSON_CONDITION_COPY = {
     letter: 'C',
     tone: 'other',
     role: { en: 'A different circulation', ja: '別の循環' },
-    note: { en: 'not B after treatment', ja: 'B の治療後ではない' },
+    note: { en: 'not after any drug', ja: '薬を加えた後ではありません' },
   },
 };
 
@@ -170,8 +170,8 @@ export const LESSON_ACTIONS = {
  */
 export const LESSON_GUIDE = {
   start: {
-    en: 'Press “Add the vessel-narrowing action”, or ▶ to play the explanation.',
-    ja: '「血管を縮める作用を加える」を押してみましょう。▶ で説明も再生できます。',
+    en: 'Press “Add the vessel-narrowing action”, or ▶ to play.',
+    ja: '「血管を縮める作用を加える」を押すか、▶ で説明を再生できます。',
   },
   changing: { en: 'The small vessels of the whole body are narrowing…', ja: '全身の細い血管を縮めています…' },
   releasing: { en: 'Taking the action away…', ja: '作用を戻しています…' },
@@ -179,20 +179,20 @@ export const LESSON_GUIDE = {
   // clinical judgement of 3.75 → 3.13 L/min that this lesson does not make
   // (owner's review, 2026-09-30).
   afterDown: {
-    en: 'Pressure up; in this model, the blood sent out per minute went down. Next, compare with another circulation.',
-    ja: '血圧は上がり、1分間に送り出す量はこのモデルでは減りました。次は別の循環と比べましょう。',
+    en: 'Pressure up; in this model, the output went down. Next: compare with another circulation.',
+    ja: '血圧は上がり、送り出す量はこのモデルでは減りました。次は別の循環と比べましょう。',
   },
   afterSame: {
-    en: 'Pressure up; in this model, the blood sent out per minute barely changed. Next, compare with another circulation.',
-    ja: '血圧は上がり、1分間に送り出す量はこのモデルではほとんど変わりません。次は別の循環と比べましょう。',
+    en: 'Pressure up; in this model, the output barely changed. Next: compare with another circulation.',
+    ja: '血圧は上がり、送り出す量はこのモデルではほとんど変わりません。次は別の循環と比べましょう。',
   },
   afterUp: {
-    en: 'Pressure up; in this model, the blood sent out per minute went up too. Next, compare with another circulation.',
-    ja: '血圧は上がり、1分間に送り出す量もこのモデルでは増えました。次は別の循環と比べましょう。',
+    en: 'Pressure up; in this model, the output went up too. Next: compare with another circulation.',
+    ja: '血圧は上がり、送り出す量もこのモデルでは増えました。次は別の循環と比べましょう。',
   },
   pair: {
-    en: 'About the same average pressure — yet in the same minute, C sends out more.',
-    ja: '血圧の平均はほぼ同じ。でも同じ1分間に送り出す量は、別の循環（C）の方が多い。',
+    en: 'About the same average pressure — yet C sends out more in the same minute.',
+    ja: '血圧の平均はほぼ同じ。でも同じ1分間に送り出す量は C の方が多い。',
   },
   /** After the explanation is stopped: what is on screen, and what it is compared with. */
   stoppedAlone: {
@@ -211,67 +211,65 @@ export const LESSON_GUIDE = {
 
 /**
  * The five scenes of the explanation. One thing each: `heading` is what the
- * scene is, `text` what to see. Kept to about three lines on a 375 px phone
- * (`lesson-drive` measures that none of them overflows its place).
+ * scene is, `text` one short line on what to see **in the model** — the words
+ * point at the 3D, they do not carry the lesson (owner's review, 2026-10-02:
+ * "numbers and sentences only confirm what the 3D shows").
  *
  * `result` has one text per direction the output can take from A to B, and the
  * storyboard picks the one the solver's answer calls for.
  */
 export const LESSON_STEPS = {
   start: {
-    heading: { en: 'Start (A): heart, vessels, pressure', ja: '開始時（A）：心臓・細い血管・血圧' },
-    // How to read the figure, said once while every part is lit: the needle
-    // is the pressure, the tube is what is sent out per minute.
+    heading: { en: 'The heart sends blood out (A, start)', ja: '心臓が血液を送り出す（A 開始時）' },
     text: {
-      en: 'The heart sends blood through the body’s small vessels and back. The needle is the average pressure; the tube, what is sent out per minute.',
-      ja: '心臓が送り出した血液は、全身の細い血管を通って戻ります。針は血圧の平均、下の管は1分間に送り出す量です。',
+      en: 'Each squeeze sends blood out through the small vessels and back.',
+      ja: '縮むたびに血液が送り出され、細い血管を通って戻ります。',
     },
     note: null,
   },
   constrict: {
-    heading: { en: 'Add the vessel-narrowing action', ja: '血管を縮める作用を加える' },
+    heading: { en: 'Narrow the small vessels of the body', ja: '全身の細い血管を縮める' },
     text: {
-      en: 'All the small vessels narrow together, so blood passes less easily (vascular resistance ×{factor}). Nothing is done to the heart.',
-      ja: '全身の細い血管がまとめて細くなり、血液の通りにくさ（血管抵抗）が {factor} 倍になります。心臓には何もしていません。',
+      en: 'Every small vessel narrows at once (vascular resistance ×{factor}). Nothing is done to the heart.',
+      ja: 'すべての細い血管が細くなり、血液の通りにくさ（血管抵抗）が {factor} 倍に。心臓には何もしていません。',
     },
     note: null,
   },
   result: {
-    heading: { en: 'After narrowing (B): the pressure went up', ja: '血管を縮めた後（B）：血圧は上がった' },
+    heading: { en: 'After narrowing (B)', ja: '血管を縮めた後（B）' },
     text: {
       down: {
-        en: 'Average pressure {mapA} → {mapB} mmHg. But in this model the blood sent out per minute went down: {coA} → {coB} L.',
-        ja: '血圧の平均は {mapA}→{mapB} mmHg。でも心臓が1分間に送り出す量は、このモデルでは {coA}→{coB} L に減りました。',
+        en: 'Needle up, {mapA} → {mapB} mmHg; jug down, {coA} → {coB} L — in this model.',
+        ja: '針は {mapA}→{mapB} mmHg に上がり、容器は {coA}→{coB} L に下がりました（このモデルでは）。',
       },
       same: {
-        en: 'Average pressure {mapA} → {mapB} mmHg. In this model the blood sent out per minute barely changed: {coA} → {coB} L.',
-        ja: '血圧の平均は {mapA}→{mapB} mmHg。心臓が1分間に送り出す量は、このモデルでは {coA}→{coB} L でほとんど変わりません。',
+        en: 'Needle up, {mapA} → {mapB} mmHg; jug about the same, {coA} → {coB} L — in this model.',
+        ja: '針は {mapA}→{mapB} mmHg に上がり、容器は {coA}→{coB} L でほとんど変わりません（このモデルでは）。',
       },
       up: {
-        en: 'Average pressure {mapA} → {mapB} mmHg, and in this model the blood sent out per minute went up too: {coA} → {coB} L.',
-        ja: '血圧の平均は {mapA}→{mapB} mmHg。心臓が1分間に送り出す量も、このモデルでは {coA}→{coB} L に増えました。',
+        en: 'Needle up, {mapA} → {mapB} mmHg; jug up too, {coA} → {coB} L — in this model.',
+        ja: '針は {mapA}→{mapB} mmHg に上がり、容器も {coA}→{coB} L に上がりました（このモデルでは）。',
       },
     },
-    // One line on a phone. "In this model" is in the sentence above it; this is
-    // the answer to "would a real vasopressor always do this?".
+    // The answer to "would a real vasopressor always do this?".
     note: {
       en: 'A real vasopressor does not always do this.',
       ja: '実際の昇圧薬で必ずこうなるとは限りません。',
     },
   },
   other: {
-    heading: { en: 'C: a separate circulation, not B treated', ja: '別の循環（C）：B の治療後ではない' },
+    heading: { en: 'A different circulation (C)', ja: '別の循環（C）' },
     text: {
-      en: 'Different from the start: vessels not narrowed, a heart that pushes harder. Average pressure about B’s: {mapB} and {mapC} mmHg.',
-      ja: '血管を縮めておらず、心臓の押し出す力が強い、はじめから別の循環です。血圧の平均は B とほぼ同じ（{mapB} と {mapC} mmHg）。',
+      en: 'Not after any drug: different from the start — vessels not narrowed, a heart that pushes harder.',
+      ja: '薬を加えた後ではなく、はじめから別の循環です。血管は細くなく、心臓の押し出す力が強い。',
     },
     note: null,
   },
   conclusion: {
-    heading: { en: 'About the same pressure, different output', ja: '同じ程度の血圧でも、送り出す量は違う' },
+    heading: { en: 'About the same pressure, different output', ja: '血圧はほぼ同じ。送り出す量は違う' },
     text: {
-      en: 'Same minute, same heart rate ({hr}/min): B {coB} L, C {coC} L. Pressure alone cannot tell whether the circulation is keeping up.',
-      ja: '同じ1分間・同じ心拍数（{hr} 回/分）で、B は {coB} L、C は {coC} L。血圧の数字だけでは、循環が保たれているかは判断できません。',
+      en: 'Same minute, same heart rate ({hr}/min): {coB} L and {coC} L. Pressure alone cannot tell.',
+      ja: '同じ1分間・同じ心拍数（{hr}回/分）で {coB} L と {coC} L。血圧だけでは判断できません。',
     },
     note: null,
   },
@@ -316,8 +314,8 @@ export const LESSON_SCOPE = {
       textJa: '**A → B で心拍出量がどう変わるかは、このモデルのこの条件での結果です。** 昇圧薬で心拍出量が必ず下がるわけではありません。開始条件や薬の他の作用によって、変わらないことも増えることもあります。',
     },
     {
-      text: '**The figure is a diagram, drawn to drawing scales.** The width of the small vessels shows how easily blood gets through them, not how much their diameter changes; the needle shows the average pressure on a 0–150 mmHg dial; the filled length of the tube shows the litres sent out per minute on a 0–6 L scale. The steps between A and B are solved conditions shown in order — not the time a drug takes to act.',
-      textJa: '**図は模式図で、描画用の尺度で描いています。** 細い血管の太さは血液の通りやすさを表し、血管の直径がどれだけ変わるかではありません。針は 0〜150 mmHg の目盛りで血圧の平均を、管の満ちた長さは 0〜6 L の目盛りで1分間に送り出す量を示します。A と B の間の段階は計算した条件を順に並べたもので、薬が効くまでの時間経過ではありません。',
+      text: '**The figure is a model of one circulation, drawn to drawing scales — not an anatomical model.** How deep the heart squeezes is in proportion to what it sends out each beat, and the red cells move faster the more it sends out per minute; the width of the small vessels shows how easily blood gets through them, not how much their diameter changes, and their number is the drawing’s; the needle shows the average pressure on a 0–150 mmHg dial; the level in the jug shows the litres sent out per minute on a 0–6 L scale (where the browser cannot draw in 3D, the filled length of a tube). The jug is a scale, not blood collected anywhere. The steps between A and B are solved conditions shown in order — not the time a drug takes to act.',
+      textJa: '**図は 1 つの循環の模型で、描画用の尺度で描いています（解剖の模型ではありません）。** 心臓の縮む深さは1回に送り出す量に、赤い粒の速さは1分間に送り出す量に比例させています。細い血管の太さは血液の通りやすさを表し、血管の直径がどれだけ変わるかではありません。本数も描画のためのものです。針は 0〜150 mmHg の目盛りで血圧の平均を、容器の液面は 0〜6 L の目盛りで1分間に送り出す量を示します（3D を描けない端末では管の満ちた長さ）。容器は目盛りで、血液がどこかに溜まることではありません。A と B の間の段階は計算した条件を順に並べたもので、薬が効くまでの時間経過ではありません。',
     },
     {
       text: 'The conclusion is only this: the pressure alone cannot tell you whether the circulation is keeping up. Nothing here says which treatment to choose.',

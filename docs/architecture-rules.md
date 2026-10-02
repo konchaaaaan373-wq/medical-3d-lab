@@ -67,6 +67,12 @@ AORTA_SEGMENTS.arch.endT            // 描画側が曲線を sample するとき
 引きます。`tests/cardiac-output-lesson-figure.test.js` の「one size, fixed places」が、
 部品が帯の中にあり血圧計が細い血管と離れていることを測ります。
 
+**2026-10-02 追記**: 所有者の判断で教材は再び 3D（循環そのものの模型）になりました。
+部品の位置は `lessonModel3D.js` の `UNIT_LAYOUT`（`heart`・`artery`・`inletColumn`・
+`gauge`・`jug` …）が名前で持ち、ラベルの置き場所も `anchors` の名前（`heart`・`bed`・
+`gauge`・`jug`）で引きます。曲線の正規化座標は利用側にありません。平面の図は
+WebGL を使えない端末の代わりとして残っています。
+
 ---
 
 ## Rule 2 — Local coordinates
@@ -197,6 +203,10 @@ camera from its first frame」と、`tests/cardiac-output-lesson.test.js` の
 `directionOf(…, 0.1)`（`outputDirection`）の 1 回の比較から。ガードは
 `tests/cardiac-output-lesson.test.js` の「figure data: B alone carries A as cream
 "start" marks, with the solved directions」（図の矢印の向き＝説明文の向き）。
+
+**2026-10-02 追記**: 3D の模型では、描画の最終値（血管の太さ・針・液面）を書くのは
+`lessonModel3D.js` の `update` 1 か所で、舞台（`LessonStage3D.js`）は解いた値を
+`setState` で渡すだけです。光らせる強さは `setLit` 1 か所。
 
 ## Rule 4 — Physiology vs presentation
 

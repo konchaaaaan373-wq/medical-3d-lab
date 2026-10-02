@@ -697,3 +697,122 @@
     min-height: 44px;
   }
 }
+
+/* --- the 3D figure (`LessonStage3D`) --------------------------------------------
+   The canvas fills the box the page gives the figure; the words stand over it at
+   the parts they name. The box, not the drawing, is what the page holds still. */
+#ui[data-layout='lesson'] .lesson-stage {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  min-height: 0;
+}
+
+#ui[data-layout='lesson'] .lesson-stage-canvas {
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: var(--ls-title-row);
+  bottom: var(--ls-legend-row);
+  width: 100%;
+  height: calc(100% - var(--ls-title-row) - var(--ls-legend-row));
+  display: block;
+}
+
+#ui[data-layout='lesson'] .lesson-stage-labels {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  overflow: hidden;
+}
+
+#ui[data-layout='lesson'] .ls-label {
+  position: absolute;
+  left: 0;
+  top: 0;
+  font-size: 13px;
+  line-height: 1.3;
+  color: var(--ink);
+  white-space: nowrap;
+  text-shadow: 0 1px 3px rgba(0, 0, 0, 0.85), 0 0 8px rgba(0, 0, 0, 0.6);
+}
+
+#ui[data-layout='lesson'] .ls-label[hidden] {
+  display: none;
+}
+
+/* A circulation's name, over the middle of its place, in the row above the canvas. */
+#ui[data-layout='lesson'] .ls-title {
+  translate: -50% 0;
+  text-align: center;
+  font-weight: var(--weight-bold);
+  font-size: 14px;
+  color: var(--lesson-b);
+}
+
+#ui[data-layout='lesson'] .ls-title.is-other {
+  color: var(--lesson-c);
+}
+
+#ui[data-layout='lesson'] .ls-title-name,
+#ui[data-layout='lesson'] .ls-title-note {
+  display: block;
+}
+
+#ui[data-layout='lesson'] .ls-title-note {
+  font-size: 12px;
+  font-weight: 400;
+}
+
+#ui[data-layout='lesson'] .ls-legend {
+  top: auto;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  height: var(--ls-legend-row);
+  text-align: center;
+  font-size: 12px;
+  color: var(--ink-dim);
+}
+
+/* A part's name, centred on the part; an instrument's name over its value. */
+#ui[data-layout='lesson'] .ls-part {
+  translate: -50% 0;
+  text-align: center;
+}
+
+#ui[data-layout='lesson'] .ls-bed {
+  translate: -50% -100%;
+}
+
+/* The heart's name stands beside it, to its right, centred on the line. */
+#ui[data-layout='lesson'] .ls-part.ls-heart {
+  translate: 0 -50%;
+  text-align: left;
+}
+
+#ui[data-layout='lesson'] .ls-name,
+#ui[data-layout='lesson'] .ls-value {
+  display: block;
+}
+
+#ui[data-layout='lesson'] .ls-value {
+  font-weight: var(--weight-bold);
+  font-variant-numeric: tabular-nums;
+}
+
+#ui[data-layout='lesson'] .ls-part.is-lit {
+  color: #ffd27a;
+}
+
+#ui[data-layout='lesson'] .ls-placeholder {
+  translate: -50% -50%;
+  color: var(--ink-dim);
+  font-size: 12px;
+  white-space: normal;
+  width: 9em;
+  text-align: center;
+  border: 1px dashed rgba(255, 255, 255, 0.18);
+  border-radius: 8px;
+  padding: 8px 10px;
+}
