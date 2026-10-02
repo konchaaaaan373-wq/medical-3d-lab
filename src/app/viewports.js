@@ -107,8 +107,8 @@ export const SURFACES = [
   // that shell is the full model, one view in (`?view=detail`): the bare route
   // opens the introductory lesson, measured on its own below.
   { id: 'scene-disease', route: '#/cardiac-output?view=detail', label: 'Disease model', needsRenderer: true },
-  // The introductory lesson (`layout: 'lesson'`): a figure between a question
-  // and its buttons, with nothing over it — so no "hide controls" to measure
+  // The introductory lesson (`layout: 'lesson'`): a figure (3D, drawing on a
+  // canvas of its own) between a question and its buttons, with nothing over it — so no "hide controls" to measure
   // (`scripts/check-viewports.mjs` says why in its note) — and everything
   // else every scene owes, at every width.
   { id: 'scene-lesson', route: '#/cardiac-output', label: 'Disease model, introductory lesson', needsRenderer: true },
