@@ -843,6 +843,9 @@ export async function recordLesson(browser, { url, width, height, file, part }) 
   const done = encoding.done.catch((error) => {
     failed = error;
   });
+  // One promise for "the encoder has gone", not a listener per full pipe: a 3D
+  // recording fills the pipe often enough to add more than ten of them.
+  const gone = new Promise((resolve) => encoder.once('close', resolve));
   try {
     await page.goto(url, { waitUntil: 'networkidle' });
     await ready(page);
@@ -862,10 +865,7 @@ export async function recordLesson(browser, { url, width, height, file, part }) 
         // encoder that died with the pipe full never drains, and the run would
         // wait for the CI's timeout instead of saying the recording failed.
         if (!encoder.stdin.write(frame)) {
-          await new Promise((resolve) => {
-            encoder.stdin.once('drain', resolve);
-            encoder.once('close', resolve);
-          });
+          await Promise.race([new Promise((resolve) => encoder.stdin.once('drain', resolve)), gone]);
         }
       }
     };
