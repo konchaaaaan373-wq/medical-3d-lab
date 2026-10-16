@@ -40,6 +40,7 @@ Last updated: 2026-09-06（現在地の数値は §3 参照）
 | UI が読む「いま公開しているモデル」の一覧と契約 | [`../src/catalog/publicManifest.js`](../src/catalog/publicManifest.js)（コードが契約） |
 | 公開までのゲートと実装順（進捗台帳） | [`public-release-roadmap.md`](public-release-roadmap.md) |
 | マージ済みだが未確認・未決定・先送りの個別事項（残課題台帳） | [`follow-ups.md`](follow-ups.md) |
+| **開発中に決まった運用ルール・こだわり**（日付つき。新しい日付が勝ち、古い項目はアーカイブ） | [`rules.md`](rules.md) |
 | リリース手順・ロールバック・障害対応 | [`release-runbook.md`](release-runbook.md) |
 | 性能予算・計測・エラー報告・フィードバック | [`observability.md`](observability.md) |
 | クロール可能なページ・OGP・sitemap | [`discoverability.md`](discoverability.md) |
@@ -542,8 +543,10 @@ Claude Code・Codex いずれも、このリポジトリで作業するときの
 ### 読む順
 
 1. `CLAUDE.md`（規則の要約）
-2. 本書 §1 の document map で、触る領域の所有文書を引く
-3. 所有文書の該当節
+2. [`rules.md`](rules.md) の「現行」節（日付つきの運用ルール。本書や所有文書と
+   矛盾したら、日付の新しい項目が勝つ）
+3. 本書 §1 の document map で、触る領域の所有文書を引く
+4. 所有文書の該当節
 
 ### 不変条件 — どのタスクでも破らない
 
