@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 
-import { auditLedgerFile, auditRules, hasRealDate, nextId, parseRules } from '../scripts/lib/rules.mjs';
+import { auditLedgerFile, auditRules, hasRealDate, malformedHeadings, nextId, parseRules } from '../scripts/lib/rules.mjs';
 
 const read = (path) => readFileSync(new URL(`../${path}`, import.meta.url), 'utf8');
 
@@ -21,8 +21,11 @@ const ok = { 決めたこと: 'x', なぜ: 'y', 置き換えるもの: 'なし' 
 
 const ledger = (active, archive = '') => ['## 現行（新しい順）', '', active, '## アーカイブ', '', archive].join('\n');
 
-test('the real ledger is well-formed and something was read', () => {
-  const { problems, active } = auditLedgerFile(new URL('../docs/rules.md', import.meta.url).pathname);
+test('the real ledger is well-formed, nothing has left it, and something was read', () => {
+  const { problems, active } = auditLedgerFile(
+    new URL('../docs/rules.md', import.meta.url).pathname,
+    new URL('./rules-ids-baseline.json', import.meta.url).pathname,
+  );
   assert.deepEqual(problems, []);
   // An empty parse would satisfy every assertion above it (L-01).
   assert.ok(active.length >= 2, `only ${active.length} current rule(s) parsed`);
@@ -60,6 +63,40 @@ test('a deleted rule is refused: a replaced rule has to be in the archive', () =
   const audited = auditRules({ markdown: archived });
   assert.deepEqual(audited.problems, []);
   assert.deepEqual(audited.archived.map((rule) => rule.id), ['R-2026-10-16-01']);
+});
+
+test('a rule deleted outright, with nothing naming it, is caught by the id baseline', () => {
+  // The snapshot alone cannot see this: old entry gone, new entry says なし.
+  // Found by review on the first PR (Codex, #172). The baseline is the record
+  // of every id the ledger has ever held, so the deletion has something to
+  // be measured against.
+  const after = ledger(entry('R-2026-10-20-01', 'new', ok));
+  const { problems } = auditRules({ markdown: after, known: ['R-2026-10-16-01'] });
+  assert.match(problems[0], /R-2026-10-16-01 was in the ledger and is gone — a rule is archived, never deleted/);
+
+  // And a new id has to be recorded, or the baseline stops describing the file.
+  const unrecorded = auditRules({ markdown: after, known: [] });
+  assert.match(unrecorded.problems[0], /R-2026-10-20-01 is new and not yet in the id baseline/);
+  assert.deepEqual(unrecorded.unrecorded, ['R-2026-10-20-01']);
+
+  // Without a baseline the check is simply not run — the other tests here
+  // audit snippets that have no history.
+  assert.deepEqual(auditRules({ markdown: after }).problems, []);
+});
+
+test('a heading that looks like a rule but does not parse is refused, not ignored', () => {
+  // `R-2026-10-17-1` (one digit) or a missing title would otherwise vanish
+  // from the parse with its date, fields and order unchecked (Codex, #172).
+  for (const bad of ['### R-2026-10-17-1 — typo', '### R-2026-10-17-01', '### R-2026-10-17-01 —   ']) {
+    const markdown = ledger(`${entry('R-2026-10-16-01', 'a', ok)}${bad}\n${Object.entries(ok).map(([k, v]) => `- **${k}**: ${v}`).join('\n')}\n`);
+    assert.equal(malformedHeadings(markdown).length, 1, `"${bad}" was not flagged`);
+    assert.ok(
+      auditRules({ markdown }).problems.some((problem) => problem.includes('looks like a rule but is not')),
+      `"${bad}" passed the audit`,
+    );
+  }
+  // The fenced template is still not a rule, malformed or otherwise.
+  assert.deepEqual(malformedHeadings('```\n### R-YYYY-MM-DD-NN — x\n```\n'), []);
 });
 
 test('an archived rule has to say what replaced it, and the replacer has to agree', () => {

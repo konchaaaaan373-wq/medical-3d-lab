@@ -28,7 +28,9 @@ export const NOTHING = 'なし';
 
 export const SECTION = Object.freeze({ active: 'active', archive: 'archive', none: 'none' });
 
-const HEADING = /^### (R-\d{4}-\d{2}-\d{2}-\d{2})\s*(?:—|-)?\s*(.+)$/;
+const HEADING = /^### (R-\d{4}-\d{2}-\d{2}-\d{2})\s*(?:—|-)?\s*([^\s—-].*?)\s*$/;
+/** Anything that was meant to be a rule heading, canonical or not. */
+const RULE_LIKE = /^### R-/;
 const FIELD = /^- \*\*(.+?)\*\*:\s*([\s\S]*)$/;
 const ACTIVE_HEADING = /^## 現行/;
 const ARCHIVE_HEADING = /^## アーカイブ/;
@@ -117,20 +119,55 @@ export function parseRules(markdown) {
   return rules;
 }
 
+/**
+ * Headings that look like a rule but do not parse as one.
+ *
+ * `### R-2026-10-17-1` or a heading with no title would otherwise vanish from
+ * the parse, and with it its date, fields and place in the order — a rule
+ * that validation never sees. Found by review on the first PR (Codex, #172).
+ *
+ * @param {string} markdown
+ * @returns {{text: string, line: number}[]}
+ */
+export function malformedHeadings(markdown) {
+  const found = [];
+  let fenced = false;
+  const lines = markdown.split('\n');
+  for (let index = 0; index < lines.length; index += 1) {
+    const line = lines[index];
+    if (line.startsWith('```')) {
+      fenced = !fenced;
+      continue;
+    }
+    if (fenced) continue;
+    if (RULE_LIKE.test(line) && !HEADING.test(line)) found.push({ text: line, line: index + 1 });
+  }
+  return found;
+}
+
 /** Every rule id named in a field. */
 const named = (text) => [...(text ?? '').matchAll(ID)].map((match) => match[0]);
 
 /**
  * Everything wrong with the ledger that a machine can be sure of.
  *
- * @param {{markdown: string}} input
- * @returns {{problems: string[], rules: ReturnType<typeof parseRules>, active: ReturnType<typeof parseRules>, archived: ReturnType<typeof parseRules>}}
+ * `known` is the list of every id the ledger has ever held (the committed
+ * baseline). Without it, a rule deleted outright — old entry gone, nothing
+ * naming it — leaves a snapshot this cannot fault: the "never deleted"
+ * promise is only checkable against a record of what used to be there.
+ *
+ * @param {{markdown: string, known?: string[]}} input
+ * @returns {{problems: string[], rules: ReturnType<typeof parseRules>, active: ReturnType<typeof parseRules>, archived: ReturnType<typeof parseRules>, unrecorded: string[]}}
  */
-export function auditRules({ markdown }) {
+export function auditRules({ markdown, known }) {
   const problems = [];
   const rules = parseRules(markdown);
   const byId = new Map();
   const where = (rule) => `${rule.id} (line ${rule.line})`;
+
+  for (const bad of malformedHeadings(markdown)) {
+    problems.push(`line ${bad.line}: "${bad.text}" looks like a rule but is not \`### R-YYYY-MM-DD-NN — title\`, so nothing would check it`);
+  }
 
   for (const rule of rules) {
     if (byId.has(rule.id)) {
@@ -209,7 +246,24 @@ export function auditRules({ markdown }) {
     }
   }
 
-  return { problems, rules, active, archived };
+  const unrecorded = [];
+  if (known) {
+    const present = new Set(rules.map((rule) => rule.id));
+    for (const id of known) {
+      if (!present.has(id)) {
+        problems.push(`${id} was in the ledger and is gone — a rule is archived, never deleted`);
+      }
+    }
+    const recorded = new Set(known);
+    for (const rule of rules) {
+      if (!recorded.has(rule.id)) unrecorded.push(rule.id);
+    }
+    for (const id of unrecorded) {
+      problems.push(`${id} is new and not yet in the id baseline — run \`npm run rules -- --write\` to record it`);
+    }
+  }
+
+  return { problems, rules, active, archived, unrecorded };
 }
 
 /**
@@ -228,8 +282,20 @@ export function nextId(rules, day) {
 }
 
 /**
- * @param {string} ledgerPath
+ * @param {string} baselinePath
+ * @returns {string[]}
  */
-export function auditLedgerFile(ledgerPath) {
-  return auditRules({ markdown: readFileSync(ledgerPath, 'utf8') });
+export function readKnownIds(baselinePath) {
+  return JSON.parse(readFileSync(baselinePath, 'utf8')).ids ?? [];
+}
+
+/**
+ * @param {string} ledgerPath
+ * @param {string} [baselinePath] the committed list of every id ever held
+ */
+export function auditLedgerFile(ledgerPath, baselinePath) {
+  return auditRules({
+    markdown: readFileSync(ledgerPath, 'utf8'),
+    known: baselinePath ? readKnownIds(baselinePath) : undefined,
+  });
 }
