@@ -1,6 +1,6 @@
 # Rules — 運用ルール台帳
 
-Last updated: 2026-10-16
+Last updated: 2026-10-22
 
 開発の途中で決まった**ルール・こだわり・やり方の約束**を、日付つきで 1 か所に置く
 台帳です。`CLAUDE.md` が規則の**要約**、本書がその**時系列の記録**で、
@@ -61,6 +61,23 @@ Last updated: 2026-10-16
 ---
 
 ## 現行（新しい順）
+
+### R-2026-10-22-01 — Node の版は `.nvmrc` 1 か所が持ち、CI も Netlify もそこから読む
+
+- **決めたこと**: Node の版は [`../.nvmrc`](../.nvmrc) の 1 行（LTS の偶数 major だけ。
+  いまは `24`）。workflow の `actions/setup-node` は `node-version-file: .nvmrc` と
+  `check-latest: true` で読み、版を literal で書かない。`netlify.toml` にも
+  `NODE_VERSION` を書かない。Netlify の関数はビルドの Node で走るので、UI に
+  `AWS_LAMBDA_JS_RUNTIME` を置かない（置くなら `.nvmrc` と同じ major）。
+  版を変えるのは `.nvmrc` の 1 行で、写しは `tests/node-runtime.test.js` が拒む
+- **なぜ**: 所有者の指示（2026-10-22）「Node 24 LTS へ移行し、CI と Netlify ビルドを
+  整合」。それまで CI は 12 か所で `22` と書き、Netlify がビルドと関数
+  （毎時の `scheduled-billing-reconcile` を含む）に使う版は repo のどこにも無く、
+  CI の緑は出荷物の Node について何も言っていなかった
+  （[`verification-lessons.md`](verification-lessons.md) L-182）。major だけを書くのは、
+  2026-10-20 の 24.22.1 のような patch のセキュリティリリースを、CI と deploy が
+  commit なしで同じ経路から受け取るため
+- **置き換えるもの**: なし
 
 ### R-2026-10-16-02 — 古いルールは削除せずアーカイブし、新しい日付を優先する
 

@@ -1,6 +1,8 @@
 # CLAUDE.md
 
 Three.js + Vite. 依存は `three` のみ。素の JS + JSDoc、フレームワークなし。
+Node の版は `.nvmrc`（LTS の major 1 行）だけが持ち、CI も Netlify もそこから読む
+（`docs/rules.md` R-2026-10-22-01。写しは `tests/node-runtime.test.js` が拒む）。
 
 ```bash
 npm run dev        # vite

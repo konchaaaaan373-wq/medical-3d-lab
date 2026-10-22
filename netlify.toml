@@ -14,6 +14,12 @@
 # rolled back like any other, instead of a value somebody has to remember to
 # retype into a dashboard — and remembering was the failure the domain-change
 # checklist in `docs/release-runbook.md` exists to prevent.
+#
+# The Node version is not here either: `.nvmrc` holds it, for this build and
+# for CI alike, and Netlify reads that file ahead of a `NODE_VERSION` set in
+# the UI. The functions — `scheduled-billing-reconcile` among them — run on the
+# build's Node unless `AWS_LAMBDA_JS_RUNTIME` is set in the UI, which this file
+# cannot override (F-277). `tests/node-runtime.test.js` refuses a second copy.
 
 [build.environment]
   VITE_SITE_URL = "https://med-3d-lab.necofindjob.com"
