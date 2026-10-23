@@ -30,12 +30,20 @@ jobs:
       # unreachable provenance commit when its record was right all along. The
       # test refuses to run shallow rather than passing vacuously, so without
       # this line it fails here instead of lying.
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
         with:
           fetch-depth: 0
-      - uses: actions/setup-node@v4
+      # The Node version is `.nvmrc`'s, in every workflow, because it is also
+      # the file Netlify builds with — and the build's Node is the runtime its
+      # functions get, the hourly `scheduled-billing-reconcile` included. Until
+      # 2026-10-22 these steps said `22` twelve times and nothing said what
+      # Netlify used. `check-latest` takes the newest patch rather than whatever
+      # the runner image cached, so a security release reaches CI when it
+      # reaches the deploy. `tests/node-runtime.test.js` keeps it this way.
+      - uses: actions/setup-node@v5
         with:
-          node-version: 22
+          node-version-file: .nvmrc
+          check-latest: true
           cache: npm
       - run: npm ci
       - run: npm test
@@ -76,10 +84,11 @@ jobs:
     # the job is simply at its limit. How to make it shorter is F-236.
     timeout-minutes: 40
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
         with:
-          node-version: 22
+          node-version-file: .nvmrc
+          check-latest: true
           cache: npm
       - run: npm ci
       - run: npm run build
@@ -105,14 +114,14 @@ jobs:
       # composer's render targets at DPR 2 and decodes one exported sequence.
       - name: Video export at DPR 2
         run: npm run verify:disease -- --dist dist-preview --dpr 2 disease-video-dpr2 copd
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v6
         if: always()
         with:
           name: disease-video-dpr2
           path: disease-video-dpr2/
           if-no-files-found: ignore
           retention-days: 3
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v6
         if: always()
         with:
           name: viewport-report-chromium

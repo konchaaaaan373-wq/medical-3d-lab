@@ -1,6 +1,6 @@
 # Follow-ups — 残課題台帳
 
-Last updated: 2026-10-16
+Last updated: 2026-10-22
 
 マージ済みの変更が**まだ確かめていないこと・決めていないこと・先送りしたこと**を、
 別のセッションや別の人がそのまま拾えるように 1 か所に置く台帳です。
@@ -37,6 +37,7 @@ Last updated: 2026-10-16
   | **F-238〜F-246, F-257〜F-266 / L-147〜L-151, L-162〜L-181** | 心拍出量の入門教材（`#/cardiac-output` を「血圧が上がった。心臓から出る量も増えた？」の 1 問に絞った説明と操作に、詳しいモデルを `?view=detail` へ）。マージ時点の main の最大（F-236 / L-139）から取っています。2026-10-01 の作り直し（3D をやめて循環回路の模式図に）で L が足りなくなり、L-152〜L-155 を取ったところ、**#168 が L-152〜L-161 を先に予約・使用していました**（作業中に main が 600e2916 → e877b281 へ進み、マージで気づいた）。**採番し直し**: 作り直しの 3 件は L-162〜L-164 で、L-162〜L-171 をこの branch のブロックとして取り直しています。main のマージ後の 4 件が L-165〜L-168、コードレビュー（2026-10-01）の 3 件が L-169〜L-171。F が尽きたので、同じレビューの残り 5 件に F-257〜F-266 を取り足しています（main の最大 F-256 の上）。**採番し直し 2 回目（2026-10-01）**: main の #169（心臓の解剖）が、この予約を見ずに F-237 と L-140〜L-146 を使ってマージされていました（この branch は未マージで、予約は main の表にまだ無かった）。後からマージする側が取り直す慣例どおり、この branch の F-237（解決済み: 詳しいモデルのメニューの血管収縮作用）を F-262 に、L-140〜L-146 を L-172〜L-178 に移し、本文・コード・テストの参照も同時に動かしています | 2026-09-29 |
 
   | **F-267〜F-276** | 運用ルール台帳（`docs/rules.md`）の新設。使うのは F-267 のみ。マージ時点の main の最大（F-266 / L-181）から取っています | 2026-10-16 |
+  | **F-277〜F-286 / L-182〜L-191** | Node 24 LTS への移行（`.nvmrc` を CI と Netlify の唯一の版に、関数ランタイムの確認、npm audit の high 2 件）。使うのは F-277 と L-182・L-183。着手時の main の最大（F-276 / L-181。どちらも予約の上限）の上から取っています | 2026-10-22 |
 
 - **重複の一覧は [`tests/follow-ups-numbers.test.js`](../tests/follow-ups-numbers.test.js) が持ちます。ここには書き写しません。**
   この節は長らく「F-90〜F-93 の 4 件」と書いていましたが、**数えたら 18 件**
@@ -107,6 +108,32 @@ squash `81fea92`）のレビューと修正。`#40` = 冠動脈解剖・心筋�
 ---
 
 ## A. マージ後にまだ確認していないこと
+
+### F-277 — Netlify の関数ランタイムが Node 24 になったかを、Netlify 側で見ていない — P2
+
+2026-10-22 に Node を 24 へ移しました（`.nvmrc`、[`rules.md`](rules.md) R-2026-10-22-01）。
+この環境から確かめたのは repo 側だけです: Node 24.22.1 で `npm ci`・`npm audit`（0 件）・
+`npm test`・build・`budget`・`verify:site`・`cards:check`・`type-floor` が通り、
+本番の `VITE_SITE_URL` を入れた dist は main（Node 22）とバイト一致し、
+`netlify/functions/` の 11 本は Node 24 で `--throw-deprecation` のまま読み込め、
+`scheduled-billing-reconcile` は課金の設定が無い環境で（`fetch` を罠にして）
+1 回も通信せずに skip しました。Netlify 自身の bundler（`@netlify/zip-it-and-ship-it`
+16.5.0）で bundle すると、ビルドの Node が 24 なら全関数が `nodejs24.x`、
+scheduled のものは `17 * * * *` を保ったまま出ます。
+
+**見ていないのは Netlify の UI の側です**（app.netlify.com も docs.netlify.com も、
+この環境の network policy で読めません）。
+
+- **確かめること**: (1) Site configuration → Environment variables に
+  `AWS_LAMBDA_JS_RUNTIME` が無いこと（あれば関数はその版で走り、`.nvmrc` は効きません。
+  `netlify.toml` からは上書きできません）。(2) マージ後の production deploy の
+  ログが `.nvmrc` から Node 24 を入れていること。(3) Functions 画面で
+  `scheduled-billing-reconcile` の runtime が Node.js 24 で、次の毎時 17 分の
+  実行がエラーなく終わる（production は課金未設定なので skip のログになるはず）こと
+- **どう確かめるか**: 上の 3 点は Netlify の画面でしか読めません。Netlify を読める
+  connector が付いたら、ここを機械で閉じてください
+- **完了の定義**: 3 点を見て、どの画面で何が出ていたかを 1 行ずつ書いて Resolved へ移す。
+  `AWS_LAMBDA_JS_RUNTIME` が古い版で置かれていたら、消すか `nodejs24.x` に直してから閉じる
 
 ### F-251 — BYOKI MOTION: 実機（iPhone Safari・Android Chrome）で未確認 — P2
 
