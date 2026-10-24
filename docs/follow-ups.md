@@ -37,7 +37,6 @@ Last updated: 2026-10-24
   | **F-238〜F-246, F-257〜F-266 / L-147〜L-151, L-162〜L-181** | 心拍出量の入門教材（`#/cardiac-output` を「血圧が上がった。心臓から出る量も増えた？」の 1 問に絞った説明と操作に、詳しいモデルを `?view=detail` へ）。マージ時点の main の最大（F-236 / L-139）から取っています。2026-10-01 の作り直し（3D をやめて循環回路の模式図に）で L が足りなくなり、L-152〜L-155 を取ったところ、**#168 が L-152〜L-161 を先に予約・使用していました**（作業中に main が 600e2916 → e877b281 へ進み、マージで気づいた）。**採番し直し**: 作り直しの 3 件は L-162〜L-164 で、L-162〜L-171 をこの branch のブロックとして取り直しています。main のマージ後の 4 件が L-165〜L-168、コードレビュー（2026-10-01）の 3 件が L-169〜L-171。F が尽きたので、同じレビューの残り 5 件に F-257〜F-266 を取り足しています（main の最大 F-256 の上）。**採番し直し 2 回目（2026-10-01）**: main の #169（心臓の解剖）が、この予約を見ずに F-237 と L-140〜L-146 を使ってマージされていました（この branch は未マージで、予約は main の表にまだ無かった）。後からマージする側が取り直す慣例どおり、この branch の F-237（解決済み: 詳しいモデルのメニューの血管収縮作用）を F-262 に、L-140〜L-146 を L-172〜L-178 に移し、本文・コード・テストの参照も同時に動かしています | 2026-09-29 |
 
   | **F-267〜F-276** | 運用ルール台帳（`docs/rules.md`）の新設。使うのは F-267 のみ。マージ時点の main の最大（F-266 / L-181）から取っています | 2026-10-16 |
-  | **F-277〜F-286 / L-182〜L-191** | Node 24 LTS への移行（`.nvmrc` を CI と Netlify の唯一の版に、関数ランタイムの確認、npm audit の high 2 件）。使うのは F-277 と L-182・L-183。着手時の main の最大（F-276 / L-181。どちらも予約の上限）の上から取っています | 2026-10-22 |
 
 - **重複の一覧は [`tests/follow-ups-numbers.test.js`](../tests/follow-ups-numbers.test.js) が持ちます。ここには書き写しません。**
   この節は長らく「F-90〜F-93 の 4 件」と書いていましたが、**数えたら 18 件**
@@ -108,48 +107,6 @@ squash `81fea92`）のレビューと修正。`#40` = 冠動脈解剖・心筋�
 ---
 
 ## A. マージ後にまだ確認していないこと
-
-### F-277 — Netlify がビルドと関数に Node 24 を使っているかは、次の production deploy の `verify:live` で確定する — P2
-
-2026-10-22 に Node を 24 へ移しました（`.nvmrc`、[`rules.md`](rules.md) R-2026-10-22-01）。
-repo 側は Node 24.22.1 で全検査が通り、`netlify/functions/` の 11 本は Node 24 で
-読み込め、`scheduled-billing-reconcile` は課金未設定の環境で通信 0 回のまま skip し、
-Netlify 自身の bundler で bundle すると全関数が `nodejs24.x` になることまで確かめています。
-
-**Netlify 側は、画面を見なくても分かるようにしました（2026-10-24）。** 関数のランタイムは
-`@netlify/build`（37.6.1、`getLambdaNodeVersion`）が「ビルド環境の
-`AWS_LAMBDA_JS_RUNTIME`、無ければビルドの Node」で決め、ビルドコマンドはその同じ
-環境・同じ Node で走ります。そこでビルドが全ページに `build-node` と
-`build-functions-node`（どちらも major だけ）を刻み、`verify:live`（毎朝の
-`verify-live.yml`）が `.nvmrc` と照合します。UI に `NODE_VERSION` や
-`AWS_LAMBDA_JS_RUNTIME` が残っていれば、どちらの設定かを名指しして赤になります。
-本番相当のビルドを手元で配信して、override なしは緑、`AWS_LAMBDA_JS_RUNTIME=nodejs22.x`
-と Node 22 でのビルドは赤になることを確認済みです。
-
-2026-10-24 の `verify-live`（run 50）は、production が `ede9cd2`（#173）を配信していると
-報告しました——`.nvmrc` を入れた production ビルドは成功しています。そのビルドは
-刻印より前のものなので、**どの Node で作られたかはまだ読めません**。
-
-同じ日に、刻印を入れた PR #174 の deploy preview へ `verify-live` を当てました
-（run 51、`origin` を preview に）。出力は `node    24 (build) · 24 (functions) · .nvmrc 24`
-——**Netlify はこのサイトのビルドで `.nvmrc` に従い、関数にも 24 を渡しています**
-（deploy-preview の文脈で）。run 自体は赤ですが、9 件はすべて preview であることの帰結
-（canonical と sitemap が無い、context が `deploy-preview`）で、Node の照合は
-production でだけ行います。**残るのは production の文脈だけです**: Netlify の変数は
-deploy context ごとに値を持てる（[`access-and-billing.md`](access-and-billing.md)）ので、
-production にだけ `NODE_VERSION` や `AWS_LAMBDA_JS_RUNTIME` が置かれている可能性は、
-production の刻印でしか消せません。
-
-- **どう確かめるか**: この刻印を入れた commit が production に出たあと、
-  `verify-live.yml` を Actions から実行する（毎朝の定時実行でもよい）。
-  `node    24 (build) · 24 (functions) · .nvmrc 24` と出て緑なら閉じる
-- **赤だったとき**: メッセージが Netlify の site configuration のどの変数
-  （`NODE_VERSION` か `AWS_LAMBDA_JS_RUNTIME`）を消せばよいかを言います。人手が要るのは
-  その 1 回だけです
-- **読めないまま残るもの**: 定時実行 1 回ごとの成否は Netlify の関数ログにしかありません。
-  production は課金未設定なので、通る経路は skip（手元で bundle 後の成果物を Node 24 で
-  実行済み）です。ここは閉じる条件に含めません
-- **完了の定義**: 上の緑を、run 番号と出力の 1 行つきで Resolved へ移す
 
 ### F-251 — BYOKI MOTION: 実機（iPhone Safari・Android Chrome）で未確認 — P2
 
@@ -3924,6 +3881,18 @@ landmark ビルダー（`buildKidney({ parts: false })`）の `dispose()` を呼
 ---
 
 ## Resolved
+
+- **F-277 Netlify がビルドと関数に Node 24 を使っているか** — 解決（2026-10-24）。
+  #174 でビルドが全ページに `build-node`・`build-functions-node` を刻み、`verify:live` が
+  `.nvmrc` と照合するようにしたあと、production へ出た `b339ff8` に `verify-live` を
+  実行しました（[run 52](https://github.com/konchaaaaan373-wq/medical-3d-lab/actions/runs/40065568190)、緑）:
+  `build   production · b339ff8` / `node    24 (build) · 24 (functions) · .nvmrc 24`。
+  Netlify は production のビルドで `.nvmrc` に従い、UI の `NODE_VERSION` も
+  `AWS_LAMBDA_JS_RUNTIME` も効いていない——関数（毎時の `scheduled-billing-reconcile` を
+  含む）は Node 24 を受け取っています。以後は毎朝の `verify-live.yml` が同じ照合を続け、
+  ずれたら消すべき変数を名指しして赤になります。定時実行 1 回ごとの成否は
+  Netlify の関数ログにしか無く、ここでは閉じる条件に含めていません（production は
+  課金未設定で、通るのは skip の経路。bundle 後の成果物を Node 24 で実行済み）。
 
 - **F-241 心拍出量・入門教材: 375×667 で模型の帯が 151〜156 px、心臓は幅約 80 px** —
   解決（2026-10-01、作り直しで）。所有者のレビューで、説明欄が増えると血管だけでなく
