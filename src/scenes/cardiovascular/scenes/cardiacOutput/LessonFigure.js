@@ -16,7 +16,10 @@ import {
 } from './lessonFigureGeometry.js';
 
 /**
- * The introductory lesson's figure, drawn as SVG from `lessonFigureGeometry.js`.
+ * The introductory lesson's figure, drawn as SVG from `lessonFigureGeometry.js`
+ * — **where the browser cannot make a WebGL context**. Everywhere else the
+ * lesson's figure is the circulation in 3D (`LessonStage3D`); this flat one is
+ * kept so the lesson still opens, and still says the same thing, without it.
  *
  * Built once — two strips, and how to read them in the second strip's place
  * until C is shown — and then only the attributes that change are written each
@@ -75,6 +78,8 @@ export function createLessonFigure({ reducedMotion = () => false } = {}) {
     'svg',
     {
       class: 'lesson-figure-svg',
+      // Drawn where the browser cannot make a WebGL context (`LessonStage3D`).
+      'data-lesson-figure': '2d',
       viewBox: `0 0 ${FIGURE.width} ${FIGURE.height}`,
       preserveAspectRatio: 'xMidYMid meet',
       role: 'img',
@@ -321,7 +326,7 @@ export function createLessonFigure({ reducedMotion = () => false } = {}) {
   const arrow = (direction) => (direction === 'up' ? '↑' : direction === 'down' ? '↓' : direction === 'same' ? '→' : '');
 
   /** The parts of one strip that change with what it shows. */
-  function drawStrip(strip, data, { refill, squeeze, highlight, dt, still }) {
+  function drawStrip(strip, data, { squeeze, highlight, dt, still }) {
     const key = JSON.stringify([data.id, data.drawing, data.values, data.narrowed]);
     if (key !== strip.drawnKey) {
       strip.drawnKey = key;
@@ -369,9 +374,10 @@ export function createLessonFigure({ reducedMotion = () => false } = {}) {
       strip.group.classList.toggle('is-narrowed', data.narrowed);
     }
 
-    // The tube fills to its solved length; while both are filling "in the same
-    // minute" they fill together from empty.
-    const filled = data.drawing.tube * refill;
+    // The tube is filled to its solved length, and never emptied to fill again:
+    // a length growing from zero reads as the blood having stopped (owner's
+    // review, 2026-10-02).
+    const filled = data.drawing.tube;
     set(strip.tubeFill, 'width', round(filled));
     const before = data.drawing.before;
     const beforeX = before ? TUBE.left + before.tube : null;
@@ -389,7 +395,6 @@ export function createLessonFigure({ reducedMotion = () => false } = {}) {
     set(strip.coValue.text, 'x', round(inside ? end - 4 : end + 4));
     set(strip.coValue.text, 'text-anchor', inside ? 'end' : 'start');
     set(strip.coValue.text, 'class', `lf-value lf-co-value ${inside ? 'is-inside' : 'is-outside'}`);
-    set(strip.coValue.text, 'visibility', refill > 0.98 ? 'inherit' : 'hidden');
 
     set(strip.heart, 'd', heartPath(1 - 0.07 * squeeze));
 
@@ -416,16 +421,16 @@ export function createLessonFigure({ reducedMotion = () => false } = {}) {
     /**
      * Draw one frame.
      *
-     * @param {{ strips: object[], highlight: string[], refill: number, squeeze: number,
+     * @param {{ strips: object[], highlight: string[], squeeze: number,
      *   summary: { en: string, ja: string }, dt: number }} frame
      */
-    render({ strips: shown, highlight, refill, squeeze, summary: said, dt }) {
+    render({ strips: shown, highlight, squeeze, summary: said, dt }) {
       const still = reducedMotion();
       let calm = true;
       strips.forEach((strip, index) => {
         const data = shown[index];
         set(strip.group, 'display', data ? 'inline' : 'none');
-        if (data) calm = drawStrip(strip, data, { refill: still ? 1 : refill, squeeze: still ? 0 : squeeze, highlight, dt, still }) && calm;
+        if (data) calm = drawStrip(strip, data, { squeeze: still ? 0 : squeeze, highlight, dt, still }) && calm;
       });
       // Whether every highlight has arrived where it is going: a check
       // photographs a figure at rest, not one half way between two scenes.

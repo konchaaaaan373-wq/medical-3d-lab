@@ -43,12 +43,14 @@ import '../styles/lesson-layout.css';
  * and the line under the figure says what that is and what it is compared
  * with.
  *
- * ## The figure is drawn by the page — no renderer
+ * ## The figure is the scene's — the shell makes no viewer
  *
- * The lesson's figure is SVG (`lesson.figure`), laid out in the room between
- * the question and the bottom panel. Nothing is drawn in 3D, so the shell makes
- * no WebGL context at all (`App.js` decides on the layout before the renderer):
- * a browser that cannot make one still opens the lesson. Its clock is one
+ * The lesson's figure (`lesson.figure`) is laid out in the room between the
+ * question and the bottom panel, and draws itself there: the cardiac-output
+ * lesson makes a small WebGL renderer of its own for its 3D circulations, and
+ * draws them flat where it cannot. The shell makes no viewer and no WebGL
+ * context (`App.js` decides on the layout before the renderer), so a browser
+ * that cannot make one still opens the lesson. Its clock is one
  * `requestAnimationFrame` loop (`createFrameClock`) — what the explanation, the
  * beat and a recording are stepped by.
  *
@@ -207,8 +209,9 @@ export function mountLessonShell({ scene, meta, entry, ui }) {
     shownHash: window.location.hash,
     language: ui.dataset.lang === 'en' ? 'en' : 'ja',
     describe: (hash) => openingMessage(hash, ui.dataset.lang === 'en' ? 'en' : 'ja', { open: routeOpen(resolveRoute(hash)) }),
-    // No frame is carried to the next document: there is no canvas, and a
-    // picture of the page's background was all the old renderer could give.
+    // No frame is carried to the next document: the shell has no viewer to
+    // take one from (the figure's canvas is the scene's own), and a picture of
+    // the page's background was all the old renderer could give.
     onDepart: () => {
       if (!clock.running) return undefined;
       clock.stop();
@@ -240,6 +243,8 @@ export function mountLessonShell({ scene, meta, entry, ui }) {
       },
       /** The clock, for a recording that steps it a fixed time per frame. */
       clock,
+      /** The figure as a reader sees it (parts on the page, values read off the screen), where the figure can say. */
+      probe: () => lesson.figure.probe?.() ?? null,
       pause: () => {
         playing = false;
       },

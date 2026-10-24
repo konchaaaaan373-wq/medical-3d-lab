@@ -6,30 +6,41 @@
  * ## What it checks
  *
  * What a first-time reader meets, at the three windows the owner named
- * (1440×900, 390×844, 375×667):
+ * (1440×900, 390×844, 375×667), in the lesson's 3D figure (`LessonStage3D`):
  *
  * - the first screen shows the question, the figure, the note on what the
  *   experiment is, and the two things to press — and "compare" is not one of
- *   them yet — without scrolling, and no modal stands over it;
- * - **the figure keeps one size**: the heart, the dial, the tube and the
- *   vessels are measured at A and again at every scene of the explanation and
- *   every state of the buttons, and so is the bottom panel. A figure that
- *   shrank as a caption grew is what the owner's review of 2026-10-01 found;
- *   B and C, one above the other, are measured to be drawn at one scale;
+ *   them yet — without scrolling, and no modal stands over it; on a phone the
+ *   heart is drawn at least `HEART_FLOOR_PX` tall;
+ * - **one viewpoint, one scale, nothing moves**: the heart, the dial, the jug
+ *   and the bundle of small vessels are boxed on the page at A and again at
+ *   every scene of the explanation and every state of the buttons — the same
+ *   place, the same size — and so are the canvas and the bottom panel. When C
+ *   stands beside B, its parts are the same size as B's, at the same height;
+ * - **nothing restarts from zero**: while the vessels widen back from B to A
+ *   the level never leaves the range between B's and A's, and C arrives
+ *   already at its own level — it does not fill from empty (owner's review,
+ *   2026-10-02: a length growing again from zero reads as the blood having
+ *   stopped);
  * - **C stands beside B and nothing else**: pressed at A and half way to B,
  *   "compare" does nothing; taking the action away while C is shown closes C
- *   at once and returns to A;
- * - **what is drawn is what was solved**: each strip's numbers, arrows and
- *   drawn lengths are compared with the solver's own results, run here in
- *   Node — the tube's filled length is measured on screen in pixels and read
- *   back as litres;
+ *   at once and returns to A; and C's name says it is not after a drug;
+ * - **what is drawn is what was solved**: the level and the needle are read
+ *   back **off the screen** — the level's height over the jug's in litres, the
+ *   needle's angle in mmHg — and compared with the solver's own results, run
+ *   here in Node; so are the vessels' width, the cream marks for A, and the
+ *   two numbers on each circulation;
  * - the note on what the experiment is stands on screen in the explanation
  *   and under the buttons alike;
  * - no word in the figure stands on another, or outside it, and the smallest
  *   is drawn at the product's 12 px floor;
  * - the explanation plays every scene in order, its player pauses, steps back
  *   and forward and starts again, and leaving it for the buttons hands over
- *   the state and says what it is.
+ *   the state and says what it is;
+ * - the heart pumps and the cells flow on the first screen; with reduced
+ *   motion asked for, neither moves and the values are still drawn;
+ * - a browser that cannot make a WebGL context opens the lesson with the
+ *   same circulations drawn flat (`LessonFigure`).
  *
  * It also photographs the figure **with every word and number hidden**, for
  * a person to answer the owner's question by eye: can the place that changed,
@@ -47,7 +58,8 @@ import { existsSync, readdirSync, rmSync } from 'node:fs';
 import { join } from 'node:path';
 
 import { solveLessonConditions } from '../../src/models/cardiacOutputLesson.js';
-import { TEXT_FLOOR, TUBE, needleAngle, tubeLength } from '../../src/scenes/cardiovascular/scenes/cardiacOutput/lessonFigureGeometry.js';
+import { TEXT_FLOOR } from '../../src/scenes/cardiovascular/scenes/cardiacOutput/lessonFigureGeometry.js';
+import { calibreFor } from '../../src/scenes/cardiovascular/scenes/cardiacOutput/lessonModel3D.js';
 
 export const LESSON_WINDOWS = Object.freeze([
   Object.freeze({ width: 1440, height: 900 }),
@@ -55,30 +67,38 @@ export const LESSON_WINDOWS = Object.freeze([
   Object.freeze({ width: 375, height: 667 }),
 ]);
 
-/**
- * The product's smallest text, in px (`tests/type-floor.test.js`). The figure
- * is drawn about one unit to one pixel on a phone, so its floor in units is
- * the same number, and one constant holds both.
- */
+/** The product's smallest text, in px (`tests/type-floor.test.js`). */
 const TEXT_FLOOR_PX = TEXT_FLOOR;
 
-/** How far a size may drift and still be "the same size", in px: sub-pixel layout. */
+/** How far a box may drift and still be "the same", in px: sub-pixel layout. */
 const SAME_SIZE_PX = 0.6;
 
 /**
- * How much of a phone's width the diagram is drawn across, at least. At
- * 375×667 the figure is limited by height, so every row added above or below it
- * narrows it — and "the same size all the way through" (`checkSizes`) cannot
- * see a row that was there from the first frame. Main's 「心臓の解剖を確認」
- * row did exactly that on merge (336 px of 375, L-165); it is 347 without it,
- * and 362 of 390.
+ * The heart's least height on a phone's first screen, in px. At 375×667 the
+ * figure's box is set by what stands under it — the guide and two rows of
+ * 44 px buttons — and the two circulations share its width; every row added
+ * above or below it shrinks both hearts, and "the same size all the way
+ * through" cannot see a row that was there from the first frame. Measured
+ * 76 px there on 2026-10-02; the floor is set just under it, so a row that
+ * takes the figure's room is said. (At 60 it let a heart drawn 13% smaller
+ * through — 66 px — when the check was first broken on purpose.)
  */
-const PHONE_FIGURE_SHARE = 0.92;
+const HEART_FLOOR_PX = 72;
+
+/**
+ * How much higher C's level stands than B's, at least, in px — the difference
+ * the lesson ends on, which a reader is meant to see without the numbers.
+ */
+const LEVEL_GAP_FLOOR_PX = 10;
+
+/** How close a level read off the screen must be to the solved output, L/min; and a needle to the solved pressure, mmHg. */
+const LITRES_READ = 0.06;
+const MMHG_READ = 1;
 
 const ready = (page) =>
   page.waitForFunction(() => window.__app?.lesson && !document.getElementById('boot-veil'), null, { timeout: 60000 });
 
-/** The lesson's own view of itself, and what is on the page. */
+/** The lesson's own view of itself, what the figure says it drew, and what is on the page. */
 const read = (page) =>
   page.evaluate(() => {
     const rect = (node) => {
@@ -94,70 +114,48 @@ const read = (page) =>
       const box = rect(node);
       return box.width && box.height ? box : null;
     };
-    const svg = document.querySelector('.lesson-figure-svg');
-    const figure = rect(svg);
-    const strip = (slot) => {
-      const group = svg.querySelector(`.lf-strip[data-slot="${slot}"]`);
-      if (!group || getComputedStyle(group).display === 'none') return null;
-      const part = (selector) => rect(group.querySelector(selector));
-      return {
-        id: group.dataset.id,
-        map: group.dataset.map,
-        co: group.dataset.co,
-        lumen: Number(group.dataset.lumen),
-        needleAngle: Number(group.dataset.needleAngle),
-        tube: Number(group.dataset.tube),
-        beforeTube: group.dataset.beforeTube ? Number(group.dataset.beforeTube) : null,
-        mapArrow: group.querySelector('.lf-map-value .lf-value-arrow')?.textContent ?? '',
-        coArrow: group.querySelector('.lf-co-value .lf-value-arrow')?.textContent ?? '',
-        // The heart's outline beats; its name does not, and stands at its middle.
-        heart: part('.lf-heart-label'),
-        dial: part('.lf-dial-face'),
-        tubeBox: part('.lf-tube'),
-        fill: part('.lf-tube-fill'),
-        bed: part('.lf-bed'),
-        disc: part('.lf-name-disc'),
-      };
-    };
-    // Every word drawn in the figure, as boxes on screen — and whether the
-    // strip it belongs to is one the figure shows. An SVG child set `visible`
-    // is drawn through a hidden parent (L-163), so "drawn" is asked of the
-    // word itself and "shown" of its strip, separately.
-    const words = [...svg.querySelectorAll('text')]
-      .filter((node) => {
-        const style = getComputedStyle(node);
-        return style.display !== 'none' && style.visibility !== 'hidden' && node.textContent.trim() && !node.closest('[display="none"]');
-      })
+    const figureNode = document.querySelector('[data-lesson-figure]');
+    // Every word on the figure, as the box its text is drawn in (not the
+    // label's box: the legend's spans the whole width), with the smallest
+    // size of any of its text in the language on screen.
+    const words = [...figureNode.querySelectorAll('.ls-label')]
+      .filter((node) => !node.closest('[hidden]') && node.innerText.trim())
       .map((node) => {
-        const group = node.closest('.lf-strip');
-        const groupStyle = group ? getComputedStyle(group) : null;
+        const range = document.createRange();
+        range.selectNodeContents(node);
+        const sizes = [];
+        const walker = document.createTreeWalker(node, NodeFilter.SHOW_TEXT);
+        for (let text = walker.nextNode(); text; text = walker.nextNode()) {
+          if (text.textContent.trim() && text.parentElement.getClientRects().length) sizes.push(Number.parseFloat(getComputedStyle(text.parentElement).fontSize));
+        }
         return {
-          text: node.textContent.trim(),
-          box: rect(node),
-          size: Number.parseFloat(getComputedStyle(node).fontSize),
-          strip: group?.dataset.slot ?? null,
-          stripShown: !group || (groupStyle.display !== 'none' && groupStyle.visibility !== 'hidden'),
+          text: node.innerText.trim().replace(/\s+/g, ' '),
+          box: rect(range),
+          size: Math.min(...sizes),
+          slot: node.dataset.slot ?? null,
+          part: node.dataset.part ?? null,
+          lit: node.classList.contains('is-lit'),
         };
       });
-    const scale = figure.width / svg.viewBox.baseVal.width;
+    const said = (slot, part) => words.find((word) => word.slot === slot && word.part === part)?.text ?? null;
     const text = (selector) => {
       const node = document.querySelector(selector);
       return node && !node.closest('.is-away, [inert]') ? node.innerText?.trim() ?? '' : '';
     };
     return {
       state: window.__app.lesson.state(),
-      figure,
-      scale: Math.min(scale, figure.height / svg.viewBox.baseVal.height),
-      // The diagram as drawn: the box the page gave it, at the scale that fits.
-      drawn: (() => {
-        const fit = Math.min(scale, figure.height / svg.viewBox.baseVal.height);
-        return { width: fit * svg.viewBox.baseVal.width, height: fit * svg.viewBox.baseVal.height };
-      })(),
-      strips: Number(svg.dataset.strips),
-      legend: getComputedStyle(svg.querySelector('.lf-legend')).display !== 'none',
-      primary: strip('primary'),
-      other: strip('other'),
+      kind: figureNode?.dataset.lessonFigure ?? null,
+      figure: rect(figureNode),
+      calm: figureNode?.dataset.calm === 'true',
+      strips: Number(figureNode?.dataset.strips),
+      probe: window.__app.lesson.probe(),
       words,
+      said: {
+        primary: { title: said('primary', 'title'), map: said('primary', 'gauge'), co: said('primary', 'jug') },
+        other: { title: said('other', 'title'), map: said('other', 'gauge'), co: said('other', 'jug') },
+      },
+      legend: Boolean(shown('.ls-legend')),
+      placeholder: Boolean(shown('.ls-placeholder')),
       bottom: rect(document.querySelector('.lesson-bottom')),
       question: shown('.lesson-question'),
       note: shown('.lesson-note'),
@@ -188,70 +186,126 @@ const until = (page, predicate, arg) =>
 
 /**
  * Wait for the lesson to arrive somewhere **and for the figure to have drawn
- * it**. The press that brings C in sets the session at once, before the next
- * frame has drawn anything or started C's tube filling — so "C shown, tube
- * full" was true for one moment with the figure still showing B alone, and a
- * check that waited for the session alone read that moment.
+ * it**: the session is set by a press at once, and the figure eases the
+ * vessels, the needle and the level over the frames after — so "at B" is true
+ * for a while with the figure still half way, and a check that waited for the
+ * session alone read that moment. The beat and the cells never rest; "calm"
+ * is the three that ease.
  */
-const arrive = (page, { primaryId, showOther }) =>
+const arrive = (page, { primaryId, showOther, step = undefined }) =>
   until(
     page,
-    ({ primaryId, showOther }) => {
+    ({ primaryId, showOther, step }) => {
       const state = window.__app.lesson.state();
-      const svg = document.querySelector('.lesson-figure-svg');
-      const drawn = Number(svg?.dataset.strips);
+      const figure = document.querySelector('[data-lesson-figure]');
       return (
-        svg?.dataset.calm === 'true' &&
+        figure?.dataset.calm === 'true' &&
+        (step === undefined || state.step === step) &&
         state.primaryId === primaryId &&
         (showOther == null || state.showOther === showOther) &&
-        drawn === (state.showOther ? 2 : 1) &&
-        state.refill === 1
+        Number(figure.dataset.strips) === (state.showOther ? 2 : 1)
       );
     },
-    { primaryId, showOther }
+    { primaryId, showOther, step }
+  );
+
+/**
+ * The main circulation's level and vessels, every frame, until a walk the
+ * reader started has ended and the figure is calm: the least and the most it
+ * was drawn at on the way.
+ */
+const sampleWalk = (page) =>
+  page.evaluate(
+    () =>
+      new Promise((resolve) => {
+        const seen = { frames: 0, litres: [Infinity, -Infinity], calibre: [Infinity, -Infinity], heart: [Infinity, -Infinity] };
+        const started = performance.now();
+        const widen = (pair, value) => [Math.min(pair[0], value), Math.max(pair[1], value)];
+        const tick = () => {
+          const unit = window.__app.lesson.probe()?.primary;
+          if (unit) {
+            seen.frames += 1;
+            seen.litres = widen(seen.litres, unit.litres);
+            seen.calibre = widen(seen.calibre, unit.calibre);
+            seen.heart = widen(seen.heart, unit.parts.heart.height);
+          }
+          const state = window.__app.lesson.state();
+          const calm = document.querySelector('[data-lesson-figure]')?.dataset.calm === 'true';
+          if ((!state.walking && calm && seen.frames > 2) || performance.now() - started > 15000) resolve(seen);
+          else requestAnimationFrame(tick);
+        };
+        requestAnimationFrame(tick);
+      })
+  );
+
+/**
+ * Whether the main circulation is alive: over about thirty frames (or eight
+ * seconds, on a slow machine), the deepest the heart was squeezed and how far
+ * the cells moved. A beat at 70 a minute is 0.86 s of the lesson's clock, and
+ * the heart is squeezed for about half of it, so thirty frames see it.
+ */
+const sampleMotion = (page) =>
+  page.evaluate(
+    () =>
+      new Promise((resolve) => {
+        const first = window.__app.lesson.probe()?.primary;
+        const seen = { frames: 0, squeeze: 0, moved: 0 };
+        const started = performance.now();
+        const tick = () => {
+          const unit = window.__app.lesson.probe()?.primary;
+          if (unit && first) {
+            seen.frames += 1;
+            seen.squeeze = Math.max(seen.squeeze, unit.squeeze);
+            seen.moved = unit.travelled - first.travelled;
+          }
+          if (seen.frames >= 30 || performance.now() - started > 8000) resolve(seen);
+          else requestAnimationFrame(tick);
+        };
+        requestAnimationFrame(tick);
+      })
   );
 
 const inside = (box, width, height) => box && box.top >= 0 && box.left >= 0 && box.bottom <= height + 1 && box.right <= width + 1;
-const same = (a, b) => a && b && Math.abs(a.width - b.width) <= SAME_SIZE_PX && Math.abs(a.height - b.height) <= SAME_SIZE_PX;
+const sameBox = (a, b) =>
+  a && b && ['top', 'left', 'width', 'height'].every((key) => Math.abs(a[key] - b[key]) <= SAME_SIZE_PX);
+const sameSize = (a, b) => a && b && Math.abs(a.width - b.width) <= SAME_SIZE_PX && Math.abs(a.height - b.height) <= SAME_SIZE_PX;
+const size = (box) => (box ? `${Math.round(box.width)}×${Math.round(box.height)} at ${Math.round(box.left)},${Math.round(box.top)}` : 'nowhere');
 
-/** The sizes that must never change: of the figure, its fixed parts, and the panel under it. */
-function sizesOf(seen) {
+/** The boxes that must never change: the figure, its canvas, the main circulation's fixed parts, and the panel under them. */
+function boxesOf(seen) {
+  const parts = seen.probe?.primary?.parts ?? {};
   return {
     figure: seen.figure,
+    canvas: seen.probe?.canvas ?? null,
     bottom: seen.bottom,
-    heart: seen.primary?.heart,
-    name: seen.primary?.disc,
-    dial: seen.primary?.dial,
-    tube: seen.primary?.tubeBox,
-    bed: seen.primary?.bed,
+    heart: parts.heart ?? null,
+    dial: parts.gauge ?? null,
+    jug: parts.jug ?? null,
+    'small vessels': parts.bed ?? null,
   };
 }
 
 function checkSizes(seen, reference, where, problems) {
-  const now = sizesOf(seen);
+  const now = boxesOf(seen);
   for (const [name, box] of Object.entries(now)) {
-    if (!same(box, reference[name])) {
-      problems.push(
-        `${where}: the ${name} is drawn ${box ? `${Math.round(box.width)}×${Math.round(box.height)}` : 'nowhere'}, ` +
-          `not the ${Math.round(reference[name].width)}×${Math.round(reference[name].height)} it is at the start`
-      );
-    }
-  }
-  // The main circulation never moves either.
-  if (seen.primary && reference.name && Math.abs(seen.primary.disc.top - reference.nameTop) > SAME_SIZE_PX) {
-    problems.push(`${where}: the main circulation moved (${Math.round(reference.nameTop)} → ${Math.round(seen.primary.disc.top)} px)`);
+    // The panel under the figure keeps its size; where it stands is the page's.
+    const same = name === 'bottom' ? sameSize : sameBox;
+    if (!same(box, reference[name])) problems.push(`${where}: the ${name} is drawn ${size(box)}, not the ${size(reference[name])} it is at the start`);
   }
 }
 
-/** The words in the figure: inside it, clear of one another, at the floor or above. */
+/** The words on the figure: inside it, clear of one another, at the floor or above, and only for what is shown. */
 function checkWords(seen, where, problems) {
-  const { figure, words, scale } = seen;
-  const smallest = Math.min(...words.map((word) => word.size)) * scale;
-  if (seen.width <= 430 && smallest < TEXT_FLOOR_PX - 0.25) {
-    problems.push(`${where}: the smallest word in the figure is drawn at ${smallest.toFixed(1)} px (floor ${TEXT_FLOOR_PX})`);
+  const { figure, words } = seen;
+  if (!words.length) {
+    problems.push(`${where}: no words on the figure`);
+    return;
   }
+  const smallest = Math.min(...words.map((word) => word.size));
+  if (smallest < TEXT_FLOOR_PX - 0.25) problems.push(`${where}: the smallest word on the figure is drawn at ${smallest.toFixed(1)} px (floor ${TEXT_FLOOR_PX})`);
   words.forEach((word, i) => {
-    if (!word.stripShown) problems.push(`${where}: "${word.text}" is drawn although its circulation (${word.strip}) is not shown`);
+    if (word.slot === 'other' && word.part !== 'placeholder' && seen.strips < 2) problems.push(`${where}: "${word.text}" is shown although C is not`);
+    if (word.part === 'placeholder' && seen.strips > 1) problems.push(`${where}: "${word.text}" still stands where C is`);
     const box = word.box;
     if (box.left < figure.left - 1 || box.right > figure.right + 1 || box.top < figure.top - 1 || box.bottom > figure.bottom + 1) {
       problems.push(`${where}: "${word.text}" stands outside the figure`);
@@ -265,38 +319,58 @@ function checkWords(seen, where, problems) {
 }
 
 /**
- * What is drawn against what was solved: the numbers, the arrows, and the
- * lengths as the screen has them.
+ * One circulation as drawn against what was solved: its level and needle read
+ * off the screen, its vessels' width, its two numbers, and — when B is
+ * compared with A — the cream marks for A.
  */
-function checkAgainstSolver(strip, id, solved, where, problems, { before = null } = {}) {
-  if (!strip) {
-    problems.push(`${where}: no strip for ${id}`);
+function checkAgainstSolver(seen, slot, id, solved, where, problems, { before = null } = {}) {
+  const unit = seen.probe?.[slot];
+  const said = seen.said[slot];
+  if (!unit) {
+    problems.push(`${where}: ${id} is not drawn`);
     return;
   }
   const m = solved[id].metrics;
-  if (strip.id !== id) problems.push(`${where}: the strip shows "${strip.id}", expected ${id}`);
-  if (strip.map !== String(Math.round(m.meanArterialPressureMmHg))) problems.push(`${where}: ${id}'s pressure reads ${strip.map}, solved ${m.meanArterialPressureMmHg.toFixed(1)}`);
-  if (strip.co !== m.cardiacOutputLMin.toFixed(1)) problems.push(`${where}: ${id}'s output reads ${strip.co}, solved ${m.cardiacOutputLMin.toFixed(2)}`);
-  if (Math.abs(strip.tube - tubeLength(m.cardiacOutputLMin)) > 0.02) problems.push(`${where}: ${id}'s tube is drawn ${strip.tube} units, not its solved output's length`);
-  if (Math.abs(strip.needleAngle - needleAngle(m.meanArterialPressureMmHg)) > 0.01) problems.push(`${where}: ${id}'s needle is not at its solved pressure`);
-  // Read back off the screen: the filled length over the tube's, in litres.
-  const shownLitres = (strip.fill.width / strip.tubeBox.width) * TUBE.maxLitres;
-  if (Math.abs(shownLitres - m.cardiacOutputLMin) > 0.06) {
-    problems.push(`${where}: ${id}'s tube is filled to ${shownLitres.toFixed(2)} L on screen, solved ${m.cardiacOutputLMin.toFixed(2)} L`);
+  if (!said.title?.startsWith(id)) problems.push(`${where}: the ${slot} circulation is named "${said.title}", expected ${id}`);
+  if (said.map !== `${Math.round(m.meanArterialPressureMmHg)} mmHg`) problems.push(`${where}: ${id}'s pressure reads "${said.map}", solved ${m.meanArterialPressureMmHg.toFixed(1)}`);
+  if (said.co !== `${m.cardiacOutputLMin.toFixed(1)} L`) problems.push(`${where}: ${id}'s output reads "${said.co}", solved ${m.cardiacOutputLMin.toFixed(2)}`);
+  if (!(Math.abs(unit.litres - m.cardiacOutputLMin) <= LITRES_READ)) {
+    problems.push(`${where}: ${id}'s jug is filled to ${unit.litres?.toFixed(2)} L on screen, solved ${m.cardiacOutputLMin.toFixed(2)} L`);
   }
+  if (!(Math.abs(unit.mmHg - m.meanArterialPressureMmHg) <= MMHG_READ)) {
+    problems.push(`${where}: ${id}'s needle points at ${unit.mmHg?.toFixed(1)} mmHg on screen, solved ${m.meanArterialPressureMmHg.toFixed(1)}`);
+  }
+  const calibre = calibreFor(m.systemicResistanceMmHgSPerMl);
+  if (!(Math.abs(unit.calibre - calibre) <= 0.002)) problems.push(`${where}: ${id}'s small vessels are drawn at ${unit.calibre?.toFixed(3)}, not their resistance's ${calibre.toFixed(3)}`);
   if (before) {
     const a = solved[before].metrics;
-    const mapArrow = m.meanArterialPressureMmHg > a.meanArterialPressureMmHg ? '↑' : '↓';
-    const coDirection = Math.round(m.cardiacOutputLMin * 10) - Math.round(a.cardiacOutputLMin * 10);
-    const coArrow = coDirection > 0 ? '↑' : coDirection < 0 ? '↓' : '→';
-    if (strip.mapArrow !== mapArrow) problems.push(`${where}: the pressure's arrow says "${strip.mapArrow}", the solver went ${mapArrow}`);
-    if (strip.coArrow !== coArrow) problems.push(`${where}: the output's arrow says "${strip.coArrow}", the solver went ${coArrow}`);
-    if (strip.beforeTube == null || Math.abs(strip.beforeTube - tubeLength(a.cardiacOutputLMin)) > 0.02) {
-      problems.push(`${where}: the start (A) mark on the tube is missing or not at A's solved output`);
-    }
-  } else if (strip.mapArrow || strip.coArrow || strip.beforeTube != null) {
-    problems.push(`${where}: ${id} carries a comparison with the start that is not on screen`);
+    if (!(Math.abs(unit.before.litres - a.cardiacOutputLMin) <= LITRES_READ)) problems.push(`${where}: the start (${before}) mark on the jug is missing or not at ${before}'s solved output`);
+    if (!(Math.abs(unit.before.mmHg - a.meanArterialPressureMmHg) <= MMHG_READ)) problems.push(`${where}: the start (${before}) needle is missing or not at ${before}'s solved pressure`);
+    if (!(Math.abs(unit.before.calibre - calibreFor(a.systemicResistanceMmHgSPerMl)) <= 0.002)) problems.push(`${where}: the small vessels' width at the start (${before}) is not drawn round them`);
+  } else if (unit.before.litres != null || unit.before.mmHg != null || unit.before.calibre != null) {
+    problems.push(`${where}: ${id} carries marks for a start that is not being compared`);
   }
+  if (id === 'C' && !/薬を加えた後ではありません/.test(said.title ?? '')) {
+    problems.push(`${where}: C's name does not say it is not after a drug ("${said.title}")`);
+  }
+}
+
+/** B and C side by side: one scale, one height, and the difference in output there to see. */
+function checkSideBySide(seen, where, problems) {
+  const b = seen.probe?.primary;
+  const c = seen.probe?.other;
+  if (!b || !c) {
+    problems.push(`${where}: B and C are not both drawn`);
+    return;
+  }
+  for (const part of ['heart', 'gauge', 'jug', 'bed']) {
+    const [one, two] = [b.parts[part], c.parts[part]];
+    if (!sameSize(one, two) || Math.abs(one.top - two.top) > SAME_SIZE_PX) {
+      problems.push(`${where}: B's ${part} (${size(one)}) and C's (${size(two)}) are not drawn to one scale at one height`);
+    }
+  }
+  const gap = c.levelPx - b.levelPx;
+  if (gap < LEVEL_GAP_FLOOR_PX) problems.push(`${where}: C's level stands only ${gap.toFixed(1)} px above B's (floor ${LEVEL_GAP_FLOOR_PX})`);
 }
 
 /** The note on what the experiment is: on screen, and saying it. */
@@ -309,7 +383,6 @@ function checkNote(seen, where, problems) {
   }
 }
 
-/** The figure with every word and number hidden, for a person to read by eye. */
 /**
  * Open 「このモデルについて」, photograph it, close it, and say what is wrong
  * with it: the sheet off screen, the lesson's scope not in it, no way to the
@@ -327,7 +400,7 @@ function checkNote(seen, where, problems) {
  */
 async function checkAbout(page, photograph) {
   const figureBox = () => page.evaluate(() => {
-    const box = document.querySelector('.lesson-figure-svg').getBoundingClientRect();
+    const box = document.querySelector('[data-lesson-figure]').getBoundingClientRect();
     return { top: box.top, left: box.left, width: box.width, height: box.height };
   });
   const before = await figureBox();
@@ -384,9 +457,11 @@ async function checkAbout(page, photograph) {
   return problems;
 }
 
+
+/** The figure with every word and number hidden, for a person to read by eye. */
 async function photographWithoutWords(page, path) {
   const style = await page.addStyleTag({
-    content: `.lesson-figure-svg text, .lesson-figure-svg .lf-legend { visibility: hidden !important; }
+    content: `.lesson-stage-labels, .lesson-figure-svg text, .lesson-figure-svg .lf-legend { visibility: hidden !important; }
               .lesson-bottom, .lesson-top { visibility: hidden !important; }`,
   });
   await page.screenshot({ path });
@@ -396,11 +471,12 @@ async function photographWithoutWords(page, path) {
 /**
  * @param {import('playwright').Browser} browser
  * @param {{ url: string, slug: string, outDir: string, record?: boolean, windows?: object[],
- *   drawn?: Array<{ window: string, width: number, height: number }> }} options
- *   `drawn`, when given, is filled with the size the diagram is drawn at on each
- *   window's first screen — printed by the caller, so a change to what stands
- *   around the figure (a header row, a longer note) shows up as a number in the
- *   next run rather than as a guess read off two screenshots.
+ *   drawn?: Array<{ window: string, heart: number, pxPerUnit: number, levelGap: number|null }> }} options
+ *   `drawn`, when given, is filled with how big the heart is drawn on each
+ *   window's first screen, and how far apart B's and C's levels stand —
+ *   printed by the caller, so a change to what stands around the figure (a
+ *   header row, a longer note) shows up as a number in the next run rather
+ *   than as a guess read off two screenshots.
  * @returns {Promise<string[]>} problems
  */
 export async function driveLesson(browser, { url, slug, outDir, record = false, windows = LESSON_WINDOWS, drawn = null }) {
@@ -416,11 +492,10 @@ export async function driveLesson(browser, { url, slug, outDir, record = false, 
     }
   }
   // --- without WebGL --------------------------------------------------------
-  // The lesson draws nothing in 3D, so a browser that cannot make a WebGL
-  // context must still open it rather than the renderer-failure page. Asked of
-  // a page whose canvases refuse every WebGL context — what a blocklisted GPU
-  // or a hardened browser gives — once, at the first window (code review,
-  // 2026-10-01: the lesson used to be mounted after the renderer was made).
+  // A browser that cannot make a WebGL context must still open the lesson —
+  // with the same circulations drawn flat — rather than the renderer-failure
+  // page. Asked of a page whose canvases refuse every WebGL context — what a
+  // blocklisted GPU or a hardened browser gives — once, at the first window.
   {
     const page = await browser.newPage({ viewport: windows[0] });
     await page.addInitScript(() => {
@@ -436,7 +511,34 @@ export async function driveLesson(browser, { url, slug, outDir, record = false, 
     if (!opened) {
       const shown = await page.evaluate(() => (document.querySelector('.scene-fallback') ? 'the renderer-failure page' : 'neither the lesson nor a failure page'));
       problems.push(`without WebGL: the lesson did not open — ${shown} did`);
+    } else {
+      const figure = await page.evaluate(() => {
+        const node = document.querySelector('[data-lesson-figure]');
+        const box = node?.getBoundingClientRect();
+        return { kind: node?.dataset.lessonFigure ?? null, drawn: Boolean(box?.width && box?.height), strips: Number(node?.dataset.strips) };
+      });
+      if (figure.kind !== '2d' || !figure.drawn || figure.strips !== 1) {
+        problems.push(`without WebGL: the lesson opened without its flat figure (${figure.kind ?? 'none'}, ${figure.strips} drawn)`);
+      }
     }
+    await page.close();
+  }
+
+  // --- with motion reduced ------------------------------------------------------
+  // The heart rests and the cells stand; the needle, the level and the vessels
+  // still say what the lesson says. Asked once, at the first window, of a page
+  // that tells the lesson the reader prefers reduced motion.
+  {
+    const page = await browser.newPage({ viewport: windows[0], reducedMotion: 'reduce' });
+    await page.goto(url, { waitUntil: 'networkidle' });
+    await ready(page);
+    await arrive(page, { primaryId: 'A', showOther: false });
+    const motion = await sampleMotion(page);
+    if (motion.squeeze > 0 || motion.moved > 0) {
+      problems.push(`with motion reduced: the heart squeezed (${motion.squeeze.toFixed(2)}) or the cells moved (${motion.moved.toFixed(3)}) over ${motion.frames} frames`);
+    }
+    const seen = await read(page);
+    if (seen.kind === '3d') checkAgainstSolver(seen, 'primary', 'A', solved, 'with motion reduced', problems);
     await page.close();
   }
 
@@ -450,16 +552,19 @@ export async function driveLesson(browser, { url, slug, outDir, record = false, 
     const where = (moment) => `${width}×${height} ${moment}`;
 
     // --- the first screen: the buttons, at A ------------------------------------
+    await arrive(page, { primaryId: 'A', showOther: false });
     let seen = await read(page);
     await page.screenshot({ path: join(outDir, `${tag}-0-first.png`) });
-    drawn?.push({ window: `${width}×${height}`, width: Math.round(seen.drawn.width), height: Math.round(seen.drawn.height) });
-    if (width <= 430 && seen.drawn.width < width * PHONE_FIGURE_SHARE) {
-      problems.push(
-        where(
-          `first screen: the figure is drawn ${Math.round(seen.drawn.width)} px wide, under ${Math.round(PHONE_FIGURE_SHARE * 100)}% of the window — ` +
-            'a row above or below it took its room'
-        )
-      );
+    if (seen.kind !== '3d' || !seen.probe) {
+      problems.push(where(`first screen: the figure is "${seen.kind}", not the 3D circulation`));
+      await page.close();
+      continue;
+    }
+    const heartPx = seen.probe.primary.parts.heart.height;
+    const measured = { window: `${width}×${height}`, heart: Math.round(heartPx), pxPerUnit: seen.probe.pxPerUnit, levelGap: null };
+    drawn?.push(measured);
+    if (width <= 430 && heartPx < HEART_FLOOR_PX) {
+      problems.push(where(`first screen: the heart is drawn ${Math.round(heartPx)} px tall (floor ${HEART_FLOOR_PX}) — a row above or below the figure took its room`));
     }
     if (seen.modal) problems.push(where('first screen: a modal stands over the lesson'));
     if (seen.scrolls) problems.push(where('first screen: the page scrolls'));
@@ -473,11 +578,17 @@ export async function driveLesson(browser, { url, slug, outDir, record = false, 
     if (seen.compare || !seen.compareDisabled) problems.push(where('first screen: "compare with a different circulation" is offered before B'));
     if (!/view=detail/.test(seen.detail ?? '')) problems.push(where('first screen: no way to the full model'));
     if (seen.state.problems.length) problems.push(where(`the lesson's claims do not hold: ${seen.state.problems.join('; ')}`));
-    if (seen.strips !== 1 || !seen.legend) problems.push(where('first screen: not one circulation with the legend under it'));
+    if (seen.strips !== 1 || !seen.legend || !seen.placeholder) problems.push(where('first screen: not one circulation, with its legend and the place kept for C'));
     checkNote(seen, where('first screen'), problems);
     checkWords(seen, where('first screen'), problems);
-    checkAgainstSolver(seen.primary, 'A', solved, where('first screen'), problems);
-    const reference = { ...sizesOf(seen), nameTop: seen.primary.disc.top, lumen: seen.primary.lumen };
+    checkAgainstSolver(seen, 'primary', 'A', solved, where('first screen'), problems);
+    // The heart pumps and the blood flows — what the lesson shows first.
+    const motion = await sampleMotion(page);
+    if (!(motion.squeeze > 0.2) || !(motion.moved > 0)) {
+      problems.push(where(`first screen: the heart is not pumping (deepest squeeze ${motion.squeeze.toFixed(2)}) or the cells are not flowing (moved ${motion.moved.toFixed(3)}) over ${motion.frames} frames`));
+    }
+    const reference = boxesOf(seen);
+    const calibreAtA = seen.probe.primary.calibre;
 
     // --- C is refused anywhere but at B ------------------------------------------
     await page.evaluate(() => document.querySelector('[data-lesson="other"]').click());
@@ -498,39 +609,49 @@ export async function driveLesson(browser, { url, slug, outDir, record = false, 
     checkNote(seen, where('buttons, B'), problems);
     checkSizes(seen, reference, where('buttons, B'), problems);
     checkWords(seen, where('buttons, B'), problems);
-    checkAgainstSolver(seen.primary, 'B', solved, where('buttons, B'), problems, { before: 'A' });
-    if (seen.primary.lumen >= reference.lumen) problems.push(where('buttons, B: the vessels are not drawn narrower than at A'));
+    checkAgainstSolver(seen, 'primary', 'B', solved, where('buttons, B'), problems, { before: 'A' });
+    if (!(seen.probe.primary.calibre < calibreAtA)) problems.push(where('buttons, B: the small vessels are not drawn narrower than at A'));
     await page.screenshot({ path: join(outDir, `${tag}-3-B.png`) });
 
+    // C comes in as it is: at its own level from the first frame it is drawn.
     await page.click('[data-lesson="other"]');
+    await until(page, () => document.querySelector('[data-lesson-figure]')?.dataset.strips === '2');
+    seen = await read(page);
+    const first = seen.probe?.other;
+    const solvedC = solved.C.metrics.cardiacOutputLMin;
+    if (!first || !(Math.abs(first.litres - solvedC) <= LITRES_READ)) {
+      problems.push(where(`buttons: C arrived with its jug at ${first?.litres?.toFixed(2)} L, not already at its ${solvedC.toFixed(2)} L — it filled from empty`));
+    }
     await arrive(page, { primaryId: 'B', showOther: true });
     seen = await read(page);
     if (!seen.state.showOther || seen.strips !== 2) problems.push(where('buttons: C did not come in beside B'));
-    if (seen.legend) problems.push(where('buttons: the legend still stands where C should be'));
     checkNote(seen, where('buttons, B and C'), problems);
     checkSizes(seen, reference, where('buttons, B and C'), problems);
     checkWords(seen, where('buttons, B and C'), problems);
-    checkAgainstSolver(seen.primary, 'B', solved, where('buttons, B and C'), problems);
-    checkAgainstSolver(seen.other, 'C', solved, where('buttons, B and C'), problems);
-    // One scale for both: the same parts at the same size.
-    for (const part of ['heart', 'dial', 'tubeBox', 'bed', 'disc']) {
-      if (!same(seen.primary?.[part], seen.other?.[part])) problems.push(where(`buttons, B and C: B's ${part} and C's are not drawn to one scale`));
-    }
-    if (seen.other && seen.primary && seen.other.fill.width - seen.primary.fill.width < 25) {
-      problems.push(where(`buttons, B and C: C's tube is only ${Math.round(seen.other.fill.width - seen.primary.fill.width)} px longer than B's`));
-    }
+    checkAgainstSolver(seen, 'primary', 'B', solved, where('buttons, B and C'), problems);
+    checkAgainstSolver(seen, 'other', 'C', solved, where('buttons, B and C'), problems);
+    checkSideBySide(seen, where('buttons, B and C'), problems);
+    if (seen.probe?.other && seen.probe?.primary) measured.levelGap = Number((seen.probe.other.levelPx - seen.probe.primary.levelPx).toFixed(1));
     await page.screenshot({ path: join(outDir, `${tag}-4-BC.png`) });
     await photographWithoutWords(page, join(outDir, `${tag}-4-BC-no-words.png`));
 
-    // Taking the action away with C shown: C goes at once, and the walk ends at A.
+    // Taking the action away with C shown: C goes at once, and the vessels
+    // widen back to A — the level moving from B's to A's, never through zero.
     await page.click('[data-lesson="constrict"]');
     seen = await read(page);
     if (seen.state.showOther) problems.push(where('buttons: taking the action away left C on screen'));
+    const walk = await sampleWalk(page);
+    const [coA, coB] = [solved.A.metrics.cardiacOutputLMin, solved.B.metrics.cardiacOutputLMin];
+    if (walk.litres[0] < Math.min(coA, coB) - LITRES_READ || walk.litres[1] > Math.max(coA, coB) + LITRES_READ) {
+      problems.push(where(`buttons, back to A: the level went to ${walk.litres[0].toFixed(2)}–${walk.litres[1].toFixed(2)} L on the way, outside B's ${coB.toFixed(2)} and A's ${coA.toFixed(2)}`));
+    }
+    if (walk.heart[1] - walk.heart[0] > SAME_SIZE_PX) problems.push(where(`buttons, back to A: the heart's box changed size on the way (${walk.heart[0].toFixed(1)}–${walk.heart[1].toFixed(1)} px)`));
     await arrive(page, { primaryId: 'A', showOther: false });
     seen = await read(page);
     if (seen.state.primaryId !== 'A' || seen.state.showOther) problems.push(where('buttons: taking the action away did not return to A alone'));
     if (seen.compare) problems.push(where('buttons: back at A, "compare" is offered again'));
     checkSizes(seen, reference, where('buttons, back at A'), problems);
+    checkAgainstSolver(seen, 'primary', 'A', solved, where('buttons, back at A'), problems);
 
     // --- the explanation, scene by scene ---------------------------------------
     await page.click('.lesson-manual [data-lesson="play"]');
@@ -546,16 +667,7 @@ export async function driveLesson(browser, { url, slug, outDir, record = false, 
         window.__app.lesson.pause();
       }, step.until - 1);
       const pair = ['other', 'conclusion'].includes(step.id);
-      await until(
-        page,
-        ({ id, primaryId, showOther }) => {
-          const state = window.__app.lesson.state();
-          const svg = document.querySelector('.lesson-figure-svg');
-          const drawn = Number(svg?.dataset.strips);
-          return svg?.dataset.calm === 'true' && state.step === id && state.primaryId === primaryId && state.showOther === showOther && drawn === (showOther ? 2 : 1) && state.refill === 1;
-        },
-        { id: step.id, primaryId: step.id === 'start' ? 'A' : 'B', showOther: pair }
-      );
+      await arrive(page, { primaryId: step.id === 'start' ? 'A' : 'B', showOther: pair, step: step.id });
       const moment = where(`scene ${index + 1}`);
       seen = await read(page);
       if (seen.state.step !== step.id) problems.push(`${moment}: showed "${seen.state.step}", expected "${step.id}"`);
@@ -564,11 +676,12 @@ export async function driveLesson(browser, { url, slug, outDir, record = false, 
       checkNote(seen, moment, problems);
       checkSizes(seen, reference, moment, problems);
       checkWords(seen, moment, problems);
-      if (step.id === 'start') checkAgainstSolver(seen.primary, 'A', solved, moment, problems);
-      else if (!pair) checkAgainstSolver(seen.primary, 'B', solved, moment, problems, { before: 'A' });
+      if (step.id === 'start') checkAgainstSolver(seen, 'primary', 'A', solved, moment, problems);
+      else if (!pair) checkAgainstSolver(seen, 'primary', 'B', solved, moment, problems, { before: 'A' });
       else {
-        checkAgainstSolver(seen.primary, 'B', solved, moment, problems);
-        checkAgainstSolver(seen.other, 'C', solved, moment, problems);
+        checkAgainstSolver(seen, 'primary', 'B', solved, moment, problems);
+        checkAgainstSolver(seen, 'other', 'C', solved, moment, problems);
+        checkSideBySide(seen, moment, problems);
       }
       await page.screenshot({ path: join(outDir, `${tag}-1-${index + 1}-${step.id}.png`) });
       if (step.id === 'result' || step.id === 'other') {
@@ -730,11 +843,14 @@ export async function recordLesson(browser, { url, width, height, file, part }) 
   const done = encoding.done.catch((error) => {
     failed = error;
   });
+  // One promise for "the encoder has gone", not a listener per full pipe: a 3D
+  // recording fills the pipe often enough to add more than ten of them.
+  const gone = new Promise((resolve) => encoder.once('close', resolve));
   try {
     await page.goto(url, { waitUntil: 'networkidle' });
     await ready(page);
     // Take the clock: the lesson's own loop stops, and each frame is stepped by
-    // exactly 1/30 s (the lesson makes no renderer, so its clock is its own).
+    // exactly 1/30 s (the shell makes no viewer; the figure draws on this clock).
     await page.evaluate((fps) => {
       const clock = window.__app.lesson.clock;
       clock.stop();
@@ -749,10 +865,7 @@ export async function recordLesson(browser, { url, width, height, file, part }) 
         // encoder that died with the pipe full never drains, and the run would
         // wait for the CI's timeout instead of saying the recording failed.
         if (!encoder.stdin.write(frame)) {
-          await new Promise((resolve) => {
-            encoder.stdin.once('drain', resolve);
-            encoder.once('close', resolve);
-          });
+          await Promise.race([new Promise((resolve) => encoder.stdin.once('drain', resolve)), gone]);
         }
       }
     };

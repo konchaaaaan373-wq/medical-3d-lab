@@ -261,7 +261,11 @@ for (const slug of SLUGS) {
     );
     // The figure's size is the one thing on this screen that is never to give
     // way (owner's review, 2026-10-01): said as a number on every run.
-    if (drawn.length) console.log(`    figure drawn at ${drawn.map((d) => `${d.width}×${d.height} (${d.window})`).join(', ')}`);
+    if (drawn.length) {
+      console.log(
+        `    heart drawn ${drawn.map((d) => `${d.heart} px (${d.window}, ${d.pxPerUnit} px/unit, C's level ${d.levelGap ?? '?'} px above B's)`).join(', ')}`
+      );
+    }
     if (lessonOnly) {
       report.push({ slug, controlCount: 0, problems, baseline: null, diseased: null, lessonOnly: true });
       continue;

@@ -1,6 +1,7 @@
 import * as THREE from 'three';
 import { LessonSession } from './lessonSession.js';
 import { createLessonFigure } from './LessonFigure.js';
+import { createLessonStage3D } from './LessonStage3D.js';
 import { squeezeAt } from './lessonFigureGeometry.js';
 import { advanceCardiacPhase } from '../../../../models/cardiacMechanics.js';
 import {
@@ -26,10 +27,7 @@ import {
 import { DISCLAIMER, DISCLAIMER_JA } from '../../../../data/cardiacOutput.js';
 import { prefersReducedMotion } from '../../../../utils/motion.js';
 
-/** How long both tubes take to fill "in the same minute" when the reader brings C in. */
-export const MANUAL_REFILL_SECONDS = 2.2;
-
-/** How long the results the action changed stay lit after the reader's walk reaches B. */
+/** How long the results stay lit after the reader's walk reaches B, or after C comes in beside it. */
 const ATTENTION_SECONDS = 2.6;
 
 /**
@@ -44,18 +42,21 @@ const ATTENTION_SECONDS = 2.6;
  * labels on one screen is what left a first-time reader not knowing what the
  * screen was for (Issue #166).
  *
- * ## A diagram, not a heart
+ * ## A circulation in 3D, one camera
  *
  * The lesson is about how three things relate — what the heart sends out per
  * minute, how hard it is for blood to get through the small vessels, and the
- * average pressure — and the first version drew them on a 3D heart, where a
- * reader had to be told which red length was the output and that the yellow
- * fan was the vessels (owner's review, 2026-10-01). So the figure is a circuit
- * diagram (`LessonFigure`, `lessonFigureGeometry.js`) in which each of the
- * three is one part a reader can name on sight: a tube that fills, channels
- * that narrow, a needle. Nothing is drawn in 3D, and the shell makes no
- * renderer for it (`App.js` decides on the layout first): `build()` and
- * `cameraPose` stay only so the scene has the shape every scene has.
+ * average pressure — and the figure is the circulation itself, in 3D: a heart
+ * that pumps, red cells that flow, a bundle of small vessels that narrows, a
+ * dial and a jug (`LessonStage3D`, `lessonModel3D.js`). The owner asked for the
+ * model to carry the lesson and the words only to confirm it (2026-10-02),
+ * after a flat diagram had to be read to be understood.
+ *
+ * The stage makes its own small renderer in the figure's place on the page;
+ * the shell makes no viewer for this scene (`App.js` decides on the layout
+ * first), so `build()` and `cameraPose` stay only so the scene has the shape
+ * every scene has. Where a browser cannot make a WebGL context the same
+ * circulations are drawn flat (`LessonFigure`), and the lesson still opens.
  *
  * ## One state
  *
@@ -113,15 +114,13 @@ export class CardiacOutputLessonScene {
     }
     this.phase = 0;
     this.highlight = [];
-    this.refill = 1;
-    this._manualRefill = null;
     this._attention = 0;
     this._wasAtB = false;
     this._wasComparing = false;
     this.figure = null;
   }
 
-  /** Nothing in 3D: the figure is drawn by the page (`LessonFigure`). */
+  /** Nothing in the shell's scene: the figure draws itself in its own place on the page (`LessonStage3D`). */
   build() {
     return this.root;
   }
@@ -147,8 +146,8 @@ export class CardiacOutputLessonScene {
     this.figure.render({
       strips,
       highlight: this.highlight,
-      refill: this.refill,
       squeeze: squeezeAt(this.phase),
+      phase: this.phase,
       summary: figureSummary(strips),
       dt,
     });
@@ -162,7 +161,9 @@ export class CardiacOutputLessonScene {
    */
   getLesson() {
     const session = this.session;
-    this.figure ??= createLessonFigure({ reducedMotion: prefersReducedMotion });
+    // The circulations in 3D; where this browser cannot make a WebGL context,
+    // the same circulations as a flat diagram (`LessonFigure`).
+    this.figure ??= createLessonStage3D({ reducedMotion: prefersReducedMotion }) ?? createLessonFigure({ reducedMotion: prefersReducedMotion });
     const solved = session.solved;
     return {
       copy: {
@@ -182,6 +183,8 @@ export class CardiacOutputLessonScene {
       figure: {
         element: this.figure.element,
         render: (dt) => this._drawFigure(dt),
+        /** The 3D figure as a reader sees it, for a check; null for the flat one. */
+        probe: () => this.figure.probe?.() ?? null,
       },
 
       /** The explanation at `t`: the session is set to the scene's condition. */
@@ -190,35 +193,23 @@ export class CardiacOutputLessonScene {
         session.setRung(shown.rung);
         session.setShowOther(shown.showOther);
         this.highlight = shown.highlight;
-        this.refill = shown.refill;
-        this._manualRefill = null;
         return { index: shown.index, caption: captionFor(shown.step.id, solved) };
       },
 
       /**
        * The reader's buttons, a frame at a time: the vessels are lit while they
-       * narrow, the two results the action changed for a moment when it
-       * arrives, and the two tubes fill together when C comes in.
+       * narrow; the two results for a moment when the walk arrives at B, and
+       * again — on both circulations — when C comes in beside it. C arrives
+       * as it is, flowing; nothing fills from empty.
        */
       manualFrame: (dt) => {
         const atB = session.primaryId === 'B' && !session.showOther;
-        if (atB && !this._wasAtB) this._attention = ATTENTION_SECONDS;
+        const cameIn = (atB && !this._wasAtB) || (session.showOther && !this._wasComparing);
+        if (cameIn) this._attention = ATTENTION_SECONDS;
         this._wasAtB = atB;
-        this._attention = Math.max(0, this._attention - dt);
-        // C coming in is the next thing to look at: the tubes, filling.
-        if (session.showOther && !this._wasComparing) {
-          this._manualRefill = 0;
-          this._attention = 0;
-        }
         this._wasComparing = session.showOther;
-        if (this._manualRefill != null) {
-          this._manualRefill = Math.min(MANUAL_REFILL_SECONDS, this._manualRefill + dt);
-          this.refill = this._manualRefill / MANUAL_REFILL_SECONDS;
-          if (this._manualRefill >= MANUAL_REFILL_SECONDS) this._manualRefill = null;
-        } else {
-          this.refill = 1;
-        }
-        this.highlight = session.walking ? ['bed'] : this._attention > 0 ? ['dial', 'tube'] : this._manualRefill != null ? ['tube'] : [];
+        this._attention = Math.max(0, this._attention - dt);
+        this.highlight = session.walking ? ['bed'] : this._attention > 0 ? ['dial', 'tube'] : [];
       },
 
       guide: ({ stopped }) =>
@@ -234,8 +225,6 @@ export class CardiacOutputLessonScene {
       reset: () => {
         session.reset();
         this.highlight = [];
-        this.refill = 1;
-        this._manualRefill = null;
         this._attention = 0;
         this._wasAtB = false;
         this._wasComparing = false;
@@ -252,8 +241,6 @@ export class CardiacOutputLessonScene {
         if (session.primaryId === null) session.setPrimary('B');
         this._wasAtB = session.primaryId === 'B' && !session.showOther;
         this._wasComparing = session.showOther;
-        this._manualRefill = null;
-        this.refill = 1;
         this.highlight = [];
       },
       moved: () => session.rung !== 0 || session.showOther,
@@ -264,13 +251,14 @@ export class CardiacOutputLessonScene {
         walking: session.walking,
         rung: session.rung,
         lastRung: session.lastRung,
-        refill: this.refill,
         problems: session.problems,
       }),
     };
   }
 
   dispose() {
-    this.figure?.element.remove();
+    // The 3D stage holds a WebGL context of its own; the flat figure is only an element.
+    if (this.figure?.dispose) this.figure.dispose();
+    else this.figure?.element.remove();
   }
 }
