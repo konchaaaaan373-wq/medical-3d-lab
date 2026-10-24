@@ -130,6 +130,16 @@ Netlify 自身の bundler で bundle すると全関数が `nodejs24.x` にな�
 報告しました——`.nvmrc` を入れた production ビルドは成功しています。そのビルドは
 刻印より前のものなので、**どの Node で作られたかはまだ読めません**。
 
+同じ日に、刻印を入れた PR #174 の deploy preview へ `verify-live` を当てました
+（run 51、`origin` を preview に）。出力は `node    24 (build) · 24 (functions) · .nvmrc 24`
+——**Netlify はこのサイトのビルドで `.nvmrc` に従い、関数にも 24 を渡しています**
+（deploy-preview の文脈で）。run 自体は赤ですが、9 件はすべて preview であることの帰結
+（canonical と sitemap が無い、context が `deploy-preview`）で、Node の照合は
+production でだけ行います。**残るのは production の文脈だけです**: Netlify の変数は
+deploy context ごとに値を持てる（[`access-and-billing.md`](access-and-billing.md)）ので、
+production にだけ `NODE_VERSION` や `AWS_LAMBDA_JS_RUNTIME` が置かれている可能性は、
+production の刻印でしか消せません。
+
 - **どう確かめるか**: この刻印を入れた commit が production に出たあと、
   `verify-live.yml` を Actions から実行する（毎朝の定時実行でもよい）。
   `node    24 (build) · 24 (functions) · .nvmrc 24` と出て緑なら閉じる
