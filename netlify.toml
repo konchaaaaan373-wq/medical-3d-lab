@@ -19,7 +19,9 @@
 # for CI alike, and Netlify reads that file ahead of a `NODE_VERSION` set in
 # the UI. The functions — `scheduled-billing-reconcile` among them — run on the
 # build's Node unless `AWS_LAMBDA_JS_RUNTIME` is set in the UI, which this file
-# cannot override (F-277). `tests/node-runtime.test.js` refuses a second copy.
+# cannot override. Every page says which two majors it got (`build-node`,
+# `build-functions-node`), and `verify:live` fails when either is not
+# `.nvmrc`'s. `tests/node-runtime.test.js` refuses a second copy.
 
 [build.environment]
   VITE_SITE_URL = "https://med-3d-lab.necofindjob.com"

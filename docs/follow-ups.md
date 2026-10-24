@@ -1,6 +1,6 @@
 # Follow-ups — 残課題台帳
 
-Last updated: 2026-10-22
+Last updated: 2026-10-24
 
 マージ済みの変更が**まだ確かめていないこと・決めていないこと・先送りしたこと**を、
 別のセッションや別の人がそのまま拾えるように 1 か所に置く台帳です。
@@ -109,31 +109,37 @@ squash `81fea92`）のレビューと修正。`#40` = 冠動脈解剖・心筋�
 
 ## A. マージ後にまだ確認していないこと
 
-### F-277 — Netlify の関数ランタイムが Node 24 になったかを、Netlify 側で見ていない — P2
+### F-277 — Netlify がビルドと関数に Node 24 を使っているかは、次の production deploy の `verify:live` で確定する — P2
 
 2026-10-22 に Node を 24 へ移しました（`.nvmrc`、[`rules.md`](rules.md) R-2026-10-22-01）。
-この環境から確かめたのは repo 側だけです: Node 24.22.1 で `npm ci`・`npm audit`（0 件）・
-`npm test`・build・`budget`・`verify:site`・`cards:check`・`type-floor` が通り、
-本番の `VITE_SITE_URL` を入れた dist は main（Node 22）とバイト一致し、
-`netlify/functions/` の 11 本は Node 24 で `--throw-deprecation` のまま読み込め、
-`scheduled-billing-reconcile` は課金の設定が無い環境で（`fetch` を罠にして）
-1 回も通信せずに skip しました。Netlify 自身の bundler（`@netlify/zip-it-and-ship-it`
-16.5.0）で bundle すると、ビルドの Node が 24 なら全関数が `nodejs24.x`、
-scheduled のものは `17 * * * *` を保ったまま出ます。
+repo 側は Node 24.22.1 で全検査が通り、`netlify/functions/` の 11 本は Node 24 で
+読み込め、`scheduled-billing-reconcile` は課金未設定の環境で通信 0 回のまま skip し、
+Netlify 自身の bundler で bundle すると全関数が `nodejs24.x` になることまで確かめています。
 
-**見ていないのは Netlify の UI の側です**（app.netlify.com も docs.netlify.com も、
-この環境の network policy で読めません）。
+**Netlify 側は、画面を見なくても分かるようにしました（2026-10-24）。** 関数のランタイムは
+`@netlify/build`（37.6.1、`getLambdaNodeVersion`）が「ビルド環境の
+`AWS_LAMBDA_JS_RUNTIME`、無ければビルドの Node」で決め、ビルドコマンドはその同じ
+環境・同じ Node で走ります。そこでビルドが全ページに `build-node` と
+`build-functions-node`（どちらも major だけ）を刻み、`verify:live`（毎朝の
+`verify-live.yml`）が `.nvmrc` と照合します。UI に `NODE_VERSION` や
+`AWS_LAMBDA_JS_RUNTIME` が残っていれば、どちらの設定かを名指しして赤になります。
+本番相当のビルドを手元で配信して、override なしは緑、`AWS_LAMBDA_JS_RUNTIME=nodejs22.x`
+と Node 22 でのビルドは赤になることを確認済みです。
 
-- **確かめること**: (1) Site configuration → Environment variables に
-  `AWS_LAMBDA_JS_RUNTIME` が無いこと（あれば関数はその版で走り、`.nvmrc` は効きません。
-  `netlify.toml` からは上書きできません）。(2) マージ後の production deploy の
-  ログが `.nvmrc` から Node 24 を入れていること。(3) Functions 画面で
-  `scheduled-billing-reconcile` の runtime が Node.js 24 で、次の毎時 17 分の
-  実行がエラーなく終わる（production は課金未設定なので skip のログになるはず）こと
-- **どう確かめるか**: 上の 3 点は Netlify の画面でしか読めません。Netlify を読める
-  connector が付いたら、ここを機械で閉じてください
-- **完了の定義**: 3 点を見て、どの画面で何が出ていたかを 1 行ずつ書いて Resolved へ移す。
-  `AWS_LAMBDA_JS_RUNTIME` が古い版で置かれていたら、消すか `nodejs24.x` に直してから閉じる
+2026-10-24 の `verify-live`（run 50）は、production が `ede9cd2`（#173）を配信していると
+報告しました——`.nvmrc` を入れた production ビルドは成功しています。そのビルドは
+刻印より前のものなので、**どの Node で作られたかはまだ読めません**。
+
+- **どう確かめるか**: この刻印を入れた commit が production に出たあと、
+  `verify-live.yml` を Actions から実行する（毎朝の定時実行でもよい）。
+  `node    24 (build) · 24 (functions) · .nvmrc 24` と出て緑なら閉じる
+- **赤だったとき**: メッセージが Netlify の site configuration のどの変数
+  （`NODE_VERSION` か `AWS_LAMBDA_JS_RUNTIME`）を消せばよいかを言います。人手が要るのは
+  その 1 回だけです
+- **読めないまま残るもの**: 定時実行 1 回ごとの成否は Netlify の関数ログにしかありません。
+  production は課金未設定なので、通る経路は skip（手元で bundle 後の成果物を Node 24 で
+  実行済み）です。ここは閉じる条件に含めません
+- **完了の定義**: 上の緑を、run 番号と出力の 1 行つきで Resolved へ移す
 
 ### F-251 — BYOKI MOTION: 実機（iPhone Safari・Android Chrome）で未確認 — P2
 

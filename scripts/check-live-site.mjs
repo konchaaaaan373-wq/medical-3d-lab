@@ -22,6 +22,8 @@
  *                    invisible until somebody shares a link
  *   the build stamp  which build answered: production, and optionally the
  *                    exact commit with `--expect-commit <sha>`
+ *   the Node stamp   which Node built it and which its functions were given —
+ *                    both must be the major `.nvmrc` names (F-277)
  *
  * With `--redirects-from`, the old origin must still lead here: links shared
  * before the move outlive the domain they were shared from.
@@ -30,9 +32,12 @@
  * it is not part of CI — it is a step in the domain-change checklist in
  * `docs/release-runbook.md` and a check after any deploy that moved the site.
  */
+import { readFileSync } from 'node:fs';
+
 import { SCENES } from '../src/catalog/index.js';
 import { CRAWLABLE_SCENES } from '../src/catalog/release.js';
 import { canonicalOf, originOf, selfDeclaredUrls } from './read-page-metadata.js';
+import { nodeStampProblems, nvmrcMajor } from './node-runtime.js';
 import { scenePageUrl } from './site-metadata.js';
 
 const args = process.argv.slice(2);
@@ -191,6 +196,8 @@ const served = home.ok
       context: stamp(home.body ?? '', 'build-context'),
       commit: stamp(home.body ?? '', 'build-commit'),
       review: stamp(home.body ?? '', 'build-review'),
+      node: stamp(home.body ?? '', 'build-node'),
+      functionsNode: stamp(home.body ?? '', 'build-functions-node'),
     }
   : null;
 
@@ -210,6 +217,18 @@ if (!served) {
     `the served build says it is "${served.context}"` +
       (served.review ? ` (PR #${served.review})` : '') +
       ' — a published origin must serve a production build',
+  );
+}
+
+// Which Node built what is being served, and which Node its functions were
+// given. `.nvmrc` decides both (R-2026-10-22-01), and whether Netlify obeyed
+// used to be readable only in its dashboard (F-277). A build from before the
+// stamp is a problem here for the same reason an unstamped build-context is:
+// silence cannot confirm anything.
+const expectedNode = nvmrcMajor(readFileSync(new URL('../.nvmrc', import.meta.url), 'utf8'));
+if (served?.context === 'production') {
+  problems.push(
+    ...nodeStampProblems({ buildNode: served.node, functionsNode: served.functionsNode, expected: expectedNode }),
   );
 }
 
@@ -236,6 +255,10 @@ if (served) {
     `  build   ${served.context || 'unstamped'}` +
       (served.commit ? ` · ${served.commit.slice(0, 7)}` : '') +
       (served.review ? ` · PR #${served.review}` : ''),
+  );
+  console.log(
+    `  node    ${served.node ? `${served.node} (build) · ${served.functionsNode || '?'} (functions)` : 'unstamped'}` +
+      ` · .nvmrc ${expectedNode || 'names none'}`,
   );
 }
 for (const [label, status] of checked) console.log(`  ${String(status).padEnd(14)} ${label}`);

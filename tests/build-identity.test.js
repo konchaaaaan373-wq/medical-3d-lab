@@ -50,7 +50,9 @@ test('the build states its identity where a request can read it, not only a brow
   // four crawlable `/s/<slug>/` pages are written by `generateBundle`. The
   // first version stamped one page in five and said "every page" in its own
   // comment.
-  for (const name of ['build-context', 'build-commit', 'build-review']) {
+  // `build-node` / `build-functions-node` carry the Node majors, so
+  // `verify:live` can hold the deploy to `.nvmrc` (F-277).
+  for (const name of ['build-context', 'build-commit', 'build-review', 'build-node', 'build-functions-node']) {
     assert.ok(METADATA.includes(`'${name}'`), `the shared head tags do not stamp ${name}`);
   }
   assert.match(
