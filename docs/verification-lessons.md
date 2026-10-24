@@ -2972,8 +2972,14 @@ L-95 と L-96 は「別件を直したら、触っていない検査が赤くな
   `NODE_VERSION` も `AWS_LAMBDA_JS_RUNTIME` も持たないこと。11 通りの変異
   （1 step だけ 22 に戻す・v4 に戻す・未登録の action・`.nvmrc` を範囲や奇数に・
   step の書き方を変えて parser が 0 件しか拾わない、など）がすべて 1 件だけ赤、
-  戻して緑を確認しています。**Netlify の UI に `AWS_LAMBDA_JS_RUNTIME` が置かれて
-  いないかは人だけ**（F-277。この環境から Netlify は読めません）。
+  戻して緑を確認しています。Netlify 側（UI に `NODE_VERSION` や
+  `AWS_LAMBDA_JS_RUNTIME` が残っていないか）は、2026-10-24 から
+  `scripts/node-runtime.js` と `scripts/check-live-site.mjs` が捕まえます——ビルドが全ページに
+  `build-node`・`build-functions-node` を刻み（`@netlify/build` 37.6.1 の
+  `getLambdaNodeVersion` と同じ規則）、毎朝の `verify:live` が `.nvmrc` と照合します。
+  本番相当のビルドを手元で配信し、override なし＝緑、`AWS_LAMBDA_JS_RUNTIME=nodejs22.x`＝赤、
+  Node 22 でのビルド＝赤（2 行）を確認。刻印を消す・照合を外す・override を無視する・
+  patch まで刻む・比較を反転する、の 5 通りの変異もそれぞれ赤（F-277）。
 - **一般形**: **CI が測る環境と、出荷物が走る環境を、同じ 1 つのファイルから読む。**
   版を 2 か所に書けば、どちらかが黙って古くなる。
 

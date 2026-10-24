@@ -21,6 +21,7 @@
  */
 
 import { BRAND } from '../src/data/brand.js';
+import { buildNodeMajor, functionsNodeMajor } from './node-runtime.js';
 
 // Read from the one place the product's name lives (`src/data/brand.js`), so a
 // crawler, a link preview and the header cannot disagree about it.
@@ -183,11 +184,19 @@ const metaTag = (attr, name, content) =>
  * version of this stamped one page out of five while its own comment said
  * "every page". Netlify sets these on each build; a local build sets none of
  * them and says `local`, which is not production either.
+ *
+ * `build-node` and `build-functions-node` are the Node majors this build ran
+ * on and handed its functions — what `.nvmrc` is supposed to decide, and
+ * until now only Netlify's dashboard could confirm (F-277). `verify:live`
+ * holds the served pair to `.nvmrc`; how the second is worked out, and why it
+ * is exact, is in `node-runtime.js`.
  */
 const buildStampTags = () => [
   metaTag('name', 'build-context', process.env.CONTEXT || 'local'),
   metaTag('name', 'build-commit', process.env.COMMIT_REF || ''),
   metaTag('name', 'build-review', process.env.REVIEW_ID || ''),
+  metaTag('name', 'build-node', buildNodeMajor()),
+  metaTag('name', 'build-functions-node', functionsNodeMajor()),
 ];
 
 export function headTags({ title, description, canonical = '', image = '', type = 'website' }) {

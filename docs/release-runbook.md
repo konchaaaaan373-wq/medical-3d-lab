@@ -107,6 +107,12 @@ preview card, and fails if the deployed build names any other host — which is
 what a deploy that did not take, or took from the wrong branch, looks like from
 outside.
 
+It also reads which Node the served build was made on and which it handed its
+functions (the `build-node` and `build-functions-node` tags every page
+carries), and fails if either is not the major `.nvmrc` names. A `NODE_VERSION`
+or `AWS_LAMBDA_JS_RUNTIME` left in the Netlify site configuration shows up
+here, the morning after, instead of only in the dashboard.
+
 ### A variable belongs to a deploy context, not to the site
 
 Netlify scopes every environment variable by deploy context, and the summary
