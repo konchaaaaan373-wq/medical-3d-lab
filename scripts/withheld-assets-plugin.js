@@ -34,10 +34,15 @@ import { requiredAssetIdsFor, withheldDeliveryPaths } from './asset-delivery.js'
  * @param {ReadonlyArray<object>} options.assets the whole asset manifest
  * @param {ReadonlyArray<object>} options.released the scenes the release opens
  * @param {(scene: object) => object|null} options.profileFor
+ * @param {ReadonlyArray<{path: string}>} [options.withheldFiles] other delivered
+ *   files of withheld models — their model-card pictures (`withheldPosterFiles`)
  * @param {boolean} [options.enabled] false for a preview build
  */
-export function withheldAssetsPlugin({ assets, released, profileFor, enabled = true } = {}) {
-  const withheld = withheldDeliveryPaths({ assets, requiredAssetIds: requiredAssetIdsFor(released, profileFor) });
+export function withheldAssetsPlugin({ assets, released, profileFor, withheldFiles = [], enabled = true } = {}) {
+  const withheld = [
+    ...withheldDeliveryPaths({ assets, requiredAssetIds: requiredAssetIdsFor(released, profileFor) }),
+    ...withheldFiles.map((entry) => entry.path),
+  ];
   let outDir = '';
 
   return {
@@ -66,7 +71,7 @@ export function withheldAssetsPlugin({ assets, released, profileFor, enabled = t
       }
       if (removed.length) {
         this.info(
-          `${removed.length} file(s) of assets no published model uses were left out of the build: ${removed.join(', ')}`
+          `${removed.length} file(s) belonging to models the release does not open were left out of the build: ${removed.join(', ')}`
         );
       }
     },

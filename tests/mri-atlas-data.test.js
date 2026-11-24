@@ -34,9 +34,14 @@ test('mri data: every structure in the asset has a name here, and nothing here n
 
 test('mri data: a midline structure the atlas splits is named as a half, not as a paired organ', () => {
   const half = structures.find((structure) => structure.id === 'third-ventricle-l');
-  assert.equal(half.fullNameJa, '第三脳室（左半）');
+  assert.equal(half.fullNameJa, '第三脳室（左半分）');
   assert.equal(half.fullNameEn, 'Third Ventricle (left half)');
   assert.equal(structures.find((structure) => structure.id === 'hippocampus-r').fullNameJa, '右 海馬');
+  // There is no left or right chiasm: the parcel the atlas divides is named as a half.
+  const chiasm = structures.find((structure) => structure.id === 'optic-chiasm-l');
+  assert.equal(chiasm.midline, true);
+  assert.doesNotMatch(chiasm.fullNameJa, /^左 /);
+  assert.match(chiasm.note.ja, /視神経/);
 });
 
 test('mri data: left and right share a colour, neighbours do not, and no structure is brand pink', () => {
@@ -86,7 +91,8 @@ test('mri data: the scope says what it is — a standard brain, anatomy only, no
   assert.match(text, /152/);
   assert.match(text, /診断/);
   assert.match(text, /機能の局在は示しません/);
-  assert.match(text, /白質線維や機能領域は表示しません/);
+  assert.match(text, /白質には名前を付けていません/);
+  assert.match(text, /基準値ではありません/);
   for (const list of [MODEL_SCOPE.answers, MODEL_SCOPE.excludes, MODEL_SCOPE.cautions, MODEL_SCOPE.sources]) {
     for (const item of list) assert.ok(item.text && item.textJa);
   }
@@ -96,13 +102,14 @@ test('function themes: questions only — and every task id is one the model has
   const tasks = new Set(FUNCTION_TASKS.map((task) => task.id));
   // Names of structures and syndromes the themes must not assert while the
   // model that would justify them is unpublished.
-  const CLAIMS = /Broca|Wernicke|ブローカ|ウェルニッケ|海馬|扁桃|弓状束|前頭前野|角回|縁上回|頭頂葉|側頭葉|hippocamp|arcuate|angular|prefrontal|parietal|temporal lobe/i;
+  const CLAIMS = /Broca|Wernicke|ブローカ|ウェルニッケ|前頭|側頭|頭頂|後頭|帯状|海馬|扁桃|視床|基底核|線条体|小脳|脳幹|脳梁|脳弓|弓状束|皮質|[^小]葉|脳回|[上中下]..回|束|野|hippocamp|amygdal|thalam|striat|callos|fornix|fascicul|arcuate|angular|gyrus|cortex|cortical|lobe|frontal|parietal|temporal|occipital|cingul|cerebell/i;
   for (const theme of FUNCTION_THEMES) {
     for (const id of theme.tasks) assert.ok(tasks.has(id), `${theme.id}: the model has no task "${id}"`);
     for (const copy of [theme.questionEn, theme.questionJa]) {
       assert.doesNotMatch(copy, CLAIMS, `${theme.id} states which structure does what`);
     }
     assert.match(theme.questionJa, /か。$/, `${theme.id} is not phrased as a question`);
+    assert.match(theme.questionEn, /\?$/, `${theme.id} is not phrased as a question in English`);
   }
   assert.deepEqual(FUNCTION_THEMES.filter((theme) => theme.priority).map((theme) => theme.id), ['language', 'memory', 'attention', 'executive']);
 });

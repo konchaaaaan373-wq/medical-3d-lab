@@ -1,4 +1,5 @@
 import test from 'node:test';
+import { WIDE_MANIFEST } from './helpers/wide-release.js';
 import assert from 'node:assert/strict';
 import { readFileSync, readdirSync } from 'node:fs';
 
@@ -164,11 +165,18 @@ test('what the β publishes may produce a file only on the export rule\'s own te
   // three prohibited uses declared, geometry that may be redistributed — and
   // the frame carries the model's own caveat, which `reelFramePainter` draws
   // on every frame and the provenance tests above pin.
-  let exportable = 0;
-  for (const model of PUBLIC_MODELS) {
+  //
+  // Asked of every scene the beta gate clears, and counted twice: among what
+  // is published, and among what would be the day the launch scope widens. The
+  // launch (2026-11-24) publishes two anatomy scenes, so over `PUBLIC_MODELS`
+  // alone the body of this loop never ran — and a rule nobody runs is the
+  // coincidence this test was rewritten once already to stop being.
+  const published = new Set(PUBLIC_MODELS.map((model) => model.sceneId));
+  const exportable = [];
+  for (const model of WIDE_MANIFEST.models) {
     const problems = videoExportProblems(model.sceneId, { animated: true });
     if (problems.length > 0) continue;
-    exportable += 1;
+    exportable.push(model.sceneId);
 
     const scene = SCENES.find((entry) => entry.id === model.sceneId);
     const profile = MODEL_PROFILES.find((entry) => entry.profileId === scene.modelProfile);
@@ -184,11 +192,22 @@ test('what the β publishes may produce a file only on the export rule\'s own te
       );
     }
   }
+  for (const model of PUBLIC_MODELS) {
+    assert.ok(WIDE_MANIFEST.models.some((entry) => entry.sceneId === model.sceneId), `${model.sceneId} is published and was not examined`);
+  }
 
-  // Today exactly one published scene exports: `cardiac-output`, published on
-  // the decision recorded in `docs/beta-publication/cardiac-output.md`. The
-  // count is asserted so that a second one arriving is a deliberate edit here.
-  assert.equal(exportable, 1, 'a second published scene became exportable without anyone deciding it should');
+  // Exactly one scene the gate clears exports: `cardiac-output`, on the
+  // decision recorded in `docs/beta-publication/cardiac-output.md`. A second
+  // one arriving is a deliberate edit here.
+  assert.deepEqual(exportable, ['cardiac-output'], 'a second scene became exportable without anyone deciding it should');
+  // And nothing the launch publishes does: both are atlases, structure and not
+  // mechanism, so the public build carries no download surface. When the scope
+  // widens to the heart this line is the one that has to be looked at.
+  assert.deepEqual(
+    exportable.filter((id) => published.has(id)),
+    [],
+    'a published scene hands out a file; the launch was decided as two atlases with no download surface'
+  );
 });
 
 test('an unknown scene is refused rather than exported', () => {

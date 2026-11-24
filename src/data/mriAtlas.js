@@ -36,7 +36,7 @@ export const MRI_GROUPS = Object.freeze([
   { id: 'occipital', en: 'Occipital lobe', ja: '後頭葉', hue: 272, chroma: 52 },
   { id: 'limbic', en: 'Cingulate and medial temporal', ja: '帯状回・内側側頭葉', hue: 184, chroma: 58 },
   { id: 'insula', en: 'Insula', ja: '島', hue: 54, chroma: 74 },
-  { id: 'deep', en: 'Basal ganglia and diencephalon', ja: '大脳基底核・間脳', hue: 8, chroma: 68 },
+  { id: 'deep', en: 'Deep grey structures', ja: '大脳深部（基底核・間脳など）', hue: 8, chroma: 68 },
   { id: 'ventricle', en: 'Ventricles', ja: '脳室', hue: 202, chroma: 30 },
   { id: 'hindbrain', en: 'Cerebellum and brainstem', ja: '小脳・脳幹', hue: 88, chroma: 42 },
 ].map(Object.freeze));
@@ -48,14 +48,16 @@ export const MRI_GROUPS = Object.freeze([
  */
 const ENTRIES = {
   // ---------------------------------------------------------------- frontal
-  'Superior Frontal': { id: 'superior-frontal', ja: '上前頭回', group: 'frontal' },
+  'Superior Frontal': { id: 'superior-frontal', ja: '上前頭回', group: 'frontal',
+    note: { en: 'The DKT parcel: it continues onto the medial surface (medial frontal gyrus) and takes in the frontal pole, which this protocol does not label separately.', ja: 'DKT の区画です。内側面（内側前頭回）に続き、このプロトコルが独立に区画しない前頭極も含みます。' } },
   'Rostral Middle Frontal': { id: 'rostral-middle-frontal', ja: '中前頭回（吻側部）', group: 'frontal' },
   'Caudal Middle Frontal': { id: 'caudal-middle-frontal', ja: '中前頭回（尾側部）', group: 'frontal' },
   'Pars Opercularis': { id: 'pars-opercularis', ja: '下前頭回 弁蓋部', group: 'frontal' },
   'Pars Triangularis': { id: 'pars-triangularis', ja: '下前頭回 三角部', group: 'frontal' },
   'Pars Orbitalis': { id: 'pars-orbitalis', ja: '下前頭回 眼窩部', group: 'frontal' },
   'Lateral Orbitofrontal': { id: 'lateral-orbitofrontal', ja: '外側眼窩前頭皮質', group: 'frontal' },
-  'Medial Orbitofrontal': { id: 'medial-orbitofrontal', ja: '内側眼窩前頭皮質', group: 'frontal' },
+  'Medial Orbitofrontal': { id: 'medial-orbitofrontal', ja: '内側眼窩前頭皮質', group: 'frontal',
+    note: { en: 'Includes the gyrus rectus and the ventromedial surface below the genu.', ja: '直回と、脳梁膝の下の腹内側面を含みます。' } },
   Precentral: { id: 'precentral', ja: '中心前回', group: 'frontal' },
   Paracentral: { id: 'paracentral', ja: '中心傍小葉', group: 'frontal',
     note: { en: 'Spans the frontal and parietal lobes on the medial surface; listed here by convention.', ja: '内側面で前頭葉と頭頂葉にまたがります。ここでは慣例で前頭葉に並べています。' } },
@@ -67,7 +69,8 @@ const ENTRIES = {
   Supramarginal: { id: 'supramarginal', ja: '縁上回', group: 'parietal' },
   Precuneus: { id: 'precuneus', ja: '楔前部', group: 'parietal' },
   // --------------------------------------------------------------- temporal
-  'Superior Temporal': { id: 'superior-temporal', ja: '上側頭回', group: 'temporal' },
+  'Superior Temporal': { id: 'superior-temporal', ja: '上側頭回', group: 'temporal',
+    note: { en: 'The DKT parcel includes the temporal pole, which this protocol does not label separately.', ja: 'DKT の区画で、このプロトコルが独立に区画しない側頭極を含みます。' } },
   'Middle Temporal': { id: 'middle-temporal', ja: '中側頭回', group: 'temporal' },
   'Inferior temporal': { id: 'inferior-temporal', ja: '下側頭回', group: 'temporal' },
   'Transverse Temporal': { id: 'transverse-temporal', ja: '横側頭回（Heschl 回）', group: 'temporal' },
@@ -80,10 +83,13 @@ const ENTRIES = {
   // ----------------------------------------------------------------- limbic
   'Rostral Anterior Cingulate': { id: 'rostral-anterior-cingulate', ja: '前帯状皮質（吻側部）', group: 'limbic' },
   'Caudal Anterior Cingulate': { id: 'caudal-anterior-cingulate', ja: '前帯状皮質（尾側部）', group: 'limbic' },
-  'Posterior Cingulate': { id: 'posterior-cingulate', ja: '後帯状皮質', group: 'limbic' },
+  'Posterior Cingulate': { id: 'posterior-cingulate', ja: '後帯状皮質', group: 'limbic',
+    note: { en: 'The DKT parcel reaches further forward than the name suggests: it covers what is often taught as the mid-cingulate. The retrosplenial part is the isthmus parcel.', ja: 'DKT の区画は名前より前方まで及び、中部帯状回として教えられる範囲を含みます。脳梁膨大後部は「帯状回峡」の区画です。' } },
   'Isthmus Cingulate': { id: 'isthmus-cingulate', ja: '帯状回峡', group: 'limbic' },
-  Parahippocampal: { id: 'parahippocampal', ja: '海馬傍回', group: 'limbic' },
-  Entorhinal: { id: 'entorhinal', ja: '嗅内皮質', group: 'limbic' },
+  Parahippocampal: { id: 'parahippocampal', ja: '海馬傍回', group: 'limbic',
+    note: { en: 'The posterior part only; the anterior part is in the entorhinal parcel.', ja: '海馬傍回の後部だけです。前部は「嗅内皮質」の区画に入っています。' } },
+  Entorhinal: { id: 'entorhinal', ja: '嗅内皮質', group: 'limbic',
+    note: { en: 'Wider than the anatomical entorhinal cortex: the parcel includes medial temporal-pole cortex.', ja: '解剖学的な嗅内皮質より広い区画で、側頭極の内側の皮質を含みます。' } },
   Hippocampus: { id: 'hippocampus', ja: '海馬', group: 'limbic' },
   Amygdala: { id: 'amygdala', ja: '扁桃体', group: 'limbic' },
   // ----------------------------------------------------------------- insula
@@ -94,20 +100,24 @@ const ENTRIES = {
   Putamen: { id: 'putamen', ja: '被殻', group: 'deep' },
   Pallidum: { id: 'pallidum', ja: '淡蒼球', group: 'deep' },
   'Accumbens Area': { id: 'accumbens', ja: '側坐核', group: 'deep' },
-  'Basal Forebrain': { id: 'basal-forebrain', ja: '前脳基底部', group: 'deep' },
+  'Basal Forebrain': { id: 'basal-forebrain', ja: '前脳基底部', group: 'deep',
+    note: { en: 'A small parcel (about 0.2 mL a side) within the substantia innominata region — not the whole basal forebrain.', ja: '無名質の領域にある小さな区画（片側約 0.2 mL）で、前脳基底部の全体ではありません。' } },
   'Ventral Diencephalon': { id: 'ventral-diencephalon', ja: '腹側間脳（区画）', group: 'deep',
-    note: { en: 'A labelling parcel, not one structure: it gathers the hypothalamus, subthalamic region and neighbouring nuclei that a T1 image does not separate.', ja: '単一の構造ではなく区画です。T1 強調像では分けられない視床下部・視床下域と周囲の核をまとめています。' } },
-  'Optic Chiasm': { id: 'optic-chiasm', ja: '視交叉', group: 'deep',
-    note: { en: 'Very small at 1 mm; its outline here is approximate.', ja: '1 mm の解像度ではごく小さく、ここでの輪郭は概略です。' } },
+    note: { en: 'A FreeSurfer-derived parcel, not one structure. Besides the hypothalamus and subthalamic region it takes in the upper midbrain — red nucleus, substantia nigra, part of the cerebral peduncle — and the optic tract, none of which a T1 image separates here.', ja: '単一の構造ではなく FreeSurfer 由来の区画です。視床下部・視床下域に加え、中脳上部の赤核・黒質・大脳脚の一部、視索などを含みます。脳幹（中脳）の上端はこの区画に入っています。' } },
+  'Optic Chiasm': { id: 'optic-chiasm', ja: '視交叉（視神経・視索の一部を含む区画）', en: 'Optic chiasm (parcel; includes adjoining optic nerve and tract)', group: 'deep', midline: true,
+    note: { en: 'A CerebrA parcel of about 1.5 mL: not the chiasm alone, but the intracranial optic nerve in front of it and the start of the optic tract behind it. The atlas divides it at the midline.', ja: 'CerebrA の区画（約 1.5 mL）で、視交叉だけでなく、前方の頭蓋内視神経と後方の視索の起始部を含みます。アトラスが正中で左右に分けています。' } },
   // -------------------------------------------------------------- ventricle
-  'Lateral Ventricle': { id: 'lateral-ventricle', ja: '側脳室', group: 'ventricle' },
+  'Lateral Ventricle': { id: 'lateral-ventricle', ja: '側脳室', group: 'ventricle',
+    note: { en: 'Without the inferior (temporal) horn, which is a separate label.', ja: '下角（側頭角）を含みません。下角は別のラベルです。' } },
   'Inferior Lateral Ventricle': { id: 'inferior-lateral-ventricle', ja: '側脳室下角', group: 'ventricle',
-    note: { en: 'A thin slit in a healthy young brain; only a few voxels at 1 mm.', ja: '健常な若年の脳では細い隙間で、1 mm の解像度では数ボクセルしかありません。' } },
+    note: { en: 'A thin slit in a healthy young brain. The label (about 1 mL a side) is painted wider than the cerebrospinal fluid actually visible on the averaged image.', ja: '健常な若年の脳では細い隙間です。このラベル（片側約 1 mL）は、平均画像で実際に見える脳脊髄液腔より広く塗られています。' } },
   'Third Ventricle': { id: 'third-ventricle', ja: '第三脳室', group: 'ventricle', midline: true },
   'Fourth Ventricle': { id: 'fourth-ventricle', ja: '第四脳室', group: 'ventricle', midline: true },
   // -------------------------------------------------------------- hindbrain
-  Brainstem: { id: 'brainstem', ja: '脳幹', group: 'hindbrain', midline: true },
-  'Cerebellum Gray Matter': { id: 'cerebellar-cortex', ja: '小脳皮質', group: 'hindbrain' },
+  Brainstem: { id: 'brainstem', ja: '脳幹', group: 'hindbrain', midline: true,
+    note: { en: 'Not subdivided into midbrain, pons and medulla. The uppermost midbrain is in the ventral-diencephalon parcel.', ja: '中脳・橋・延髄には分かれていません。中脳の上端は「腹側間脳」の区画に入っています。' } },
+  'Cerebellum Gray Matter': { id: 'cerebellar-cortex', ja: '小脳皮質', group: 'hindbrain',
+    note: { en: 'The hemispheres; the vermis is labelled separately.', ja: '小脳半球の皮質です。虫部は別のラベルです。' } },
   'Cerebellum White Matter': { id: 'cerebellar-white-matter', ja: '小脳白質', group: 'hindbrain' },
   'Vermal lobules I-V': { id: 'vermis-1-5', ja: '小脳虫部（第 I–V 小葉）', group: 'hindbrain', midline: true },
   'Vermal lobules VI-VII': { id: 'vermis-6-7', ja: '小脳虫部（第 VI–VII 小葉）', group: 'hindbrain', midline: true },
@@ -115,7 +125,7 @@ const ENTRIES = {
 };
 
 export const MRI_STRUCTURE_ENTRIES = Object.freeze(
-  Object.fromEntries(Object.entries(ENTRIES).map(([name, entry]) => [name, Object.freeze({ ...entry, en: displayNameEn(name) })]))
+  Object.fromEntries(Object.entries(ENTRIES).map(([name, entry]) => [name, Object.freeze({ ...entry, en: entry.en ?? displayNameEn(name) })]))
 );
 
 /** CerebrA's own spelling, tidied for display ("Inferior temporal" → "Inferior temporal gyrus" is *not* done: no words are added). */
@@ -189,7 +199,7 @@ export function describeStructures(structures) {
         // A midline structure that CerebrA divides down the middle is still one
         // structure; the half is named as a half, not as a paired organ.
         fullNameEn: entry.midline ? `${entry.en} (${hemi.en} half)` : `${hemi.en[0].toUpperCase()}${hemi.en.slice(1)} ${entry.en[0].toLowerCase()}${entry.en.slice(1)}`,
-        fullNameJa: entry.midline ? `${entry.ja}（${hemi.ja}半）` : `${hemi.ja} ${entry.ja}`,
+        fullNameJa: entry.midline ? `${entry.ja}（${hemi.ja}半分）` : `${hemi.ja} ${entry.ja}`,
         midline: Boolean(entry.midline),
         note: entry.note ?? null,
         colour: mriStructureColour(structure.name),
@@ -235,22 +245,28 @@ export const MODEL_SCOPE = {
       textJa: '名前の付いた構造が、軸位・冠状・矢状の MRI のどこにあるか。三断面どうしと 3D の形がどう対応するか。' },
     { text: 'Which side of an image is the patient’s left, in both display conventions.',
       textJa: '画像のどちら側が患者の左か（放射線学的表示と神経学的表示の両方で）。' },
-    { text: 'How T1- and T2-weighted contrast differ on the same anatomy.',
-      textJa: '同じ解剖で、T1 強調と T2 強調のコントラストがどう違うか。' },
+    { text: 'What the same slice looks like in the T1- and the T2-weighted template, switched in place. (How to read each contrast is not explained here.)',
+      textJa: '同じ断面を、T1 強調と T2 強調のテンプレートで切り替えて見比べられます（各コントラストの読み方の説明は、ここにはありません）。' },
   ],
   excludes: [
     { text: 'It is not a patient’s scan and cannot be compared with one: an average of 152 brains has no individual variation, no pathology, and smoother cortex than any single person.',
       textJa: '患者の画像ではなく、患者の画像と見比べる基準にもなりません。152 人の平均には個人差も病変もなく、皮質は誰の脳よりも滑らかです。' },
     { text: 'It does not localise function. A coloured region is an anatomical label; nothing on this screen says what it does.',
       textJa: '機能の局在は示しません。色の付いた領域は解剖学的なラベルで、この画面はその働きについて何も述べません。' },
-    { text: 'It does not show white-matter tracts or functional areas: an ordinary structural MRI cannot.',
-      textJa: '白質線維や機能領域は表示しません。通常の構造 MRI では直接識別できないためです。' },
+    { text: 'It names no white matter. Individual association bundles cannot be told from the surrounding white matter on an ordinary structural MRI, and this atlas has no white-matter label at all — so even the corpus callosum and the internal capsule, which are plainly visible, have no name here. Functional areas are not shown either.',
+      textJa: '白質には名前を付けていません。個々の連合線維束は通常の構造 MRI では周囲の白質と区別できず、このアトラスには白質のラベル自体がありません。そのため、はっきり見えている脳梁や内包にも、ここでは名前が付きません。機能領域も表示しません。' },
+    { text: 'MNI space is larger than a typical individual brain and is not Talairach space: a coordinate is an address in this template, and no distance or volume here is a normal value.',
+      textJa: 'MNI 空間は平均的な個人の脳より大きく、Talairach 空間とも異なります。座標はこのテンプレートの中の番地であり、ここでの距離や体積は基準値ではありません。' },
     { text: 'Intensities are display values, not a calibrated measurement.',
       textJa: '信号値は表示用の値で、較正された計測値ではありません。' },
   ],
   cautions: [
     { text: 'Labels are the CerebrA atlas’s parcels (the DKT protocol), manually corrected on this template by its authors. A parcel border is a convention and differs between atlases.',
       textJa: 'ラベルは CerebrA アトラスの区画（DKT プロトコル）で、作者がこのテンプレート上で手修正したものです。区画の境界は約束事で、アトラスによって異なります。' },
+    { text: 'The label volume has small stray islands: a few voxels of one label lying apart from its main body. A click on one names that label. The 3D surface of a label is therefore not always a single piece.',
+      textJa: 'ラベルには、本体から離れた数ボクセルの小さな飛び地があります。そこを押すとそのラベルの名前が出ます。3D の面も、ラベルごとに必ず 1 つの塊とは限りません。' },
+    { text: 'The template is the average of young adults from a North American cohort: it shows no ageing and is not the brain typical of everyday clinical imaging.',
+      textJa: 'テンプレートは北米の若年成人の平均です。加齢変化はなく、日常診療で見る脳の典型でもありません。' },
     { text: 'Not for diagnosis, lesion localisation or treatment decisions.',
       textJa: '診断・病変局在の判定・治療判断には使えません。' },
   ],

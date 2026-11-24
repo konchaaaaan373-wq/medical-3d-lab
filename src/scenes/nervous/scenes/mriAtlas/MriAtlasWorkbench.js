@@ -92,6 +92,8 @@ export async function mountMriAtlasWorkbench({
   /** The single owner of what is on screen. */
   const state = {
     voxel: mmToVoxel(grid, [0, -18, 14]),
+    /** What a zoomed plane is centred on. Moves on a zoom step or a jump to a structure, not with the crosshair. */
+    focusVoxel: mmToVoxel(grid, [0, -18, 14]),
     selectedLabel: null,
     modality: 't1',
     window: { ...DEFAULT_WINDOW },
@@ -105,6 +107,11 @@ export async function mountMriAtlasWorkbench({
     query: '',
   };
   const volumes = { t1: null, t2: null, labels: null };
+  const pendingVolumes = { t2: null };
+  /** Set when the status line carries something that must stay on screen (no 3D, load failure). */
+  let statusIsFinal = false;
+  /** The atlas failed its own checks: nothing may be drawn from it. */
+  let failed = false;
   const lut = windowLut(state.window.level, state.window.width);
   let view3d = null;
   let viewer = null;
@@ -153,7 +160,10 @@ export async function mountMriAtlasWorkbench({
   const panel3d = el('section', { class: 'mri-3d', 'aria-label': inLanguage('3D model', '3D モデル') }, [stage3d, stageNote, viewButtons, tools3d]);
 
   // --- the selection read-out -------------------------------------------
-  const info = el('section', { class: 'mri-info', 'aria-live': 'polite' });
+  const info = el('section', { class: 'mri-info' });
+  // Only the name is announced. The whole card as a live region re-read every
+  // fact, note and link each time an arrow key crossed a label.
+  const announce = el('p', { class: 'visually-hidden', role: 'status', 'aria-live': 'polite' });
 
   // --- the list -----------------------------------------------------------
   const search = el('input', {
@@ -200,7 +210,8 @@ export async function mountMriAtlasWorkbench({
   const level = slider('mri-level', ['Brightness', '輝度'], { min: '0', max: '255', value: String(255 - state.window.level) },
     // Brighter = a lower window centre; the slider is read as "brightness".
     (value) => setWindow({ level: 255 - value, width: state.window.width }));
-  const contrast = slider('mri-contrast', ['Contrast', 'コントラスト'], { min: '0', max: '100', value: '57' },
+  const contrastSliderOf = (width) => Math.round((510 - width) / 5);
+  const contrast = slider('mri-contrast', ['Contrast', 'コントラスト'], { min: '0', max: '100', value: String(contrastSliderOf(state.window.width)) },
     // More contrast = a narrower window.
     (value) => setWindow({ level: state.window.level, width: 510 - value * 5 }));
   const opacity = slider('mri-opacity', ['Label opacity', 'ラベルの濃さ'], { min: '0', max: '100', value: String(state.overlayOpacity * 100) },
@@ -241,9 +252,9 @@ export async function mountMriAtlasWorkbench({
     settings,
   ]);
 
-  const modeTabs = el('div', { class: 'mri-modes', role: 'tablist', 'aria-label': inLanguage('View', '表示の切替') },
+  const modeTabs = el('div', { class: 'mri-modes', role: 'group', 'aria-label': inLanguage('View', '表示の切替') },
     MODES.map((mode) => el('button', {
-      class: 'mri-mode', type: 'button', role: 'tab', 'data-mode': mode.id,
+      class: 'mri-mode', type: 'button', 'aria-pressed': 'false', 'data-mode': mode.id,
       on: { click: () => setMode(mode.id) },
     }, dual(mode.en, mode.ja))));
   const listToggle = el('button', {
@@ -251,16 +262,24 @@ export async function mountMriAtlasWorkbench({
     on: { click: () => { const open = element.dataset.list !== 'open'; element.dataset.list = open ? 'open' : 'closed'; listToggle.setAttribute('aria-expanded', String(open)); } },
   }, dual('Structures', '構造一覧'));
 
+  const bar = el('div', { class: 'mri-bar' }, [modeTabs, listToggle]);
   const element = el('div', { class: 'mri-workbench', 'data-mode': state.mode, 'data-list': 'closed', 'data-ready': 'false' }, [
-    el('div', { class: 'mri-bar' }, [modeTabs, listToggle]),
+    bar,
     listPanel,
     panel3d,
     el('div', { class: 'mri-side' }, [slicePanel, controls]),
     info,
+    announce,
     status,
     el('p', { class: 'mri-standard' }, dual(MRI_ATLAS_COPY.standardBrain.en, MRI_ATLAS_COPY.standardBrain.ja)),
   ]);
   host.append(element);
+  element.addEventListener('keydown', (event) => {
+    if (event.key !== 'Escape' || element.dataset.list !== 'open') return;
+    element.dataset.list = 'closed';
+    listToggle.setAttribute('aria-expanded', 'false');
+    listToggle.focus();
+  });
 
   // -------------------------------------------------------------- actions
   function labelAt(voxel) {
@@ -287,6 +306,8 @@ export async function mountMriAtlasWorkbench({
     // A point on a surface is at the edge of its structure by definition, and
     // rounding can land one voxel outside it. The crosshair must be inside.
     if (labelAt(state.voxel) !== label) state.voxel = mmToVoxel(grid, structure.interiorPointMm);
+    // A jump may land outside what a zoomed plane is showing; bring it into view.
+    state.focusVoxel = [...state.voxel];
     setSelected(label);
     if (viaList && phone()) {
       element.dataset.list = 'closed';
@@ -300,6 +321,8 @@ export async function mountMriAtlasWorkbench({
     if (state.selectedLabel === label) return;
     state.selectedLabel = label;
     renderInfo();
+    const named = byLabel.get(label);
+    announce.textContent = named ? inLanguage(named.fullNameEn, named.fullNameJa) : '';
     onSelection(label == null ? null : byLabel.get(label));
   }
 
@@ -312,43 +335,72 @@ export async function mountMriAtlasWorkbench({
   function stepZoom(direction) {
     const index = ZOOM_STEPS.indexOf(state.zoom);
     state.zoom = ZOOM_STEPS[Math.min(ZOOM_STEPS.length - 1, Math.max(0, index + direction))];
+    // Zoom about where the reader is looking.
+    state.focusVoxel = [...state.voxel];
     render();
   }
 
+  let modalityRequest = 0;
   async function setModality(id) {
+    // The last choice wins: T2 then T1 while T2 is still arriving must end on T1.
+    const request = (modalityRequest += 1);
     if (!volumes[id]) {
-      status.replaceChildren(...dual('Loading the T2 volume…', 'T2 ボリュームを読み込んでいます…'));
-      status.hidden = false;
+      if (!statusIsFinal) {
+        status.replaceChildren(...dual('Loading the T2 volume…', 'T2 ボリュームを読み込んでいます…'));
+        status.hidden = false;
+      }
       try {
-        volumes[id] = await loaders.loadVolume(atlas.volumes[id], { signal: abort.signal });
+        pendingVolumes[id] ??= loaders.loadVolume(atlas.volumes[id], { signal: abort.signal });
+        volumes[id] = await pendingVolumes[id];
       } catch (error) {
-        status.replaceChildren(...dual('The T2 volume could not be loaded.', 'T2 ボリュームを読み込めませんでした。'));
+        pendingVolumes[id] = null;
+        if (destroyed || request !== modalityRequest) return;
+        if (!statusIsFinal) status.replaceChildren(...dual('The T2 volume could not be loaded.', 'T2 ボリュームを読み込めませんでした。'));
         console.warn('[mri-atlas] T2', error);
         return;
       }
-      status.hidden = true;
+      if (!statusIsFinal) status.hidden = true;
     }
+    if (destroyed || request !== modalityRequest) return;
+    if (!statusIsFinal) status.hidden = true;
     state.modality = id;
     render();
   }
 
   function setMode(mode) {
+    if (mode !== 'mri' && !view3d && element.dataset.ready === 'slices-only') return;
     state.mode = mode;
     element.dataset.mode = mode;
     render();
-    // The 3D stage changes size with the mode; the renderer has to follow.
-    requestAnimationFrame(() => viewer?.resize());
+    // The 3D stage changes size with the mode, and in MRI mode it is not on
+    // screen at all: a renderer left running there draws every frame to a
+    // canvas nobody sees (and, sized from a 0-wide box, at the window's size).
+    syncViewer();
+  }
+
+  function syncViewer() {
+    if (!viewer || destroyed) return;
+    if (state.mode === 'mri') {
+      viewer.stop();
+      return;
+    }
+    requestAnimationFrame(() => {
+      if (destroyed || state.mode === 'mri' || stage3d.clientWidth === 0) return;
+      viewer.resize();
+      viewer.start();
+    });
   }
 
   function resetDisplay() {
     state.window = { ...DEFAULT_WINDOW };
     windowLut(state.window.level, state.window.width, lut);
     state.zoom = 1;
+    state.focusVoxel = [...state.voxel];
     state.overlay = true;
     state.overlayOpacity = 0.4;
     state.convention = DEFAULT_CONVENTION;
     level.input.value = String(255 - state.window.level);
-    contrast.input.value = '57';
+    contrast.input.value = String(contrastSliderOf(state.window.width));
     opacity.input.value = '40';
     overlayButton.setAttribute('aria-pressed', 'true');
     conventionButton.setAttribute('aria-pressed', 'true');
@@ -377,8 +429,9 @@ export async function mountMriAtlasWorkbench({
   }
 
   function paint() {
+    if (failed) return;
     for (const [label, button] of buttons) button.setAttribute('aria-pressed', String(label === state.selectedLabel));
-    for (const button of modeTabs.children) button.setAttribute('aria-selected', String(button.dataset.mode === state.mode));
+    for (const button of modeTabs.children) button.setAttribute('aria-pressed', String(button.dataset.mode === state.mode));
     for (const button of modalityButtons) button.setAttribute('aria-pressed', String(button.dataset.modality === state.modality));
     zoomValue.textContent = `×${state.zoom}`;
     const intensity = volumes[state.modality];
@@ -386,7 +439,7 @@ export async function mountMriAtlasWorkbench({
       const frame = {
         grid, intensity, labels: volumes.labels, voxel: state.voxel, lut, colours,
         overlay: state.overlay, overlayOpacity: state.overlayOpacity, selectedLabel: state.selectedLabel,
-        convention: state.convention, zoom: state.zoom, describe,
+        convention: state.convention, zoom: state.zoom, focusVoxel: state.focusVoxel, describe,
       };
       for (const view of sliceViews) view.draw(frame);
     }
@@ -439,7 +492,11 @@ export async function mountMriAtlasWorkbench({
       ]),
       el('dl', { class: 'mri-info-facts' }, [
         el('dt', {}, dual('Region', '区分')), el('dd', {}, dual(group.en, group.ja)),
-        el('dt', {}, dual('Side', '側')), el('dd', {}, dual(structure.hemi === 'L' ? 'Left' : 'Right', structure.hemi === 'L' ? '左' : '右')),
+        el('dt', {}, dual('Side', '側')),
+        // A midline structure the atlas divides has no side; it has a half.
+        el('dd', {}, structure.midline
+          ? dual(`Midline (${structure.hemi === 'L' ? 'left' : 'right'} half)`, `正中（${structure.hemi === 'L' ? '左' : '右'}半分）`)
+          : dual(structure.hemi === 'L' ? 'Left' : 'Right', structure.hemi === 'L' ? '左' : '右')),
         el('dt', {}, dual('MNI coordinate shown', '表示中の MNI 座標')),
         el('dd', { class: 'mri-info-mm', text: `x ${x}, y ${y}, z ${z} mm` }),
       ]),
@@ -478,20 +535,34 @@ export async function mountMriAtlasWorkbench({
   // --------------------------------------------------------------- loading
   renderInfo();
   const resizeObserver = typeof ResizeObserver === 'function'
-    ? new ResizeObserver(() => { viewer?.resize(); render(); })
+    ? new ResizeObserver(() => {
+        if (viewer && state.mode !== 'mri' && stage3d.clientWidth > 0) viewer.resize();
+        render();
+      })
     : null;
+  // The boxes that are drawn into, not only the workbench: the info row is
+  // as tall as its text, so a selection or a language switch resizes the 3D
+  // stage and the planes while the workbench itself stays the same size.
   resizeObserver?.observe(element);
+  resizeObserver?.observe(stage3d);
+  for (const view of sliceViews) resizeObserver?.observe(view.canvas.parentElement);
 
   const volumesReady = Promise.all([
     loaders.loadVolume(atlas.volumes.t1, { signal: abort.signal }),
     loaders.loadVolume(atlas.volumes.labels, { signal: abort.signal }),
   ]).then(([t1, labels]) => {
-    volumes.t1 = t1;
-    volumes.labels = labels;
+    if (destroyed) return;
     // The asset is checked against the claims this screen makes from it before
     // a single pixel is drawn: sides, and every interior point inside its label.
+    // Checked on the locals — the volumes are handed to the painter only once
+    // they have passed, so a rejected atlas cannot be drawn by a later click.
     const problems = atlasProblems(atlas, labels);
-    if (problems.length) throw new Error(`the MRI atlas failed its own checks: ${problems.slice(0, 3).join('; ')}`);
+    if (problems.length) {
+      failed = true;
+      throw new Error(`the MRI atlas failed its own checks: ${problems.slice(0, 3).join('; ')}`);
+    }
+    volumes.t1 = t1;
+    volumes.labels = labels;
     status.hidden = true;
     element.dataset.ready = 'slices';
     const opening = openingStructureId ? byId.get(openingStructureId) : null;
@@ -500,15 +571,25 @@ export async function mountMriAtlasWorkbench({
   });
 
   const meshesReady = volumesReady.then(async () => {
+    if (destroyed) return;
     try {
       viewer = createViewer(stage3d);
     } catch (error) {
-      stageNote.replaceChildren(...dual(
+      // Said where it can be read: the 3D panel is about to be hidden, so a
+      // note inside it would be a note nobody sees. The 3D tabs are disabled
+      // rather than left leading to an empty panel.
+      element.dataset.ready = 'slices-only';
+      state.mode = 'mri';
+      element.dataset.mode = 'mri';
+      for (const button of modeTabs.children) if (button.dataset.mode !== 'mri') button.disabled = true;
+      statusIsFinal = true;
+      status.hidden = false;
+      status.classList.add('is-notice');
+      status.replaceChildren(...dual(
         'This browser could not start 3D. The MRI planes work without it.',
         'このブラウザでは 3D を開始できませんでした。MRI 三断面はそのまま使えます。'
       ));
-      if (state.mode !== 'mri') setMode('mri');
-      element.dataset.ready = 'slices-only';
+      render();
       console.warn('[mri-atlas] 3D unavailable', error);
       return;
     }
@@ -522,14 +603,15 @@ export async function mountMriAtlasWorkbench({
       grid,
       onPick: (label, pointMm) => select(label, { pointMm }),
     });
-    viewer.resize();
-    viewer.start();
+    syncViewer();
     stageNote.hidden = true;
     element.dataset.ready = 'all';
     render();
   });
 
   const ready = meshesReady.catch((error) => {
+    if (destroyed) return;
+    statusIsFinal = true;
     status.hidden = false;
     status.replaceChildren(...dual('The MRI atlas could not be loaded. Reload the page to try again.', 'MRI アトラスを読み込めませんでした。ページを再読み込みしてください。'));
     element.dataset.ready = 'failed';
@@ -550,6 +632,7 @@ export async function mountMriAtlasWorkbench({
     setFunctionReader(reader) {
       readFunction = typeof reader === 'function' ? reader : null;
       renderInfo();
+      render();
     },
     get viewer() { return viewer; },
     get view3d() { return view3d; },
@@ -558,6 +641,7 @@ export async function mountMriAtlasWorkbench({
     destroy() {
       destroyed = true;
       abort.abort();
+      bar.remove();
       resizeObserver?.disconnect();
       view3d?.dispose();
       viewer?.dispose();

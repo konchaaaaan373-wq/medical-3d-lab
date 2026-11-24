@@ -4,6 +4,7 @@ import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 
 import { DOCUMENT_ROUTE_SLUGS, resolveRoute } from '../src/app/router.js';
+import { RESERVED_ROUTE_SLUGS, SCENES } from '../src/catalog/index.js';
 
 /**
  * The wait, painted before the bundle exists.
@@ -51,9 +52,23 @@ test('every slug in that list really does resolve to something other than a scen
   }
 });
 
+test('every slug the router answers as a document is one no scene may take', () => {
+  // The other half of "not a model". `#/functions` was added to the router and
+  // to the veil's list (2026-11-24) and not to `RESERVED_ROUTE_SLUGS`, so a
+  // scene given the slug `functions` would have passed `validateCatalog` and
+  // then never opened — the shell answers first. It was noticed only because
+  // the viewport matrix happened to list the route. Asked of every document
+  // slug, so the next route does not depend on that coincidence.
+  for (const slug of DOCUMENT_ROUTE_SLUGS) {
+    if (slug === '') continue; // the landing page has no slug to reserve
+    assert.ok(RESERVED_ROUTE_SLUGS.includes(slug), `"${slug}" is a document route and is not reserved`);
+    assert.equal(SCENES.some((scene) => scene.slug === slug), false, `a scene has the slug "${slug}"`);
+  }
+});
+
 test('a model route is not in the list, so the veil is painted for it', () => {
   const inline = inlineDocumentRoutes();
-  for (const slug of ['brain-anatomy', 'heart-anatomy', 'lung-anatomy', 'liver-anatomy']) {
+  for (const slug of ['brain-anatomy', 'mri-atlas', 'higher-brain-function', 'heart-anatomy', 'lung-anatomy', 'liver-anatomy']) {
     assert.equal(inline.includes(slug), false, `${slug} must reach the veil`);
     assert.equal(resolveRoute(`#/${slug}`).kind, 'scene');
   }

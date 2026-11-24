@@ -283,6 +283,7 @@ export function assetDeliveryProblems({
   sharedRuntimeFiles = SHARED_RUNTIME_FILES,
   siteSurfacePaths = SITE_SURFACE_PATHS,
   companionFiles = ASSET_COMPANION_FILES,
+  withheldFiles = [],
 }) {
   const problems = [];
   const required = new Set(requiredAssetIds);
@@ -291,6 +292,14 @@ export function assetDeliveryProblems({
 
   const { owners, withheld } = deliveryAccounting({ assets, requiredAssetIds: required, companionFiles });
   const accounted = owners;
+
+  // Files of a declared site surface that belong to one withheld model — its
+  // model-card picture. Not an asset (the render is of assets already in the
+  // manifest), so the caller names them; held to the same rule as one.
+  for (const entry of withheldFiles) {
+    withheld.add(entry.path);
+    if (shipped.has(entry.path)) problems.push(`${entry.path}: is ${entry.why}, but it shipped`);
+  }
 
   for (const asset of assets) {
     const delivery = deliveryPathOf(asset?.output?.path);
@@ -309,6 +318,7 @@ export function assetDeliveryProblems({
   // and shipping it is how a build comes to advertise a model it does not carry.
   const assetFiles = new Set(assets.map((asset) => deliveryPathOf(asset?.output?.path)).filter(Boolean));
   for (const file of withheld) {
+    if (!owners.has(file)) continue; // A caller-named file, reported above.
     if (assetFiles.has(file) || !shipped.has(file)) continue; // The asset itself is reported above.
     problems.push(
       `${file}: belongs only to assets no published model uses (${owners.get(file).join(', ')}), but it shipped`
@@ -373,3 +383,27 @@ export function assetDeliveryProblems({
  */
 export const requiredAssetIdsFor = (scenes, profileFor) =>
   new Set(scenes.flatMap((scene) => profileFor(scene)?.assets ?? []));
+
+/**
+ * The model-card pictures of models the release does not open.
+ *
+ * `public/posters/` is a declared site surface — screenshots of our own models
+ * — and it is excused as a folder, which was right while every picture in it
+ * was of a published model. The brain launch (2026-11-24) withheld the one
+ * model that has a picture, and the picture went on shipping: a photograph of
+ * a model nobody can open, at a guessable address. A card is not drawn for a
+ * scene with no page; neither is its picture delivered.
+ *
+ * @param {Record<string, {poster?: string|null}>} showcase `MODEL_SHOWCASE`
+ * @param {ReadonlyArray<{id: string}>} released the scenes the release opens
+ * @returns {{path: string, why: string}[]}
+ */
+export const withheldPosterFiles = (showcase, released) => {
+  const open = new Set(released.map((scene) => scene.id));
+  return Object.entries(showcase)
+    .filter(([id, entry]) => entry?.poster && !open.has(id))
+    .map(([id, entry]) => ({
+      path: entry.poster,
+      why: `the model-card picture of "${id}", which the release does not open`,
+    }));
+};

@@ -81,8 +81,8 @@ export function createAbout({ ui, accountButton = null, focusId = null }) {
         ['Connect it to function', '機能とつなげる'],
       ].map(([en, ja], index) => el('li', { class: `bm-loop-step${index === 2 ? ' is-change' : ''}` }, dual(en, ja)))),
       paragraph(
-        'The launch covers one organ, the brain, in three parts: its anatomy in 3D, a standard-brain MRI atlas linked to the same structures, and higher brain function read as networks rather than as one region per function. Other organs and disease models exist and are not published in this launch.',
-        '初期版が扱うのは脳だけで、3 つの部分からなります。3D の脳解剖、同じ構造に連動する標準脳 MRI アトラス、そして「1 領域 = 1 機能」ではなくネットワークとして読む高次脳機能です。ほかの臓器と病態モデルも作ってありますが、初期版では公開していません。'
+        'The launch covers one organ, the brain, in three parts: its anatomy in 3D, a standard-brain MRI atlas with 3D surfaces of its own labels, and higher brain function read as networks rather than as one region per function. Other organs and disease models exist and are not published in this launch.',
+        '初期版が扱うのは脳だけで、3 つの部分からなります。3D の脳解剖、ラベルから作った 3D と連動する標準脳 MRI アトラス、そして「1 領域 = 1 機能」ではなくネットワークとして読む高次脳機能です。ほかの臓器と病態モデルも作ってありますが、初期版では公開していません。'
       ),
     ]),
 
@@ -100,8 +100,8 @@ export function createAbout({ ui, accountButton = null, focusId = null }) {
         )),
         el('dt', {}, dual('No one-region-one-function', '「1 領域 = 1 機能」にしない')),
         el('dd', {}, dual(
-          'A coloured region on the atlas is an anatomical label. Function belongs to routes through several structures.',
-          'アトラスで色の付いた領域は解剖学的なラベルです。機能は、複数の構造を通る経路のほうにあります。'
+          'A coloured region on the atlas is an anatomical label and says nothing about what it does. The function model draws a function as a route through several structures.',
+          'アトラスで色の付いた領域は解剖学的なラベルで、働きについては何も述べません。機能モデルは、機能を複数の構造を通る経路として描きます。'
         )),
       ]),
     ]),
@@ -123,12 +123,12 @@ export function createAbout({ ui, accountButton = null, focusId = null }) {
 
     section('readers', { en: 'Data and sources', ja: 'データと出典' }, [
       paragraph(
-        'MRI: the MNI ICBM 152 (2009c nonlinear symmetric) template — an average of 152 young adults, © McConnell Brain Imaging Centre, Montreal Neurological Institute, McGill University. Labels: the CerebrA atlas (Manera et al., 2020). 3D anatomy: published atlases, credited in each model. Every asset is recorded with its source, version, licence and what was changed.',
+        'MRI: the MNI ICBM 152 (2009c nonlinear symmetric) template — an average of 152 young adults, not an acquired scan of anyone, © McConnell Brain Imaging Centre, Montreal Neurological Institute, McGill University. Labels: the CerebrA atlas (Manera et al., 2020). 3D anatomy: published atlases, credited in each model. Every asset is recorded with its source, version, licence and what was changed.',
         'MRI は MNI ICBM 152（2009c 非線形対称）テンプレート——若年成人 152 人の平均（© McConnell Brain Imaging Centre, Montreal Neurological Institute, McGill University）。ラベルは CerebrA アトラス（Manera ほか、2020）。3D 解剖は公開アトラスに基づき、各モデルに出典を記しています。素材ごとに、取得元・版・ライセンス・加えた変更を記録しています。'
       ),
       paragraph(
-        'These are standard brains, not anyone\u2019s brain. They are not for diagnosis, for locating a lesion in a patient, or for treatment decisions.',
-        'どれも標準脳で、特定の誰かの脳ではありません。診断、患者の病変の位置の判定、治療の判断には使えません。'
+        'These are representative models, not anyone\u2019s brain. They are not for diagnosis, for locating a lesion in a patient, or for treatment decisions.',
+        'どれも代表モデルで、特定の誰かの脳ではありません。診断、患者の病変の位置の判定、治療の判断には使えません。'
       ),
     ]),
 

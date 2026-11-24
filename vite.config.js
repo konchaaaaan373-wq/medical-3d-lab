@@ -8,6 +8,8 @@ import { buildScenePreloads } from './scripts/scene-preloads.js';
 import { publicSceneLoadersPlugin } from './scripts/scene-loaders-plugin.js';
 import { siteMetadataPlugin } from './scripts/site-plugin.js';
 import { withheldAssetsPlugin } from './scripts/withheld-assets-plugin.js';
+import { withheldPosterFiles } from './scripts/asset-delivery.js';
+import { MODEL_SHOWCASE } from './src/data/modelShowcase.js';
 import clinicalReviews from './docs/clinical-reviews/registry.json' with { type: 'json' };
 
 export default defineConfig(({ mode }) => {
@@ -68,6 +70,7 @@ export default defineConfig(({ mode }) => {
         assets: ASSET_MANIFEST,
         released: RELEASED_SCENES,
         profileFor: modelProfileForScene,
+        withheldFiles: withheldPosterFiles(MODEL_SHOWCASE, RELEASED_SCENES),
         enabled: !allowPreview,
       }),
       siteMetadataPlugin({

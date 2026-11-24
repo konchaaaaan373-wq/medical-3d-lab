@@ -45,9 +45,28 @@ test('contrast: a colour that is not a colour is rejected rather than measured',
 });
 
 test('contrast: a translucent panel is measured as composited, not as declared', () => {
-  // The declared panel colour is darker than what a reader actually sees.
-  assert.equal(composite('#1c1a18', 0.72, '#121110'), SURFACES.panel);
-  assert.notEqual(SURFACES.panel, '#1c1a18');
+  // The declared panel colour is not what a reader actually sees: it is laid
+  // over the page at less than full opacity. The values are read out of
+  // `base.css` rather than typed here — this pinned the hexes of the palette
+  // before the 2026-11-24 re-tint, and a pasted literal only ever proves that
+  // the test and `palette.js` were edited by the same hand.
+  const toHex = (r, g, b) => `#${[r, g, b].map((channel) => Number(channel).toString(16).padStart(2, '0')).join('')}`;
+  const declared = (token) => {
+    const match = baseCss.match(new RegExp(`--${token}:\\s*rgba\\((\\d+),\\s*(\\d+),\\s*(\\d+),\\s*([\\d.]+)\\)`));
+    assert.ok(match, `base.css declares no translucent --${token}`);
+    return { hex: toHex(match[1], match[2], match[3]), alpha: Number(match[4]) };
+  };
+  const page = baseCss.match(/--bg:\s*(#[0-9a-f]{6})/i)?.[1];
+  assert.equal(page, SURFACES.page, 'the page ground in base.css is the one the palette composites over');
+  for (const [token, surface] of [['panel', SURFACES.panel], ['panel-strong', SURFACES.panelStrong]]) {
+    const { hex, alpha } = declared(token);
+    assert.ok(alpha > 0 && alpha < 1, `--${token} is not translucent, so there is nothing to composite`);
+    assert.equal(composite(hex, alpha, page), surface, `--${token} in base.css is not what palette.js measures`);
+    assert.notEqual(surface, page);
+  }
+  // At 0.72 the difference is visible in the hex; at 0.9 it rounds away, which
+  // is why only the lighter panel can show it.
+  assert.notEqual(SURFACES.panel, declared('panel').hex, '--panel is measured as declared, not as composited');
   assert.equal(composite('#ffffff', 1, '#000000'), '#ffffff');
   assert.equal(composite('#ffffff', 0, '#000000'), '#000000');
 });
@@ -168,7 +187,8 @@ test('focus: the skip target does not land on the navigation it was meant to ski
   // The id belongs to the first content element, never to the landmark that
   // still contains the header.
   for (const [path, landmark] of [
-    ['src/app/Landing.js', "el('main', { class: 'bm-landing' }"],
+    ['src/app/Landing.js', "el('main', { class: 'bm-landing lab-landing' }"],
+    ['src/app/FunctionsIndex.js', "el('main', { class: 'bm-page lab-functions' }"],
     ['src/app/About.js', "el('main', { class: 'bm-page bm-about' }"],
     ['src/app/PathologyIndex.js', "el('main', { class: 'bm-page bm-models-index is-pathology' }"],
     ['src/app/Trust.js', "el('main', { class: 'trust-page' }"],
@@ -284,18 +304,46 @@ test('generated pages: mark the English text inside a Japanese document', () => 
   assert.match(html, /lang="en"/);
 });
 
+/** The generated page's own stylesheet, as `selector → declarations`. */
+function pageRules(html) {
+  const css = html.match(/<style>([\s\S]*?)<\/style>/)?.[1] ?? '';
+  return [...css.matchAll(/([^{}]+)\{([^}]*)\}/g)].map(([, selector, body]) => ({
+    selector: selector.trim(),
+    color: body.match(/(?:^|[;\s])color:\s*(#[0-9a-f]{3,6})/i)?.[1] ?? null,
+    background: body.match(/background:\s*(#[0-9a-f]{3,6})/i)?.[1] ?? null,
+  }));
+}
+
 test('generated pages: state their colours explicitly rather than inheriting', () => {
   // They are standalone documents: without an explicit scheme a reader with a
   // light-mode browser gets dark text on a dark background.
   const html = renderScenePage(PUBLIC_SCENES[0], {});
   assert.match(html, /color-scheme: light/);
-  assert.match(html, /background: #f6f4ef/);
-  assert.match(html, /color: #1f1e1c/);
+  // The ground and the ink are the product's paper and its ink — read from the
+  // palette, so a re-tint that reaches the app and not the crawlable pages (or
+  // the other way round) is a failure rather than two shades of off-white.
+  const body = pageRules(html).find((rule) => rule.selector === 'body');
+  assert.ok(body?.background && body?.color, 'the page does not state both its ground and its ink');
+  assert.equal(body.background.toLowerCase(), SURFACES.trust);
+  assert.equal(body.color.toLowerCase(), TRUST_INK.body);
 });
 
 test('generated pages: their body text clears AA against their own background', () => {
-  // The page's own ink, body, secondary and footer text, on its paper ground.
-  for (const ink of ['#1f1e1c', '#3d3b37', '#5f5b54', '#6f6b63']) {
-    assert.ok(contrastRatio(ink, '#f6f4ef') >= CONTRAST_MINIMUM.body, ink);
+  // Every ink the page's stylesheet sets, against the ground it is set on —
+  // the page's, or the rule's own where it has one (the "open the model"
+  // button is paper on ink). Read from the rendered page: this listed four
+  // hexes, and a fifth colour added to the stylesheet was never measured.
+  const html = renderScenePage(PUBLIC_SCENES[0], {});
+  const rules = pageRules(html);
+  const ground = rules.find((rule) => rule.selector === 'body').background;
+  const inks = rules.filter((rule) => rule.color);
+  assert.ok(inks.length >= 6, `only ${inks.length} rule(s) set a colour; the page has more text than that`);
+  for (const rule of inks) {
+    const ratio = contrastRatio(rule.color, rule.background ?? ground);
+    assert.ok(
+      ratio >= CONTRAST_MINIMUM.body,
+      `${rule.selector}: ${rule.color} on ${rule.background ?? ground} is ${ratio.toFixed(2)}:1`
+    );
   }
+  assert.ok(inks.some((rule) => rule.background), 'the inverted button is measured on its own ground');
 });

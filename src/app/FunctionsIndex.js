@@ -87,8 +87,8 @@ export function createFunctionsIndex({
           '機能モデルは、まだ公開していません'
         )),
         el('p', {}, dual(
-          'It exists and it runs, but no clinician has reviewed it, and a model that says which pathway carries which function is not something to publish on an engineer’s word. Until that review is recorded, the structures themselves can be studied in the anatomy and on MRI.',
-          'モデルは完成していて動きますが、医師によるレビューがまだ済んでいません。「どの経路がどの機能を担うか」を述べるモデルを、レビューなしに公開することはしていません。レビューが記録されるまでは、構造そのものを脳解剖と MRI で学べます。'
+          'It is implemented and it runs, but no clinician has reviewed it, and a model that says which pathway carries which function is not something to publish on an engineer’s word. Until that review is recorded, the structures themselves can be studied in the anatomy and on MRI.',
+          'モデルは実装済みで動きますが、医師によるレビューがまだ済んでいません。「どの経路がどの機能を担うか」を述べるモデルを、レビューなしに公開することはしていません。レビューが記録されるまでは、構造そのものを脳解剖と MRI で学べます。'
         )),
         el('p', { class: 'lab-fn-status-links' }, [
           reachable(anatomy) ? el('a', { class: 'lab-cta is-quiet', href: anatomy.route }, dual(anatomy.en, anatomy.ja)) : null,
@@ -123,8 +123,8 @@ export function createFunctionsIndex({
     el('header', { class: 'bm-page-head', id: 'content', tabindex: '-1', 'data-skip-target': '' }, [
       el('h1', { class: 'bm-page-title' }, dual('Higher brain function', '高次脳機能')),
       el('p', { class: 'bm-page-lead' }, dual(
-        'Language, memory, attention, executive function. Here a function is not a label on a region: it is a route through several named structures and the fibres between them — and what is lost depends on where that route is cut.',
-        '言語、記憶、注意、遂行機能。ここでは機能を「領域に貼るラベル」として扱いません。機能は、名前の付いた複数の構造と、その間をつなぐ線維を通る 1 本の経路です。何が失われるかは、その経路がどこで切れるかで決まります。'
+        'Language, memory, attention, executive function. The model behind this area does not treat a function as a label on a region: it draws each one as a route through several named structures and the fibres between them, and asks what is lost when that route is cut.',
+        '言語、記憶、注意、遂行機能。この領域のモデルは、機能を「領域に貼るラベル」として扱いません。機能を、名前の付いた複数の構造とその間をつなぐ線維を通る経路として描き、経路のどこが切れると何が失われるかを考えます。'
       )),
     ]),
     status,
@@ -137,12 +137,12 @@ export function createFunctionsIndex({
       el('ul', { class: 'lab-fn-limit-list' }, [
         ['It is one representative right-handed brain. Language dominance, and much else, varies between people.',
           '代表的な右利きの脳 1 つです。言語の優位半球をはじめ、個人差は扱いません。'],
-        ['It is not a lesion localiser: a set of symptoms does not determine a place, and nothing here should be read back onto a patient or a scan.',
-          '病巣同定の道具ではありません。症状の組み合わせから部位は決まりませんし、ここでの読みを患者や画像に当てはめないでください。'],
-        ['A region is not a function. The same structure sits on several routes, and most functions survive the loss of one of them.',
-          '領域は機能ではありません。同じ構造が複数の経路に載り、多くの機能は構造を 1 つ失っても残ります。'],
-        ['White-matter bundles and functional areas cannot be seen on an ordinary structural MRI. Where they are drawn, they are drawn from an atlas, as a reference.',
-          '白質線維や機能領域は、通常の構造 MRI では直接見えません。描くときは、アトラスに基づく参考表示として区別します。'],
+        ['It is not a lesion localiser: a set of symptoms does not uniquely determine a place, and nothing here should be read back onto a patient or a scan.',
+          '病巣同定の道具ではありません。症状の組み合わせから部位が一意に決まるわけではなく、ここでの読みを患者や画像に当てはめないでください。'],
+        ['A region is not a function. In the model one structure can sit on several routes, and a coloured region on an atlas says nothing about what it does.',
+          '領域は機能ではありません。モデルでは 1 つの構造が複数の経路に載ることがあり、アトラスで色の付いた領域は、その働きについて何も述べていません。'],
+        ['Individual association bundles and functional areas cannot be told apart on an ordinary structural MRI. Where they are drawn, they are drawn from an atlas, as a reference.',
+          '個々の連合線維束や機能領域は、通常の構造 MRI では見分けられません。描くときは、アトラスに基づく参考表示として区別します。'],
       ].map(([en, ja]) => el('li', {}, dual(en, ja)))),
     ]),
     createSiteFooter(),

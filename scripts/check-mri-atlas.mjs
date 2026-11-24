@@ -88,12 +88,17 @@ const settle = (page) => page.evaluate(() => new Promise((done) => requestAnimat
 const labelAtCrosshair = (page) => page.evaluate(async () => {
   // Read from the label volume the page itself loaded, at the page's own crosshair.
   const { voxel } = window.__app.atlas.state();
-  const response = await fetch(new URL('assets/mri/labels.u8.gz', document.baseURI));
-  const raw = new Uint8Array(await response.arrayBuffer());
-  const bytes = raw[0] === 0x1f && raw[1] === 0x8b
-    ? new Uint8Array(await new Response(new Blob([raw]).stream().pipeThrough(new DecompressionStream('gzip'))).arrayBuffer())
-    : raw;
-  return bytes[voxel[0] + voxel[1] * 193 + voxel[2] * 193 * 229];
+  if (!window.__checkLabels) {
+    const index = await (await fetch(new URL('assets/mri/atlas.json', document.baseURI))).json();
+    const response = await fetch(new URL('assets/mri/labels.u8.gz', document.baseURI));
+    const raw = new Uint8Array(await response.arrayBuffer());
+    const bytes = raw[0] === 0x1f && raw[1] === 0x8b
+      ? new Uint8Array(await new Response(new Blob([raw]).stream().pipeThrough(new DecompressionStream('gzip'))).arrayBuffer())
+      : raw;
+    window.__checkLabels = { bytes, dims: index.grid.dims };
+  }
+  const { bytes, dims } = window.__checkLabels;
+  return bytes[voxel[0] + voxel[1] * dims[0] + voxel[2] * dims[0] * dims[1]];
 });
 /** Where the crosshair is drawn on a plane, as a fraction of the canvas, read from the pixels. */
 const crosshairX = (page, plane) => page.evaluate((name) => {
@@ -147,11 +152,12 @@ try {
     const now = await state(page);
     const label = await labelAtCrosshair(page);
     const x = await crosshairX(page, 'axial');
-    // Radiological: the patient's left is on the screen's right.
-    const sideOk = hemi === 'L' ? x > 0.5 : x < 0.5;
+    // Radiological: the patient's left is on the screen's right. A crosshair
+    // that was not found is a failure, not a small number: `null < 0.5` is true.
+    const sideOk = x != null && (hemi === 'L' ? x > 0.5 : x < 0.5);
     record(`list → MRI: ${id} moves the crosshair inside the structure, on the correct side of the screen`,
       now.selected === id && label === expected.label && JSON.stringify(now.mm) === JSON.stringify(expected.interiorPointMm) && sideOk,
-      `selected ${now.selected}; crosshair ${now.mm} mm on label ${label} (want ${expected.label}); drawn at ${(x * 100).toFixed(0)}% of the axial width`);
+      `selected ${now.selected}; crosshair ${now.mm} mm on label ${label} (want ${expected.label}); drawn at ${x == null ? 'NOT FOUND' : `${(x * 100).toFixed(0)}%`} of the axial width`);
   }
   const address = await page.evaluate(() => location.hash);
   record('the address follows the selection, so a structure can be linked to', address.includes('structure=precentral-r'), address);
@@ -166,7 +172,7 @@ try {
   const after = await crosshairX(page, 'axial');
   const flipped = await page.evaluate(() => document.querySelector('.mri-slice-canvas[data-plane="axial"]').dataset.edges);
   record('neurological view: the left hippocampus moves to the screen\'s left and the letters swap with it',
-    before > 0.5 && after < 0.5 && flipped === 'LRAP', `axial crosshair ${(before * 100).toFixed(0)}% → ${(after * 100).toFixed(0)}%, edges ${flipped}`);
+    before != null && after != null && before > 0.5 && after < 0.5 && flipped === 'LRAP', `axial crosshair ${before == null ? 'NOT FOUND' : (before * 100).toFixed(0)}% → ${after == null ? 'NOT FOUND' : (after * 100).toFixed(0)}%, edges ${flipped}`);
   await page.click('[data-control="convention"]');
   await settle(page);
 
@@ -226,6 +232,8 @@ try {
   await page.mouse.move(axialBox.x + axialBox.width / 2, axialBox.y + axialBox.height / 2);
   await page.mouse.wheel(0, -100);
   await page.mouse.wheel(0, -100);
+  // Wait for the plane to say it moved, not for a number of frames.
+  await page.waitForFunction((from) => Number(document.querySelector('.mri-slice-canvas[data-plane="axial"]').dataset.slice) >= from + 2, sliceBefore[0], { timeout: 5000 }).catch(() => {});
   await settle(page);
   const sliceAfter = await page.evaluate(() => [...document.querySelectorAll('.mri-slice-canvas')].map((canvas) => Number(canvas.dataset.slice)));
   record('the wheel steps through axial slices and leaves the other two planes on their slice',
@@ -234,6 +242,27 @@ try {
   await page.click('.mri-chip[aria-label="拡大"], .mri-chip[aria-label="Zoom in"]');
   await settle(page);
   record('zoom is a display setting the state owns', (await state(page)).zoom === 1.5);
+  // The press and the release of one click must name the same voxel. Anchoring
+  // the zoom to the crosshair moved the picture between them (14 mm at x2).
+  await page.click('.mri-chip[aria-label="拡大"], .mri-chip[aria-label="Zoom in"]');
+  await settle(page);
+  const zoomBox = await page.locator('.mri-slice-canvas[data-plane="axial"]').boundingBox();
+  const target = { x: zoomBox.x + zoomBox.width * 0.38, y: zoomBox.y + zoomBox.height * 0.42 };
+  await page.mouse.move(target.x, target.y);
+  await page.mouse.down();
+  await settle(page);
+  const pressed = (await state(page)).mm;
+  await page.mouse.up();
+  await settle(page);
+  const released = await state(page);
+  const hoverName = await page.evaluate(() => document.querySelector('.mri-hover').textContent);
+  await page.mouse.move(target.x + 1, target.y);
+  await page.mouse.move(target.x, target.y);
+  await settle(page);
+  const underPointer = await labelAtCrosshair(page);
+  record('zoomed in, a click selects the voxel under the pointer: press and release agree and the picture does not move',
+    JSON.stringify(pressed) === JSON.stringify(released.mm) && (released.selected === null ? underPointer === 0 : underPointer !== 0),
+    `pressed ${pressed} mm, released ${released.mm} mm, selected ${released.selected}, label there ${underPointer}${hoverName ? `, hover "${hoverName}"` : ''}`);
   await page.click('[data-control="reset"]');
   await settle(page);
 
@@ -277,7 +306,7 @@ try {
   const planeSizes = await phone.evaluate(() => [...document.querySelectorAll('.mri-slice-canvas')].map((canvas) => { const r = canvas.getBoundingClientRect(); return Math.round(Math.min(r.width, r.height)); }));
   record('phone: opens on the MRI planes, each large enough to read, with no sideways overflow',
     phoneState.mode === 'mri' && phoneOverflow <= 0 && planeSizes.every((size) => size >= 110), `mode ${phoneState.mode}; overflow ${phoneOverflow}px; plane sizes ${planeSizes}px`);
-  const small = await phone.evaluate(() => [...document.querySelectorAll('.mri-mode, .mri-controls .mri-chip')].filter((node) => node.offsetParent).map((node) => { const r = node.getBoundingClientRect(); return Math.round(Math.min(r.width, r.height)); }).filter((size) => size < 44));
+  const small = await phone.evaluate(() => [...document.querySelectorAll('.mri-mode, .mri-controls .mri-chip, .mri-settings-summary, .mri-search, .mri-range')].filter((node) => node.offsetParent).map((node) => { const r = node.getBoundingClientRect(); return Math.round(Math.min(r.width, r.height)); }).filter((size) => size < 44));
   record('phone: every control on screen is a 44 px target', small.length === 0, small.length ? `smaller: ${small}` : '');
   await phone.click('.mri-mode.is-list');
   await phone.waitForFunction(() => document.querySelector('.mri-workbench').dataset.list === 'open');
@@ -312,8 +341,19 @@ try {
     for (let i = 0; i < data.length; i += 16) if (data[i] > 40) lit += 1;
     return lit;
   });
+  const flatNotice = await flat.evaluate(() => {
+    const status = document.querySelector('.mri-status');
+    const rect = status.getBoundingClientRect();
+    const lang = document.querySelector('#ui').dataset.lang === 'en' ? '.lang-en' : '.lang-ja';
+    return {
+      visible: !status.hidden && rect.width > 0 && rect.height > 0 && rect.bottom <= innerHeight && rect.top >= 0,
+      text: status.querySelector(lang)?.textContent ?? status.textContent,
+      disabled: [...document.querySelectorAll('.mri-mode[data-mode]')].filter((button) => button.disabled).length,
+    };
+  });
   record('without WebGL the MRI planes still open, selected and painted, and the page says 3D is unavailable',
-    flatReady === 'slices-only' && flatState.mode === 'mri' && flatState.selected === 'hippocampus-r' && flatPainted > 500, `ready ${flatReady}; mode ${flatState.mode}; selected ${flatState.selected}`);
+    flatReady === 'slices-only' && flatState.mode === 'mri' && flatState.selected === 'hippocampus-r' && flatPainted > 500 && flatNotice.visible && /3D/.test(flatNotice.text) && flatNotice.disabled === 2,
+    `ready ${flatReady}; mode ${flatState.mode}; selected ${flatState.selected}; notice ${flatNotice.visible ? `on screen: "${flatNotice.text}"` : 'NOT VISIBLE'}; 3D tabs disabled: ${flatNotice.disabled} of 2`);
   await flat.close();
 } finally {
   await browser.close();

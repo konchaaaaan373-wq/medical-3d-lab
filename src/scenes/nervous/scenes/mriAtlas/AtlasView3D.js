@@ -132,6 +132,10 @@ export function createAtlasView3D({ viewer, meshRoot, structures, grid, onPick }
     viewer.camera.updateProjectionMatrix();
     viewer.controls.minDistance = 4;
     viewer.controls.maxDistance = 40;
+    // The shared controls stop 29° short of the poles, which suits an organ on
+    // a table and makes a view from directly above impossible. An atlas has one.
+    viewer.controls.minPolarAngle = 1e-3;
+    viewer.controls.maxPolarAngle = Math.PI - 1e-3;
     viewer.controls.update();
   };
   applyHome();

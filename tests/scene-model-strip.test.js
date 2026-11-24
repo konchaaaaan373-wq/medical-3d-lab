@@ -5,6 +5,7 @@ import { createSceneSwitcher } from '../src/components/SceneSwitcher.js';
 import { PUBLIC_MANIFEST } from '../src/catalog/publicManifest.js';
 import { PATHOLOGY_CATEGORY } from '../src/catalog/pathologyModels.js';
 import { FakeElement, findByClass, installFakeDocument } from './helpers/fake-dom.js';
+import { WIDE_MANIFEST } from './helpers/wide-release.js';
 
 globalThis.requestAnimationFrame ??= (fn) => { fn(0); return 0; };
 
@@ -52,12 +53,24 @@ const sceneRow = (id, { organ = 'brain', system = 'nervous', status = 'alpha', s
 
 const group = (id, labelJa, scenes) => ({ id, label: id, labelJa, scenes });
 
-function mount(groups, currentId) {
+/**
+ * ## Which release these run against (2026-11-24)
+ *
+ * The brain launch publishes one organ, so the real manifest has no organ row
+ * to draw. Everything about several organs is asserted on `WIDE` — every scene
+ * the beta gate clears, projected the way the real manifest is
+ * (`tests/helpers/wide-release.js`) — handed to the component through the
+ * `models` option it already takes. The real release has tests of its own at
+ * the end: what a one-organ header is, and that it still has a way out.
+ */
+const WIDE = WIDE_MANIFEST;
+
+function mount(groups, currentId, models = WIDE.models) {
   const ui = new FakeElement('div');
   ui.dataset.lang = 'ja';
   const restore = installFakeDocument({ elements: { ui } });
   try {
-    const switcher = createSceneSwitcher({ groups, currentId, showLab: false });
+    const switcher = createSceneSwitcher({ groups, currentId, showLab: false, models });
     assert.ok(switcher, 'the switcher rendered');
     return switcher;
   } finally {
@@ -65,9 +78,9 @@ function mount(groups, currentId) {
   }
 }
 
-/** Every published model as its own group, which is what the beta actually is. */
-const publishedGroups = () =>
-  PUBLIC_MANIFEST.models.map((model) =>
+/** Every model of a manifest as its own group, which is what a release without the unlock is. */
+const publishedGroups = (manifest = WIDE) =>
+  manifest.models.map((model) =>
     group(model.organId, model.organLabelJa, [
       sceneRow(model.sceneId, { organ: model.organId, system: model.organId }),
     ])
@@ -92,12 +105,12 @@ const organsOf = (models) => {
 };
 
 test('the row is one chip per published organ, not one per model', () => {
-  assert.ok(PUBLIC_MANIFEST.models.length > 1, 'this test needs a release with a choice in it');
-  const current = PUBLIC_MANIFEST.models[0];
+  assert.ok(WIDE.models.length > 1, 'this test needs a release with a choice in it');
+  const current = WIDE.models[0];
   const { element } = mount(publishedGroups(), current.sceneId);
 
   assert.ok(strip(element), 'the scene header carries the organ row');
-  const organs = organsOf(PUBLIC_MANIFEST.models);
+  const organs = organsOf(WIDE.models);
   assert.deepEqual(
     chips(element).map((chip) => chip.getAttribute('data-organ')),
     [...organs.keys()],
@@ -112,8 +125,8 @@ test('the row is one chip per published organ, not one per model', () => {
 });
 
 test('every chip is named by its organ, in both languages', () => {
-  const { element } = mount(publishedGroups(), PUBLIC_MANIFEST.models[0].sceneId);
-  const organs = organsOf(PUBLIC_MANIFEST.models);
+  const { element } = mount(publishedGroups(), WIDE.models[0].sceneId);
+  const organs = organsOf(WIDE.models);
   for (const chip of chips(element)) {
     const [model] = organs.get(chip.getAttribute('data-organ'));
     const en = findByClass(chip, 'lang-en')[0];
@@ -132,7 +145,7 @@ test('every chip is named by its organ, in both languages', () => {
 const isAnatomyModel = (model) => model.layer === 'anatomy';
 
 test('on an anatomy model, the model on screen is the one page marked', () => {
-  const anatomy = PUBLIC_MANIFEST.models.filter(isAnatomyModel);
+  const anatomy = WIDE.models.filter(isAnatomyModel);
   assert.ok(anatomy.length >= 2, 'this test needs published anatomy models');
   for (const model of anatomy) {
     const { element } = mount(publishedGroups(), model.sceneId);
@@ -159,8 +172,8 @@ test('on an anatomy model, the model on screen is the one page marked', () => {
 });
 
 test('on a disease model, the header is the product — no organ row, no layer row', () => {
-  const disease = PUBLIC_MANIFEST.models.filter((model) => !isAnatomyModel(model));
-  assert.ok(disease.length >= 1, 'this test needs a published disease model (cardiac output)');
+  const disease = WIDE.models.filter((model) => !isAnatomyModel(model));
+  assert.ok(disease.length >= 1, 'this test needs a disease model in the fixture (cardiac output)');
   for (const model of disease) {
     const { element } = mount(publishedGroups(), model.sceneId);
     assert.equal(strip(element), null, `${model.sceneId}: 脳 心臓 肺 肝臓 is not this model's navigation`);
@@ -172,12 +185,12 @@ test('on a disease model, the header is the product — no organ row, no layer r
 });
 
 test('an anatomy model on an organ with more than one model names its layers; one with a single model does not', () => {
-  const organs = organsOf(PUBLIC_MANIFEST.models);
+  const organs = organsOf(WIDE.models);
   assert.ok(
     [...organs.values()].some((models) => models.length > 1),
     'this test needs an organ with two published models (the heart: anatomy and cardiac output)'
   );
-  for (const model of PUBLIC_MANIFEST.models.filter(isAnatomyModel)) {
+  for (const model of WIDE.models.filter(isAnatomyModel)) {
     const siblings = organs.get(model.organId);
     const { element } = mount(publishedGroups(), model.sceneId);
     if (siblings.length === 1) {
@@ -197,9 +210,9 @@ test('an anatomy model on an organ with more than one model names its layers; on
 });
 
 test('from the anatomy, a layer that is not anatomy says which layer it is', () => {
-  const mechanism = PUBLIC_MANIFEST.models.find((model) => model.layer === 'mechanism');
+  const mechanism = WIDE.models.find((model) => model.layer === 'mechanism');
   assert.ok(mechanism, 'this test needs a published mechanism scene');
-  const anatomySibling = PUBLIC_MANIFEST.models.find(
+  const anatomySibling = WIDE.models.find(
     (model) => isAnatomyModel(model) && model.organId === mechanism.organId
   );
   assert.ok(anatomySibling, 'the mechanism scene has its organ\'s anatomy published beside it');
@@ -235,7 +248,7 @@ test('the menu carries the catalogue only when the row does not already reach ev
   // The beta: every scene this document can reach is on the row, so a model
   // list in the menu would be the old `モデル ⌄` drawer again — a second door
   // onto the same room. The menu is still there; the catalogue is not.
-  const { element: beta } = mount(publishedGroups(), PUBLIC_MANIFEST.models[0].sceneId);
+  const { element: beta } = mount(publishedGroups(), WIDE.models[0].sceneId);
   assert.ok(menuTrigger(beta), 'the site menu is always there');
   assert.deepEqual(findByClass(beta, 'global-nav-list'), [], 'no second door onto the same room');
   assert.ok(wayHome(beta), 'and the way home is still on screen');
@@ -249,7 +262,7 @@ test('the menu carries the catalogue only when the row does not already reach ev
       sceneRow('asthma', { organ: 'lung', system: 'respiratory', status: 'prototype' }),
     ]),
   ];
-  const { element: unlocked } = mount(withPrototypes, PUBLIC_MANIFEST.models[0].sceneId);
+  const { element: unlocked } = mount(withPrototypes, WIDE.models[0].sceneId);
   assert.ok(strip(unlocked), 'the strip still says where you are');
   assert.ok(findByClass(unlocked, 'global-nav-list')[0], 'and the menu reaches what the row does not');
 });
@@ -258,9 +271,13 @@ test('every scene keeps a way out, whichever branch it takes', () => {
   // The assertion F-111 exists because nobody wrote. `is-single` hid the
   // drawer's trigger and left a 3D model in the public beta with no navigation
   // control on it at all.
+  const real = PUBLIC_MANIFEST;
   const cases = [
-    [publishedGroups(), PUBLIC_MANIFEST.models[0].sceneId],
-    [publishedGroups(), PUBLIC_MANIFEST.models.at(-1).sceneId],
+    [publishedGroups(), WIDE.models[0].sceneId],
+    [publishedGroups(), WIDE.models.at(-1).sceneId],
+    // The release as published: one organ, so no organ row — the way to the
+    // other model is the layer row, and it has to count or it is not checked.
+    ...real.models.map((model) => [publishedGroups(real), model.sceneId, real.models]),
     [[group('nervous', '神経', [sceneRow('brain-anatomy')])], 'brain-anatomy'],
     [
       [group('respiratory', '呼吸器', [
@@ -269,16 +286,69 @@ test('every scene keeps a way out, whichever branch it takes', () => {
       'copd',
     ],
   ];
-  for (const [groups, current] of cases) {
-    const { element } = mount(groups, current);
+  for (const [groups, current, models] of cases) {
+    const { element } = mount(groups, current, models);
     const home = wayHome(element);
     assert.ok(home, `${current}: no way home`);
     assert.equal(home.getAttribute('href'), '#/');
     assert.ok(menuTrigger(element), `${current}: no site menu`);
     const reachable = [
       ...findByClass(element, 'global-nav-strip-link'),
+      ...findByClass(element, 'global-nav-layer-link').filter((link) => link.getAttribute('aria-current') !== 'page'),
       ...findByClass(element, 'global-nav-scene'),
     ];
     assert.ok(reachable.length > 0 || groups.flatMap((g) => g.scenes).length === 1, `${current}: no way to another model`);
+  }
+});
+
+// ------------------------------------------------- the release as published
+
+test('the real release: one organ has no organ row, and its models are the layer row', () => {
+  // 2026-11-24: the launch is the brain. A row of one organ would be a control
+  // with no job — the same reason a lone 解剖 chip is not drawn — so the header
+  // says where the reader is and offers the organ's other model beside it.
+  const real = PUBLIC_MANIFEST;
+  assert.deepEqual([...real.organs], ['brain'], 'this test describes a one-organ release; widen it with the launch scope');
+  assert.ok(real.models.length >= 2, 'and an organ with more than one model');
+
+  for (const model of real.models) {
+    const { element } = mount(publishedGroups(real), model.sceneId, real.models);
+    assert.equal(strip(element), null, `${model.sceneId}: an organ row with one organ on it`);
+    assert.ok(layerRow(element), `${model.sceneId}: the brain's other model is offered`);
+    assert.deepEqual(
+      layerLinks(element).map((link) => link.getAttribute('href')),
+      real.models.map((entry) => entry.route),
+      `${model.sceneId}: every published model, in manifest order, and nothing else`
+    );
+    const marked = layerLinks(element).filter((link) => link.getAttribute('aria-current') === 'page');
+    assert.deepEqual(marked.map((link) => link.getAttribute('href')), [model.route], `${model.sceneId}: one page mark`);
+    // Two anatomy models cannot both be called 解剖: each is named by its title.
+    for (const link of layerLinks(element)) {
+      const entry = real.models.find((candidate) => candidate.route === link.getAttribute('href'));
+      const [name] = findByClass(link, 'global-nav-layer-name');
+      assert.equal(findByClass(name, 'lang-ja')[0].textContent, entry.titleJa);
+      assert.equal(findByClass(name, 'lang-en')[0].textContent, entry.titleEn);
+    }
+    // No model list in the menu: the layer row already reaches everything.
+    assert.deepEqual(findByClass(element, 'global-nav-list'), [], `${model.sceneId}: a second door onto the same room`);
+    assert.ok(wayHome(element), `${model.sceneId}: no way home`);
+    assert.ok(menuTrigger(element), `${model.sceneId}: no site menu`);
+  }
+});
+
+test('the real release: nothing the release withholds is a destination in the model header', () => {
+  const real = PUBLIC_MANIFEST;
+  const open = new Set(real.models.map((model) => model.route));
+  for (const model of real.models) {
+    const { element } = mount(publishedGroups(real), model.sceneId, real.models);
+    const hrefs = [
+      ...chips(element),
+      ...layerLinks(element),
+      ...findByClass(element, 'global-nav-scene'),
+    ].map((link) => link.getAttribute('href'));
+    for (const href of hrefs) assert.ok(open.has(href), `${model.sceneId}: the header links to ${href}`);
+    for (const withheld of WIDE.models.filter((entry) => !open.has(entry.route))) {
+      assert.ok(!hrefs.includes(withheld.route), `${model.sceneId}: ${withheld.sceneId} is offered`);
+    }
   }
 });

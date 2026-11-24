@@ -99,7 +99,14 @@ export async function mountAtlasShell({ scene, meta, entry, ui }) {
     // replaced, not pushed: twenty clicks are not twenty steps of Back.
     onSelection: (structure) => {
       const next = hashWithParam(window.location.hash, 'structure', structure?.id ?? null);
-      if (next !== window.location.hash) window.history.replaceState(window.history.state, '', next);
+      if (next === window.location.hash) return;
+      // Safari refuses more than 100 history writes in 30 s. A refused write
+      // costs a shareable address, not the selection.
+      try {
+        window.history.replaceState(window.history.state, '', next);
+      } catch {
+        /* the selection stands; the address catches up on the next one */
+      }
     },
   });
 
@@ -114,6 +121,13 @@ export async function mountAtlasShell({ scene, meta, entry, ui }) {
   // than under it: on this page height is what the planes are made of.
   const bar = workbench.element.querySelector('.mri-bar');
   if (bar) top.append(bar);
+
+  // A hand-edited or pasted `?structure=` on this page is the same route, so
+  // the shell does not rebuild — the page answers it itself.
+  window.addEventListener('hashchange', () => {
+    const wanted = structureOf(window.location.hash);
+    if (wanted && wanted !== workbench.state().selected) workbench.select(wanted);
+  });
 
   installDeparture({
     shownHash: window.location.hash,

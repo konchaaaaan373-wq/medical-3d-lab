@@ -10,6 +10,7 @@ import { BETA_ORGANS, RELEASED_SCENES } from '../src/catalog/release.js';
 import { openModelDestination } from '../src/catalog/publicManifest.js';
 import { organById } from '../src/catalog/taxonomy.js';
 import { sceneById } from '../src/catalog/index.js';
+import { LAUNCH_AREAS } from '../src/catalog/launch.js';
 import { FakeElement, findByClass, installFakeDocument } from './helpers/fake-dom.js';
 
 /**
@@ -64,12 +65,29 @@ test('the locked page names no published model in its own prose', () => {
   assert.ok(actions, 'the page has an actions row');
 
   const inTheLink = new Set(textOf(actions));
-  // The header's site menu lists the published models, organ then layer — and
-  // it is generated from the manifest exactly as the link is, on every screen
-  // including this one. It is the same kind of naming the rule allows, in the
-  // same kind of place: a manifest row, not a sentence the page wrote.
-  const inTheMenu = new Set(findByClass(element, 'site-menu-organs').flatMap((list) => textOf(list)));
-  assert.ok(inTheMenu.size > 0, 'the header menu lists the published models (from the manifest)');
+  // The header names the launch's three areas — 高次脳機能 · 脳解剖 · MRIアトラス
+  // (`src/catalog/launch.js`), on every screen including this one — and its
+  // menu lists whatever published model the row does not reach. Both are the
+  // same kind of naming the rule allows, in the same kind of place: a row
+  // generated from the catalogue, not a sentence the page wrote. (Until the
+  // brain launch the row named no model and the menu named them all; the
+  // exclusion follows the names to where they now are.)
+  const [nav] = findByClass(element, 'shell-nav');
+  assert.ok(nav, 'the locked page carries the product header');
+  const inTheHeader = new Set([
+    ...textOf(nav),
+    ...findByClass(element, 'site-menu-organs').flatMap((list) => textOf(list)),
+  ]);
+  for (const area of LAUNCH_AREAS) {
+    assert.ok(inTheHeader.has(area.ja) && inTheHeader.has(area.en), `the header names ${area.id} (from the catalogue)`);
+  }
+  // And the row is those areas and nothing else — so excluding its text below
+  // cannot hide a sentence somebody typed into the header.
+  assert.deepEqual(
+    [...textOf(nav)].sort(),
+    LAUNCH_AREAS.flatMap((area) => [area.en, area.ja]).sort(),
+    'the header row says something the catalogue did not'
+  );
 
   // The locked scene's own catalogue entry is not this page talking about the
   // release — it is the page saying what the withheld model is. COPD's
@@ -87,7 +105,7 @@ test('the locked page names no published model in its own prose', () => {
     [own?.title, own?.titleJa, own?.description, own?.descriptionJa].filter(Boolean)
   );
   const prose = nonEmpty(
-    textOf(element).filter((line) => !inTheLink.has(line) && !inTheMenu.has(line) && !ownCopy.has(line)),
+    textOf(element).filter((line) => !inTheLink.has(line) && !inTheHeader.has(line) && !ownCopy.has(line)),
     'the page prose'
   );
 
@@ -119,6 +137,39 @@ test('the locked page offers exactly one model, and it is one that is open', () 
 
   const openRoutes = new Set(['#/models', ...RELEASED_SCENES.map((scene) => `#/${scene.slug}`)]);
   assert.equal(openRoutes.has(hrefs[0]), true, `${hrefs[0]} is a route the release opens`);
+});
+
+test('a link to a model the launch scope closed arrives at the closed door, and the door offers only what is open', () => {
+  // `#/heart-anatomy`, `#/cardiac-output`, `#/lung-anatomy` and `#/liver-anatomy`
+  // were published until 2026-11-24, so these addresses are in other people's
+  // bookmarks and posts. Each resolves to itself and is not released; the page
+  // a reader gets must send them nowhere the release does not open.
+  const open = new Set(['#/', '#/models', '#/functions', ...RELEASED_SCENES.map((scene) => `#/${scene.slug}`)]);
+  for (const id of ['heart-anatomy', 'cardiac-output', 'lung-anatomy', 'liver-anatomy']) {
+    const route = resolveRoute(`#/${id}`);
+    assert.equal(route.sceneId, id);
+    assert.equal(RELEASED_SCENES.some((scene) => scene.id === id), false, `${id} is published`);
+
+    const { element } = mount(`#/${id}`);
+    const [actions] = findByClass(element, 'locked-actions');
+    const hrefs = findByClass(actions, 'locked-link').map((link) => link.getAttribute('href'));
+    assert.equal(hrefs.length, 2, `${id}: a primary and a way home`);
+    for (const href of hrefs) assert.ok(open.has(href), `${id}: the closed door links to ${href}`);
+    // Nor does anything else on the page — the header and its menu included.
+    const everyLink = [];
+    const visit = (node) => {
+      const href = node.getAttribute?.('href');
+      if (node.tagName === 'A' && href?.startsWith('#/')) everyLink.push(href.split('?')[0]);
+      for (const child of node.children ?? []) visit(child);
+    };
+    visit(element);
+    for (const withheld of ['#/heart-anatomy', '#/cardiac-output', '#/lung-anatomy', '#/liver-anatomy', '#/higher-brain-function']) {
+      assert.equal(everyLink.includes(withheld), false, `${id}: the page links to ${withheld}, which is closed`);
+    }
+    // It says which model this is, in the model's own words.
+    const prose = nonEmpty(textOf(element), `${id} locked page`);
+    assert.ok(prose.includes(sceneById(id).titleJa), `${id}: the page does not say which model was asked for`);
+  }
 });
 
 test('one open model is linked directly, because a catalogue of one is a page to pass through', () => {

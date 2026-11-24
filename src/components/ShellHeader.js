@@ -231,11 +231,29 @@ export function createShellHeader({
     ...offered.filter((item) => !purposeItems.includes(item)).map(link),
   ].filter(Boolean);
 
-  // The models, organ then layer. This row carries none of them, so the menu is
-  // the one place in this header that does — no second door.
+  // The models the row does not already reach — no second door. Until the
+  // brain launch the row carried no model at all and the menu carried every
+  // one; the launch areas are models themselves (脳解剖 and MRIアトラス open
+  // one each), so listing those again under 「モデル」 put the same two
+  // destinations in the header twice. With everything published on the row,
+  // the menu has no model section; when the release is wider than the row, it
+  // lists the rest.
+  const onRow = new Set(offered.map((item) => item.route));
+  const menuModels = models.filter((model) => !onRow.has(model.route));
   const site = createSiteHeaderMenu({
     id: 'site-menu',
-    models: models.length ? [modelShelfList(models, { systemOf: systemLabelOf })] : null,
+    models: menuModels.length ? [modelShelfList(menuModels, { systemOf: systemLabelOf })] : null,
+    // About left the row for the launch areas (2026-11-24). It is in the
+    // footer of every reading surface, and here so that a reader with the
+    // header in view and the footer three screens down still has it.
+    pages: [
+      {
+        href: ABOUT_ROUTE,
+        en: 'About',
+        ja: `${BRAND.name} について`,
+        current: current === 'about',
+      },
+    ],
   });
   // The class the stylesheets and `check-departure` already address.
   site.utilities.classList.add('shell-actions');

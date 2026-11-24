@@ -12,7 +12,9 @@ import {
   deliveryPathOf,
   requiredAssetIdsFor,
   withheldDeliveryPaths,
+  withheldPosterFiles,
 } from '../scripts/asset-delivery.js';
+import { MODEL_SHOWCASE } from '../src/data/modelShowcase.js';
 import { ASSET_MANIFEST, assetById } from '../src/catalog/assetManifest.js';
 import { modelProfileForScene } from '../src/catalog/modelProfiles.js';
 import { RELEASED_SCENES, betaPublicationProblems } from '../src/catalog/release.js';
@@ -165,6 +167,29 @@ test('asset delivery: a withheld model\'s assets are in public/ and not in the b
   }
   // The decoder is shared runtime code, not an asset, and is never in the set.
   assert.ok(!none.some((file) => file.includes('/draco/')));
+});
+
+test('asset delivery: the picture of a withheld model is in public/ and not in the build', () => {
+  // `posters/` is excused as a folder, so the photograph of `cardiac-output`
+  // went on shipping after the launch scope closed the model it is a picture of.
+  const posters = withheldPosterFiles(MODEL_SHOWCASE, RELEASED_SCENES);
+  assert.deepEqual(posters.map((entry) => entry.path), ['posters/cardiac-output.jpg']);
+  assert.match(posters[0].why, /"cardiac-output", which the release does not open/);
+  // Published, it is not withheld — and a model with no picture names no file.
+  assert.deepEqual(withheldPosterFiles(MODEL_SHOWCASE, [...RELEASED_SCENES, sceneById('cardiac-output')]), []);
+  assert.deepEqual(withheldPosterFiles({ a: { poster: null }, b: {} }, []), []);
+
+  const withPoster = [...CORRECT_PUBLIC, 'posters/cardiac-output.jpg'];
+  // Absent from the build: correct, and not "did not reach the build".
+  assert.deepEqual(problemsFor(CORRECT_BUILD, { publicFiles: withPoster, withheldFiles: posters }), []);
+  // Shipped: named, with whose picture it is.
+  const shipped = problemsFor([...CORRECT_BUILD, 'posters/cardiac-output.jpg'], { publicFiles: withPoster, withheldFiles: posters });
+  assert.deepEqual(shipped, [
+    'posters/cardiac-output.jpg: is the model-card picture of "cardiac-output", which the release does not open, but it shipped',
+  ]);
+  // And without being told it is withheld, the folder's excuse lets it through
+  // — which is the hole, kept visible here so nobody mistakes the folder for a rule.
+  assert.deepEqual(problemsFor([...CORRECT_BUILD, 'posters/cardiac-output.jpg'], { publicFiles: withPoster }), []);
 });
 
 test('asset delivery: an index travels with the assets it indexes, both ways', () => {
@@ -367,7 +392,10 @@ test('asset delivery: the real build agrees, when there is one', (t) => {
   };
   const publicRoot = new URL('../public', import.meta.url).pathname;
   assert.deepEqual(
-    problemsFor(walkFrom(dist.pathname), { publicFiles: walkFrom(publicRoot) }),
+    problemsFor(walkFrom(dist.pathname), {
+      publicFiles: walkFrom(publicRoot),
+      withheldFiles: withheldPosterFiles(MODEL_SHOWCASE, RELEASED_SCENES),
+    }),
     []
   );
 });

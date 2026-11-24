@@ -353,7 +353,7 @@ export const BETA_PUBLICATION_DECISIONS = Object.freeze([
       'mri-cerebra-labels': '33260a01ffdfce839945739efcac3fe2ec7019969739bbd9264bf5b2617a403e',
       'mri-cerebra-surfaces': '0794d7c2e1332d818caf34d87e2c250cdea7bc3882ac93e14e1c62ed4212f4be',
     }),
-    sceneRevision: Object.freeze({ cardRevision: 1, modelDigest: '794106dbc6162e4b' }),
+    sceneRevision: Object.freeze({ cardRevision: 1, modelDigest: 'fc1841d24db09fbd' }),
     scope: Object.freeze({
       structures: Object.freeze([
         'Left hippocampus',
@@ -1481,7 +1481,12 @@ export const RELEASE_POLICIES = Object.freeze({
   // Registered, and not selected: `RELEASE_CHANNEL` is still `beta`, so nothing
   // about what the product publishes changes by this existing. Switching the
   // channel is a release decision and is made in one place.
-  'next-beta': nextBetaPublicationProblems,
+  // The launch scope is laid over this one too: switching the channel is a
+  // decision about *which rule*, never a way round the scope.
+  'next-beta': (candidate, options = {}) => [
+    ...launchScopeProblems(candidate, options),
+    ...nextBetaPublicationProblems(candidate, options),
+  ],
 });
 
 /**

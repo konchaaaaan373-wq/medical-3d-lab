@@ -7,6 +7,7 @@ import { MODEL_SHOWCASE, SHOWCASE_SYSTEM_LABELS, showcaseFor } from '../src/data
 import { SCENES, sceneById } from '../src/catalog/index.js';
 import { PUBLIC_MANIFEST } from '../src/catalog/publicManifest.js';
 import { isPathologyModelScene } from '../src/catalog/pathologyModels.js';
+import { BETA_CLEAR_SCENES } from './helpers/wide-release.js';
 import { CONTROL_DOMAIN, referenceInput, solveCardiacOutput } from '../src/models/cardiacOutput.js';
 
 const publicPath = (path) => fileURLToPath(new URL(`../public/${path}`, import.meta.url));
@@ -23,7 +24,18 @@ test('showcase: every published disease model has a picture of itself and a ques
   // The released product's cards are photographs of the model, never the
   // quiet fallback: a published model with no poster is `npm run posters`
   // not having been run.
-  const published = PUBLIC_MANIFEST.models.map((model) => sceneById(model.sceneId)).filter(isPathologyModelScene);
+  //
+  // Since the launch scope (2026-11-24) the release publishes no disease model,
+  // so "every published one" is asked of every disease model the beta gate
+  // clears — the ones that are published the day the scope widens, and whose
+  // card would then be on the page with no further edit. The real release is
+  // stated below rather than left as a loop with nothing in it.
+  assert.deepEqual(
+    PUBLIC_MANIFEST.models.map((model) => sceneById(model.sceneId)).filter(isPathologyModelScene),
+    [],
+    'a disease model is published again: it is covered by the loop below, and this line goes'
+  );
+  const published = BETA_CLEAR_SCENES.filter(isPathologyModelScene);
   assert.ok(published.length >= 1);
   for (const scene of published) {
     const card = showcaseFor(scene);

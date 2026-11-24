@@ -8,6 +8,7 @@ import { PUBLIC_MANIFEST } from '../src/catalog/publicManifest.js';
 import { isPathologyModelScene, pathologyModelScenes } from '../src/catalog/pathologyModels.js';
 import { DOCUMENT_ROUTE_KINDS, resolveRoute } from '../src/app/router.js';
 import { redirectFor } from '../src/app/routeRedirects.js';
+import { BETA_CLEAR_SCENES, SCOPED_OUT_SCENES, WIDE_MANIFEST } from './helpers/wide-release.js';
 
 // The breadcrumb "病態モデル ＞ 心拍出量" is only honest if "病態モデル" is a
 // place: a route that resolves, is open on a production build, and lists the
@@ -44,19 +45,49 @@ test('the category is read off the model profile, and no anatomy scene is in it'
   assert.deepEqual(anatomy.filter(isPathologyModelScene).map((scene) => scene.id), []);
 });
 
-test('every released scene whose breadcrumb names the category appears in the released list', () => {
-  const listed = pathologyModelScenes(RELEASED_SCENES).map((scene) => scene.id);
-  for (const scene of RELEASED_SCENES.filter(isPathologyModelScene)) assert.ok(listed.includes(scene.id));
+test('every published scene whose breadcrumb names the category appears in the list it goes back to', () => {
+  // On everything the beta gate clears: the launch scope (2026-11-24) publishes
+  // no disease model, so on the real release this loop had nothing in it.
+  const listed = pathologyModelScenes(BETA_CLEAR_SCENES).map((scene) => scene.id);
+  for (const scene of BETA_CLEAR_SCENES.filter(isPathologyModelScene)) assert.ok(listed.includes(scene.id));
   assert.ok(listed.includes('cardiac-output'), 'the scene the breadcrumb is on is on the list it goes back to');
+  // And the real release, said out loud rather than left as an empty loop.
+  assert.deepEqual(pathologyModelScenes(RELEASED_SCENES).map((scene) => scene.id), []);
 });
 
+const scenesOf = (manifest) => manifest.models.map((model) => sceneById(model.sceneId));
+
 test('the list reads what is published from the public manifest, like every other surface', () => {
+  // `PathologyIndex.js` imports its stylesheet, so `node --test` cannot mount
+  // it; what is held is the source's one read of the manifest and the pure
+  // projection it applies to it.
   const source = readFileSync(new URL('../src/app/PathologyIndex.js', import.meta.url), 'utf8');
   assert.match(source, /manifest = PUBLIC_MANIFEST/);
   assert.match(source, /manifest\.models/);
   assert.doesNotMatch(source, /RELEASED_SCENES/, 'not the release module directly (CLAUDE.md: one public list)');
-  const published = PUBLIC_MANIFEST.models.map((model) => sceneById(model.sceneId));
-  assert.ok(pathologyModelScenes(published).some((scene) => scene.id === 'cardiac-output'));
+  assert.match(source, /const listed = pathologyModelScenes\(scenes \?\? \(unlocked \? SCENES : published\(\)\)\);/);
+
+  // From a manifest with a disease model in it, the list is that model.
+  assert.deepEqual(pathologyModelScenes(scenesOf(WIDE_MANIFEST)).map((scene) => scene.id), ['cardiac-output']);
+});
+
+test('the launch as published: #/models has no disease model to list, says so in words, and withholds the rest', () => {
+  // The page is still a route (the menu's and every disease model's way back).
+  // With the launch scope (2026-11-24) nothing is on its first shelf, and an
+  // empty shelf under 「病態モデル」 reads as a page that failed to load.
+  assert.deepEqual(pathologyModelScenes(scenesOf(PUBLIC_MANIFEST)), []);
+  const source = readFileSync(new URL('../src/app/PathologyIndex.js', import.meta.url), 'utf8');
+  assert.match(
+    source,
+    /listed\.length\s*\?[\s\S]*?:\s*el\('p', \{ class: 'bm-empty explorer-empty', role: 'status' \}, dual\(\s*'No disease model is open in this release\.',\s*'この版で公開している病態モデルはありません。'/,
+    'the empty shelf is announced, in both languages'
+  );
+  // The anatomy shelf under it is manifest rows — so it is the brain's two
+  // models and none of the four the launch withholds.
+  assert.match(source, /const anatomy = manifest\.models\.filter\(\(model\) => model\.layer === 'anatomy'\);/);
+  const shelf = PUBLIC_MANIFEST.models.filter((model) => model.layer === 'anatomy').map((model) => model.sceneId);
+  assert.deepEqual(shelf, ['brain-anatomy', 'mri-atlas']);
+  for (const scene of SCOPED_OUT_SCENES) assert.equal(shelf.includes(scene.id), false, scene.id);
 });
 
 test('the Explorer names the category by the same rule as the breadcrumb', () => {

@@ -135,6 +135,10 @@ export const RESERVED_ROUTE_SLUGS = Object.freeze([
   ABOUT_SLUG,
   ANATOMY_SLUG,
   PATIENT_SLUG,
+  // The higher-brain-function entrance and its alias (2026-11-24). Neither is
+  // the model's own slug, `higher-brain-function`, which stays a scene.
+  FUNCTIONS_SLUG,
+  'higher-function',
   'trust',
   'evidence',
   'home',

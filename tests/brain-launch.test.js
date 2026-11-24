@@ -127,6 +127,7 @@ test('#/functions: with the model closed it says so in words and offers what is 
     const text = textOf(mounted.element);
     assert.match(text, /機能モデルは、まだ公開していません/);
     assert.match(text, /医師によるレビューがまだ済んでいません/);
+    assert.doesNotMatch(text, /レビュー中/, 'no review is under way; do not say one is');
     const hrefs = linksOf(mounted.element).map((link) => link.getAttribute('href'));
     assert.ok(!hrefs.includes('#/higher-brain-function'), 'a link to a closed door');
     assert.ok(hrefs.includes('#/brain-anatomy') && hrefs.includes('#/mri-atlas'), 'what is open is offered instead');

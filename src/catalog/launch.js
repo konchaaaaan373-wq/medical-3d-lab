@@ -49,8 +49,8 @@ export const LAUNCH_AREAS = Object.freeze([
     route: routeOfScene('mri-atlas'),
     en: 'MRI atlas',
     ja: 'MRIアトラス',
-    lineEn: 'Three planes of a standard-brain MRI, linked to the same structures in 3D.',
-    lineJa: '標準脳 MRI の三断面と、同じ構造の 3D を行き来する。',
+    lineEn: 'Three planes of a standard-brain MRI, and 3D surfaces of the same labels in the same space.',
+    lineJa: '標準脳 MRI の三断面と、同じラベルから作った 3D を行き来する。',
   }),
 ]);
 

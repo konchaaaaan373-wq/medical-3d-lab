@@ -590,7 +590,9 @@ export const ASSET_MANIFEST = Object.freeze([
     knownDefects: [
       'The x = 0 voxel plane carries only right-hemisphere labels (3,748 voxels), so the two halves of each midline structure differ in size — third ventricle 1,100 vs 613 voxels. An artefact of dividing an odd-width grid, recorded in atlas.json under `sides`.',
       '4,531 labelled voxels lie outside the TemplateFlow brain mask.',
-      'The upstream label table\'s own notes call the optic chiasm label "almost inexistent"; it is drawn as labelled (769 voxels a side) and its structure note says the outline is approximate.',
+      'The label the table calls "Optic Chiasm" is about 1.5 mL — intracranial optic nerve, chiasm and the start of the optic tract — although the upstream table\'s own notes call it "almost inexistent". It is shown as a midline parcel under a name that says what it contains.',
+      'Most labels have small stray islands (2–35 six-connected components per label): a few voxels apart from the main body, which a click will name. Published as the atlas has them (F-292).',
+      '"Ventral Diencephalon" includes upper-midbrain tissue (red nucleus, substantia nigra); voxels near (0, −10, −12) mm are labelled Brainstem.',
     ],
     budget: { triangles: null, materials: 0, textures: 0, bytes: 262955, targetDevices: 'Desktop and current phones; fetched with the T1 volume.' },
     formatValidation: MRI_VOLUME_VALIDATION('33260a01ffdfce839945739efcac3fe2ec7019969739bbd9264bf5b2617a403e'),

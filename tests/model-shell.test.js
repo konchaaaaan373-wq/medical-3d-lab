@@ -182,22 +182,35 @@ test('model shell: a primary scope is the lesson\'s question and stays in view u
 });
 
 test('menu: the published models are listed disease models first, then the anatomy', async () => {
+  // On every scene the beta gate clears: the property is the order of two
+  // shelves, and the launch as published (2026-11-24) has only the second.
   const { modelShelfList } = await import('../src/components/SiteMenu.js');
+  const { WIDE_MANIFEST } = await import('./helpers/wide-release.js');
   const restore = installFakeDocument();
   try {
-    const list = modelShelfList(PUBLIC_MANIFEST.models, { systemOf: (id) => modelLocation(sceneById(id))?.where ?? null });
-    const shelves = findByClass(list, 'site-menu-shelf');
-    assert.deepEqual(
-      shelves.map((shelf) => findByClass(findByClass(shelf, 'site-menu-shelf-title')[0], 'lang-ja')[0].textContent),
-      ['病態モデル', '解剖']
-    );
+    const titles = (list) =>
+      findByClass(list, 'site-menu-shelf').map(
+        (shelf) => findByClass(findByClass(shelf, 'site-menu-shelf-title')[0], 'lang-ja')[0].textContent
+      );
     const hrefs = (shelf) => findByClass(shelf, 'site-menu-model').map((link) => link.getAttribute('href'));
-    const disease = PUBLIC_MANIFEST.models.filter((model) => model.layer !== 'anatomy').map((model) => model.route);
-    const anatomy = PUBLIC_MANIFEST.models.filter((model) => model.layer === 'anatomy').map((model) => model.route);
+    const systemOf = (id) => modelLocation(sceneById(id))?.where ?? null;
+
+    const list = modelShelfList(WIDE_MANIFEST.models, { systemOf });
+    const shelves = findByClass(list, 'site-menu-shelf');
+    assert.deepEqual(titles(list), ['病態モデル', '解剖']);
+    const disease = WIDE_MANIFEST.models.filter((model) => model.layer !== 'anatomy').map((model) => model.route);
+    const anatomy = WIDE_MANIFEST.models.filter((model) => model.layer === 'anatomy').map((model) => model.route);
+    assert.ok(disease.length >= 1 && anatomy.length >= 2, 'the fixture has both shelves');
     assert.deepEqual(hrefs(shelves[0]), disease);
     assert.deepEqual(hrefs(shelves[1]), anatomy);
     // Every published model once, no more.
-    assert.equal(hrefs(list).length, PUBLIC_MANIFEST.count);
+    assert.equal(hrefs(list).length, WIDE_MANIFEST.count);
+
+    // The release as published: no disease model, so no 「病態モデル」 heading
+    // over an empty list — one shelf, and every published model on it once.
+    const real = modelShelfList(PUBLIC_MANIFEST.models, { systemOf });
+    assert.deepEqual(titles(real), ['解剖']);
+    assert.deepEqual(hrefs(real), PUBLIC_MANIFEST.models.map((model) => model.route));
   } finally {
     restore();
   }

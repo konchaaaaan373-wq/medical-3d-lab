@@ -15,12 +15,18 @@
  * That atlas is a composite of several sources and is not in MNI space, so
  * nothing here is a coordinate correspondence: selecting the hippocampus there
  * and here shows the same *named* structure drawn from two different atlases
- * with two different parcellation protocols. The list is deliberately short —
- * only structures both atlases draw as one whole, with the same name and the
- * same sides. A structure the other atlas splits into nuclei (thalamus,
- * amygdala) or into gyrus-and-sulcus parcels has no single counterpart and is
- * left out rather than approximated. `tests/mri-atlas-data.test.js` checks each
- * id against the GLB's own metadata.
+ * with two different parcellation protocols. The list is deliberately short:
+ * only structures that have **one counterpart of the same name on each side**
+ * in both atlases. A structure the other atlas splits into several nuclei
+ * (thalamus, amygdala) has no single counterpart and is left out rather than
+ * approximated.
+ *
+ * Same name is not same extent, and the screen says so. The cortical pairs join
+ * a gyrus label in the anatomy atlas to a DKT parcel here, which also takes in
+ * the banks of the neighbouring sulci; "Lateral ventricle" here excludes the
+ * temporal horn; "Caudate" here excludes most of the tail; "Hippocampus" here
+ * is the whole formation. `tests/mri-atlas-data.test.js` checks each id against
+ * the GLB's own metadata — that the names and sides match, not the borders.
  *
  * `atlasLabel` is the GLB's `bx_label`; ids are its `bx_id` per side.
  */

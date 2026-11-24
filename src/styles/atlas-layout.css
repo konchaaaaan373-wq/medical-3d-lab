@@ -145,7 +145,7 @@
   cursor: pointer;
 }
 
-.mri-mode[aria-selected='true'] { background: var(--brand-pink, #e879a6); color: #2a0f1c; }
+.mri-mode[aria-pressed='true'] { background: var(--brand-pink, #e879a6); color: #2a0f1c; }
 .mri-mode:focus-visible,
 .mri-chip:focus-visible,
 .mri-structure:focus-visible,
@@ -308,6 +308,9 @@
 .mri-info-link-note { font-size: 12px; color: var(--ink-faint); }
 
 .mri-standard { margin: 0; padding: 0 4px 2px; font-size: 12px; color: var(--ink-faint); }
+.mri-mode:disabled { opacity: 0.45; cursor: not-allowed; }
+/* A notice that stays (no 3D in this browser): a strip above the planes, not a toast over them. */
+.mri-status.is-notice { grid-area: note; justify-self: start; align-self: auto; background: var(--atlas-raised); font-size: 13px; }
 .mri-status { margin: 0; padding: 8px 14px; border-radius: 8px; background: rgba(0, 0, 0, 0.6); color: var(--ink); }
 
 /* ------------------------------------------------------------------ phone */
@@ -343,6 +346,22 @@
   .mri-workbench[data-mode='mri'] .mri-slice-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); grid-template-rows: repeat(2, minmax(0, 1fr)); }
   .mri-workbench[data-mode='mri'] .mri-slice.is-axial { grid-row: 1 / span 2; }
 
+  /* The header's own row already names this page (解剖 脳 MRI アトラス); on a
+     phone the title under it is the same words taking a row the planes need.
+     It stays in the document for a screen reader and for the page outline. */
+  #ui[data-view='atlas'] .atlas-top .title-card .title,
+  #ui[data-view='atlas'] .atlas-top .title-card .title-ja,
+  #ui[data-view='atlas'] .atlas-top .title-card .subtitle {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+    white-space: nowrap;
+  }
+  .atlas-top { gap: 4px 12px; }
+  .mri-bar { flex: 1 1 100%; justify-content: flex-start; }
+  .mri-info { max-height: 128px; }
   .mri-mode { min-height: 44px; }
   .mri-mode.is-list { display: inline-flex; align-items: center; border-radius: 999px; }
   .mri-chip { min-height: 44px; min-width: 44px; }
@@ -350,8 +369,8 @@
   .mri-chip.is-icon { width: 44px; }
   .mri-structure { min-height: 44px; }
   .mri-control-row.is-sliders { grid-template-columns: minmax(0, 1fr); gap: 4px; }
-  .mri-range { min-height: 32px; }
-  .mri-info { max-height: 132px; }
+  .mri-range { min-height: 44px; }
+  .mri-search { min-height: 44px; }
 
   /* The list is a sheet over the view, opened from the bar. */
   .mri-list {

@@ -22,28 +22,36 @@ const dual = (en, ja, className = '') => [
 ];
 
 /**
- * BYOKI MOTION's front door (ADR 2026-09-30).
+ * The front door (ADR 2026-11-24, brain launch).
  *
  * ## What it has to do in five seconds
  *
- * Say what this is — models of pathophysiology you move — and put one of them
- * a press away. So, top to bottom: the name and the promise with one action;
- * the published disease models, each as a picture, a name and a question; two
- * short paragraphs on why the models move and whom they speak to; the footer.
- * It is deliberately not a corporate landing page and does not grow sections.
+ * Say what this is — the brain, in three dimensions, tied to MRI — and put it
+ * a press away. So, top to bottom: the promise as the page's one `h1`, beside
+ * the real brain model, live; the launch's three areas as three entrances
+ * (高次脳機能 · 脳解剖 · MRIアトラス, from `catalog/launch.js`, in that order);
+ * the priority themes as questions; how it teaches; where its claims come
+ * from; the footer.
+ *
+ * ## An area is always listed; a model is only offered when it is open
+ *
+ * The three areas are the product's shape, so all three are on the page
+ * whatever the release holds — and an area whose model is closed **says so in
+ * words** inside its own link instead of being greyed out or dropped. What is
+ * never rendered for a closed model is an invitation to open it: the hero's
+ * two buttons exist only while the model behind each is in the manifest.
  *
  * ## What it stopped being
  *
- * An anatomy atlas's title over a daily-rotating organ. The organs are not gone —
- * they are the anatomy shelf, one line below the models here and a section of
- * `#/models` — but the page no longer opens on a specimen, because the product
- * is not an atlas. There is no 3D on this page at all: the hero's motion is a
- * 2D field of lanes and points (`landingFlowField.js`), which costs no model
- * download and says "things move and respond" without claiming to be any
- * organ.
+ * BYOKI MOTION's front door (ADR 2026-09-30): a wordmark over a 2D field of
+ * lanes and points, then the published disease models as cards. The launch
+ * publishes no disease model and its subject is one organ, so the hero is
+ * that organ's own model again and the flow field is gone
+ * (`git log --follow src/app/landingFlowField.js`).
  *
- * Which models appear is read from the public manifest and nothing else. Under
- * the preview unlock the list is every disease model, as the other indexes do.
+ * Which models are open is read from the public manifest and nothing else.
+ * The hero is the brain's viewport and only the brain's, whatever else the
+ * manifest holds: a front page about one organ has no chooser.
  */
 export function createLanding({
   ui,
@@ -86,7 +94,7 @@ export function createLanding({
       el('h1', { class: 'lab-hero-title', id: 'lab-hero-title' }, dual(BRAND.tagline.en, BRAND.tagline.ja)),
       el('p', { class: 'lab-hero-lead' }, dual(BRAND.description, BRAND.descriptionJa)),
       el('div', { class: 'lab-hero-actions' }, [
-        anatomy?.route
+        anatomy?.route && isOpen(anatomy)
           ? el('a', { class: 'lab-cta', href: anatomy.route }, [
               ...dual('Open the brain in 3D', '脳を 3D で開く'),
               el('span', { class: 'lab-cta-arrow', 'aria-hidden': 'true', text: '→' }),
@@ -117,7 +125,7 @@ export function createLanding({
           isOpen(item)
             ? el('span', { class: 'lab-area-go', 'aria-hidden': 'true', text: '→' })
             : el('span', { class: 'lab-area-status' }, item.id === 'functions'
-                ? dual('Model in medical review', 'モデルは医学レビュー中')
+                ? dual('Model awaiting medical review', 'モデルは医学レビュー前（未公開）')
                 : dual('Opening soon', '公開準備中')),
         ]),
       ])
@@ -149,8 +157,8 @@ export function createLanding({
       ],
       [
         '3D and MRI, the same place', '3D と MRI が同じ場所を指す',
-        'Choose a structure in 3D and the three MRI planes move to it; choose it on a slice and the 3D lights up. Both are drawn from one label volume in one coordinate space.',
-        '3D で構造を選ぶと MRI の三断面がそこへ動き、断面で選ぶと 3D が光ります。どちらも同じ座標空間の、同じラベルから描いています。',
+        'In the MRI atlas, choose a structure in 3D and the three planes move to it; choose it on a slice and the 3D lights up. The 3D surfaces and the colours on the slices are drawn from one set of labels in one coordinate space.',
+        'MRI アトラスでは、3D で構造を選ぶと三断面がそこへ動き、断面で選ぶと 3D が光ります。3D の面と断面の色分けを、同じラベル・同じ座標から描いています。',
       ],
       [
         'Where each claim came from', '主張の出どころが見える',
@@ -169,8 +177,8 @@ export function createLanding({
     el('h2', { class: 'lab-section-title', id: 'lab-grounds-title' }, dual('Evidence, sources and limits', '医学的根拠・データ出典・利用上の注意')),
     el('div', { class: 'lab-grounds-body' }, [
       el('p', {}, dual(
-        'These are representative educational models: a standard brain, not any one person. They are not for diagnosis, for localising a lesion in a patient, or for treatment decisions.',
-        '学習用の代表モデルです。標準脳であり、特定の個人の脳ではありません。診断、患者の病変局在の判定、治療の判断には使えません。'
+        'These are representative educational models, not any one person\u2019s brain. They are not for diagnosis, for localising a lesion in a patient, or for treatment decisions.',
+        '学習用の代表モデルで、特定の個人の脳ではありません。診断、患者の病変局在の判定、治療の判断には使えません。'
       )),
       el('p', {}, dual(
         'The MRI is the MNI ICBM 152 (2009c) average template with the CerebrA labels; the 3D anatomy is built from published atlases. Each asset is listed with its source, version and licence.',

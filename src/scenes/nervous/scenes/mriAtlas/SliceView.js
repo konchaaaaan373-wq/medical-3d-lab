@@ -35,7 +35,9 @@ export function createSliceView({ plane: planeName, label, onPick, onStep, onZoo
   const canvas = el('canvas', {
     class: 'mri-slice-canvas',
     tabindex: '0',
-    role: 'img',
+    // An operable region, not a picture: it takes the pointer and the keys below.
+    role: 'application',
+    'aria-roledescription': 'MRI slice',
     'data-plane': planeName,
   });
   const context = canvas.getContext('2d');
@@ -66,7 +68,11 @@ export function createSliceView({ plane: planeName, label, onPick, onStep, onZoo
     const plane = slicePlane(planeName, frame.grid, frame.convention);
     const rect = canvas.getBoundingClientRect();
     const located = plane.fromVoxel(frame.voxel);
-    const viewport = sliceViewport(plane, rect.width, rect.height, { zoom: frame.zoom, focus: located });
+    // The zoom is anchored to `focusVoxel`, which moves only when the reader
+    // zooms or jumps to a structure — never when the crosshair moves. Anchored
+    // to the crosshair, a click moved the picture under the pointer and the
+    // release landed on a different voxel than the press (14 mm away at ×2).
+    const viewport = sliceViewport(plane, rect.width, rect.height, { zoom: frame.zoom, focus: plane.fromVoxel(frame.focusVoxel ?? frame.voxel) });
     return { plane, rect, located, viewport };
   }
 
@@ -232,6 +238,9 @@ export function createSliceView({ plane: planeName, label, onPick, onStep, onZoo
   }, { passive: false });
   canvas.addEventListener('keydown', (event) => {
     if (!last) return;
+    // The browser's own shortcuts stay the browser's: Ctrl/⌘ + and − are page
+    // zoom (a WCAG 1.4.4 path), Alt + arrows are Back and Forward.
+    if (event.ctrlKey || event.metaKey || event.altKey) return;
     const plane = slicePlane(planeName, last.grid, last.convention);
     const located = plane.fromVoxel(last.voxel);
     const move = (du, dv) => {

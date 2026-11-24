@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 
-import { createSiteHeaderMenu, createSiteMenu, dockUtilities, menuSettingRow, organLayerList } from '../src/components/SiteMenu.js';
+import { createSiteHeaderMenu, createSiteMenu, dockUtilities, menuSettingRow, modelShelfList, organLayerList } from '../src/components/SiteMenu.js';
 import { organLayerNavigation } from '../src/app/modelNavigation.js';
 import { createShellHeader } from '../src/components/ShellHeader.js';
 import { createSceneSwitcher } from '../src/components/SceneSwitcher.js';
@@ -9,6 +9,7 @@ import { headerDockIn } from '../src/app/headerDock.js';
 import { PUBLIC_MANIFEST } from '../src/catalog/publicManifest.js';
 import { focusBack } from '../src/utils/dom.js';
 import { FakeElement, findByClass, installFakeDocument } from './helpers/fake-dom.js';
+import { WIDE_MANIFEST } from './helpers/wide-release.js';
 
 globalThis.requestAnimationFrame ??= (fn) => { fn(0); return 0; };
 
@@ -254,15 +255,74 @@ function hrefsOf(root) {
   };
 }
 
-test('the reading header: the menu lists the models, and nothing the row already offers', () => {
+test('the reading header: every published model is reachable from it, and no destination is offered twice', () => {
+  // Until the brain launch the row carried no model and the menu carried them
+  // all. The launch areas *are* models — 脳解剖 and MRIアトラス open one each —
+  // so the rule is stated as what it always meant: one door per destination,
+  // and no published model left without one.
   withDocument(() => {
     const header = createShellHeader({ current: 'home', showLab: false });
     const { row, menu } = hrefsOf(header);
     assert.deepEqual(row.filter((href) => menu.includes(href)), [], 'no destination is both in the row and the menu');
     for (const model of PUBLIC_MANIFEST.models) {
-      assert.ok(menu.includes(model.route), `${model.sceneId} is reachable from the menu`);
+      assert.ok([...row, ...menu].includes(model.route), `${model.sceneId} is reachable from the header`);
     }
+    // The launch as published: both models are launch areas, so the menu has no
+    // model section at all — an empty 「モデル」 heading would be a section with
+    // nothing to show.
+    assert.deepEqual(PUBLIC_MANIFEST.models.filter((model) => !row.includes(model.route)), []);
+    assert.deepEqual(findByClass(header, 'site-menu-model'), []);
+    assert.deepEqual(findByClass(header, 'is-models'), []);
+    // About left the row (2026-11-24) and is in the menu, once.
+    assert.ok(!row.includes('#/about'), 'About is not a fourth launch area');
+    assert.deepEqual(menu.filter((href) => href === '#/about'), ['#/about'], 'the menu keeps About');
     assert.ok(headerDockIn({ querySelector: () => header }), 'the header registers where site controls go');
+  });
+});
+
+test('the reading header, a wider release: the menu lists exactly the models the row does not reach', () => {
+  // The multi-organ path, on every scene the beta gate clears. The row still
+  // reaches the two launch areas; the heart, cardiac output, the lungs and the
+  // liver have no place on it and must be in the menu.
+  withDocument(() => {
+    const models = WIDE_MANIFEST.models;
+    const header = createShellHeader({ current: 'home', showLab: false, models });
+    const { row, menu } = hrefsOf(header);
+    assert.deepEqual(row.filter((href) => menu.includes(href)), [], 'no destination is both in the row and the menu');
+    const offRow = models.filter((model) => !row.includes(model.route));
+    assert.deepEqual(
+      offRow.map((model) => model.sceneId),
+      ['heart-anatomy', 'cardiac-output', 'lung-anatomy', 'liver-anatomy']
+    );
+    assert.deepEqual(
+      findByClass(header, 'site-menu-model').map((link) => link.getAttribute('href')).sort(),
+      offRow.map((model) => model.route).sort(),
+      'one menu row per model the row does not reach, and no other'
+    );
+    for (const model of models) {
+      assert.ok([...row, ...menu].includes(model.route), `${model.sceneId} is reachable from the header`);
+    }
+  });
+});
+
+test('in the menu, two anatomy models of one organ are not both called 解剖', () => {
+  // The brain has its 3D anatomy and its MRI atlas. Named by organ and layer,
+  // both rows read 「脳 解剖」 and led to different places.
+  withDocument(() => {
+    const label = (link) => findByClass(findByClass(link, 'site-menu-model-name')[0], 'lang-ja')[0].textContent;
+    const organ = (link) => findByClass(findByClass(link, 'site-menu-organ-name')[0], 'lang-ja')[0].textContent;
+    for (const manifest of [PUBLIC_MANIFEST, WIDE_MANIFEST]) {
+      const links = findByClass(modelShelfList(manifest.models), 'site-menu-model');
+      assert.equal(links.length, manifest.models.length, 'one link per model');
+      const names = links.map((link) => `${organ(link)} ${label(link)}`);
+      assert.equal(new Set(names).size, names.length, `two rows share a name: ${names.join(' / ')}`);
+    }
+    const brainRows = findByClass(modelShelfList(PUBLIC_MANIFEST.models), 'site-menu-model');
+    assert.deepEqual(brainRows.map(label), PUBLIC_MANIFEST.models.map((model) => model.titleJa));
+    // An organ with one anatomy model keeps the short name.
+    const lung = findByClass(modelShelfList(WIDE_MANIFEST.models), 'site-menu-model')
+      .find((link) => link.getAttribute('href') === '#/lung-anatomy');
+    assert.equal(label(lung), '解剖');
   });
 });
 
@@ -286,9 +346,11 @@ test('in the menu, every model is one whole-row link, and the organ name is insi
   // The first version put the organ name in a column beside chips: the
   // largest word in the row was not a link, and four chips read 解剖.
   withDocument(() => {
-    const list = organLayerList(organLayerNavigation(PUBLIC_MANIFEST.models));
+    // On the wider fixture: the property is about several organs, one of them
+    // with two models, and the published release (2026-11-24) has one organ.
+    const list = organLayerList(organLayerNavigation(WIDE_MANIFEST.models));
     const links = findByClass(list, 'site-menu-model');
-    assert.equal(links.length, PUBLIC_MANIFEST.models.length, 'one link per published model');
+    assert.equal(links.length, WIDE_MANIFEST.models.length, 'one link per published model');
     for (const name of findByClass(list, 'site-menu-organ-name')) {
       let inLink = false;
       for (let node = name; node; node = node.parentElement) if (node.tagName === 'A') inLink = true;
@@ -296,7 +358,8 @@ test('in the menu, every model is one whole-row link, and the organ name is insi
     }
     // Printed once per organ; repeated only for a screen reader.
     const shown = findByClass(list, 'site-menu-organ-name').filter((node) => !node.classList.contains('is-repeat'));
-    assert.equal(shown.length, PUBLIC_MANIFEST.organs.length);
+    assert.equal(shown.length, WIDE_MANIFEST.organs.length);
+    assert.ok(shown.length < links.length, 'the fixture has an organ with more than one model');
   });
 });
 

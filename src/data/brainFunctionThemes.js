@@ -9,8 +9,10 @@
  * here says which structure does what. Each theme states **the question the
  * model lets a learner work out**, and the answer stays where the evidence
  * dossier, the model card and the release gate govern it — in the model.
- * `tests/brain-launch.test.js` holds the line: no structure name appears in
- * this file's copy.
+ * `tests/mri-atlas-data.test.js` holds the line: no lobe, gyrus, nucleus, tract
+ * or eponymous area is named in this file's copy, and every theme ends as a
+ * question. ("Hemisphere" is allowed: asking whether the two sides differ is
+ * not saying which side does what.)
  *
  * `tasks` are ids of `FUNCTION_TASKS` in `src/models/higherBrainFunction.js`,
  * written as strings because the application shell must not import a medical
@@ -35,8 +37,8 @@ export const FUNCTION_THEMES = Object.freeze([
     priority: true,
     en: 'Memory',
     ja: '記憶',
-    questionEn: 'When a new event is laid down, which structures does it pass through — and what is left when one side is lost?',
-    questionJa: '新しい出来事を覚えるとき、どの構造を順に通るのか。片側だけを失うと、何が残るのか。',
+    questionEn: 'Does laying down a new memory depend on one place in the brain?',
+    questionJa: '新しい出来事を覚える働きは、脳のどこか 1 か所に頼っているのでしょうか。',
     tasks: ['episodic-memory-formation'],
   },
   {
@@ -53,8 +55,8 @@ export const FUNCTION_THEMES = Object.freeze([
     priority: true,
     en: 'Executive function',
     ja: '遂行機能',
-    questionEn: 'Planning, inhibition and drive: one "frontal function", or separate circuits that fail separately?',
-    questionJa: '計画・抑制・発動性。ひとつの「前頭葉機能」なのか、別々に壊れる別々の回路なのか。',
+    questionEn: 'Planning, inhibition and drive: do they fail together, or can one fail without the others?',
+    questionJa: '計画・抑制・発動性は、まとまって障害されるのでしょうか。それとも、別々に障害されうるのでしょうか。',
     tasks: ['set-shifting-and-planning', 'behavioural-inhibition', 'initiation-and-drive'],
   },
   {

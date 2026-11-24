@@ -50,10 +50,17 @@ it names is the one error this screen must not make.
   any single brain, and — being the *symmetric* template — no normal asymmetry.
 - **Not a functional map.** A coloured region is an anatomical label. Nothing
   on the screen says what it does.
-- **Not a tract or white-matter atlas.** An ordinary structural MRI does not
-  show white-matter bundles or functional areas, and this scene draws neither.
-  CerebrA has no cerebral white-matter label at all; unlabelled tissue has no
-  name here and clicking it selects nothing.
+- **Not a tract or white-matter atlas.** Individual association bundles cannot
+  be told from the surrounding white matter on an ordinary structural MRI, and
+  CerebrA has no cerebral white-matter label at all — so even the corpus
+  callosum and the internal capsule, which are plainly visible, have no name
+  here. Unlabelled tissue selects nothing. Also unlabelled: the claustrum, the
+  subthalamic nucleus, substantia nigra and red nucleus (inside the ventral-
+  diencephalon parcel), the brainstem's subdivisions, the cerebellar lobules
+  and deep nuclei, the cisterns and the vessels.
+- **Not a normal range.** MNI 152 space is larger than a typical individual
+  brain and is not Talairach space. A coordinate is an address in this
+  template; no distance or volume here is a reference value.
 - **Not the anatomy atlas in another view.** Nine structures link to the
   anatomy scene **by name** (`ANATOMY_ATLAS_LINKS`). That is a link between two
   atlases with two parcellation protocols, said to be one on the screen; it is
@@ -90,8 +97,31 @@ files and does not depend on CC0. Open item: F-281.
   and vermis are divided left/right at the midline by the atlas, and the x = 0
   voxel plane carries only right labels, so the halves are unequal (third
   ventricle 1,100 vs 613 voxels). They are named "(left half)" / "(right half)".
-- **Small labels.** The optic chiasm and the inferior horn of the lateral
-  ventricle are a few hundred voxels; their notes say the outline is approximate.
+- **Parcels that are wider than their names** (found by an AI review reading the
+  label volume, 2026-11-24, and written into each structure's on-screen note):
+  - *Optic chiasm* is about 1.5 mL — the intracranial optic nerve, the chiasm
+    and the start of the optic tract — and is divided at the midline, so it is
+    shown as a midline parcel in two halves, never as a left and a right chiasm.
+  - *Ventral diencephalon* reaches into the upper midbrain (red nucleus,
+    substantia nigra, part of the cerebral peduncle); the *brainstem* label
+    begins beneath it.
+  - *Inferior horn* (about 1 mL a side) is painted wider than the CSF visible on
+    the averaged image.
+  - The DKT protocol has no temporal-pole or frontal-pole parcel: *superior
+    temporal* and *entorhinal* absorb the temporal pole, *superior frontal* the
+    medial frontal gyrus and the frontal pole; *posterior cingulate* covers the
+    mid-cingulate; *parahippocampal* is the posterior part only.
+- **Stray islands.** Most labels have a few voxels lying apart from their main
+  body (2–35 six-connected components per label). A click on one names that
+  label, and a label's 3D surface is therefore not always a single piece. The
+  label volume is published as the atlas has it; nothing was removed (F-292).
+- **Mirrored labels.** Left and right voxel counts are identical for every
+  non-midline label: the labels are mirror images, as the template is.
+- **Cohort.** Young adults from a North American cohort: no ageing, and not the
+  brain typical of everyday clinical imaging. The age range is not stated on
+  screen because the paper could not be read from the build environment.
+- **Partial volume and averaging** make the borders of the smallest labels
+  (accumbens, basal forebrain, the optic parcel, the inferior horn) indefinite.
 - **Surfaces.** Smoothed and decimated (198k triangles); volume within 3% of the
   voxel volume and solid centroid within 1 mm for every label. Cortical parcels
   are grey-matter ribbons with nothing beneath them.
