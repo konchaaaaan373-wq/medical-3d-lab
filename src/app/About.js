@@ -4,7 +4,7 @@ import { createShellHeader } from '../components/ShellHeader.js';
 import { createLanguageToggle } from '../components/LanguageToggle.js';
 import { createSiteFooter } from '../components/SiteFooter.js';
 import { createWordmark } from '../components/Wordmark.js';
-import { MODELS_ROUTE } from '../catalog/index.js';
+import { LANDING_ROUTE } from '../catalog/index.js';
 import { BRAND, pageTitle } from '../data/brand.js';
 import { NECO_LINKS } from '../data/necoLinks.js';
 
@@ -64,48 +64,52 @@ export function createAbout({ ui, accountButton = null, focusId = null }) {
     createShellHeader({ current: 'about', accountButton, languageToggle: languageToggle.element }),
     el('header', { class: 'bm-page-head bm-about-head', id: 'content', tabindex: '-1', 'data-skip-target': '' }, [
       el('h1', { class: 'bm-page-title' }, [
-        createWordmark({ size: 'lg' }),
+        createWordmark({ size: 'lg', withMark: true }),
       ]),
       el('p', { class: 'bm-about-tagline' }, dual(BRAND.tagline.en, BRAND.tagline.ja)),
       el('p', { class: 'bm-page-lead' }, dual(
-        `${BRAND.description} Each one lets you change a condition, watch the body respond, and see why it changed.`,
-        `${BRAND.descriptionJa}条件を変えると身体が反応し、その理由まで分かる——そのための教材です。`
+        `${BRAND.description} For medical students, residents and clinicians — and usable by anyone who wants to see where things are.`,
+        `${BRAND.descriptionJa}医学生・研修医・若手医師を主な読み手に、専門外の人でも触れば分かるように作っています。`
       )),
     ]),
 
-    section('what', { en: 'What a model does', ja: 'モデルがすること' }, [
+    section('what', { en: 'What it is for', ja: 'このサービスですること' }, [
       el('ol', { class: 'bm-loop is-inline' }, [
-        ['Look', '見る'],
-        ['Move', '動かす'],
-        ['The state changes', '状態が変わる'],
-        ['See why', 'なぜ変わったかが分かる'],
+        ['Point at it', '名前で指す'],
+        ['Turn it', '回して見る'],
+        ['Find it on MRI', 'MRI で探す'],
+        ['Connect it to function', '機能とつなげる'],
       ].map(([en, ja], index) => el('li', { class: `bm-loop-step${index === 2 ? ' is-change' : ''}` }, dual(en, ja)))),
       paragraph(
-        '3D is one way of showing this, not the goal. Where a plot, a pair of numbers, a two-axis control or points in motion make the cause and effect clearer, the model uses those instead.',
-        '3D は表現手段のひとつで、目的ではありません。グラフ・数値・2軸の操作・粒子の動きのほうが因果関係を早く伝えられるなら、モデルはそちらを使います。'
+        'The launch covers one organ, the brain, in three parts: its anatomy in 3D, a standard-brain MRI atlas linked to the same structures, and higher brain function read as networks rather than as one region per function. Other organs and disease models exist and are not published in this launch.',
+        '初期版が扱うのは脳だけで、3 つの部分からなります。3D の脳解剖、同じ構造に連動する標準脳 MRI アトラス、そして「1 領域 = 1 機能」ではなくネットワークとして読む高次脳機能です。ほかの臓器と病態モデルも作ってありますが、初期版では公開していません。'
       ),
     ]),
 
-    section('rule', { en: 'When we make a model', ja: 'モデルをつくる条件' }, [
-      el('p', { class: 'bm-about-rule' }, dual(
-        'Does moving it — or watching it change over time — make it clearly easier to understand than a still picture or a paragraph?',
-        '操作や時間の変化によって、静止画や文章より、理解がはっきり深まるか。'
-      )),
+    section('rule', { en: 'What we will not do', ja: 'しないこと' }, [
       el('dl', { class: 'bm-about-verdicts' }, [
-        el('dt', {}, dual('Yes', 'はい')),
-        el('dd', {}, dual('We make it as an interactive model.', 'インタラクティブなモデルとしてつくります。')),
-        el('dt', {}, dual('No', 'いいえ')),
+        el('dt', {}, dual('No invented images', '架空の画像を使わない')),
         el('dd', {}, dual(
-          'We do not force it into one. A model that only lets you look at anatomy is not what this product is for — the anatomy is there to check where a disease model points.',
-          '無理にモデルにはしません。解剖を眺めるだけのモデルは主役にせず、解剖は病態モデルが指す場所を確かめるために置いています。'
+          'The MRI is a published volume drawn slice by slice in your browser, not a picture made to look like one.',
+          'MRI は公開されている実際のボリュームデータを、ブラウザで断面ごとに描いています。それらしく作った絵ではありません。'
+        )),
+        el('dt', {}, dual('No claim ahead of its review', 'レビューより先に主張しない')),
+        el('dd', {}, dual(
+          'A model that says which pathway carries which function stays closed until a clinician has reviewed it. Until then its page says it is closed, and the open pages do not say it for it.',
+          '「どの経路がどの機能を担うか」を述べるモデルは、医師のレビューが済むまで公開しません。それまでは「未公開」と表示し、公開中のページが代わりに述べることもしません。'
+        )),
+        el('dt', {}, dual('No one-region-one-function', '「1 領域 = 1 機能」にしない')),
+        el('dd', {}, dual(
+          'A coloured region on the atlas is an anatomical label. Function belongs to routes through several structures.',
+          'アトラスで色の付いた領域は解剖学的なラベルです。機能は、複数の構造を通る経路のほうにあります。'
         )),
       ]),
     ]),
 
     section('evidence', { en: 'Evidence and limits', ja: '根拠の扱い' }, [
       paragraph(
-        'Every model is an educational conceptual model. It explains a mechanism; it does not predict what will happen to a particular patient, and it is not for diagnosis or treatment decisions.',
-        'すべてのモデルは教育用の概念モデルです。機序を説明するためのもので、特定の患者に何が起きるかを予測するものではなく、診断や治療の判断には使えません。'
+        'Every model is a representative educational model. It explains a structure or a mechanism; it does not predict what will happen to a particular patient, and it is not for diagnosis or treatment decisions.',
+        'すべてのモデルは教育用の代表モデルです。構造や機序を説明するためのもので、特定の患者に何が起きるかを予測するものではなく、診断や治療の判断には使えません。'
       ),
       paragraph(
         'Inside each model, “About this model” says what it shows and what it does not, where it simplifies, where its numbers came from, and the state of its medical review and version. A model that has not been reviewed says so.',
@@ -117,10 +121,14 @@ export function createAbout({ ui, accountButton = null, focusId = null }) {
       ),
     ]),
 
-    section('readers', { en: 'Medical and Patient', ja: '医療者向けと患者向け' }, [
+    section('readers', { en: 'Data and sources', ja: 'データと出典' }, [
       paragraph(
-        'One model, one state, one animation — told two ways. Medical uses clinical terms and shows the figures; Patient explains the same motion in plain words. Patient explanations open model by model, after a current medical review.',
-        'モデル・状態・アニメーションはひとつで、伝え方が2通りあります。医療者向けは医学用語と数値で、患者向けは同じ動きを平易な言葉で説明します。患者向けの説明は、医学レビューを終えたモデルから順に公開します。'
+        'MRI: the MNI ICBM 152 (2009c nonlinear symmetric) template — an average of 152 young adults, © McConnell Brain Imaging Centre, Montreal Neurological Institute, McGill University. Labels: the CerebrA atlas (Manera et al., 2020). 3D anatomy: published atlases, credited in each model. Every asset is recorded with its source, version, licence and what was changed.',
+        'MRI は MNI ICBM 152（2009c 非線形対称）テンプレート——若年成人 152 人の平均（© McConnell Brain Imaging Centre, Montreal Neurological Institute, McGill University）。ラベルは CerebrA アトラス（Manera ほか、2020）。3D 解剖は公開アトラスに基づき、各モデルに出典を記しています。素材ごとに、取得元・版・ライセンス・加えた変更を記録しています。'
+      ),
+      paragraph(
+        'These are standard brains, not anyone\u2019s brain. They are not for diagnosis, for locating a lesion in a patient, or for treatment decisions.',
+        'どれも標準脳で、特定の誰かの脳ではありません。診断、患者の病変の位置の判定、治療の判断には使えません。'
       ),
     ]),
 
@@ -137,8 +145,8 @@ export function createAbout({ ui, accountButton = null, focusId = null }) {
     ]),
 
     el('p', { class: 'bm-about-next' }, [
-      el('a', { class: 'bm-cta', href: MODELS_ROUTE }, [
-        ...dual('See the models', 'モデルを見る'),
+      el('a', { class: 'bm-cta', href: LANDING_ROUTE }, [
+        ...dual('Start with the brain', '脳から始める'),
         el('span', { class: 'bm-cta-arrow', 'aria-hidden': 'true', text: '→' }),
       ]),
     ]),

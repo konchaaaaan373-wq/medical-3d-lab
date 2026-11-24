@@ -25,6 +25,8 @@ import { createHash } from 'node:crypto';
 
 import { SITE_NAME, escapeHtml } from './site-metadata.js';
 import { BRAND } from '../src/data/brand.js';
+import { BRAND_ICON_SVG, BRAND_PINK } from '../src/components/brandIcon.js';
+import { SURFACES, TRUST_INK } from '../src/styles/palette.js';
 
 /**
  * A short digest of the markup a card was drawn from.
@@ -171,14 +173,20 @@ export function socialCardHtml(
   });
 }
 
-/** The site-level card, for a link to the catalogue rather than to one scene. */
+/**
+ * The site-level card, for a link to the product rather than to one scene.
+ *
+ * It leads with the tagline in Japanese — 「脳を、立体的に理解する。」 is the
+ * sentence the front page opens on, and a shared link should say the same
+ * thing the page it leads to says first. The English tagline sits under it.
+ */
 export function siteCardHtml({ sceneCount = 0 } = {}) {
   return card({
     // No eyebrow: the wordmark is directly above it, and repeating the site's
     // own name there is the one thing this card does not need to say twice.
     eyebrow: '',
-    title: BRAND.description,
-    titleJa: BRAND.tagline.ja,
+    title: BRAND.tagline.ja,
+    titleJa: BRAND.tagline.en,
     body: BRAND.descriptionJa,
     badges: [
       { text: `${sceneCount} public models · 公開モデル ${sceneCount} 件`, tone: 'plain' },
@@ -187,18 +195,36 @@ export function siteCardHtml({ sceneCount = 0 } = {}) {
   });
 }
 
-// On BYOKI MOTION's paper (2026-09-30). Each ink clears 4.5:1 on #f6f4ef.
-const TONES = {
-  good: { border: '#6f9a82', ink: '#2f5e45' },
-  warn: { border: '#b8925a', ink: '#7a4a12' },
-  plain: { border: '#c9c4ba', ink: '#45423d' },
-};
+/**
+ * The card's own colours, on the product's paper (3Dモデルラボ, 2026-11-24).
+ *
+ * Ground and ink are read from `src/styles/palette.js` rather than typed, so a
+ * re-tint of the product re-tints its cards — and `npm run cards:check` then
+ * says the committed PNGs are stale, which is true. Each ink below clears
+ * 4.5:1 on that ground; `tests/social-cards.test.js` computes it.
+ */
+export const CARD_COLOURS = Object.freeze({
+  ground: SURFACES.trust,
+  ink: TRUST_INK.body,
+  muted: TRUST_INK.muted,
+  faint: TRUST_INK.faint,
+  rule: '#dcd9e3',
+  /** The mark. Line art, not text: it carries no meaning a reader must resolve. */
+  mark: BRAND_PINK,
+});
+
+export const CARD_TONES = Object.freeze({
+  good: Object.freeze({ border: '#6f9a82', ink: '#2f5e45' }),
+  warn: Object.freeze({ border: '#b8925a', ink: TRUST_INK.drift }),
+  plain: Object.freeze({ border: CARD_COLOURS.rule, ink: TRUST_INK.muted }),
+});
 
 function card({ eyebrow, title, titleJa, body, badges, titleScale = 1 }) {
   const badge = ({ text, tone }) => {
-    const colours = TONES[tone] ?? TONES.plain;
+    const colours = CARD_TONES[tone] ?? CARD_TONES.plain;
     return `<span class="badge" style="border-color:${colours.border};color:${colours.ink}">${escapeHtml(text)}</span>`;
   };
+  const c = CARD_COLOURS;
 
   return `<!doctype html>
 <html lang="ja">
@@ -208,53 +234,61 @@ function card({ eyebrow, title, titleJa, body, badges, titleScale = 1 }) {
   * { margin: 0; padding: 0; box-sizing: border-box; }
   html, body { width: ${CARD_WIDTH}px; height: ${CARD_HEIGHT}px; }
   body {
-    background: #f6f4ef;
-    color: #1f1e1c;
+    position: relative;
+    background: ${c.ground};
+    color: ${c.ink};
     font-family: ${FONT_STACK};
     display: flex;
     flex-direction: column;
     justify-content: space-between;
-    padding: 62px 68px 54px;
+    padding: 60px 68px 54px;
   }
-  /* BYOKI MOTION, set as type — the same treatment as the header's wordmark
-     (src/components/Wordmark.js): BYOKI a weight heavier, MOTION opening up. */
-  .wordmark { display: flex; align-items: baseline; gap: 12px; font-size: 26px; line-height: 1; }
-  .wordmark b { font-weight: 600; letter-spacing: 0.04em; }
-  .wordmark span { font-weight: 400; letter-spacing: 0.12em; }
-  .wordmark i { width: 9px; height: 9px; border-radius: 50%; background: #e0662f; align-self: center; }
+  /* The name set as type, joined with no space — the header's wordmark
+     (src/components/Wordmark.js): "3D" a weight heavier than what follows. */
+  .wordmark { display: flex; align-items: baseline; font-size: 28px; line-height: 1; }
+  .wordmark b { font-weight: 700; letter-spacing: 0.02em; }
+  .wordmark span { font-weight: 500; letter-spacing: 0.06em; }
+  /* The mark: the brain from above, the same paths as the header's
+     (src/components/brandIcon.js), in the brand pink. One flat colour on a
+     flat ground. It sits where no title reaches (h1 is held to 22ch). */
+  .mark { position: absolute; top: 44px; right: 60px; width: 124px; height: 124px; color: ${c.mark}; }
+  .mark svg { display: block; width: 100%; height: 100%; }
   .eyebrow {
     margin-top: 44px;
     font-size: 21px; letter-spacing: 0.16em; text-transform: uppercase;
-    color: #6f6b63;
+    color: ${c.faint};
   }
   h1 {
     margin-top: 18px;
     font-size: ${titleSize(title, titleScale)}px;
-    line-height: 1.08; letter-spacing: -0.02em; font-weight: 600;
+    line-height: 1.12; letter-spacing: -0.02em; font-weight: 600;
     max-width: 22ch;
   }
+  .eyebrow + h1 { margin-top: 18px; }
+  .wordmark + h1 { margin-top: 56px; }
   .title-ja {
     margin-top: 14px;
     font-size: ${subtitleSize(titleJa)}px; line-height: 1.3; font-weight: 500;
-    color: #45423d;
+    color: ${c.muted};
   }
-  .body { margin-top: 20px; font-size: 23px; line-height: 1.5; color: #45423d; max-width: 40ch; }
+  .body { margin-top: 20px; font-size: 23px; line-height: 1.5; color: ${c.muted}; max-width: 40ch; }
   /* The head may shrink; the foot may not. Whatever else a card loses when a
      title runs long, it does not lose the line that says what this is. */
   .head { min-height: 0; overflow: hidden; }
   .foot { display: flex; flex-direction: column; gap: 18px; flex: 0 0 auto; }
   .badges { display: flex; gap: 12px; flex-wrap: wrap; }
   .badge {
-    border: 1px solid #c9c4ba; border-radius: 6px;
+    border: 1px solid ${c.rule}; border-radius: 6px;
     padding: 9px 16px; font-size: 19px; font-weight: 500;
   }
-  .boundary { font-size: 18px; line-height: 1.45; color: #6f6b63; }
-  .boundary b { display: block; font-weight: 500; color: #45423d; }
+  .boundary { font-size: 18px; line-height: 1.45; color: ${c.faint}; }
+  .boundary b { display: block; font-weight: 500; color: ${c.muted}; }
 </style>
 </head>
 <body>
+  <div class="mark" aria-hidden="true">${BRAND_ICON_SVG}</div>
   <div class="head">
-    <div class="wordmark" aria-label="${escapeHtml(SITE_NAME)}"><b>${escapeHtml(BRAND.words[0])}</b><span>${escapeHtml(BRAND.words[1])}</span><i></i></div>
+    <div class="wordmark" aria-label="${escapeHtml(SITE_NAME)}"><b>${escapeHtml(BRAND.words[0])}</b><span>${escapeHtml(BRAND.words[1])}</span></div>
     ${eyebrow ? `<p class="eyebrow">${escapeHtml(eyebrow)}</p>` : ''}
     <h1>${escapeHtml(title)}</h1>
     <p class="title-ja">${escapeHtml(titleJa)}</p>

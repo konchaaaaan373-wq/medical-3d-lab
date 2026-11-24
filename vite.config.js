@@ -2,11 +2,12 @@ import { defineConfig, loadEnv } from 'vite';
 
 import { SCENES } from './src/catalog/index.js';
 import { CRAWLABLE_SCENES, RELEASED_SCENES } from './src/catalog/release.js';
-import { assetById } from './src/catalog/assetManifest.js';
+import { ASSET_MANIFEST, assetById } from './src/catalog/assetManifest.js';
 import { modelProfileForScene } from './src/catalog/modelProfiles.js';
 import { buildScenePreloads } from './scripts/scene-preloads.js';
 import { publicSceneLoadersPlugin } from './scripts/scene-loaders-plugin.js';
 import { siteMetadataPlugin } from './scripts/site-plugin.js';
+import { withheldAssetsPlugin } from './scripts/withheld-assets-plugin.js';
 import clinicalReviews from './docs/clinical-reviews/registry.json' with { type: 'json' };
 
 export default defineConfig(({ mode }) => {
@@ -59,6 +60,14 @@ export default defineConfig(({ mode }) => {
       publicSceneLoadersPlugin({
         scenes: SCENES,
         released: RELEASED_SCENES,
+        enabled: !allowPreview,
+      }),
+      // The other half of "not delivered": `public/` is copied whole, so the
+      // meshes of a model the release holds back are removed after the copy.
+      withheldAssetsPlugin({
+        assets: ASSET_MANIFEST,
+        released: RELEASED_SCENES,
+        profileFor: modelProfileForScene,
         enabled: !allowPreview,
       }),
       siteMetadataPlugin({

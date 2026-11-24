@@ -74,6 +74,7 @@ export async function mountMriAtlasWorkbench({
   createViewer,
   openingStructureId = null,
   anatomyRoute = null,
+  functionRoute = null,
   onSelection = () => {},
   loaders = { loadAtlasIndex, loadVolume, loadAtlasMeshes },
 } = {}) {
@@ -108,6 +109,13 @@ export async function mountMriAtlasWorkbench({
   let view3d = null;
   let viewer = null;
   let destroyed = false;
+  /**
+   * What a structure is for, when the shell can supply a reader — which it can
+   * only where the higher-brain-function model is itself open (R-2026-11-24-02).
+   * This screen has no opinion about function; it prints what that model says,
+   * with that model's own caveat, or nothing.
+   */
+  let readFunction = null;
 
   // ------------------------------------------------------------------ DOM
   const status = el('p', { class: 'mri-status', role: 'status', 'aria-live': 'polite' }, dual('Loading the MRI volume…', 'MRI ボリュームを読み込んでいます…'));
@@ -442,6 +450,23 @@ export async function mountMriAtlasWorkbench({
             el('span', { class: 'mri-info-link-note' }, dual(MRI_ATLAS_COPY.linkByName.en, MRI_ATLAS_COPY.linkByName.ja)),
           ])
         : null,
+      functionSection(structure, link),
+    ].filter(Boolean));
+  }
+
+  /** The function model's reading of this structure, or null. Only for structures both atlases name. */
+  function functionSection(structure, link) {
+    if (!readFunction || !link) return null;
+    const note = readFunction({ atlasName: link.atlasLabel, side: structure.hemi === 'L' ? 'Left' : 'Right' });
+    if (!note) return null;
+    return el('section', { class: 'mri-info-function' }, [
+      el('h3', { class: 'mri-info-function-title' }, dual(note.title, note.titleJa)),
+      el('p', {}, dual(note.carries.text, note.carries.textJa)),
+      el('p', {}, dual(note.ifLost.text, note.ifLost.textJa)),
+      el('p', { class: 'mri-info-link-note' }, dual(note.source.text, note.source.textJa)),
+      functionRoute
+        ? el('p', { class: 'mri-info-link' }, [el('a', { href: functionRoute }, dual('Trace the routes in the function model →', '機能モデルで経路をたどる →'))])
+        : null,
     ].filter(Boolean));
   }
 
@@ -521,6 +546,11 @@ export async function mountMriAtlasWorkbench({
     moveToMm: (mm, options) => moveTo(mmToVoxel(grid, mm), options),
     setMode,
     setModality,
+    /** Hand the workbench a reader of structure → function (see `readFunction`). */
+    setFunctionReader(reader) {
+      readFunction = typeof reader === 'function' ? reader : null;
+      renderInfo();
+    },
     get viewer() { return viewer; },
     get view3d() { return view3d; },
     pause: () => viewer?.stop(),

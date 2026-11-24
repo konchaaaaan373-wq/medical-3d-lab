@@ -155,6 +155,11 @@ export const BETA_ORGANS = Object.freeze(['brain', 'heart', 'lungs', 'liver']);
  */
 export const BETA_ANATOMY_CANDIDATES = Object.freeze([
   'brain-anatomy',
+  // Added 2026-11-24 for the brain launch (ADR `adr-2026-11-24-brain-launch.md`).
+  // An anatomy scene in the strict sense this list means: a standard-brain MRI
+  // and the labels on it, with no statement about function — its profile's
+  // mechanism level is `none`, and `anatomyClaimProblems` holds it to that.
+  'mri-atlas',
   'heart-anatomy',
   // Added 2026-09-16, on the repository owner's decision to widen the beta a
   // few organs at a time rather than all at once. These three are procedural:
@@ -333,6 +338,64 @@ export const DECISION_ROLES = Object.freeze(['engineering', 'anatomy-expert', 'c
  * with. `src/catalog/modelRevisions.js` says what is in scope and why.
  */
 export const BETA_PUBLICATION_DECISIONS = Object.freeze([
+  Object.freeze({
+    sceneId: 'mri-atlas',
+    decidedAt: '2026-11-24',
+    decidedBy: Object.freeze({
+      name:
+        "Claude Code (AI engineering agent), preparing the brain launch the repository owner directed on 2026-11-24; it takes effect only if the owner merges the pull request that carries it",
+      role: 'engineering',
+    }),
+    record: 'docs/beta-publication/mri-atlas.md',
+    assetRevisions: Object.freeze({
+      'mri-icbm152-t1': 'f9ef53ec96b483c3584dcc03ac2cb1322485c6c9d3e3dacdc6eb313cbdd24430',
+      'mri-icbm152-t2': 'cc8ba7ee6f96d6b07b1df2d9f040d52efe950b3cebe3290d0a5bbe6326755489',
+      'mri-cerebra-labels': '33260a01ffdfce839945739efcac3fe2ec7019969739bbd9264bf5b2617a403e',
+      'mri-cerebra-surfaces': '0794d7c2e1332d818caf34d87e2c250cdea7bc3882ac93e14e1c62ed4212f4be',
+    }),
+    sceneRevision: Object.freeze({ cardRevision: 1, modelDigest: '794106dbc6162e4b' }),
+    scope: Object.freeze({
+      structures: Object.freeze([
+        'Left hippocampus',
+        'Right caudate',
+        'Left lateral ventricle',
+        'Right precentral gyrus',
+        'Right putamen',
+      ]),
+      views: Object.freeze([
+        'axial, coronal and sagittal planes in both display conventions (radiological and neurological), with their edge letters',
+        'the 3D model from its left and from its right, and the opening oblique',
+        'the linked, 3D-only and MRI-only layouts at 1440x900, and the phone layout at 390x844',
+      ]),
+      interactions: Object.freeze([
+        'choosing a structure from the list puts the crosshair inside its own label, on the correct side of the screen',
+        'a click on a plane selects the structure under it and the 3D model highlights the same one',
+        'a click on the 3D model selects a structure of the hemisphere facing the camera and the planes move into it',
+        'the wheel steps one plane and leaves the other two on their slice',
+        'T2 loads on request; brightness, contrast, label opacity and zoom change the display and nothing else',
+        'a link naming a structure opens on it, and the address follows the selection',
+        'in a browser with no WebGL the three planes still open and say the 3D view is unavailable',
+      ]),
+    }),
+    evidence: Object.freeze([
+      'scripts/check-mri-atlas.mjs',
+      'scripts/build-mri-atlas.mjs',
+      'tests/mri-atlas-model.test.js',
+      'tests/mri-atlas-assets.test.js',
+      'tests/mri-atlas-data.test.js',
+      'docs/asset-qa/mri-atlas.md',
+    ]),
+    unverified: Object.freeze([
+      'no anatomist or radiologist has judged the labels as drawn, their Japanese names or the extracted surfaces — the borders are the CerebrA authors\u2019 manual correction, which is their review and not one of this product',
+      'no clinician has reviewed this scene; the registry records it as pending',
+      'left and right rest on the atlas\u2019s own hemisphere table and the NIfTI headers: a symmetric template offers no independent anatomical landmark to confirm a side against',
+      'the inputs were retrieved from TemplateFlow and not compared with the publishers\u2019 own downloads, and CerebrA\u2019s CC0 statement was not read at its source (F-281)',
+      '98 of the 102 structures were not individually opened in a browser',
+      'one browser engine on software GL, desktop and an emulated phone: no real phone, Safari, Firefox or screen reader (F-282)',
+      'no reader with a colour-vision difference has looked at the label overlay (F-283)',
+      'time to first image on a real mobile connection was not measured (F-284)',
+    ]),
+  }),
   Object.freeze({
     sceneId: 'lung-anatomy',
     decidedAt: '2026-09-21',

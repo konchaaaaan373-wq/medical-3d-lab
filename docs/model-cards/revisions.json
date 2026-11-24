@@ -12,6 +12,21 @@
     "cardUpdatedAt": "2026-09-21"
   },
   {
+    "sceneId": "mri-atlas",
+    "card": "docs/model-cards/mri-atlas.md",
+    "modelSources": [
+      "src/models/mriAtlas.js",
+      "src/data/mriAtlas.js",
+      "src/scenes/nervous/scenes/mriAtlas/MriAtlasWorkbench.js",
+      "src/scenes/nervous/scenes/mriAtlas/SliceView.js",
+      "src/scenes/nervous/scenes/mriAtlas/AtlasView3D.js",
+      "public/assets/mri/atlas.json"
+    ],
+    "cardRevision": 1,
+    "modelDigest": "794106dbc6162e4b",
+    "cardUpdatedAt": "2026-11-24"
+  },
+  {
     "sceneId": "heart-anatomy",
     "card": "docs/model-cards/heart-anatomy.md",
     "modelSources": [

@@ -8,8 +8,8 @@
 //
 // A build takes under ten seconds. Behind a proxy, --fetch needs
 // NODE_USE_ENV_PROXY=1 (Node >= 22.21): Node's fetch does not read HTTPS_PROXY
-// by itself. .cache/ is not ignored by this script's doing — add it to
-// .gitignore before using --fetch in a checkout you commit from.
+// by itself. .cache/ is in .gitignore: the inputs are third-party binaries and
+// never belong in this repository — only what this script derives from them.
 //
 // What it is: an offline, zero-dependency conversion of two published things —
 // the MNI ICBM152 2009c Nonlinear Symmetric T1w/T2w template (1 mm) and the

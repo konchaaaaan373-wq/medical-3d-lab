@@ -14,6 +14,30 @@ Not yet tagged. Gate 0 and most of Gate 1 are complete; the remaining blockers
 are branch protection on `main`, and the parts of device testing that need a
 person: Safari, Firefox, touch and a screen reader.
 
+### The brain launch — 3Dモデルラボ
+
+**What is published changes.** This release narrows the product to the brain.
+The heart, lung and liver anatomy and the cardiac-output model are no longer
+published; nothing was deleted, and their records are kept so they can return.
+
+- **A new name and mark.** BYOKI MOTION is now 3Dモデルラボ, with a pink
+  line-drawn brain as its mark, on a warm off-white page.
+- **Three ways in**: 高次脳機能 (higher brain function), 脳解剖 (brain anatomy)
+  and MRIアトラス (MRI atlas), from the header and the front page.
+- **New model: MRI atlas of the brain** (`mri-atlas`, alpha, **no medical
+  review yet** — it says so on screen). A standard-brain MRI (MNI ICBM 152
+  2009c, T1 and T2) in axial, coronal and sagittal planes with a shared
+  crosshair, the CerebrA labels as a coloured overlay, and the same 102
+  structures in 3D. Choose a structure in 3D and the planes move to it; choose
+  it on a plane and the 3D model highlights it. Anatomy only: it makes no
+  statement about function, and it is not a patient's image.
+- **Higher brain function has an entrance, and its model is still closed.**
+  `#/functions` lists the learning themes as questions. The model behind them
+  is unpublished until its medical review is recorded, and the page says so.
+- **Not clinically reviewed**: nothing in this release has a clinician's
+  sign-off. The brain anatomy and the MRI atlas are published as alpha with
+  that stated.
+
 ### Patient explanation and medical education, as two ways into one model
 
 - **Two purposes, named as uses.** A model that has a reviewed patient

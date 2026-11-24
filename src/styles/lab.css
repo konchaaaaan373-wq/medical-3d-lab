@@ -356,3 +356,21 @@ html[data-route='locked'] .brand-icon { color: var(--brand-pink); }
   .lab-cta-arrow,
   .lab-area-go { transition: none; }
 }
+
+/* ------------------------------------- anatomy panel: the way to the MRI */
+
+.anatomy-related {
+  display: grid;
+  gap: 2px;
+  margin: 10px 0 0;
+  font-size: 13px;
+}
+
+.anatomy-related-link {
+  justify-self: start;
+  min-height: 24px;
+  font-weight: 600;
+  color: var(--accent);
+}
+
+.anatomy-related-note { font-size: 12px; color: var(--ink-faint); }

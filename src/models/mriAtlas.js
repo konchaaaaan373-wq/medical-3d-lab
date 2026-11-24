@@ -89,10 +89,13 @@ export function mmToVoxel(grid, mm) {
 export const clampVoxel = (grid, voxel) =>
   voxel.map((value, axis) => Math.min(grid.dims[axis] - 1, Math.max(0, Math.round(value))));
 
+/** −v without a negative zero: a coordinate of −0 compares unequal to 0 in a strict test and prints as "-0". */
+const negate = (value) => (value === 0 ? 0 : -value);
+
 /** MNI (x right, y anterior, z superior) → three.js (x right, y up, z toward the viewer). A rotation. */
-export const mniToScene = ([x, y, z]) => [x, z, -y];
+export const mniToScene = ([x, y, z]) => [x, z, negate(y)];
 /** Its inverse. */
-export const sceneToMni = ([x, y, z]) => [x, -z, y];
+export const sceneToMni = ([x, y, z]) => [x, negate(z), y];
 
 /** Which side of the midline a point in MNI space is on. The one definition of "right". */
 export function sideOfMm([x], { midlineToleranceMm = 0 } = {}) {

@@ -198,11 +198,37 @@ export function createSliceView({ plane: planeName, label, onPick, onStep, onZoo
   canvas.addEventListener('pointerleave', () => onHover?.(null));
   // Not passive: the wheel moves through slices, and the page must not scroll
   // under it. Ctrl/⌘ + wheel (which is also what a trackpad pinch sends) zooms.
+  //
+  // A mouse wheel sends one large delta per notch and a notch is one slice —
+  // the precision a reader expects from an image viewer. A trackpad sends a
+  // stream of small deltas; stepping on each would cross the whole brain in one
+  // swipe, so those are accumulated and a slice is 24 px of travel.
+  let travelled = 0;
+  let zoomTravelled = 0;
+  const NOTCH = 50;
+  const TRACKPAD_STEP = 24;
   canvas.addEventListener('wheel', (event) => {
     event.preventDefault();
-    const direction = event.deltaY > 0 ? -1 : 1;
-    if (event.ctrlKey || event.metaKey) onZoom(direction);
-    else onStep(planeName, direction);
+    const delta = event.deltaMode === 1 ? event.deltaY * 16 : event.deltaY;
+    const direction = delta > 0 ? -1 : 1;
+    if (event.ctrlKey || event.metaKey) {
+      zoomTravelled += Math.abs(delta);
+      if (Math.abs(delta) >= NOTCH || zoomTravelled >= TRACKPAD_STEP) {
+        zoomTravelled = 0;
+        onZoom(direction);
+      }
+      return;
+    }
+    if (Math.abs(delta) >= NOTCH) {
+      travelled = 0;
+      onStep(planeName, direction);
+      return;
+    }
+    travelled += delta;
+    while (Math.abs(travelled) >= TRACKPAD_STEP) {
+      onStep(planeName, travelled > 0 ? -1 : 1);
+      travelled -= Math.sign(travelled) * TRACKPAD_STEP;
+    }
   }, { passive: false });
   canvas.addEventListener('keydown', (event) => {
     if (!last) return;

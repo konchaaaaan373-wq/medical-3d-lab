@@ -345,7 +345,8 @@
 
   .mri-mode { min-height: 44px; }
   .mri-mode.is-list { display: inline-flex; align-items: center; border-radius: 999px; }
-  .mri-chip { min-height: 44px; }
+  .mri-chip { min-height: 44px; min-width: 44px; }
+  .mri-mode { min-width: 44px; }
   .mri-chip.is-icon { width: 44px; }
   .mri-structure { min-height: 44px; }
   .mri-control-row.is-sliders { grid-template-columns: minmax(0, 1fr); gap: 4px; }
@@ -370,3 +371,9 @@
 @media (prefers-reduced-motion: reduce) {
   .mri-list { transition: none; }
 }
+
+/* The function model's reading, where that model is open. Set apart: it is a
+   different model speaking, with its own caveat. */
+.mri-info-function { margin-top: 10px; padding-top: 10px; border-top: 1px solid var(--atlas-rule); font-size: 13px; }
+.mri-info-function-title { margin: 0 0 4px; font-size: 13px; font-weight: 700; }
+.mri-info-function p { margin: 0 0 4px; }

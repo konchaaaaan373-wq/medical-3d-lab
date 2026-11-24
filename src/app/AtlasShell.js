@@ -1,7 +1,7 @@
-import { SCENES, sceneById as catalogueSceneById, sceneRoute } from '../catalog/index.js';
+import { SCENES, sceneById as catalogueSceneById, sceneRoute, structureFunctionScene } from '../catalog/index.js';
 import { RELEASED_SCENES } from '../catalog/release.js';
 import { launchAreaById } from '../catalog/launch.js';
-import { betaUnlocked, routeOpen } from './releaseGate.js';
+import { betaUnlocked, routeOpen, sceneOpen } from './releaseGate.js';
 import { resolveRoute, structureOf } from './router.js';
 import { hashWithParam } from './hashQuery.js';
 import { resolveSceneId, systemsWithScenes } from './sceneRegistry.js';
@@ -77,6 +77,14 @@ export async function mountAtlasShell({ scene, meta, entry, ui }) {
   const anatomyScene = anatomy ? catalogueSceneById(anatomy.sceneId) : null;
   const anatomyOpen = anatomyScene && routeOpen(resolveRoute(sceneRoute(anatomyScene)));
 
+  // What a structure is *for* comes from a different model with its own card
+  // and its own review. It is shown exactly where that model may be shown —
+  // wherever its scene is open — and in a production build that is nowhere
+  // until the owner opens it. The same arrangement the anatomy scene uses
+  // (`App.js`), reached by capability, not by a scene id written here.
+  const functionScene = structureFunctionScene();
+  const functionOpen = Boolean(functionScene) && sceneOpen(functionScene);
+
   const workbench = await scene.mountWorkbench({
     host,
     createViewer: (container) => {
@@ -86,6 +94,7 @@ export async function mountAtlasShell({ scene, meta, entry, ui }) {
     },
     openingStructureId: structureOf(window.location.hash),
     anatomyRoute: anatomyOpen ? sceneRoute(anatomyScene) : null,
+    functionRoute: functionOpen ? sceneRoute(functionScene) : null,
     // The address follows the selection, so a structure can be linked to —
     // replaced, not pushed: twenty clicks are not twenty steps of Back.
     onSelection: (structure) => {
@@ -93,6 +102,13 @@ export async function mountAtlasShell({ scene, meta, entry, ui }) {
       if (next !== window.location.hash) window.history.replaceState(window.history.state, '', next);
     },
   });
+
+  if (functionOpen) {
+    functionScene.load()
+      .then((module) => workbench.setFunctionReader(module.functionNoteForSelection ?? null))
+      // A build that strips the scene rejects here: the section never fills in.
+      .catch(() => {});
+  }
 
   // The workbench's own bar — the view tabs — stands beside the title rather
   // than under it: on this page height is what the planes are made of.

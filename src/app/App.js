@@ -5,6 +5,9 @@ import { SCENES, structureFunctionScene } from '../catalog/index.js';
 import { RELEASED_SCENES } from '../catalog/release.js';
 import { betaUnlocked, routeOpen, sceneOpen } from './releaseGate.js';
 import { hashWithView, resolveRoute, structureOf, viewOf } from './router.js';
+import { launchAreaById } from '../catalog/launch.js';
+import { pageTitle } from '../data/brand.js';
+import { mriStructureIdForAnatomyId } from '../catalog/brainAtlasLinks.js';
 import { hasDataOnlySurface } from './dataView.js';
 import { installDeparture } from './departure.js';
 import { openingMessage } from './destinationName.js';
@@ -124,7 +127,9 @@ export async function createApp({ stage, ui, onRetryModel = null }) {
     titleJa: entry?.titleJa ?? SceneClass.meta.titleJa,
     ...(viewTrail ? { viewTrail } : {}),
   };
-  document.title = `${meta.title} — medical-3d-lab`;
+  // The tab reads as the product's other pages do. It said `— medical-3d-lab`,
+  // the repository's name, through two renames of the product.
+  document.title = pageTitle(meta.titleJa ?? meta.title);
   ui.dataset.scene = meta.id;
   // A declared arrangement, for scenes whose subject is not a progression — see
   // `src/styles/experiment-layout.css`. Absent, the shell is laid out as it
@@ -1120,6 +1125,14 @@ export async function createApp({ stage, ui, onRetryModel = null }) {
    * Nothing in `src/app/` imports a medical model, and this is why.
    */
   let readStructureFunction = null;
+  // Which scene is "the anatomy atlas" and which "the MRI atlas" is the
+  // catalogue's statement (`launch.js`), and whether the link may be offered is
+  // the release's: a link to a closed scene is an offer the page cannot keep.
+  const mriArea = launchAreaById('mri');
+  const mriAtlasRoute =
+    isAnatomyScene && entry?.id === launchAreaById('anatomy')?.sceneId && mriArea?.route && routeOpen(resolveRoute(mriArea.route))
+      ? mriArea.route
+      : null;
   const anatomyInfo = scene.getAnatomySelection
     ? createAnatomyInfoPanel(scene, {
         onPreferredView: applyInspectionView,
@@ -1140,6 +1153,24 @@ export async function createApp({ stage, ui, onRetryModel = null }) {
         // here: a surface naming a withheld scene is a second release decision.
         // See `src/app/anatomyFunctionLink.js`.
         functionNote: offersStructureFunctions ? ((selection) => readStructureFunction?.(selection) ?? null) : null,
+        // The same named structure on MRI, where both atlases draw it as one
+        // whole (`src/catalog/brainAtlasLinks.js`) and the MRI atlas is open.
+        // Said to be a link by name: the two atlases are different sources with
+        // different parcellations, and this is not a coordinate correspondence.
+        relatedLink: mriAtlasRoute
+          ? (selection) => {
+              const structure = mriStructureIdForAnatomyId(selection.id);
+              return structure
+                ? {
+                    href: `${mriAtlasRoute}?structure=${structure}`,
+                    text: 'See it on MRI →',
+                    textJa: 'MRI で見る →',
+                    note: 'The same name in the MRI atlas — a link by name, not by coordinates.',
+                    noteJa: 'MRI アトラスの同名の構造へ。名称による対応です（座標の対応ではありません）。',
+                  }
+                : null;
+            }
+          : null,
       })
     : null;
 

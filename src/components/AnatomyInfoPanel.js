@@ -67,7 +67,7 @@ export function anatomyStatusText(status) {
  */
 export function createAnatomyInfoPanel(
   scene,
-  { onPreferredView, heading = true, attribution = [], functionNote = null } = {}
+  { onPreferredView, heading = true, attribution = [], functionNote = null, relatedLink = null } = {}
 ) {
   const swatch = el('span', { class: 'anatomy-selection-swatch', 'aria-hidden': 'true' });
   const titleEn = el('strong', { class: 'anatomy-name lang-en', text: 'Select a structure' });
@@ -104,6 +104,28 @@ export function createAnatomyInfoPanel(
   ]);
   functionSection.hidden = true;
 
+  // A way to the same named structure somewhere else (the MRI atlas), when the
+  // caller knows of one for this selection. The panel does not know where it
+  // leads; it shows what it is handed, and nothing when it is handed nothing.
+  const relatedAnchor = el('a', { class: 'anatomy-related-link', href: '#/' });
+  const relatedNoteEn = el('span', { class: 'anatomy-related-note lang-en', text: '' });
+  const relatedNoteJa = el('span', { class: 'anatomy-related-note lang-ja', text: '' });
+  const relatedSection = el('p', { class: 'anatomy-related' }, [relatedAnchor, relatedNoteEn, relatedNoteJa]);
+  relatedSection.hidden = true;
+  const renderRelated = (selection) => {
+    if (!relatedLink) return;
+    const link = selection ? relatedLink(selection) : null;
+    relatedSection.hidden = !link;
+    if (!link) return;
+    relatedAnchor.setAttribute('href', link.href);
+    relatedAnchor.replaceChildren(
+      el('span', { class: 'lang-en', text: link.text }),
+      el('span', { class: 'lang-ja', text: link.textJa })
+    );
+    relatedNoteEn.textContent = link.note ?? '';
+    relatedNoteJa.textContent = link.noteJa ?? '';
+  };
+
   const element = el('section', { class: 'panel anatomy-info', role: 'status', 'aria-live': 'polite' }, [
     heading
       ? el('div', { class: 'anatomy-heading-row' }, [
@@ -116,6 +138,7 @@ export function createAnatomyInfoPanel(
     noteEn,
     noteJa,
     functionNote ? functionSection : null,
+    relatedLink ? relatedSection : null,
     el('div', { class: 'anatomy-footer' }, [
       countEn,
       countJa,
@@ -148,6 +171,7 @@ export function createAnatomyInfoPanel(
 
   const update = (selection) => {
     renderFunction(selection);
+    renderRelated(selection);
     if (!selection) {
       titleEn.textContent = 'Select a structure';
       titleJa.textContent = '部位を選択してください';

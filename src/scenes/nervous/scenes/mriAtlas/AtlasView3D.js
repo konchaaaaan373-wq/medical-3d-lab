@@ -216,6 +216,8 @@ export function createAtlasView3D({ viewer, meshRoot, structures, grid, onPick }
     setState,
     resetView: applyHome,
     projectMm,
+    /** How a structure is currently drawn: selected | shown | ghost | hidden. For a check. */
+    displayOf: (label) => byLabel.get(label)?.userData.display ?? null,
     /** A named view, by where the camera stands in MNI terms. */
     setView(name) {
       // Directions in MNI terms: where the camera stands relative to the brain.

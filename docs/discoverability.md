@@ -195,3 +195,47 @@ That is the other reason they are committed rather than built, and the reason
   matches the public catalogue.
 - `npm run cards:check` — that the committed rasters still match the catalogue
   they were drawn from.
+
+## 7. The brain launch (2026-11-24) — what changed, and the plan for topic pages
+
+**What changed now.** The site's title, description, Open Graph tags and
+JSON-LD read `src/data/brand.js`, so they followed the rename to 3Dモデルラボ
+without an edit here. The published set is two scenes — `brain-anatomy` and
+`mri-atlas` — so the build emits `/s/brain-anatomy/` and `/s/mri-atlas/`, and
+the sitemap lists those and the root. **The four pages of the scenes the
+launch withdrew (`/s/heart-anatomy/`, `/s/lung-anatomy/`, `/s/liver-anatomy/`,
+`/s/cardiac-output/`) are no longer emitted and will answer 404.** No redirect
+is configured: sending a reader who searched for the heart to a brain page is a
+worse answer than "not here" (F-288 holds the decision).
+
+`mri-atlas` carries the search terms a learner would use as catalogue
+`conditions` (脳MRI・MRI解剖・断面解剖・軸位断・冠状断・矢状断・標準脳・MNI152),
+which the scene page prints.
+
+**What is not crawlable yet, and should be.** The launch's most searchable
+subjects are below the scene level, and a hash query is invisible to a crawler:
+
+| Subject a person searches | Where it lives today | Crawlable? |
+| --- | --- | --- |
+| 海馬 MRI、尾状核 位置、… (a structure) | `#/mri-atlas?structure=hippocampus-l` | No — one page for 102 structures |
+| 失語、記憶、半側空間無視、遂行機能 (a theme) | `#/functions?theme=language` | No — and the page is questions only |
+
+**The plan, not built in this change:**
+
+1. **Structure pages** — `/s/mri-atlas/<structure>/`, one per *bilateral*
+   structure (51, not 102), generated from `public/assets/mri/atlas.json` and
+   `src/data/mriAtlas.js`: both names, the group, the note where there is one,
+   the MNI coordinate of the interior point, a static rendering of the three
+   planes at that point, and a link that opens the atlas on it. Everything on
+   such a page is anatomy the published scene already states, so it needs no
+   new publication decision — but the static images are new derived assets and
+   belong in the asset manifest.
+2. **Theme pages** — `/s/functions/<theme>/`. **Only after the function model is
+   published.** A theme page that ranked for 「失語」 would have to say something
+   about aphasia, and what this product may say about aphasia is exactly what
+   the closed model's review governs (R-2026-11-24-02). Until then the theme
+   exists as a question on `#/functions` and nowhere a crawler reads.
+3. **Per-structure link previews** are not planned: 51 more committed images
+   for a marginal gain.
+
+Both are recorded as F-280.

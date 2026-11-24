@@ -89,11 +89,32 @@ test('the manifest is the whole list of shipped geometry, and it is short', () =
   // it is that adding a third-party binary to this repository is a decision
   // with a record behind it, so the list is written down here and a new entry
   // has to be argued for in the same commit that appears in this diff.
+  //
+  // 2026-11-24: four entries for the MRI atlas — the T1 and T2 templates and
+  // the CerebrA label volume (the first `ASSET_KIND.VOLUME` entries: voxels,
+  // not geometry) and the surfaces extracted from those labels. Each is its own
+  // entry because each has its own source file, hash and licence line
+  // (docs/asset-qa/mri-atlas.md).
   assert.deepEqual(ASSET_MANIFEST.map((asset) => asset.assetId), [
+    'mri-icbm152-t1',
+    'mri-icbm152-t2',
+    'mri-cerebra-labels',
+    'mri-cerebra-surfaces',
     'brain-atlas-glb',
     'hubmap-vh-m-heart',
     'hubmap-vh-m-blood-vasculature',
   ]);
+  // A volume is voxels and a mesh is geometry; the kind is what a reader of the
+  // manifest is told, so it is pinned per entry rather than assumed from a name.
+  assert.deepEqual(
+    Object.fromEntries(ASSET_MANIFEST.filter((asset) => asset.assetId.startsWith('mri-')).map((asset) => [asset.assetId, asset.kind])),
+    {
+      'mri-icbm152-t1': ASSET_KIND.VOLUME,
+      'mri-icbm152-t2': ASSET_KIND.VOLUME,
+      'mri-cerebra-labels': ASSET_KIND.VOLUME,
+      'mri-cerebra-surfaces': ASSET_KIND.MESH,
+    }
+  );
 });
 
 test('the heart records a derivative, and does not pass off the publisher\'s bytes as what ships', () => {

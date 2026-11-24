@@ -12,6 +12,19 @@
 
 ## 1. 何を公開しているか
 
+> **2026-11-24 から、公開範囲は脳だけです（ローンチスコープ）。**
+> この節の以下の説明——候補一覧・主張の規則・公開判断記録——は**そのまま有効**で、
+> その上に `src/catalog/release.js` の `LAUNCH_SCOPE` が 1 枚重なっています。
+> `beta` チャネルの方針は `launchPublicationProblems` = スコープの判定 ＋ `betaPublicationProblems`。
+> 心臓・肺・肝臓の解剖と `cardiac-output` は、記録が揃ったまま**スコープの外**にあり、
+> production ビルドには入りません。公開しているのは `brain-anatomy` と、この日に加えた
+> `mri-atlas`（解剖の主張のみ。判断記録は
+> [`beta-publication/mri-atlas.md`](beta-publication/mri-atlas.md)）です。
+> `higher-brain-function` は閉じたままで、入口の文書 `#/functions` だけが開いています。
+> 範囲を広げるのは `LAUNCH_SCOPE.organs` の編集で、所有者の判断です
+> （[ADR 2026-11-24](architecture/adr-2026-11-24-brain-launch.md)、R-2026-11-24-01）。
+> **件数はここには書きません**——`npm run verify:site` が `publishes N` を出します。
+
 **公開βは「3D の解剖」と、名指しで加えた機序シーンです。**
 範囲は臓器名では固定しません——**ゲートを通ったシーンから 1 つずつ**開きます
 （[ADR 2026-09-14](architecture/adr-2026-09-14-anatomy-beta-by-organ.md)）。
