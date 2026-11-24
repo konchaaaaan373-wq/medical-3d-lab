@@ -31,7 +31,7 @@
 .explorer-filter-chip:focus-visible,
 .explorer-filter-select:focus-visible,
 .explorer-search-clear:focus-visible {
-  outline: 3px solid rgba(8, 115, 131, 0.28);
+  outline: 3px solid rgba(166, 47, 97, 0.28);
   outline-offset: 2px;
 }
 
@@ -69,7 +69,7 @@
 }
 
 .explorer-filter-chip:hover {
-  border-color: rgba(8, 115, 131, 0.4);
+  border-color: rgba(166, 47, 97, 0.4);
   color: var(--explorer-accent-strong, var(--ink));
 }
 

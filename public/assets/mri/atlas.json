@@ -1,0 +1,4332 @@
+{
+ "schema": 1,
+ "grid": {
+  "dims": [
+   193,
+   229,
+   193
+  ],
+  "originMm": [
+   -96,
+   -132,
+   -78
+  ],
+  "spacingMm": [
+   1,
+   1,
+   1
+  ],
+  "orientation": "RAS+",
+  "order": "x-fastest"
+ },
+ "volumes": {
+  "t1": {
+   "file": "t1.u8.gz",
+   "sha256": "e56752248cadf83fc3979e4d65040f5c2273f650e557d4a814b8744b0dc724d6",
+   "bytes": 8530021,
+   "encoding": "gzip",
+   "dtype": "uint8",
+   "intensityScale": {
+    "sourceMin": 0,
+    "sourceMax": 93,
+    "sourceMaxIs": "p99.9 of in-head voxels",
+    "formula": "u8 = round(255 * min(source, sourceMax) / sourceMax)",
+    "sourceRange": [
+     0,
+     98
+    ],
+    "sourceLevelsUsed": 99
+   },
+   "background": {
+    "zeroed": true,
+    "rule": "source <= noiseCeiling AND connected to the volume edge through such voxels; skipped if that region touches the brain mask",
+    "noiseCeiling": 7,
+    "noiseMode": 4,
+    "voxelsOutsideHead": 3875521,
+    "voxelsChanged": 3716806,
+    "outsideVoxelsInBrainMask": 0
+   }
+  },
+  "t2": {
+   "file": "t2.u8.gz",
+   "sha256": "363653b17545c47c651054c2b52dc24606f63bc683bb0537cd90b6621bc315bd",
+   "bytes": 8530021,
+   "encoding": "gzip",
+   "dtype": "uint8",
+   "intensityScale": {
+    "sourceMin": 0,
+    "sourceMax": 100,
+    "sourceMaxIs": "p99.9 of in-head voxels",
+    "formula": "u8 = round(255 * min(source, sourceMax) / sourceMax)",
+    "sourceRange": [
+     0,
+     104
+    ],
+    "sourceLevelsUsed": 105
+   },
+   "background": {
+    "zeroed": true,
+    "rule": "source <= noiseCeiling AND connected to the volume edge through such voxels; skipped if that region touches the brain mask",
+    "noiseCeiling": 4,
+    "noiseMode": 3,
+    "voxelsOutsideHead": 3969341,
+    "voxelsChanged": 3701413,
+    "outsideVoxelsInBrainMask": 0
+   }
+  },
+  "labels": {
+   "file": "labels.u8.gz",
+   "sha256": "fdcd2388fb79ab7e5ed0fecdb1a83899d585ce515db0092a376fc21951ab68d6",
+   "bytes": 8530021,
+   "encoding": "gzip",
+   "dtype": "uint8",
+   "labelRange": [
+    0,
+    102
+   ],
+   "labelledVoxels": 1169666,
+   "labelledVoxelsOutsideBrainMask": 4531
+  }
+ },
+ "surface": {
+  "file": "cerebra.glb",
+  "sha256": "0794d7c2e1332d818caf34d87e2c250cdea7bc3882ac93e14e1c62ed4212f4be",
+  "bytes": 2840260,
+  "meshes": 102,
+  "vertices": 98246,
+  "triangles": 198298,
+  "units": "mm",
+  "frame": "MNI RAS+ (x right, y anterior, z superior); not rotated into a y-up viewer frame",
+  "winding": "counter-clockwise seen from outside"
+ },
+ "sides": {
+  "convention": "RAS+: x > 0 mm is the subject's right",
+  "rightLabels": [
+   1,
+   51
+  ],
+  "leftLabels": [
+   52,
+   102
+  ],
+  "leftIsRightPlus": 51,
+  "midlinePlaneVoxelsBelongTo": "R",
+  "note": "Midline structures (third and fourth ventricle, brainstem, vermal lobules, optic chiasm) are also split into an R and an L label at x = 0; the x = 0 voxel plane itself carries the R label."
+ },
+ "sources": [
+  {
+   "file": "tpl-MNI152NLin2009cSym_res-1_T1w.nii.gz",
+   "url": "https://templateflow.s3.amazonaws.com/tpl-MNI152NLin2009cSym/tpl-MNI152NLin2009cSym_res-1_T1w.nii.gz",
+   "sha256": "317e112c49d086b971e4a26cba853b041ee210faf750a6fe02e04f15909b6b6b"
+  },
+  {
+   "file": "tpl-MNI152NLin2009cSym_res-1_T2w.nii.gz",
+   "url": "https://templateflow.s3.amazonaws.com/tpl-MNI152NLin2009cSym/tpl-MNI152NLin2009cSym_res-1_T2w.nii.gz",
+   "sha256": "1c8750fabbbe132aa582eec9f923ed7493da66be6d5ec3902caf6eefe6a2bb5a"
+  },
+  {
+   "file": "tpl-MNI152NLin2009cSym_res-1_atlas-CerebrA_dseg.nii.gz",
+   "url": "https://templateflow.s3.amazonaws.com/tpl-MNI152NLin2009cSym/tpl-MNI152NLin2009cSym_res-1_atlas-CerebrA_dseg.nii.gz",
+   "sha256": "c05df93e85b8f1c1446e56f45f0b6a28fdf6e5c8263ea8f365617254bf79ecbf"
+  },
+  {
+   "file": "tpl-MNI152NLin2009cSym_res-1_desc-brain_mask.nii.gz",
+   "url": "https://templateflow.s3.amazonaws.com/tpl-MNI152NLin2009cSym/tpl-MNI152NLin2009cSym_res-1_desc-brain_mask.nii.gz",
+   "sha256": "6fdb662663d5c0a32ae88c51ef126a99de82200f29030a84333c5fcf944d7459"
+  },
+  {
+   "file": "tpl-MNI152NLin2009cSym_atlas-CerebA_dseg.tsv",
+   "url": "https://templateflow.s3.amazonaws.com/tpl-MNI152NLin2009cSym/tpl-MNI152NLin2009cSym_atlas-CerebA_dseg.tsv",
+   "sha256": "cf0332a1c2601b5dd97b2f70423b064c762630d02052629f7112789f2fb6d2f7"
+  },
+  {
+   "file": "LICENSE",
+   "url": "https://templateflow.s3.amazonaws.com/tpl-MNI152NLin2009cSym/LICENSE",
+   "sha256": "5915d16f84d99c3cedc8290b09da72f6f92e5dde1ba1c9859ee186aa952b66a4"
+  }
+ ],
+ "structures": [
+  {
+   "label": 1,
+   "name": "Rostral Middle Frontal",
+   "hemi": "R",
+   "measuredSide": "R",
+   "voxels": 21742,
+   "volumeMm3": 21742,
+   "centroidMm": [
+    38.54,
+    42.75,
+    17.67
+   ],
+   "centroidInsideLabel": true,
+   "interiorPointMm": [
+    39,
+    40,
+    31
+   ],
+   "interiorDepthMm": 4.58,
+   "bboxMm": {
+    "min": [
+     21,
+     2,
+     -19
+    ],
+    "max": [
+     56,
+     67,
+     56
+    ]
+   },
+   "mesh": {
+    "node": "cerebra-1",
+    "vertices": 1077,
+    "triangles": 2194,
+    "gridMm": 2,
+    "isoLevel": 0.5,
+    "volumeRatio": 0.969,
+    "solidCentroidOffsetMm": 0.33
+   }
+  },
+  {
+   "label": 2,
+   "name": "Vermal lobules VI-VII",
+   "hemi": "R",
+   "measuredSide": "R",
+   "voxels": 2324,
+   "volumeMm3": 2324,
+   "centroidMm": [
+    2.88,
+    -69.62,
+    -22.24
+   ],
+   "centroidInsideLabel": true,
+   "interiorPointMm": [
+    3,
+    -70,
+    -22
+   ],
+   "interiorDepthMm": 4,
+   "bboxMm": {
+    "min": [
+     0,
+     -81,
+     -36
+    ],
+    "max": [
+     8,
+     -56,
+     -8
+    ]
+   },
+   "mesh": {
+    "node": "cerebra-2",
+    "vertices": 757,
+    "triangles": 1510,
+    "gridMm": 1,
+    "isoLevel": 0.4625,
+    "volumeRatio": 0.991,
+    "solidCentroidOffsetMm": 0.05
+   }
+  },
+  {
+   "label": 3,
+   "name": "Inferior temporal",
+   "hemi": "R",
+   "measuredSide": "R",
+   "voxels": 16224,
+   "volumeMm3": 16224,
+   "centroidMm": [
+    49.21,
+    -24.77,
+    -29.98
+   ],
+   "centroidInsideLabel": true,
+   "interiorPointMm": [
+    55,
+    -41,
+    -24
+   ],
+   "interiorDepthMm": 5,
+   "bboxMm": {
+    "min": [
+     19,
+     -65,
+     -52
+    ],
+    "max": [
+     68,
+     14,
+     -2
+    ]
+   },
+   "mesh": {
+    "node": "cerebra-3",
+    "vertices": 874,
+    "triangles": 1772,
+    "gridMm": 2,
+    "isoLevel": 0.4625,
+    "volumeRatio": 0.99,
+    "solidCentroidOffsetMm": 0.37
+   }
+  },
+  {
+   "label": 4,
+   "name": "Accumbens Area",
+   "hemi": "R",
+   "measuredSide": "R",
+   "voxels": 553,
+   "volumeMm3": 553,
+   "centroidMm": [
+    8.99,
+    11.8,
+    -7.26
+   ],
+   "centroidInsideLabel": true,
+   "interiorPointMm": [
+    9,
+    10,
+    -8
+   ],
+   "interiorDepthMm": 3.46,
+   "bboxMm": {
+    "min": [
+     4,
+     6,
+     -13
+    ],
+    "max": [
+     14,
+     19,
+     -2
+    ]
+   },
+   "mesh": {
+    "node": "cerebra-4",
+    "vertices": 400,
+    "triangles": 798,
+    "gridMm": 1,
+    "isoLevel": 0.425,
+    "volumeRatio": 0.983,
+    "solidCentroidOffsetMm": 0.05
+   }
+  },
+  {
+   "label": 5,
+   "name": "Inferior Lateral Ventricle",
+   "hemi": "R",
+   "measuredSide": "R",
+   "voxels": 1059,
+   "volumeMm3": 1059,
+   "centroidMm": [
+    31.65,
+    -16.84,
+    -16.2
+   ],
+   "centroidInsideLabel": false,
+   "interiorPointMm": [
+    35,
+    -10,
+    -24
+   ],
+   "interiorDepthMm": 2.24,
+   "bboxMm": {
+    "min": [
+     18,
+     -39,
+     -31
+    ],
+    "max": [
+     39,
+     -4,
+     -2
+    ]
+   },
+   "mesh": {
+    "node": "cerebra-5",
+    "vertices": 789,
+    "triangles": 1608,
+    "gridMm": 1,
+    "isoLevel": 0.3875,
+    "volumeRatio": 0.986,
+    "solidCentroidOffsetMm": 0.64
+   }
+  },
+  {
+   "label": 6,
+   "name": "Pericalcarine",
+   "hemi": "R",
+   "measuredSide": "R",
+   "voxels": 5030,
+   "volumeMm3": 5030,
+   "centroidMm": [
+    11.38,
+    -82.34,
+    6.18
+   ],
+   "centroidInsideLabel": false,
+   "interiorPointMm": [
+    11,
+    -90,
+    3
+   ],
+   "interiorDepthMm": 3.74,
+   "bboxMm": {
+    "min": [
+     4,
+     -101,
+     -10
+    ],
+    "max": [
+     27,
+     -61,
+     19
+    ]
+   },
+   "mesh": {
+    "node": "cerebra-6",
+    "vertices": 400,
+    "triangles": 796,
+    "gridMm": 2,
+    "isoLevel": 0.4625,
+    "volumeRatio": 1.023,
+    "solidCentroidOffsetMm": 0.26
+   }
+  },
+  {
+   "label": 7,
+   "name": "Lateral Orbitofrontal",
+   "hemi": "R",
+   "measuredSide": "R",
+   "voxels": 15042,
+   "volumeMm3": 15042,
+   "centroidMm": [
+    22.61,
+    36,
+    -19.15
+   ],
+   "centroidInsideLabel": true,
+   "interiorPointMm": [
+    27,
+    39,
+    -16
+   ],
+   "interiorDepthMm": 5.2,
+   "bboxMm": {
+    "min": [
+     4,
+     4,
+     -31
+    ],
+    "max": [
+     43,
+     69,
+     3
+    ]
+   },
+   "mesh": {
+    "node": "cerebra-7",
+    "vertices": 714,
+    "triangles": 1450,
+    "gridMm": 2,
+    "isoLevel": 0.4625,
+    "volumeRatio": 0.998,
+    "solidCentroidOffsetMm": 0.25
+   }
+  },
+  {
+   "label": 8,
+   "name": "Rostral Anterior Cingulate",
+   "hemi": "R",
+   "measuredSide": "R",
+   "voxels": 3832,
+   "volumeMm3": 3832,
+   "centroidMm": [
+    5.42,
+    36.24,
+    2.17
+   ],
+   "centroidInsideLabel": false,
+   "interiorPointMm": [
+    5,
+    40,
+    15
+   ],
+   "interiorDepthMm": 4.12,
+   "bboxMm": {
+    "min": [
+     0,
+     8,
+     -15
+    ],
+    "max": [
+     14,
+     47,
+     23
+    ]
+   },
+   "mesh": {
+    "node": "cerebra-8",
+    "vertices": 400,
+    "triangles": 800,
+    "gridMm": 2,
+    "isoLevel": 0.3875,
+    "volumeRatio": 1.02,
+    "solidCentroidOffsetMm": 0.58
+   }
+  },
+  {
+   "label": 9,
+   "name": "Superior Parietal",
+   "hemi": "R",
+   "measuredSide": "R",
+   "voxels": 19333,
+   "volumeMm3": 19333,
+   "centroidMm": [
+    25.87,
+    -61.93,
+    52.4
+   ],
+   "centroidInsideLabel": false,
+   "interiorPointMm": [
+    29,
+    -55,
+    67
+   ],
+   "interiorDepthMm": 4,
+   "bboxMm": {
+    "min": [
+     6,
+     -93,
+     16
+    ],
+    "max": [
+     45,
+     -35,
+     76
+    ]
+   },
+   "mesh": {
+    "node": "cerebra-9",
+    "vertices": 1141,
+    "triangles": 2364,
+    "gridMm": 2,
+    "isoLevel": 0.5,
+    "volumeRatio": 0.974,
+    "solidCentroidOffsetMm": 0.55
+   }
+  },
+  {
+   "label": 10,
+   "name": "Inferior Parietal",
+   "hemi": "R",
+   "measuredSide": "R",
+   "voxels": 26186,
+   "volumeMm3": 26186,
+   "centroidMm": [
+    45.85,
+    -64.43,
+    31.72
+   ],
+   "centroidInsideLabel": true,
+   "interiorPointMm": [
+    45,
+    -56,
+    21
+   ],
+   "interiorDepthMm": 5,
+   "bboxMm": {
+    "min": [
+     27,
+     -93,
+     8
+    ],
+    "max": [
+     68,
+     -35,
+     59
+    ]
+   },
+   "mesh": {
+    "node": "cerebra-10",
+    "vertices": 1147,
+    "triangles": 2334,
+    "gridMm": 2,
+    "isoLevel": 0.5,
+    "volumeRatio": 0.99,
+    "solidCentroidOffsetMm": 0.39
+   }
+  },
+  {
+   "label": 11,
+   "name": "Brainstem",
+   "hemi": "R",
+   "measuredSide": "R",
+   "voxels": 17005,
+   "volumeMm3": 17005,
+   "centroidMm": [
+    6.12,
+    -31.42,
+    -36.29
+   ],
+   "centroidInsideLabel": true,
+   "interiorPointMm": [
+    8,
+    -30,
+    -36
+   ],
+   "interiorDepthMm": 9,
+   "bboxMm": {
+    "min": [
+     0,
+     -51,
+     -78
+    ],
+    "max": [
+     20,
+     -6,
+     2
+    ]
+   },
+   "mesh": {
+    "node": "cerebra-11",
+    "vertices": 2915,
+    "triangles": 5828,
+    "gridMm": 1,
+    "isoLevel": 0.5,
+    "volumeRatio": 0.973,
+    "solidCentroidOffsetMm": 0.22
+   }
+  },
+  {
+   "label": 12,
+   "name": "Lingual",
+   "hemi": "R",
+   "measuredSide": "R",
+   "voxels": 12362,
+   "volumeMm3": 12362,
+   "centroidMm": [
+    13.53,
+    -69.35,
+    -5.14
+   ],
+   "centroidInsideLabel": false,
+   "interiorPointMm": [
+    8,
+    -69,
+    0
+   ],
+   "interiorDepthMm": 4.12,
+   "bboxMm": {
+    "min": [
+     0,
+     -99,
+     -19
+    ],
+    "max": [
+     33,
+     -37,
+     23
+    ]
+   },
+   "mesh": {
+    "node": "cerebra-12",
+    "vertices": 655,
+    "triangles": 1330,
+    "gridMm": 2,
+    "isoLevel": 0.4625,
+    "volumeRatio": 1.008,
+    "solidCentroidOffsetMm": 0.17
+   }
+  },
+  {
+   "label": 13,
+   "name": "Postcentral",
+   "hemi": "R",
+   "measuredSide": "R",
+   "voxels": 18194,
+   "volumeMm3": 18194,
+   "centroidMm": [
+    42.99,
+    -25.03,
+    46.68
+   ],
+   "centroidInsideLabel": false,
+   "interiorPointMm": [
+    53,
+    -21,
+    54
+   ],
+   "interiorDepthMm": 3,
+   "bboxMm": {
+    "min": [
+     5,
+     -59,
+     7
+    ],
+    "max": [
+     70,
+     -2,
+     82
+    ]
+   },
+   "mesh": {
+    "node": "cerebra-13",
+    "vertices": 1369,
+    "triangles": 2884,
+    "gridMm": 2,
+    "isoLevel": 0.4438,
+    "volumeRatio": 1.011,
+    "solidCentroidOffsetMm": 0.8
+   }
+  },
+  {
+   "label": 14,
+   "name": "Transverse Temporal",
+   "hemi": "R",
+   "measuredSide": "R",
+   "voxels": 1882,
+   "volumeMm3": 1882,
+   "centroidMm": [
+    45.66,
+    -19.81,
+    8.26
+   ],
+   "centroidInsideLabel": false,
+   "interiorPointMm": [
+    48,
+    -21,
+    10
+   ],
+   "interiorDepthMm": 2.83,
+   "bboxMm": {
+    "min": [
+     34,
+     -34,
+     -1
+    ],
+    "max": [
+     58,
+     -5,
+     17
+    ]
+   },
+   "mesh": {
+    "node": "cerebra-14",
+    "vertices": 400,
+    "triangles": 802,
+    "gridMm": 2,
+    "isoLevel": 0.3875,
+    "volumeRatio": 1.012,
+    "solidCentroidOffsetMm": 0.17
+   }
+  },
+  {
+   "label": 15,
+   "name": "Medial Orbitofrontal",
+   "hemi": "R",
+   "measuredSide": "R",
+   "voxels": 8884,
+   "volumeMm3": 8884,
+   "centroidMm": [
+    5.34,
+    37.69,
+    -18.06
+   ],
+   "centroidInsideLabel": true,
+   "interiorPointMm": [
+    3,
+    35,
+    -17
+   ],
+   "interiorDepthMm": 4,
+   "bboxMm": {
+    "min": [
+     0,
+     5,
+     -32
+    ],
+    "max": [
+     14,
+     72,
+     -2
+    ]
+   },
+   "mesh": {
+    "node": "cerebra-15",
+    "vertices": 458,
+    "triangles": 920,
+    "gridMm": 2,
+    "isoLevel": 0.4625,
+    "volumeRatio": 0.991,
+    "solidCentroidOffsetMm": 0.36
+   }
+  },
+  {
+   "label": 16,
+   "name": "Paracentral",
+   "hemi": "R",
+   "measuredSide": "R",
+   "voxels": 8238,
+   "volumeMm3": 8238,
+   "centroidMm": [
+    7.67,
+    -26.53,
+    59.71
+   ],
+   "centroidInsideLabel": true,
+   "interiorPointMm": [
+    5,
+    -21,
+    54
+   ],
+   "interiorDepthMm": 4.24,
+   "bboxMm": {
+    "min": [
+     1,
+     -47,
+     38
+    ],
+    "max": [
+     19,
+     -5,
+     79
+    ]
+   },
+   "mesh": {
+    "node": "cerebra-16",
+    "vertices": 491,
+    "triangles": 986,
+    "gridMm": 2,
+    "isoLevel": 0.4438,
+    "volumeRatio": 0.996,
+    "solidCentroidOffsetMm": 0.25
+   }
+  },
+  {
+   "label": 17,
+   "name": "Optic Chiasm",
+   "hemi": "R",
+   "measuredSide": "R",
+   "voxels": 769,
+   "volumeMm3": 769,
+   "centroidMm": [
+    7.1,
+    3.26,
+    -19.58
+   ],
+   "centroidInsideLabel": true,
+   "interiorPointMm": [
+    5,
+    1,
+    -17
+   ],
+   "interiorDepthMm": 2.24,
+   "bboxMm": {
+    "min": [
+     0,
+     -11,
+     -32
+    ],
+    "max": [
+     17,
+     22,
+     -11
+    ]
+   },
+   "mesh": {
+    "node": "cerebra-17",
+    "vertices": 510,
+    "triangles": 1018,
+    "gridMm": 1,
+    "isoLevel": 0.3875,
+    "volumeRatio": 1.011,
+    "solidCentroidOffsetMm": 0.24
+   }
+  },
+  {
+   "label": 18,
+   "name": "Parahippocampal",
+   "hemi": "R",
+   "measuredSide": "R",
+   "voxels": 2708,
+   "volumeMm3": 2708,
+   "centroidMm": [
+    23.75,
+    -31.13,
+    -17.44
+   ],
+   "centroidInsideLabel": true,
+   "interiorPointMm": [
+    19,
+    -37,
+    -14
+   ],
+   "interiorDepthMm": 3.16,
+   "bboxMm": {
+    "min": [
+     11,
+     -44,
+     -32
+    ],
+    "max": [
+     37,
+     -17,
+     -2
+    ]
+   },
+   "mesh": {
+    "node": "cerebra-18",
+    "vertices": 400,
+    "triangles": 812,
+    "gridMm": 2,
+    "isoLevel": 0.3875,
+    "volumeRatio": 1.012,
+    "solidCentroidOffsetMm": 0.23
+   }
+  },
+  {
+   "label": 19,
+   "name": "Amygdala",
+   "hemi": "R",
+   "measuredSide": "R",
+   "voxels": 1650,
+   "volumeMm3": 1650,
+   "centroidMm": [
+    23.39,
+    -4.44,
+    -20.66
+   ],
+   "centroidInsideLabel": true,
+   "interiorPointMm": [
+    25,
+    -4,
+    -21
+   ],
+   "interiorDepthMm": 4.12,
+   "bboxMm": {
+    "min": [
+     12,
+     -33,
+     -31
+    ],
+    "max": [
+     33,
+     0,
+     -7
+    ]
+   },
+   "mesh": {
+    "node": "cerebra-19",
+    "vertices": 578,
+    "triangles": 1152,
+    "gridMm": 1,
+    "isoLevel": 0.425,
+    "volumeRatio": 1.01,
+    "solidCentroidOffsetMm": 0.08
+   }
+  },
+  {
+   "label": 20,
+   "name": "Vermal lobules VIII-X",
+   "hemi": "R",
+   "measuredSide": "R",
+   "voxels": 2568,
+   "volumeMm3": 2568,
+   "centroidMm": [
+    2.83,
+    -61.05,
+    -37.77
+   ],
+   "centroidInsideLabel": true,
+   "interiorPointMm": [
+    4,
+    -68,
+    -42
+   ],
+   "interiorDepthMm": 4.24,
+   "bboxMm": {
+    "min": [
+     0,
+     -76,
+     -49
+    ],
+    "max": [
+     9,
+     -44,
+     -26
+    ]
+   },
+   "mesh": {
+    "node": "cerebra-20",
+    "vertices": 816,
+    "triangles": 1628,
+    "gridMm": 1,
+    "isoLevel": 0.425,
+    "volumeRatio": 1.024,
+    "solidCentroidOffsetMm": 0.08
+   }
+  },
+  {
+   "label": 21,
+   "name": "Putamen",
+   "hemi": "R",
+   "measuredSide": "R",
+   "voxels": 6626,
+   "volumeMm3": 6626,
+   "centroidMm": [
+    25.52,
+    2.58,
+    0.24
+   ],
+   "centroidInsideLabel": true,
+   "interiorPointMm": [
+    23,
+    11,
+    -3
+   ],
+   "interiorDepthMm": 5.92,
+   "bboxMm": {
+    "min": [
+     13,
+     -22,
+     -13
+    ],
+    "max": [
+     34,
+     21,
+     14
+    ]
+   },
+   "mesh": {
+    "node": "cerebra-21",
+    "vertices": 1596,
+    "triangles": 3190,
+    "gridMm": 1,
+    "isoLevel": 0.5,
+    "volumeRatio": 0.97,
+    "solidCentroidOffsetMm": 0.1
+   }
+  },
+  {
+   "label": 22,
+   "name": "Pars Triangularis",
+   "hemi": "R",
+   "measuredSide": "R",
+   "voxels": 8196,
+   "volumeMm3": 8196,
+   "centroidMm": [
+    48.56,
+    31.76,
+    4.7
+   ],
+   "centroidInsideLabel": true,
+   "interiorPointMm": [
+    50,
+    36,
+    4
+   ],
+   "interiorDepthMm": 4.36,
+   "bboxMm": {
+    "min": [
+     29,
+     19,
+     -11
+    ],
+    "max": [
+     60,
+     48,
+     22
+    ]
+   },
+   "mesh": {
+    "node": "cerebra-22",
+    "vertices": 458,
+    "triangles": 920,
+    "gridMm": 2,
+    "isoLevel": 0.4625,
+    "volumeRatio": 0.976,
+    "solidCentroidOffsetMm": 0.41
+   }
+  },
+  {
+   "label": 23,
+   "name": "Insula",
+   "hemi": "R",
+   "measuredSide": "R",
+   "voxels": 9521,
+   "volumeMm3": 9521,
+   "centroidMm": [
+    37.14,
+    1.77,
+    0.43
+   ],
+   "centroidInsideLabel": false,
+   "interiorPointMm": [
+    40,
+    -7,
+    -4
+   ],
+   "interiorDepthMm": 4.12,
+   "bboxMm": {
+    "min": [
+     27,
+     -29,
+     -19
+    ],
+    "max": [
+     46,
+     31,
+     21
+    ]
+   },
+   "mesh": {
+    "node": "cerebra-23",
+    "vertices": 550,
+    "triangles": 1100,
+    "gridMm": 2,
+    "isoLevel": 0.4625,
+    "volumeRatio": 0.976,
+    "solidCentroidOffsetMm": 0.24
+   }
+  },
+  {
+   "label": 24,
+   "name": "Fusiform",
+   "hemi": "R",
+   "measuredSide": "R",
+   "voxels": 13472,
+   "volumeMm3": 13472,
+   "centroidMm": [
+    35.7,
+    -42.15,
+    -21.39
+   ],
+   "centroidInsideLabel": true,
+   "interiorPointMm": [
+    34,
+    -48,
+    -18
+   ],
+   "interiorDepthMm": 4.12,
+   "bboxMm": {
+    "min": [
+     18,
+     -80,
+     -49
+    ],
+    "max": [
+     51,
+     5,
+     -2
+    ]
+   },
+   "mesh": {
+    "node": "cerebra-24",
+    "vertices": 774,
+    "triangles": 1616,
+    "gridMm": 2,
+    "isoLevel": 0.4625,
+    "volumeRatio": 1.003,
+    "solidCentroidOffsetMm": 0.21
+   }
+  },
+  {
+   "label": 25,
+   "name": "Basal Forebrain",
+   "hemi": "R",
+   "measuredSide": "R",
+   "voxels": 192,
+   "volumeMm3": 192,
+   "centroidMm": [
+    7.09,
+    4.04,
+    -11.88
+   ],
+   "centroidInsideLabel": true,
+   "interiorPointMm": [
+    7,
+    4,
+    -12
+   ],
+   "interiorDepthMm": 2.24,
+   "bboxMm": {
+    "min": [
+     1,
+     1,
+     -15
+    ],
+    "max": [
+     14,
+     6,
+     -9
+    ]
+   },
+   "mesh": {
+    "node": "cerebra-25",
+    "vertices": 262,
+    "triangles": 520,
+    "gridMm": 1,
+    "isoLevel": 0.3687,
+    "volumeRatio": 0.998,
+    "solidCentroidOffsetMm": 0.03
+   }
+  },
+  {
+   "label": 26,
+   "name": "Ventral Diencephalon",
+   "hemi": "R",
+   "measuredSide": "R",
+   "voxels": 6104,
+   "volumeMm3": 6104,
+   "centroidMm": [
+    10.34,
+    -16.77,
+    -10.31
+   ],
+   "centroidInsideLabel": true,
+   "interiorPointMm": [
+    10,
+    -17,
+    -11
+   ],
+   "interiorDepthMm": 7.87,
+   "bboxMm": {
+    "min": [
+     0,
+     -29,
+     -21
+    ],
+    "max": [
+     27,
+     1,
+     3
+    ]
+   },
+   "mesh": {
+    "node": "cerebra-26",
+    "vertices": 1395,
+    "triangles": 2788,
+    "gridMm": 1,
+    "isoLevel": 0.425,
+    "volumeRatio": 1.025,
+    "solidCentroidOffsetMm": 0.01
+   }
+  },
+  {
+   "label": 27,
+   "name": "Pallidum",
+   "hemi": "R",
+   "measuredSide": "R",
+   "voxels": 1701,
+   "volumeMm3": 1701,
+   "centroidMm": [
+    18.68,
+    -2.33,
+    -1.93
+   ],
+   "centroidInsideLabel": true,
+   "interiorPointMm": [
+    17,
+    0,
+    -2
+   ],
+   "interiorDepthMm": 4.9,
+   "bboxMm": {
+    "min": [
+     9,
+     -14,
+     -9
+    ],
+    "max": [
+     27,
+     8,
+     6
+    ]
+   },
+   "mesh": {
+    "node": "cerebra-27",
+    "vertices": 603,
+    "triangles": 1202,
+    "gridMm": 1,
+    "isoLevel": 0.425,
+    "volumeRatio": 1.015,
+    "solidCentroidOffsetMm": 0.02
+   }
+  },
+  {
+   "label": 28,
+   "name": "Middle Temporal",
+   "hemi": "R",
+   "measuredSide": "R",
+   "voxels": 28291,
+   "volumeMm3": 28291,
+   "centroidMm": [
+    57.25,
+    -31.58,
+    -11.29
+   ],
+   "centroidInsideLabel": false,
+   "interiorPointMm": [
+    57,
+    -60,
+    1
+   ],
+   "interiorDepthMm": 5.92,
+   "bboxMm": {
+    "min": [
+     31,
+     -72,
+     -47
+    ],
+    "max": [
+     72,
+     21,
+     17
+    ]
+   },
+   "mesh": {
+    "node": "cerebra-28",
+    "vertices": 1329,
+    "triangles": 2724,
+    "gridMm": 2,
+    "isoLevel": 0.4625,
+    "volumeRatio": 1.012,
+    "solidCentroidOffsetMm": 0.41
+   }
+  },
+  {
+   "label": 29,
+   "name": "Third Ventricle",
+   "hemi": "R",
+   "measuredSide": "R",
+   "voxels": 1100,
+   "volumeMm3": 1100,
+   "centroidMm": [
+    0.86,
+    -12.91,
+    -0.5
+   ],
+   "centroidInsideLabel": false,
+   "interiorPointMm": [
+    1,
+    -7,
+    -4
+   ],
+   "interiorDepthMm": 2,
+   "bboxMm": {
+    "min": [
+     0,
+     -38,
+     -20
+    ],
+    "max": [
+     9,
+     3,
+     15
+    ]
+   },
+   "mesh": {
+    "node": "cerebra-29",
+    "vertices": 700,
+    "triangles": 1406,
+    "gridMm": 1,
+    "isoLevel": 0.3875,
+    "volumeRatio": 1.001,
+    "solidCentroidOffsetMm": 0.42
+   }
+  },
+  {
+   "label": 30,
+   "name": "Caudal Anterior Cingulate",
+   "hemi": "R",
+   "measuredSide": "R",
+   "voxels": 3652,
+   "volumeMm3": 3652,
+   "centroidMm": [
+    5.14,
+    20.71,
+    27.41
+   ],
+   "centroidInsideLabel": true,
+   "interiorPointMm": [
+    4,
+    24,
+    26
+   ],
+   "interiorDepthMm": 3.74,
+   "bboxMm": {
+    "min": [
+     1,
+     0,
+     7
+    ],
+    "max": [
+     14,
+     42,
+     43
+    ]
+   },
+   "mesh": {
+    "node": "cerebra-30",
+    "vertices": 400,
+    "triangles": 808,
+    "gridMm": 2,
+    "isoLevel": 0.425,
+    "volumeRatio": 0.975,
+    "solidCentroidOffsetMm": 0.16
+   }
+  },
+  {
+   "label": 31,
+   "name": "Precuneus",
+   "hemi": "R",
+   "measuredSide": "R",
+   "voxels": 18772,
+   "volumeMm3": 18772,
+   "centroidMm": [
+    9.07,
+    -59,
+    39.66
+   ],
+   "centroidInsideLabel": true,
+   "interiorPointMm": [
+    5,
+    -73,
+    41
+   ],
+   "interiorDepthMm": 4.36,
+   "bboxMm": {
+    "min": [
+     0,
+     -84,
+     5
+    ],
+    "max": [
+     27,
+     -36,
+     79
+    ]
+   },
+   "mesh": {
+    "node": "cerebra-31",
+    "vertices": 865,
+    "triangles": 1742,
+    "gridMm": 2,
+    "isoLevel": 0.4625,
+    "volumeRatio": 1.017,
+    "solidCentroidOffsetMm": 0.18
+   }
+  },
+  {
+   "label": 32,
+   "name": "Pars Opercularis",
+   "hemi": "R",
+   "measuredSide": "R",
+   "voxels": 7673,
+   "volumeMm3": 7673,
+   "centroidMm": [
+    47.78,
+    14.88,
+    13.11
+   ],
+   "centroidInsideLabel": false,
+   "interiorPointMm": [
+    46,
+    19,
+    5
+   ],
+   "interiorDepthMm": 4,
+   "bboxMm": {
+    "min": [
+     30,
+     2,
+     -5
+    ],
+    "max": [
+     61,
+     29,
+     30
+    ]
+   },
+   "mesh": {
+    "node": "cerebra-32",
+    "vertices": 428,
+    "triangles": 864,
+    "gridMm": 2,
+    "isoLevel": 0.4625,
+    "volumeRatio": 0.974,
+    "solidCentroidOffsetMm": 0.38
+   }
+  },
+  {
+   "label": 33,
+   "name": "Isthmus Cingulate",
+   "hemi": "R",
+   "measuredSide": "R",
+   "voxels": 4427,
+   "volumeMm3": 4427,
+   "centroidMm": [
+    8.03,
+    -45.79,
+    18.9
+   ],
+   "centroidInsideLabel": true,
+   "interiorPointMm": [
+    4,
+    -49,
+    29
+   ],
+   "interiorDepthMm": 3.61,
+   "bboxMm": {
+    "min": [
+     1,
+     -58,
+     -6
+    ],
+    "max": [
+     24,
+     -31,
+     37
+    ]
+   },
+   "mesh": {
+    "node": "cerebra-33",
+    "vertices": 400,
+    "triangles": 806,
+    "gridMm": 2,
+    "isoLevel": 0.425,
+    "volumeRatio": 0.973,
+    "solidCentroidOffsetMm": 0.49
+   }
+  },
+  {
+   "label": 34,
+   "name": "Lateral Occipital",
+   "hemi": "R",
+   "measuredSide": "R",
+   "voxels": 22807,
+   "volumeMm3": 22807,
+   "centroidMm": [
+    31.91,
+    -87.16,
+    1.54
+   ],
+   "centroidInsideLabel": true,
+   "interiorPointMm": [
+    29,
+    -94,
+    8
+   ],
+   "interiorDepthMm": 5.1,
+   "bboxMm": {
+    "min": [
+     5,
+     -107,
+     -21
+    ],
+    "max": [
+     63,
+     -50,
+     34
+    ]
+   },
+   "mesh": {
+    "node": "cerebra-34",
+    "vertices": 1226,
+    "triangles": 2514,
+    "gridMm": 2,
+    "isoLevel": 0.5,
+    "volumeRatio": 0.971,
+    "solidCentroidOffsetMm": 0.42
+   }
+  },
+  {
+   "label": 35,
+   "name": "Precentral",
+   "hemi": "R",
+   "measuredSide": "R",
+   "voxels": 21393,
+   "volumeMm3": 21393,
+   "centroidMm": [
+    42.76,
+    -7.3,
+    41.74
+   ],
+   "centroidInsideLabel": false,
+   "interiorPointMm": [
+    55,
+    2,
+    40
+   ],
+   "interiorDepthMm": 3.74,
+   "bboxMm": {
+    "min": [
+     5,
+     -36,
+     -1
+    ],
+    "max": [
+     66,
+     14,
+     81
+    ]
+   },
+   "mesh": {
+    "node": "cerebra-35",
+    "vertices": 1393,
+    "triangles": 2820,
+    "gridMm": 2,
+    "isoLevel": 0.4625,
+    "volumeRatio": 0.993,
+    "solidCentroidOffsetMm": 0.56
+   }
+  },
+  {
+   "label": 36,
+   "name": "Entorhinal",
+   "hemi": "R",
+   "measuredSide": "R",
+   "voxels": 3205,
+   "volumeMm3": 3205,
+   "centroidMm": [
+    22.22,
+    -4.53,
+    -31.87
+   ],
+   "centroidInsideLabel": false,
+   "interiorPointMm": [
+    20,
+    -1,
+    -34
+   ],
+   "interiorDepthMm": 3.46,
+   "bboxMm": {
+    "min": [
+     11,
+     -22,
+     -44
+    ],
+    "max": [
+     34,
+     10,
+     -19
+    ]
+   },
+   "mesh": {
+    "node": "cerebra-36",
+    "vertices": 400,
+    "triangles": 798,
+    "gridMm": 2,
+    "isoLevel": 0.425,
+    "volumeRatio": 0.977,
+    "solidCentroidOffsetMm": 0.25
+   }
+  },
+  {
+   "label": 37,
+   "name": "Fourth Ventricle",
+   "hemi": "R",
+   "measuredSide": "R",
+   "voxels": 772,
+   "volumeMm3": 772,
+   "centroidMm": [
+    2.67,
+    -43.89,
+    -30.79
+   ],
+   "centroidInsideLabel": true,
+   "interiorPointMm": [
+    3,
+    -44,
+    -31
+   ],
+   "interiorDepthMm": 3,
+   "bboxMm": {
+    "min": [
+     0,
+     -55,
+     -42
+    ],
+    "max": [
+     12,
+     -14,
+     -10
+    ]
+   },
+   "mesh": {
+    "node": "cerebra-37",
+    "vertices": 400,
+    "triangles": 798,
+    "gridMm": 1,
+    "isoLevel": 0.3875,
+    "volumeRatio": 1.013,
+    "solidCentroidOffsetMm": 0.48
+   }
+  },
+  {
+   "label": 38,
+   "name": "Superior Frontal",
+   "hemi": "R",
+   "measuredSide": "R",
+   "voxels": 52819,
+   "volumeMm3": 52819,
+   "centroidMm": [
+    13.24,
+    33.82,
+    37.37
+   ],
+   "centroidInsideLabel": false,
+   "interiorPointMm": [
+    8,
+    53,
+    0
+   ],
+   "interiorDepthMm": 5.39,
+   "bboxMm": {
+    "min": [
+     1,
+     -18,
+     -17
+    ],
+    "max": [
+     34,
+     74,
+     78
+    ]
+   },
+   "mesh": {
+    "node": "cerebra-38",
+    "vertices": 2373,
+    "triangles": 4816,
+    "gridMm": 2,
+    "isoLevel": 0.5,
+    "volumeRatio": 0.982,
+    "solidCentroidOffsetMm": 0.49
+   }
+  },
+  {
+   "label": 39,
+   "name": "Cerebellum White Matter",
+   "hemi": "R",
+   "measuredSide": "R",
+   "voxels": 12999,
+   "volumeMm3": 12999,
+   "centroidMm": [
+    18.65,
+    -52.04,
+    -36.22
+   ],
+   "centroidInsideLabel": true,
+   "interiorPointMm": [
+    21,
+    -53,
+    -40
+   ],
+   "interiorDepthMm": 8.77,
+   "bboxMm": {
+    "min": [
+     0,
+     -75,
+     -48
+    ],
+    "max": [
+     37,
+     -22,
+     -18
+    ]
+   },
+   "mesh": {
+    "node": "cerebra-39",
+    "vertices": 2461,
+    "triangles": 4926,
+    "gridMm": 1,
+    "isoLevel": 0.5,
+    "volumeRatio": 0.97,
+    "solidCentroidOffsetMm": 0.1
+   }
+  },
+  {
+   "label": 40,
+   "name": "Thalamus",
+   "hemi": "R",
+   "measuredSide": "R",
+   "voxels": 10038,
+   "volumeMm3": 10038,
+   "centroidMm": [
+    11.74,
+    -18.1,
+    6.75
+   ],
+   "centroidInsideLabel": true,
+   "interiorPointMm": [
+    12,
+    -20,
+    7
+   ],
+   "interiorDepthMm": 8.83,
+   "bboxMm": {
+    "min": [
+     0,
+     -36,
+     -6
+    ],
+    "max": [
+     26,
+     0,
+     20
+    ]
+   },
+   "mesh": {
+    "node": "cerebra-40",
+    "vertices": 1765,
+    "triangles": 3526,
+    "gridMm": 1,
+    "isoLevel": 0.5,
+    "volumeRatio": 0.979,
+    "solidCentroidOffsetMm": 0.03
+   }
+  },
+  {
+   "label": 41,
+   "name": "Lateral Ventricle",
+   "hemi": "R",
+   "measuredSide": "R",
+   "voxels": 9570,
+   "volumeMm3": 9570,
+   "centroidMm": [
+    14.68,
+    -17.84,
+    14.17
+   ],
+   "centroidInsideLabel": false,
+   "interiorPointMm": [
+    20,
+    -37,
+    16
+   ],
+   "interiorDepthMm": 5.2,
+   "bboxMm": {
+    "min": [
+     1,
+     -80,
+     -5
+    ],
+    "max": [
+     36,
+     30,
+     28
+    ]
+   },
+   "mesh": {
+    "node": "cerebra-41",
+    "vertices": 3237,
+    "triangles": 6480,
+    "gridMm": 1,
+    "isoLevel": 0.425,
+    "volumeRatio": 1.024,
+    "solidCentroidOffsetMm": 0.41
+   }
+  },
+  {
+   "label": 42,
+   "name": "Caudal Middle Frontal",
+   "hemi": "R",
+   "measuredSide": "R",
+   "voxels": 13220,
+   "volumeMm3": 13220,
+   "centroidMm": [
+    36.94,
+    12.26,
+    47.66
+   ],
+   "centroidInsideLabel": false,
+   "interiorPointMm": [
+    40,
+    20,
+    48
+   ],
+   "interiorDepthMm": 4.24,
+   "bboxMm": {
+    "min": [
+     21,
+     -7,
+     25
+    ],
+    "max": [
+     54,
+     45,
+     66
+    ]
+   },
+   "mesh": {
+    "node": "cerebra-42",
+    "vertices": 741,
+    "triangles": 1494,
+    "gridMm": 2,
+    "isoLevel": 0.4625,
+    "volumeRatio": 1.003,
+    "solidCentroidOffsetMm": 0.42
+   }
+  },
+  {
+   "label": 43,
+   "name": "Cuneus",
+   "hemi": "R",
+   "measuredSide": "R",
+   "voxels": 8072,
+   "volumeMm3": 8072,
+   "centroidMm": [
+    8.6,
+    -81.3,
+    24.58
+   ],
+   "centroidInsideLabel": true,
+   "interiorPointMm": [
+    5,
+    -83,
+    17
+   ],
+   "interiorDepthMm": 3.74,
+   "bboxMm": {
+    "min": [
+     0,
+     -100,
+     -1
+    ],
+    "max": [
+     21,
+     -53,
+     44
+    ]
+   },
+   "mesh": {
+    "node": "cerebra-43",
+    "vertices": 522,
+    "triangles": 1052,
+    "gridMm": 2,
+    "isoLevel": 0.4438,
+    "volumeRatio": 0.998,
+    "solidCentroidOffsetMm": 0.51
+   }
+  },
+  {
+   "label": 44,
+   "name": "Pars Orbitalis",
+   "hemi": "R",
+   "measuredSide": "R",
+   "voxels": 3639,
+   "volumeMm3": 3639,
+   "centroidMm": [
+    43.08,
+    34.03,
+    -12.77
+   ],
+   "centroidInsideLabel": false,
+   "interiorPointMm": [
+    50,
+    35,
+    -14
+   ],
+   "interiorDepthMm": 3.16,
+   "bboxMm": {
+    "min": [
+     29,
+     19,
+     -22
+    ],
+    "max": [
+     54,
+     50,
+     2
+    ]
+   },
+   "mesh": {
+    "node": "cerebra-44",
+    "vertices": 400,
+    "triangles": 802,
+    "gridMm": 2,
+    "isoLevel": 0.425,
+    "volumeRatio": 0.981,
+    "solidCentroidOffsetMm": 0.44
+   }
+  },
+  {
+   "label": 45,
+   "name": "Superior Temporal",
+   "hemi": "R",
+   "measuredSide": "R",
+   "voxels": 25351,
+   "volumeMm3": 25351,
+   "centroidMm": [
+    51.06,
+    -8.09,
+    -8.6
+   ],
+   "centroidInsideLabel": true,
+   "interiorPointMm": [
+    66,
+    -34,
+    14
+   ],
+   "interiorDepthMm": 4.47,
+   "bboxMm": {
+    "min": [
+     19,
+     -52,
+     -46
+    ],
+    "max": [
+     72,
+     26,
+     21
+    ]
+   },
+   "mesh": {
+    "node": "cerebra-45",
+    "vertices": 1366,
+    "triangles": 2878,
+    "gridMm": 2,
+    "isoLevel": 0.4625,
+    "volumeRatio": 1.021,
+    "solidCentroidOffsetMm": 0.55
+   }
+  },
+  {
+   "label": 46,
+   "name": "Cerebellum Gray Matter",
+   "hemi": "R",
+   "measuredSide": "R",
+   "voxels": 71229,
+   "volumeMm3": 71229,
+   "centroidMm": [
+    26.81,
+    -63.27,
+    -38.8
+   ],
+   "centroidInsideLabel": false,
+   "interiorPointMm": [
+    36,
+    -73,
+    -35
+   ],
+   "interiorDepthMm": 10.82,
+   "bboxMm": {
+    "min": [
+     1,
+     -93,
+     -68
+    ],
+    "max": [
+     58,
+     -23,
+     -5
+    ]
+   },
+   "mesh": {
+    "node": "cerebra-46",
+    "vertices": 1600,
+    "triangles": 3202,
+    "gridMm": 2,
+    "isoLevel": 0.5,
+    "volumeRatio": 0.984,
+    "solidCentroidOffsetMm": 0.18
+   }
+  },
+  {
+   "label": 47,
+   "name": "Posterior Cingulate",
+   "hemi": "R",
+   "measuredSide": "R",
+   "voxels": 5411,
+   "volumeMm3": 5411,
+   "centroidMm": [
+    5.41,
+    -19.77,
+    38.59
+   ],
+   "centroidInsideLabel": true,
+   "interiorPointMm": [
+    4,
+    -30,
+    44
+   ],
+   "interiorDepthMm": 4,
+   "bboxMm": {
+    "min": [
+     0,
+     -41,
+     -2
+    ],
+    "max": [
+     17,
+     45,
+     50
+    ]
+   },
+   "mesh": {
+    "node": "cerebra-47",
+    "vertices": 400,
+    "triangles": 796,
+    "gridMm": 2,
+    "isoLevel": 0.425,
+    "volumeRatio": 1.012,
+    "solidCentroidOffsetMm": 0.2
+   }
+  },
+  {
+   "label": 48,
+   "name": "Hippocampus",
+   "hemi": "R",
+   "measuredSide": "R",
+   "voxels": 4694,
+   "volumeMm3": 4694,
+   "centroidMm": [
+    25.89,
+    -22.5,
+    -14.48
+   ],
+   "centroidInsideLabel": true,
+   "interiorPointMm": [
+    31,
+    -19,
+    -17
+   ],
+   "interiorDepthMm": 4,
+   "bboxMm": {
+    "min": [
+     12,
+     -42,
+     -31
+    ],
+    "max": [
+     36,
+     -5,
+     8
+    ]
+   },
+   "mesh": {
+    "node": "cerebra-48",
+    "vertices": 1576,
+    "triangles": 3150,
+    "gridMm": 1,
+    "isoLevel": 0.4625,
+    "volumeRatio": 0.995,
+    "solidCentroidOffsetMm": 0.1
+   }
+  },
+  {
+   "label": 49,
+   "name": "Caudate",
+   "hemi": "R",
+   "measuredSide": "R",
+   "voxels": 5643,
+   "volumeMm3": 5643,
+   "centroidMm": [
+    13.92,
+    9.58,
+    10.43
+   ],
+   "centroidInsideLabel": true,
+   "interiorPointMm": [
+    12,
+    16,
+    6
+   ],
+   "interiorDepthMm": 5.2,
+   "bboxMm": {
+    "min": [
+     5,
+     -29,
+     -10
+    ],
+    "max": [
+     22,
+     27,
+     27
+    ]
+   },
+   "mesh": {
+    "node": "cerebra-49",
+    "vertices": 1615,
+    "triangles": 3226,
+    "gridMm": 1,
+    "isoLevel": 0.425,
+    "volumeRatio": 1.021,
+    "solidCentroidOffsetMm": 0.13
+   }
+  },
+  {
+   "label": 50,
+   "name": "Vermal lobules I-V",
+   "hemi": "R",
+   "measuredSide": "R",
+   "voxels": 4500,
+   "volumeMm3": 4500,
+   "centroidMm": [
+    3.79,
+    -53.37,
+    -13.84
+   ],
+   "centroidInsideLabel": true,
+   "interiorPointMm": [
+    4,
+    -53,
+    -14
+   ],
+   "interiorDepthMm": 5,
+   "bboxMm": {
+    "min": [
+     0,
+     -72,
+     -30
+    ],
+    "max": [
+     8,
+     -40,
+     2
+    ]
+   },
+   "mesh": {
+    "node": "cerebra-50",
+    "vertices": 1044,
+    "triangles": 2080,
+    "gridMm": 1,
+    "isoLevel": 0.425,
+    "volumeRatio": 1.024,
+    "solidCentroidOffsetMm": 0.07
+   }
+  },
+  {
+   "label": 51,
+   "name": "Supramarginal",
+   "hemi": "R",
+   "measuredSide": "R",
+   "voxels": 16033,
+   "volumeMm3": 16033,
+   "centroidMm": [
+    55.15,
+    -35.15,
+    35.98
+   ],
+   "centroidInsideLabel": true,
+   "interiorPointMm": [
+    61,
+    -40,
+    30
+   ],
+   "interiorDepthMm": 5,
+   "bboxMm": {
+    "min": [
+     31,
+     -53,
+     13
+    ],
+    "max": [
+     69,
+     -16,
+     59
+    ]
+   },
+   "mesh": {
+    "node": "cerebra-51",
+    "vertices": 796,
+    "triangles": 1618,
+    "gridMm": 2,
+    "isoLevel": 0.5,
+    "volumeRatio": 0.974,
+    "solidCentroidOffsetMm": 0.46
+   }
+  },
+  {
+   "label": 52,
+   "name": "Rostral Middle Frontal",
+   "hemi": "L",
+   "measuredSide": "L",
+   "voxels": 21742,
+   "volumeMm3": 21742,
+   "centroidMm": [
+    -38.54,
+    42.75,
+    17.67
+   ],
+   "centroidInsideLabel": true,
+   "interiorPointMm": [
+    -39,
+    40,
+    31
+   ],
+   "interiorDepthMm": 4.58,
+   "bboxMm": {
+    "min": [
+     -56,
+     2,
+     -19
+    ],
+    "max": [
+     -21,
+     67,
+     56
+    ]
+   },
+   "mesh": {
+    "node": "cerebra-52",
+    "vertices": 1086,
+    "triangles": 2210,
+    "gridMm": 2,
+    "isoLevel": 0.4625,
+    "volumeRatio": 1.018,
+    "solidCentroidOffsetMm": 0.26
+   }
+  },
+  {
+   "label": 53,
+   "name": "Vermal lobules VI-VII",
+   "hemi": "L",
+   "measuredSide": "L",
+   "voxels": 1923,
+   "volumeMm3": 1923,
+   "centroidMm": [
+    -3.47,
+    -69.59,
+    -22.12
+   ],
+   "centroidInsideLabel": true,
+   "interiorPointMm": [
+    -4,
+    -69,
+    -21
+   ],
+   "interiorDepthMm": 3.61,
+   "bboxMm": {
+    "min": [
+     -8,
+     -81,
+     -35
+    ],
+    "max": [
+     -1,
+     -57,
+     -9
+    ]
+   },
+   "mesh": {
+    "node": "cerebra-53",
+    "vertices": 695,
+    "triangles": 1386,
+    "gridMm": 1,
+    "isoLevel": 0.4625,
+    "volumeRatio": 0.976,
+    "solidCentroidOffsetMm": 0.15
+   }
+  },
+  {
+   "label": 54,
+   "name": "Inferior temporal",
+   "hemi": "L",
+   "measuredSide": "L",
+   "voxels": 16224,
+   "volumeMm3": 16224,
+   "centroidMm": [
+    -49.21,
+    -24.77,
+    -29.98
+   ],
+   "centroidInsideLabel": true,
+   "interiorPointMm": [
+    -55,
+    -41,
+    -24
+   ],
+   "interiorDepthMm": 5,
+   "bboxMm": {
+    "min": [
+     -68,
+     -65,
+     -52
+    ],
+    "max": [
+     -19,
+     14,
+     -2
+    ]
+   },
+   "mesh": {
+    "node": "cerebra-54",
+    "vertices": 882,
+    "triangles": 1790,
+    "gridMm": 2,
+    "isoLevel": 0.4625,
+    "volumeRatio": 0.992,
+    "solidCentroidOffsetMm": 0.34
+   }
+  },
+  {
+   "label": 55,
+   "name": "Accumbens Area",
+   "hemi": "L",
+   "measuredSide": "L",
+   "voxels": 553,
+   "volumeMm3": 553,
+   "centroidMm": [
+    -8.99,
+    11.8,
+    -7.26
+   ],
+   "centroidInsideLabel": true,
+   "interiorPointMm": [
+    -9,
+    10,
+    -8
+   ],
+   "interiorDepthMm": 3.46,
+   "bboxMm": {
+    "min": [
+     -14,
+     6,
+     -13
+    ],
+    "max": [
+     -4,
+     19,
+     -2
+    ]
+   },
+   "mesh": {
+    "node": "cerebra-55",
+    "vertices": 400,
+    "triangles": 798,
+    "gridMm": 1,
+    "isoLevel": 0.425,
+    "volumeRatio": 0.983,
+    "solidCentroidOffsetMm": 0.05
+   }
+  },
+  {
+   "label": 56,
+   "name": "Inferior Lateral Ventricle",
+   "hemi": "L",
+   "measuredSide": "L",
+   "voxels": 1059,
+   "volumeMm3": 1059,
+   "centroidMm": [
+    -31.65,
+    -16.84,
+    -16.2
+   ],
+   "centroidInsideLabel": false,
+   "interiorPointMm": [
+    -35,
+    -10,
+    -24
+   ],
+   "interiorDepthMm": 2.24,
+   "bboxMm": {
+    "min": [
+     -39,
+     -39,
+     -31
+    ],
+    "max": [
+     -18,
+     -4,
+     -2
+    ]
+   },
+   "mesh": {
+    "node": "cerebra-56",
+    "vertices": 789,
+    "triangles": 1608,
+    "gridMm": 1,
+    "isoLevel": 0.3875,
+    "volumeRatio": 0.986,
+    "solidCentroidOffsetMm": 0.64
+   }
+  },
+  {
+   "label": 57,
+   "name": "Pericalcarine",
+   "hemi": "L",
+   "measuredSide": "L",
+   "voxels": 5030,
+   "volumeMm3": 5030,
+   "centroidMm": [
+    -11.38,
+    -82.34,
+    6.18
+   ],
+   "centroidInsideLabel": false,
+   "interiorPointMm": [
+    -11,
+    -90,
+    3
+   ],
+   "interiorDepthMm": 3.74,
+   "bboxMm": {
+    "min": [
+     -27,
+     -101,
+     -10
+    ],
+    "max": [
+     -4,
+     -61,
+     19
+    ]
+   },
+   "mesh": {
+    "node": "cerebra-57",
+    "vertices": 400,
+    "triangles": 788,
+    "gridMm": 2,
+    "isoLevel": 0.4625,
+    "volumeRatio": 1.012,
+    "solidCentroidOffsetMm": 0.17
+   }
+  },
+  {
+   "label": 58,
+   "name": "Lateral Orbitofrontal",
+   "hemi": "L",
+   "measuredSide": "L",
+   "voxels": 15042,
+   "volumeMm3": 15042,
+   "centroidMm": [
+    -22.61,
+    36,
+    -19.15
+   ],
+   "centroidInsideLabel": true,
+   "interiorPointMm": [
+    -27,
+    39,
+    -16
+   ],
+   "interiorDepthMm": 5.2,
+   "bboxMm": {
+    "min": [
+     -43,
+     4,
+     -31
+    ],
+    "max": [
+     -4,
+     69,
+     3
+    ]
+   },
+   "mesh": {
+    "node": "cerebra-58",
+    "vertices": 716,
+    "triangles": 1456,
+    "gridMm": 2,
+    "isoLevel": 0.4625,
+    "volumeRatio": 1,
+    "solidCentroidOffsetMm": 0.26
+   }
+  },
+  {
+   "label": 59,
+   "name": "Rostral Anterior Cingulate",
+   "hemi": "L",
+   "measuredSide": "L",
+   "voxels": 3782,
+   "volumeMm3": 3782,
+   "centroidMm": [
+    -5.49,
+    36.31,
+    2.32
+   ],
+   "centroidInsideLabel": false,
+   "interiorPointMm": [
+    -5,
+    40,
+    15
+   ],
+   "interiorDepthMm": 4.12,
+   "bboxMm": {
+    "min": [
+     -14,
+     8,
+     -15
+    ],
+    "max": [
+     -1,
+     47,
+     23
+    ]
+   },
+   "mesh": {
+    "node": "cerebra-59",
+    "vertices": 400,
+    "triangles": 796,
+    "gridMm": 2,
+    "isoLevel": 0.3875,
+    "volumeRatio": 1.022,
+    "solidCentroidOffsetMm": 0.65
+   }
+  },
+  {
+   "label": 60,
+   "name": "Superior Parietal",
+   "hemi": "L",
+   "measuredSide": "L",
+   "voxels": 19333,
+   "volumeMm3": 19333,
+   "centroidMm": [
+    -25.87,
+    -61.93,
+    52.4
+   ],
+   "centroidInsideLabel": false,
+   "interiorPointMm": [
+    -29,
+    -55,
+    67
+   ],
+   "interiorDepthMm": 4,
+   "bboxMm": {
+    "min": [
+     -45,
+     -93,
+     16
+    ],
+    "max": [
+     -6,
+     -35,
+     76
+    ]
+   },
+   "mesh": {
+    "node": "cerebra-60",
+    "vertices": 1138,
+    "triangles": 2350,
+    "gridMm": 2,
+    "isoLevel": 0.5,
+    "volumeRatio": 0.973,
+    "solidCentroidOffsetMm": 0.55
+   }
+  },
+  {
+   "label": 61,
+   "name": "Inferior Parietal",
+   "hemi": "L",
+   "measuredSide": "L",
+   "voxels": 26186,
+   "volumeMm3": 26186,
+   "centroidMm": [
+    -45.85,
+    -64.43,
+    31.72
+   ],
+   "centroidInsideLabel": true,
+   "interiorPointMm": [
+    -45,
+    -56,
+    21
+   ],
+   "interiorDepthMm": 5,
+   "bboxMm": {
+    "min": [
+     -68,
+     -93,
+     8
+    ],
+    "max": [
+     -27,
+     -35,
+     59
+    ]
+   },
+   "mesh": {
+    "node": "cerebra-61",
+    "vertices": 1146,
+    "triangles": 2326,
+    "gridMm": 2,
+    "isoLevel": 0.5,
+    "volumeRatio": 0.992,
+    "solidCentroidOffsetMm": 0.39
+   }
+  },
+  {
+   "label": 62,
+   "name": "Brainstem",
+   "hemi": "L",
+   "measuredSide": "L",
+   "voxels": 15588,
+   "volumeMm3": 15588,
+   "centroidMm": [
+    -6.68,
+    -31.46,
+    -36.26
+   ],
+   "centroidInsideLabel": true,
+   "interiorPointMm": [
+    -9,
+    -27,
+    -33
+   ],
+   "interiorDepthMm": 8.94,
+   "bboxMm": {
+    "min": [
+     -20,
+     -51,
+     -78
+    ],
+    "max": [
+     -1,
+     -12,
+     2
+    ]
+   },
+   "mesh": {
+    "node": "cerebra-62",
+    "vertices": 2788,
+    "triangles": 5572,
+    "gridMm": 1,
+    "isoLevel": 0.5,
+    "volumeRatio": 0.979,
+    "solidCentroidOffsetMm": 0.04
+   }
+  },
+  {
+   "label": 63,
+   "name": "Lingual",
+   "hemi": "L",
+   "measuredSide": "L",
+   "voxels": 12359,
+   "volumeMm3": 12359,
+   "centroidMm": [
+    -13.53,
+    -69.35,
+    -5.14
+   ],
+   "centroidInsideLabel": false,
+   "interiorPointMm": [
+    -8,
+    -69,
+    0
+   ],
+   "interiorDepthMm": 4.12,
+   "bboxMm": {
+    "min": [
+     -33,
+     -99,
+     -19
+    ],
+    "max": [
+     -1,
+     -37,
+     23
+    ]
+   },
+   "mesh": {
+    "node": "cerebra-63",
+    "vertices": 641,
+    "triangles": 1300,
+    "gridMm": 2,
+    "isoLevel": 0.4625,
+    "volumeRatio": 1.01,
+    "solidCentroidOffsetMm": 0.17
+   }
+  },
+  {
+   "label": 64,
+   "name": "Postcentral",
+   "hemi": "L",
+   "measuredSide": "L",
+   "voxels": 18194,
+   "volumeMm3": 18194,
+   "centroidMm": [
+    -42.99,
+    -25.03,
+    46.68
+   ],
+   "centroidInsideLabel": false,
+   "interiorPointMm": [
+    -53,
+    -21,
+    54
+   ],
+   "interiorDepthMm": 3,
+   "bboxMm": {
+    "min": [
+     -70,
+     -59,
+     7
+    ],
+    "max": [
+     -5,
+     -2,
+     82
+    ]
+   },
+   "mesh": {
+    "node": "cerebra-64",
+    "vertices": 1362,
+    "triangles": 2878,
+    "gridMm": 2,
+    "isoLevel": 0.4438,
+    "volumeRatio": 1.011,
+    "solidCentroidOffsetMm": 0.81
+   }
+  },
+  {
+   "label": 65,
+   "name": "Transverse Temporal",
+   "hemi": "L",
+   "measuredSide": "L",
+   "voxels": 1882,
+   "volumeMm3": 1882,
+   "centroidMm": [
+    -45.66,
+    -19.81,
+    8.26
+   ],
+   "centroidInsideLabel": false,
+   "interiorPointMm": [
+    -48,
+    -21,
+    10
+   ],
+   "interiorDepthMm": 2.83,
+   "bboxMm": {
+    "min": [
+     -58,
+     -34,
+     -1
+    ],
+    "max": [
+     -34,
+     -5,
+     17
+    ]
+   },
+   "mesh": {
+    "node": "cerebra-65",
+    "vertices": 400,
+    "triangles": 802,
+    "gridMm": 2,
+    "isoLevel": 0.3875,
+    "volumeRatio": 1.019,
+    "solidCentroidOffsetMm": 0.13
+   }
+  },
+  {
+   "label": 66,
+   "name": "Medial Orbitofrontal",
+   "hemi": "L",
+   "measuredSide": "L",
+   "voxels": 8764,
+   "volumeMm3": 8764,
+   "centroidMm": [
+    -5.41,
+    37.79,
+    -18.04
+   ],
+   "centroidInsideLabel": true,
+   "interiorPointMm": [
+    -7,
+    45,
+    -14
+   ],
+   "interiorDepthMm": 4,
+   "bboxMm": {
+    "min": [
+     -14,
+     5,
+     -32
+    ],
+    "max": [
+     -1,
+     72,
+     -2
+    ]
+   },
+   "mesh": {
+    "node": "cerebra-66",
+    "vertices": 437,
+    "triangles": 878,
+    "gridMm": 2,
+    "isoLevel": 0.4625,
+    "volumeRatio": 0.995,
+    "solidCentroidOffsetMm": 0.36
+   }
+  },
+  {
+   "label": 67,
+   "name": "Paracentral",
+   "hemi": "L",
+   "measuredSide": "L",
+   "voxels": 8238,
+   "volumeMm3": 8238,
+   "centroidMm": [
+    -7.67,
+    -26.53,
+    59.71
+   ],
+   "centroidInsideLabel": true,
+   "interiorPointMm": [
+    -5,
+    -21,
+    54
+   ],
+   "interiorDepthMm": 4.24,
+   "bboxMm": {
+    "min": [
+     -19,
+     -47,
+     38
+    ],
+    "max": [
+     -1,
+     -5,
+     79
+    ]
+   },
+   "mesh": {
+    "node": "cerebra-67",
+    "vertices": 490,
+    "triangles": 982,
+    "gridMm": 2,
+    "isoLevel": 0.4438,
+    "volumeRatio": 0.996,
+    "solidCentroidOffsetMm": 0.24
+   }
+  },
+  {
+   "label": 68,
+   "name": "Optic Chiasm",
+   "hemi": "L",
+   "measuredSide": "L",
+   "voxels": 765,
+   "volumeMm3": 765,
+   "centroidMm": [
+    -7.14,
+    3.3,
+    -19.6
+   ],
+   "centroidInsideLabel": true,
+   "interiorPointMm": [
+    -5,
+    1,
+    -17
+   ],
+   "interiorDepthMm": 2.24,
+   "bboxMm": {
+    "min": [
+     -17,
+     -11,
+     -32
+    ],
+    "max": [
+     -1,
+     22,
+     -11
+    ]
+   },
+   "mesh": {
+    "node": "cerebra-68",
+    "vertices": 508,
+    "triangles": 1014,
+    "gridMm": 1,
+    "isoLevel": 0.3875,
+    "volumeRatio": 1.012,
+    "solidCentroidOffsetMm": 0.26
+   }
+  },
+  {
+   "label": 69,
+   "name": "Parahippocampal",
+   "hemi": "L",
+   "measuredSide": "L",
+   "voxels": 2708,
+   "volumeMm3": 2708,
+   "centroidMm": [
+    -23.75,
+    -31.13,
+    -17.44
+   ],
+   "centroidInsideLabel": true,
+   "interiorPointMm": [
+    -19,
+    -37,
+    -14
+   ],
+   "interiorDepthMm": 3.16,
+   "bboxMm": {
+    "min": [
+     -37,
+     -44,
+     -32
+    ],
+    "max": [
+     -11,
+     -17,
+     -2
+    ]
+   },
+   "mesh": {
+    "node": "cerebra-69",
+    "vertices": 400,
+    "triangles": 812,
+    "gridMm": 2,
+    "isoLevel": 0.3875,
+    "volumeRatio": 1.016,
+    "solidCentroidOffsetMm": 0.29
+   }
+  },
+  {
+   "label": 70,
+   "name": "Amygdala",
+   "hemi": "L",
+   "measuredSide": "L",
+   "voxels": 1650,
+   "volumeMm3": 1650,
+   "centroidMm": [
+    -23.39,
+    -4.44,
+    -20.66
+   ],
+   "centroidInsideLabel": true,
+   "interiorPointMm": [
+    -25,
+    -4,
+    -21
+   ],
+   "interiorDepthMm": 4.12,
+   "bboxMm": {
+    "min": [
+     -33,
+     -33,
+     -31
+    ],
+    "max": [
+     -12,
+     0,
+     -7
+    ]
+   },
+   "mesh": {
+    "node": "cerebra-70",
+    "vertices": 578,
+    "triangles": 1152,
+    "gridMm": 1,
+    "isoLevel": 0.425,
+    "volumeRatio": 1.01,
+    "solidCentroidOffsetMm": 0.08
+   }
+  },
+  {
+   "label": 71,
+   "name": "Vermal lobules VIII-X",
+   "hemi": "L",
+   "measuredSide": "L",
+   "voxels": 2119,
+   "volumeMm3": 2119,
+   "centroidMm": [
+    -3.43,
+    -61.2,
+    -37.5
+   ],
+   "centroidInsideLabel": true,
+   "interiorPointMm": [
+    -4,
+    -67,
+    -41
+   ],
+   "interiorDepthMm": 4,
+   "bboxMm": {
+    "min": [
+     -9,
+     -76,
+     -49
+    ],
+    "max": [
+     -1,
+     -44,
+     -26
+    ]
+   },
+   "mesh": {
+    "node": "cerebra-71",
+    "vertices": 748,
+    "triangles": 1492,
+    "gridMm": 1,
+    "isoLevel": 0.425,
+    "volumeRatio": 1.019,
+    "solidCentroidOffsetMm": 0.08
+   }
+  },
+  {
+   "label": 72,
+   "name": "Putamen",
+   "hemi": "L",
+   "measuredSide": "L",
+   "voxels": 6626,
+   "volumeMm3": 6626,
+   "centroidMm": [
+    -25.52,
+    2.58,
+    0.24
+   ],
+   "centroidInsideLabel": true,
+   "interiorPointMm": [
+    -23,
+    11,
+    -3
+   ],
+   "interiorDepthMm": 5.92,
+   "bboxMm": {
+    "min": [
+     -34,
+     -22,
+     -13
+    ],
+    "max": [
+     -13,
+     21,
+     14
+    ]
+   },
+   "mesh": {
+    "node": "cerebra-72",
+    "vertices": 1596,
+    "triangles": 3190,
+    "gridMm": 1,
+    "isoLevel": 0.5,
+    "volumeRatio": 0.97,
+    "solidCentroidOffsetMm": 0.1
+   }
+  },
+  {
+   "label": 73,
+   "name": "Pars Triangularis",
+   "hemi": "L",
+   "measuredSide": "L",
+   "voxels": 8196,
+   "volumeMm3": 8196,
+   "centroidMm": [
+    -48.56,
+    31.76,
+    4.7
+   ],
+   "centroidInsideLabel": true,
+   "interiorPointMm": [
+    -50,
+    36,
+    4
+   ],
+   "interiorDepthMm": 4.36,
+   "bboxMm": {
+    "min": [
+     -60,
+     19,
+     -11
+    ],
+    "max": [
+     -29,
+     48,
+     22
+    ]
+   },
+   "mesh": {
+    "node": "cerebra-73",
+    "vertices": 461,
+    "triangles": 934,
+    "gridMm": 2,
+    "isoLevel": 0.4625,
+    "volumeRatio": 0.977,
+    "solidCentroidOffsetMm": 0.42
+   }
+  },
+  {
+   "label": 74,
+   "name": "Insula",
+   "hemi": "L",
+   "measuredSide": "L",
+   "voxels": 9521,
+   "volumeMm3": 9521,
+   "centroidMm": [
+    -37.14,
+    1.77,
+    0.43
+   ],
+   "centroidInsideLabel": false,
+   "interiorPointMm": [
+    -40,
+    -7,
+    -4
+   ],
+   "interiorDepthMm": 4.12,
+   "bboxMm": {
+    "min": [
+     -46,
+     -29,
+     -19
+    ],
+    "max": [
+     -27,
+     31,
+     21
+    ]
+   },
+   "mesh": {
+    "node": "cerebra-74",
+    "vertices": 559,
+    "triangles": 1118,
+    "gridMm": 2,
+    "isoLevel": 0.4625,
+    "volumeRatio": 0.974,
+    "solidCentroidOffsetMm": 0.25
+   }
+  },
+  {
+   "label": 75,
+   "name": "Fusiform",
+   "hemi": "L",
+   "measuredSide": "L",
+   "voxels": 13472,
+   "volumeMm3": 13472,
+   "centroidMm": [
+    -35.7,
+    -42.15,
+    -21.39
+   ],
+   "centroidInsideLabel": true,
+   "interiorPointMm": [
+    -34,
+    -48,
+    -18
+   ],
+   "interiorDepthMm": 4.12,
+   "bboxMm": {
+    "min": [
+     -51,
+     -80,
+     -49
+    ],
+    "max": [
+     -18,
+     5,
+     -2
+    ]
+   },
+   "mesh": {
+    "node": "cerebra-75",
+    "vertices": 766,
+    "triangles": 1580,
+    "gridMm": 2,
+    "isoLevel": 0.4625,
+    "volumeRatio": 1.002,
+    "solidCentroidOffsetMm": 0.2
+   }
+  },
+  {
+   "label": 76,
+   "name": "Basal Forebrain",
+   "hemi": "L",
+   "measuredSide": "L",
+   "voxels": 192,
+   "volumeMm3": 192,
+   "centroidMm": [
+    -7.09,
+    4.04,
+    -11.88
+   ],
+   "centroidInsideLabel": true,
+   "interiorPointMm": [
+    -7,
+    4,
+    -12
+   ],
+   "interiorDepthMm": 2.24,
+   "bboxMm": {
+    "min": [
+     -14,
+     1,
+     -15
+    ],
+    "max": [
+     -1,
+     6,
+     -9
+    ]
+   },
+   "mesh": {
+    "node": "cerebra-76",
+    "vertices": 262,
+    "triangles": 520,
+    "gridMm": 1,
+    "isoLevel": 0.3687,
+    "volumeRatio": 0.998,
+    "solidCentroidOffsetMm": 0.03
+   }
+  },
+  {
+   "label": 77,
+   "name": "Ventral Diencephalon",
+   "hemi": "L",
+   "measuredSide": "L",
+   "voxels": 6102,
+   "volumeMm3": 6102,
+   "centroidMm": [
+    -10.34,
+    -16.77,
+    -10.31
+   ],
+   "centroidInsideLabel": true,
+   "interiorPointMm": [
+    -10,
+    -17,
+    -11
+   ],
+   "interiorDepthMm": 7.87,
+   "bboxMm": {
+    "min": [
+     -27,
+     -29,
+     -21
+    ],
+    "max": [
+     -1,
+     1,
+     3
+    ]
+   },
+   "mesh": {
+    "node": "cerebra-77",
+    "vertices": 1393,
+    "triangles": 2784,
+    "gridMm": 1,
+    "isoLevel": 0.425,
+    "volumeRatio": 1.025,
+    "solidCentroidOffsetMm": 0.01
+   }
+  },
+  {
+   "label": 78,
+   "name": "Pallidum",
+   "hemi": "L",
+   "measuredSide": "L",
+   "voxels": 1701,
+   "volumeMm3": 1701,
+   "centroidMm": [
+    -18.68,
+    -2.33,
+    -1.93
+   ],
+   "centroidInsideLabel": true,
+   "interiorPointMm": [
+    -17,
+    0,
+    -2
+   ],
+   "interiorDepthMm": 4.9,
+   "bboxMm": {
+    "min": [
+     -27,
+     -14,
+     -9
+    ],
+    "max": [
+     -9,
+     8,
+     6
+    ]
+   },
+   "mesh": {
+    "node": "cerebra-78",
+    "vertices": 603,
+    "triangles": 1202,
+    "gridMm": 1,
+    "isoLevel": 0.425,
+    "volumeRatio": 1.015,
+    "solidCentroidOffsetMm": 0.02
+   }
+  },
+  {
+   "label": 79,
+   "name": "Middle Temporal",
+   "hemi": "L",
+   "measuredSide": "L",
+   "voxels": 28291,
+   "volumeMm3": 28291,
+   "centroidMm": [
+    -57.25,
+    -31.58,
+    -11.29
+   ],
+   "centroidInsideLabel": false,
+   "interiorPointMm": [
+    -57,
+    -60,
+    1
+   ],
+   "interiorDepthMm": 5.92,
+   "bboxMm": {
+    "min": [
+     -72,
+     -72,
+     -47
+    ],
+    "max": [
+     -31,
+     21,
+     17
+    ]
+   },
+   "mesh": {
+    "node": "cerebra-79",
+    "vertices": 1338,
+    "triangles": 2720,
+    "gridMm": 2,
+    "isoLevel": 0.4625,
+    "volumeRatio": 1.009,
+    "solidCentroidOffsetMm": 0.43
+   }
+  },
+  {
+   "label": 80,
+   "name": "Third Ventricle",
+   "hemi": "L",
+   "measuredSide": "L",
+   "voxels": 613,
+   "volumeMm3": 613,
+   "centroidMm": [
+    -1.54,
+    -13.78,
+    -0.21
+   ],
+   "centroidInsideLabel": false,
+   "interiorPointMm": [
+    -2,
+    -22,
+    1
+   ],
+   "interiorDepthMm": 2,
+   "bboxMm": {
+    "min": [
+     -9,
+     -38,
+     -18
+    ],
+    "max": [
+     -1,
+     3,
+     15
+    ]
+   },
+   "mesh": {
+    "node": "cerebra-80",
+    "vertices": 517,
+    "triangles": 1030,
+    "gridMm": 1,
+    "isoLevel": 0.3313,
+    "volumeRatio": 0.988,
+    "solidCentroidOffsetMm": 0.44
+   }
+  },
+  {
+   "label": 81,
+   "name": "Caudal Anterior Cingulate",
+   "hemi": "L",
+   "measuredSide": "L",
+   "voxels": 3652,
+   "volumeMm3": 3652,
+   "centroidMm": [
+    -5.14,
+    20.71,
+    27.41
+   ],
+   "centroidInsideLabel": true,
+   "interiorPointMm": [
+    -4,
+    24,
+    26
+   ],
+   "interiorDepthMm": 3.74,
+   "bboxMm": {
+    "min": [
+     -14,
+     0,
+     7
+    ],
+    "max": [
+     -1,
+     42,
+     43
+    ]
+   },
+   "mesh": {
+    "node": "cerebra-81",
+    "vertices": 400,
+    "triangles": 808,
+    "gridMm": 2,
+    "isoLevel": 0.425,
+    "volumeRatio": 0.984,
+    "solidCentroidOffsetMm": 0.13
+   }
+  },
+  {
+   "label": 82,
+   "name": "Precuneus",
+   "hemi": "L",
+   "measuredSide": "L",
+   "voxels": 18771,
+   "volumeMm3": 18771,
+   "centroidMm": [
+    -9.07,
+    -59,
+    39.66
+   ],
+   "centroidInsideLabel": true,
+   "interiorPointMm": [
+    -5,
+    -73,
+    41
+   ],
+   "interiorDepthMm": 4.36,
+   "bboxMm": {
+    "min": [
+     -27,
+     -84,
+     5
+    ],
+    "max": [
+     -1,
+     -36,
+     79
+    ]
+   },
+   "mesh": {
+    "node": "cerebra-82",
+    "vertices": 880,
+    "triangles": 1776,
+    "gridMm": 2,
+    "isoLevel": 0.4625,
+    "volumeRatio": 1.017,
+    "solidCentroidOffsetMm": 0.17
+   }
+  },
+  {
+   "label": 83,
+   "name": "Pars Opercularis",
+   "hemi": "L",
+   "measuredSide": "L",
+   "voxels": 7673,
+   "volumeMm3": 7673,
+   "centroidMm": [
+    -47.78,
+    14.88,
+    13.11
+   ],
+   "centroidInsideLabel": false,
+   "interiorPointMm": [
+    -46,
+    19,
+    5
+   ],
+   "interiorDepthMm": 4,
+   "bboxMm": {
+    "min": [
+     -61,
+     2,
+     -5
+    ],
+    "max": [
+     -30,
+     29,
+     30
+    ]
+   },
+   "mesh": {
+    "node": "cerebra-83",
+    "vertices": 429,
+    "triangles": 862,
+    "gridMm": 2,
+    "isoLevel": 0.4625,
+    "volumeRatio": 0.972,
+    "solidCentroidOffsetMm": 0.4
+   }
+  },
+  {
+   "label": 84,
+   "name": "Isthmus Cingulate",
+   "hemi": "L",
+   "measuredSide": "L",
+   "voxels": 4427,
+   "volumeMm3": 4427,
+   "centroidMm": [
+    -8.03,
+    -45.79,
+    18.9
+   ],
+   "centroidInsideLabel": true,
+   "interiorPointMm": [
+    -4,
+    -49,
+    29
+   ],
+   "interiorDepthMm": 3.61,
+   "bboxMm": {
+    "min": [
+     -24,
+     -58,
+     -6
+    ],
+    "max": [
+     -1,
+     -31,
+     37
+    ]
+   },
+   "mesh": {
+    "node": "cerebra-84",
+    "vertices": 400,
+    "triangles": 802,
+    "gridMm": 2,
+    "isoLevel": 0.425,
+    "volumeRatio": 0.978,
+    "solidCentroidOffsetMm": 0.44
+   }
+  },
+  {
+   "label": 85,
+   "name": "Lateral Occipital",
+   "hemi": "L",
+   "measuredSide": "L",
+   "voxels": 22807,
+   "volumeMm3": 22807,
+   "centroidMm": [
+    -31.91,
+    -87.16,
+    1.54
+   ],
+   "centroidInsideLabel": true,
+   "interiorPointMm": [
+    -29,
+    -94,
+    8
+   ],
+   "interiorDepthMm": 5.1,
+   "bboxMm": {
+    "min": [
+     -63,
+     -107,
+     -21
+    ],
+    "max": [
+     -5,
+     -50,
+     34
+    ]
+   },
+   "mesh": {
+    "node": "cerebra-85",
+    "vertices": 1233,
+    "triangles": 2536,
+    "gridMm": 2,
+    "isoLevel": 0.5,
+    "volumeRatio": 0.972,
+    "solidCentroidOffsetMm": 0.43
+   }
+  },
+  {
+   "label": 86,
+   "name": "Precentral",
+   "hemi": "L",
+   "measuredSide": "L",
+   "voxels": 21393,
+   "volumeMm3": 21393,
+   "centroidMm": [
+    -42.76,
+    -7.3,
+    41.74
+   ],
+   "centroidInsideLabel": false,
+   "interiorPointMm": [
+    -55,
+    2,
+    40
+   ],
+   "interiorDepthMm": 3.74,
+   "bboxMm": {
+    "min": [
+     -66,
+     -36,
+     -1
+    ],
+    "max": [
+     -5,
+     14,
+     81
+    ]
+   },
+   "mesh": {
+    "node": "cerebra-86",
+    "vertices": 1409,
+    "triangles": 2864,
+    "gridMm": 2,
+    "isoLevel": 0.4625,
+    "volumeRatio": 0.991,
+    "solidCentroidOffsetMm": 0.55
+   }
+  },
+  {
+   "label": 87,
+   "name": "Entorhinal",
+   "hemi": "L",
+   "measuredSide": "L",
+   "voxels": 3205,
+   "volumeMm3": 3205,
+   "centroidMm": [
+    -22.22,
+    -4.53,
+    -31.87
+   ],
+   "centroidInsideLabel": false,
+   "interiorPointMm": [
+    -20,
+    -1,
+    -34
+   ],
+   "interiorDepthMm": 3.46,
+   "bboxMm": {
+    "min": [
+     -34,
+     -22,
+     -44
+    ],
+    "max": [
+     -11,
+     10,
+     -19
+    ]
+   },
+   "mesh": {
+    "node": "cerebra-87",
+    "vertices": 400,
+    "triangles": 796,
+    "gridMm": 2,
+    "isoLevel": 0.425,
+    "volumeRatio": 0.972,
+    "solidCentroidOffsetMm": 0.27
+   }
+  },
+  {
+   "label": 88,
+   "name": "Fourth Ventricle",
+   "hemi": "L",
+   "measuredSide": "L",
+   "voxels": 612,
+   "volumeMm3": 612,
+   "centroidMm": [
+    -3.37,
+    -44.47,
+    -31.53
+   ],
+   "centroidInsideLabel": true,
+   "interiorPointMm": [
+    -3,
+    -44,
+    -32
+   ],
+   "interiorDepthMm": 3,
+   "bboxMm": {
+    "min": [
+     -12,
+     -55,
+     -42
+    ],
+    "max": [
+     -1,
+     -14,
+     -14
+    ]
+   },
+   "mesh": {
+    "node": "cerebra-88",
+    "vertices": 400,
+    "triangles": 798,
+    "gridMm": 1,
+    "isoLevel": 0.3875,
+    "volumeRatio": 1.008,
+    "solidCentroidOffsetMm": 0.33
+   }
+  },
+  {
+   "label": 89,
+   "name": "Superior Frontal",
+   "hemi": "L",
+   "measuredSide": "L",
+   "voxels": 52819,
+   "volumeMm3": 52819,
+   "centroidMm": [
+    -13.24,
+    33.82,
+    37.37
+   ],
+   "centroidInsideLabel": false,
+   "interiorPointMm": [
+    -8,
+    53,
+    0
+   ],
+   "interiorDepthMm": 5.39,
+   "bboxMm": {
+    "min": [
+     -34,
+     -18,
+     -17
+    ],
+    "max": [
+     -1,
+     74,
+     78
+    ]
+   },
+   "mesh": {
+    "node": "cerebra-89",
+    "vertices": 2430,
+    "triangles": 4916,
+    "gridMm": 2,
+    "isoLevel": 0.5,
+    "volumeRatio": 0.982,
+    "solidCentroidOffsetMm": 0.48
+   }
+  },
+  {
+   "label": 90,
+   "name": "Cerebellum White Matter",
+   "hemi": "L",
+   "measuredSide": "L",
+   "voxels": 12998,
+   "volumeMm3": 12998,
+   "centroidMm": [
+    -18.65,
+    -52.04,
+    -36.22
+   ],
+   "centroidInsideLabel": true,
+   "interiorPointMm": [
+    -21,
+    -53,
+    -40
+   ],
+   "interiorDepthMm": 8.77,
+   "bboxMm": {
+    "min": [
+     -37,
+     -75,
+     -48
+    ],
+    "max": [
+     -5,
+     -22,
+     -18
+    ]
+   },
+   "mesh": {
+    "node": "cerebra-90",
+    "vertices": 2461,
+    "triangles": 4926,
+    "gridMm": 1,
+    "isoLevel": 0.5,
+    "volumeRatio": 0.97,
+    "solidCentroidOffsetMm": 0.1
+   }
+  },
+  {
+   "label": 91,
+   "name": "Thalamus",
+   "hemi": "L",
+   "measuredSide": "L",
+   "voxels": 10037,
+   "volumeMm3": 10037,
+   "centroidMm": [
+    -11.74,
+    -18.1,
+    6.75
+   ],
+   "centroidInsideLabel": true,
+   "interiorPointMm": [
+    -12,
+    -20,
+    7
+   ],
+   "interiorDepthMm": 8.83,
+   "bboxMm": {
+    "min": [
+     -26,
+     -36,
+     -6
+    ],
+    "max": [
+     -1,
+     0,
+     20
+    ]
+   },
+   "mesh": {
+    "node": "cerebra-91",
+    "vertices": 1765,
+    "triangles": 3526,
+    "gridMm": 1,
+    "isoLevel": 0.5,
+    "volumeRatio": 0.979,
+    "solidCentroidOffsetMm": 0.03
+   }
+  },
+  {
+   "label": 92,
+   "name": "Lateral Ventricle",
+   "hemi": "L",
+   "measuredSide": "L",
+   "voxels": 9570,
+   "volumeMm3": 9570,
+   "centroidMm": [
+    -14.68,
+    -17.84,
+    14.17
+   ],
+   "centroidInsideLabel": false,
+   "interiorPointMm": [
+    -20,
+    -37,
+    16
+   ],
+   "interiorDepthMm": 5.2,
+   "bboxMm": {
+    "min": [
+     -36,
+     -80,
+     -5
+    ],
+    "max": [
+     -1,
+     30,
+     28
+    ]
+   },
+   "mesh": {
+    "node": "cerebra-92",
+    "vertices": 3237,
+    "triangles": 6480,
+    "gridMm": 1,
+    "isoLevel": 0.425,
+    "volumeRatio": 1.024,
+    "solidCentroidOffsetMm": 0.41
+   }
+  },
+  {
+   "label": 93,
+   "name": "Caudal Middle Frontal",
+   "hemi": "L",
+   "measuredSide": "L",
+   "voxels": 13220,
+   "volumeMm3": 13220,
+   "centroidMm": [
+    -36.94,
+    12.26,
+    47.66
+   ],
+   "centroidInsideLabel": false,
+   "interiorPointMm": [
+    -40,
+    20,
+    48
+   ],
+   "interiorDepthMm": 4.24,
+   "bboxMm": {
+    "min": [
+     -54,
+     -7,
+     25
+    ],
+    "max": [
+     -21,
+     45,
+     66
+    ]
+   },
+   "mesh": {
+    "node": "cerebra-93",
+    "vertices": 742,
+    "triangles": 1486,
+    "gridMm": 2,
+    "isoLevel": 0.4625,
+    "volumeRatio": 1.003,
+    "solidCentroidOffsetMm": 0.43
+   }
+  },
+  {
+   "label": 94,
+   "name": "Cuneus",
+   "hemi": "L",
+   "measuredSide": "L",
+   "voxels": 8066,
+   "volumeMm3": 8066,
+   "centroidMm": [
+    -8.61,
+    -81.31,
+    24.58
+   ],
+   "centroidInsideLabel": true,
+   "interiorPointMm": [
+    -5,
+    -83,
+    17
+   ],
+   "interiorDepthMm": 3.74,
+   "bboxMm": {
+    "min": [
+     -21,
+     -100,
+     -1
+    ],
+    "max": [
+     -1,
+     -53,
+     44
+    ]
+   },
+   "mesh": {
+    "node": "cerebra-94",
+    "vertices": 487,
+    "triangles": 982,
+    "gridMm": 2,
+    "isoLevel": 0.4438,
+    "volumeRatio": 0.998,
+    "solidCentroidOffsetMm": 0.5
+   }
+  },
+  {
+   "label": 95,
+   "name": "Pars Orbitalis",
+   "hemi": "L",
+   "measuredSide": "L",
+   "voxels": 3639,
+   "volumeMm3": 3639,
+   "centroidMm": [
+    -43.08,
+    34.03,
+    -12.77
+   ],
+   "centroidInsideLabel": false,
+   "interiorPointMm": [
+    -50,
+    35,
+    -14
+   ],
+   "interiorDepthMm": 3.16,
+   "bboxMm": {
+    "min": [
+     -54,
+     19,
+     -22
+    ],
+    "max": [
+     -29,
+     50,
+     2
+    ]
+   },
+   "mesh": {
+    "node": "cerebra-95",
+    "vertices": 400,
+    "triangles": 796,
+    "gridMm": 2,
+    "isoLevel": 0.425,
+    "volumeRatio": 0.981,
+    "solidCentroidOffsetMm": 0.42
+   }
+  },
+  {
+   "label": 96,
+   "name": "Superior Temporal",
+   "hemi": "L",
+   "measuredSide": "L",
+   "voxels": 25351,
+   "volumeMm3": 25351,
+   "centroidMm": [
+    -51.06,
+    -8.09,
+    -8.6
+   ],
+   "centroidInsideLabel": true,
+   "interiorPointMm": [
+    -66,
+    -34,
+    14
+   ],
+   "interiorDepthMm": 4.47,
+   "bboxMm": {
+    "min": [
+     -72,
+     -52,
+     -46
+    ],
+    "max": [
+     -19,
+     26,
+     21
+    ]
+   },
+   "mesh": {
+    "node": "cerebra-96",
+    "vertices": 1372,
+    "triangles": 2930,
+    "gridMm": 2,
+    "isoLevel": 0.4625,
+    "volumeRatio": 1.025,
+    "solidCentroidOffsetMm": 0.58
+   }
+  },
+  {
+   "label": 97,
+   "name": "Cerebellum Gray Matter",
+   "hemi": "L",
+   "measuredSide": "L",
+   "voxels": 71229,
+   "volumeMm3": 71229,
+   "centroidMm": [
+    -26.81,
+    -63.27,
+    -38.8
+   ],
+   "centroidInsideLabel": false,
+   "interiorPointMm": [
+    -36,
+    -73,
+    -35
+   ],
+   "interiorDepthMm": 10.82,
+   "bboxMm": {
+    "min": [
+     -58,
+     -93,
+     -68
+    ],
+    "max": [
+     -1,
+     -23,
+     -5
+    ]
+   },
+   "mesh": {
+    "node": "cerebra-97",
+    "vertices": 1577,
+    "triangles": 3170,
+    "gridMm": 2,
+    "isoLevel": 0.5,
+    "volumeRatio": 0.984,
+    "solidCentroidOffsetMm": 0.18
+   }
+  },
+  {
+   "label": 98,
+   "name": "Posterior Cingulate",
+   "hemi": "L",
+   "measuredSide": "L",
+   "voxels": 5302,
+   "volumeMm3": 5302,
+   "centroidMm": [
+    -5.52,
+    -19.87,
+    38.6
+   ],
+   "centroidInsideLabel": true,
+   "interiorPointMm": [
+    -4,
+    -30,
+    44
+   ],
+   "interiorDepthMm": 4,
+   "bboxMm": {
+    "min": [
+     -17,
+     -41,
+     -2
+    ],
+    "max": [
+     -1,
+     45,
+     50
+    ]
+   },
+   "mesh": {
+    "node": "cerebra-98",
+    "vertices": 400,
+    "triangles": 800,
+    "gridMm": 2,
+    "isoLevel": 0.425,
+    "volumeRatio": 1.008,
+    "solidCentroidOffsetMm": 0.2
+   }
+  },
+  {
+   "label": 99,
+   "name": "Hippocampus",
+   "hemi": "L",
+   "measuredSide": "L",
+   "voxels": 4694,
+   "volumeMm3": 4694,
+   "centroidMm": [
+    -25.89,
+    -22.5,
+    -14.48
+   ],
+   "centroidInsideLabel": true,
+   "interiorPointMm": [
+    -31,
+    -19,
+    -17
+   ],
+   "interiorDepthMm": 4,
+   "bboxMm": {
+    "min": [
+     -36,
+     -42,
+     -31
+    ],
+    "max": [
+     -12,
+     -5,
+     8
+    ]
+   },
+   "mesh": {
+    "node": "cerebra-99",
+    "vertices": 1576,
+    "triangles": 3150,
+    "gridMm": 1,
+    "isoLevel": 0.4625,
+    "volumeRatio": 0.995,
+    "solidCentroidOffsetMm": 0.1
+   }
+  },
+  {
+   "label": 100,
+   "name": "Caudate",
+   "hemi": "L",
+   "measuredSide": "L",
+   "voxels": 5643,
+   "volumeMm3": 5643,
+   "centroidMm": [
+    -13.92,
+    9.58,
+    10.43
+   ],
+   "centroidInsideLabel": true,
+   "interiorPointMm": [
+    -12,
+    16,
+    6
+   ],
+   "interiorDepthMm": 5.2,
+   "bboxMm": {
+    "min": [
+     -22,
+     -29,
+     -10
+    ],
+    "max": [
+     -5,
+     27,
+     27
+    ]
+   },
+   "mesh": {
+    "node": "cerebra-100",
+    "vertices": 1615,
+    "triangles": 3226,
+    "gridMm": 1,
+    "isoLevel": 0.425,
+    "volumeRatio": 1.021,
+    "solidCentroidOffsetMm": 0.13
+   }
+  },
+  {
+   "label": 101,
+   "name": "Vermal lobules I-V",
+   "hemi": "L",
+   "measuredSide": "L",
+   "voxels": 3963,
+   "volumeMm3": 3963,
+   "centroidMm": [
+    -4.3,
+    -53.34,
+    -13.95
+   ],
+   "centroidInsideLabel": true,
+   "interiorPointMm": [
+    -4,
+    -53,
+    -14
+   ],
+   "interiorDepthMm": 4,
+   "bboxMm": {
+    "min": [
+     -8,
+     -72,
+     -30
+    ],
+    "max": [
+     -1,
+     -40,
+     2
+    ]
+   },
+   "mesh": {
+    "node": "cerebra-101",
+    "vertices": 983,
+    "triangles": 1958,
+    "gridMm": 1,
+    "isoLevel": 0.425,
+    "volumeRatio": 1.023,
+    "solidCentroidOffsetMm": 0.08
+   }
+  },
+  {
+   "label": 102,
+   "name": "Supramarginal",
+   "hemi": "L",
+   "measuredSide": "L",
+   "voxels": 16033,
+   "volumeMm3": 16033,
+   "centroidMm": [
+    -55.15,
+    -35.15,
+    35.98
+   ],
+   "centroidInsideLabel": true,
+   "interiorPointMm": [
+    -61,
+    -40,
+    30
+   ],
+   "interiorDepthMm": 5,
+   "bboxMm": {
+    "min": [
+     -69,
+     -53,
+     13
+    ],
+    "max": [
+     -31,
+     -16,
+     59
+    ]
+   },
+   "mesh": {
+    "node": "cerebra-102",
+    "vertices": 785,
+    "triangles": 1594,
+    "gridMm": 2,
+    "isoLevel": 0.5,
+    "volumeRatio": 0.973,
+    "solidCentroidOffsetMm": 0.46
+   }
+  }
+ ]
+}

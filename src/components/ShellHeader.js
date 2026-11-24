@@ -1,6 +1,7 @@
 import { ABOUT_ROUTE, LAB_ROUTE, LANDING_ROUTE, MODELS_ROUTE, PATIENT_ROUTE } from '../catalog/index.js';
 import { BRAND } from '../data/brand.js';
 import { PUBLIC_MANIFEST } from '../catalog/publicManifest.js';
+import { LAUNCH_AREAS } from '../catalog/launch.js';
 import { betaUnlocked } from '../app/releaseGate.js';
 import { PURPOSE, purposeById } from '../app/purpose.js';
 import { patientExplanationScenes } from '../access/patientPurpose.js';
@@ -154,17 +155,11 @@ const dual = (en, ja) => [
  * different destinations to a reader.
  */
 export const SHELL_DESTINATIONS = Object.freeze([
-  // The model index — disease models first, the anatomy as a shelf below them.
-  // Ungated: it lists what the release opens, and under the preview unlock,
-  // everything.
-  Object.freeze({ id: 'models', route: MODELS_ROUTE, en: 'Models', ja: 'モデル' }),
-  // What BYOKI MOTION is, which models it makes and why, and who operates it.
-  Object.freeze({ id: 'about', route: ABOUT_ROUTE, en: 'About', ja: 'About' }),
-  // `公開とレビュー` (`#/trust`) is not here (owner's decision, 2026-09-27):
-  // it is the ledger of every model's publication and review state — the
-  // product's own working record, not a destination for a reader. A model's
-  // own sources and limits are one press away from that model
-  // (「このモデルについて」), where the question is asked.
+  // The launch's three areas (`src/catalog/launch.js`), in the order the
+  // product ranks them: function first. About moved to the menu and the footer
+  // — a header with three places to learn and one page about the company puts
+  // them on the same level.
+  ...LAUNCH_AREAS.map((area) => Object.freeze({ id: area.id, route: area.route ?? LANDING_ROUTE, en: area.en, ja: area.ja })),
   Object.freeze({ id: 'lab', route: LAB_ROUTE, en: 'Experimental', ja: '実験モデル', gated: true }),
 ]);
 
@@ -202,7 +197,7 @@ export function createShellHeader({
       'aria-label': inLanguage(`${BRAND.name} home`, `${BRAND.name} トップ`),
       ...(current === 'home' ? { 'aria-current': 'page' } : {}),
     },
-    [createWordmark({ size: 'sm', className: 'shell-brand-name' })]
+    [createWordmark({ size: 'sm', className: 'shell-brand-name', withMark: true })]
   );
 
   // With two purposes, they are the top level and the model index is the

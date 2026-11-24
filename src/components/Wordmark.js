@@ -1,5 +1,6 @@
 import { el } from '../utils/dom.js';
 import { BRAND } from '../data/brand.js';
+import { brandIcon } from './brandIcon.js';
 
 /**
  * BYOKI MOTION, set as type.
@@ -17,19 +18,14 @@ import { BRAND } from '../data/brand.js';
  * @param {{ className?: string, size?: 'sm'|'md'|'lg'|'xl' }} [options]
  * @returns {HTMLElement}
  */
-export function createWordmark({ className = '', size = 'md' } = {}) {
+export function createWordmark({ className = '', size = 'md', withMark = false } = {}) {
   const [first, second] = BRAND.words;
-  return el('span', { class: `wordmark is-${size} ${className}`.trim() }, [
+  return el('span', { class: `wordmark is-${size}${withMark ? ' has-mark' : ''} ${className}`.trim() }, [
     el('span', { class: 'visually-hidden', text: BRAND.name }),
+    withMark ? brandIcon(el, 'wordmark-mark') : null,
     el('span', { class: 'wordmark-type', 'aria-hidden': 'true' }, [
       el('span', { class: 'wordmark-first', text: first }),
-      el(
-        'span',
-        { class: 'wordmark-second' },
-        [...second].map((letter, index) =>
-          el('span', { class: 'wordmark-letter', dataset: { step: String(index) }, text: letter })
-        )
-      ),
+      el('span', { class: 'wordmark-second', text: second }),
     ]),
-  ]);
+  ].filter(Boolean));
 }

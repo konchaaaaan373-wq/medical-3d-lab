@@ -1,0 +1,372 @@
+/* ==========================================================================
+   The atlas layout (`meta.layout = 'atlas'`, `src/app/AtlasShell.js`)
+   ==========================================================================
+
+   A workbench under the site header: structures | 3D | MRI planes. Unlike the
+   model shell, nothing here floats over a full-screen canvas — the three
+   columns are a grid, and the 3D canvas fills one of them. That is why the
+   UI layer takes pointer events back for this layout.
+
+   Desktop (≥ 900 px): three columns; the mode tabs choose linked / 3D / MRI.
+   Phone: one view at a time — the tabs are the layout — with the structure
+   list as a sheet and the selection as a strip under the view.
+
+   Colours: the dark stage (`--brand-stage`), because an MRI is read on black
+   and the 3D beside it should not be the brightest thing on screen. Pink marks
+   only the selection and the active tab; region colours are the atlas's own.
+   ========================================================================== */
+
+#ui[data-view='atlas'] {
+  pointer-events: auto;
+  gap: 8px;
+  background: var(--brand-stage, #171820);
+  --ink: #f2f1f6;
+  --ink-dim: #b9bac6;
+  --ink-faint: #8d8fa0;
+  --atlas-rule: rgba(242, 241, 246, 0.12);
+  --atlas-surface: #1e1f2a;
+  --atlas-raised: #262735;
+}
+
+.atlas-top {
+  flex: none;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px 16px;
+}
+
+/* The title card is a strip here, not a floating card: name, then the one
+   quiet line that opens the model's scope and review state. */
+#ui[data-view='atlas'] .atlas-top .title-card {
+  position: static;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 2px 16px;
+  max-width: none;
+  margin: 0;
+  padding: 2px 6px;
+  border: 0;
+  background: none;
+  box-shadow: none;
+  backdrop-filter: none;
+}
+
+#ui[data-view='atlas'] .atlas-top .title-card .title,
+#ui[data-view='atlas'] .atlas-top .title-card .title-ja {
+  margin: 0;
+  font-size: 20px;
+  line-height: 1.4;
+}
+
+#ui[data-view='atlas'] .atlas-top .title-card .subtitle {
+  margin: 0;
+  font-size: 13px;
+  color: var(--ink-dim);
+}
+
+#ui[data-view='atlas'] .atlas-top .title-card .title-trail { display: none; }
+
+.atlas-host {
+  flex: 1 1 auto;
+  min-height: 0;
+  display: flex;
+}
+
+.mri-workbench {
+  flex: 1 1 auto;
+  min-width: 0;
+  min-height: 0;
+  display: grid;
+  gap: 8px;
+  color: var(--ink);
+  font-size: 14px;
+  line-height: 1.5;
+  grid-template-columns: 240px minmax(0, 1.15fr) minmax(0, 1fr);
+  grid-template-rows: minmax(0, 1fr) auto auto;
+  grid-template-areas:
+    'list three side'
+    'list info  side'
+    'note note  note';
+}
+
+.mri-bar { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+.mri-list { grid-area: list; }
+.mri-3d { grid-area: three; }
+.mri-side { grid-area: side; }
+.mri-info { grid-area: info; }
+.mri-standard { grid-area: note; }
+.mri-status { grid-area: three; align-self: center; justify-self: center; z-index: 2; }
+
+.mri-workbench[data-mode='3d'] {
+  grid-template-columns: 240px minmax(0, 1fr);
+  grid-template-areas:
+    'list three'
+    'list info'
+    'note note';
+}
+.mri-workbench[data-mode='3d'] .mri-side { display: none; }
+
+.mri-workbench[data-mode='mri'] {
+  grid-template-columns: 240px minmax(0, 1fr);
+  grid-template-areas:
+    'list side'
+    'list info'
+    'note note';
+}
+.mri-workbench[data-mode='mri'] .mri-3d { display: none; }
+.mri-workbench[data-mode='mri'] .mri-status { grid-area: side; }
+
+.mri-list,
+.mri-3d,
+.mri-side,
+.mri-info {
+  min-width: 0;
+  min-height: 0;
+  border-radius: 10px;
+  background: var(--atlas-surface);
+}
+
+/* ------------------------------------------------------------------ modes */
+
+.mri-modes { display: inline-flex; gap: 2px; padding: 3px; border-radius: 999px; background: var(--atlas-surface); }
+
+.mri-mode {
+  min-height: 36px;
+  padding: 0 16px;
+  border: 0;
+  border-radius: 999px;
+  background: transparent;
+  color: var(--ink-dim);
+  font: inherit;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.mri-mode[aria-selected='true'] { background: var(--brand-pink, #e879a6); color: #2a0f1c; }
+.mri-mode:focus-visible,
+.mri-chip:focus-visible,
+.mri-structure:focus-visible,
+.mri-search:focus-visible,
+.mri-slice-canvas:focus-visible { outline: 2px solid var(--brand-pink, #e879a6); outline-offset: 2px; }
+.mri-mode.is-list { display: none; background: var(--atlas-surface); }
+
+/* ------------------------------------------------------------------- list */
+
+.mri-list { display: flex; flex-direction: column; overflow: hidden; }
+
+.mri-search {
+  flex: none;
+  margin: 10px;
+  min-height: 40px;
+  padding: 0 12px;
+  border: 1px solid var(--atlas-rule);
+  border-radius: 8px;
+  background: var(--atlas-raised);
+  color: var(--ink);
+  font: inherit;
+}
+
+.mri-search::placeholder { color: var(--ink-faint); }
+.mri-list-body { flex: 1 1 auto; min-height: 0; overflow-y: auto; padding: 0 6px 10px; overscroll-behavior: contain; }
+.mri-group-name { margin: 12px 6px 4px; font-size: 12px; font-weight: 600; letter-spacing: 0.04em; color: var(--ink-faint); }
+.mri-group-list { list-style: none; margin: 0; padding: 0; }
+
+.mri-structure {
+  display: grid;
+  grid-template-columns: 12px minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  min-height: 32px;
+  padding: 4px 6px;
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--ink);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.mri-structure:hover { background: var(--atlas-raised); }
+.mri-structure[aria-pressed='true'] { background: rgba(232, 121, 166, 0.18); box-shadow: inset 2px 0 0 var(--brand-pink, #e879a6); }
+.mri-structure-name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.mri-structure-side { font-size: 12px; font-variant-numeric: tabular-nums; color: var(--ink-faint); }
+.mri-swatch { width: 12px; height: 12px; border-radius: 3px; flex: none; }
+.mri-swatch.is-large { width: 18px; height: 18px; border-radius: 4px; margin-top: 4px; }
+
+/* --------------------------------------------------------------------- 3D */
+
+.mri-3d { position: relative; overflow: hidden; }
+.mri-3d-stage { position: absolute; inset: 0; }
+.mri-3d-stage canvas { display: block; width: 100%; height: 100%; touch-action: none; }
+.mri-3d-note { position: absolute; inset: auto 12px 50% 12px; margin: 0; text-align: center; color: var(--ink-dim); pointer-events: none; }
+.mri-3d-views { position: absolute; left: 10px; bottom: 10px; display: flex; flex-wrap: wrap; gap: 4px; }
+.mri-3d-tools { position: absolute; left: 10px; top: 10px; right: 10px; display: flex; flex-wrap: wrap; gap: 4px; pointer-events: none; }
+.mri-3d-tools > * { pointer-events: auto; }
+
+.mri-chip {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 32px;
+  padding: 0 12px;
+  border: 1px solid var(--atlas-rule);
+  border-radius: 999px;
+  background: rgba(30, 31, 42, 0.86);
+  color: var(--ink);
+  font: inherit;
+  font-size: 13px;
+  cursor: pointer;
+}
+
+.mri-chip:hover { background: var(--atlas-raised); }
+.mri-chip[aria-pressed='true'] { border-color: var(--brand-pink, #e879a6); background: rgba(232, 121, 166, 0.16); }
+.mri-chip.is-icon { width: 32px; padding: 0; font-size: 16px; }
+
+/* ----------------------------------------------------------------- slices */
+
+.mri-side { display: flex; flex-direction: column; gap: 0; overflow: hidden; }
+.mri-slices { flex: 1 1 auto; min-height: 0; position: relative; padding: 8px; }
+
+.mri-slice-grid {
+  height: 100%;
+  display: grid;
+  gap: 6px;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  grid-template-rows: repeat(2, minmax(0, 1fr));
+}
+
+/* Axial takes the tall left cell; coronal and sagittal stack on the right. */
+.mri-slice.is-axial { grid-row: 1 / span 2; }
+.mri-workbench[data-mode='mri'] .mri-slice-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); grid-template-rows: minmax(0, 1fr); }
+.mri-workbench[data-mode='mri'] .mri-slice.is-axial { grid-row: auto; }
+
+.mri-slice { margin: 0; min-width: 0; min-height: 0; display: flex; flex-direction: column; border-radius: 6px; overflow: hidden; background: #000; }
+.mri-slice-caption { flex: none; display: flex; justify-content: space-between; gap: 8px; padding: 4px 8px; font-size: 12px; color: var(--ink-dim); background: var(--atlas-raised); }
+.mri-slice-name { font-weight: 600; color: var(--ink); }
+.mri-slice-position { font-variant-numeric: tabular-nums; }
+.mri-slice-frame { position: relative; flex: 1 1 auto; min-height: 0; }
+.mri-slice-canvas { position: absolute; inset: 0; width: 100%; height: 100%; cursor: crosshair; touch-action: none; }
+
+.mri-slice-edge {
+  position: absolute;
+  font-size: 12px;
+  font-weight: 700;
+  color: #ffd666;
+  text-shadow: 0 0 3px #000, 0 0 3px #000;
+  pointer-events: none;
+}
+.mri-slice-edge.is-left { left: 6px; top: 50%; transform: translateY(-50%); }
+.mri-slice-edge.is-right { right: 6px; top: 50%; transform: translateY(-50%); }
+.mri-slice-edge.is-top { top: 4px; left: 50%; transform: translateX(-50%); }
+.mri-slice-edge.is-bottom { bottom: 4px; left: 50%; transform: translateX(-50%); }
+
+.mri-hover {
+  position: absolute;
+  left: 14px;
+  bottom: 12px;
+  margin: 0;
+  padding: 2px 8px;
+  border-radius: 4px;
+  background: rgba(0, 0, 0, 0.72);
+  font-size: 12px;
+  pointer-events: none;
+}
+.mri-hover:empty { display: none; }
+
+/* --------------------------------------------------------------- controls */
+
+.mri-controls { flex: none; display: grid; gap: 6px; padding: 8px 10px 10px; border-top: 1px solid var(--atlas-rule); }
+.mri-settings { display: grid; gap: 6px; }
+.mri-settings[open] > summary { margin-bottom: 6px; }
+.mri-settings-summary { cursor: pointer; font-size: 12px; color: var(--ink-dim); min-height: 24px; }
+.mri-control-row { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; }
+.mri-control-row.is-sliders { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; }
+.mri-control-group { display: inline-flex; align-items: center; gap: 4px; }
+.mri-control { display: grid; gap: 2px; font-size: 12px; color: var(--ink-dim); }
+.mri-range { width: 100%; accent-color: var(--brand-pink, #e879a6); min-height: 24px; }
+.mri-zoom-value { min-width: 2.6em; text-align: center; font-size: 12px; font-variant-numeric: tabular-nums; color: var(--ink-dim); }
+
+/* ------------------------------------------------------------------- info */
+
+.mri-info { padding: 12px 14px; max-height: 190px; overflow-y: auto; }
+.mri-info-empty { margin: 0; color: var(--ink-dim); }
+.mri-info-head { display: flex; gap: 10px; align-items: flex-start; }
+.mri-info-name { margin: 0; font-size: 18px; line-height: 1.35; font-weight: 700; }
+.mri-info-alt { margin: 0; font-size: 12px; color: var(--ink-faint); }
+.mri-info-facts { display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 2px 14px; margin: 8px 0 0; font-size: 13px; }
+.mri-info-facts dt { color: var(--ink-faint); }
+.mri-info-facts dd { margin: 0; }
+.mri-info-mm { font-variant-numeric: tabular-nums; }
+.mri-info-note { margin: 8px 0 0; font-size: 13px; color: var(--ink-dim); }
+.mri-info-link { margin: 8px 0 0; font-size: 13px; display: grid; gap: 2px; }
+.mri-info-link a { color: #f5a9c6; font-weight: 600; }
+.mri-info-link-note { font-size: 12px; color: var(--ink-faint); }
+
+.mri-standard { margin: 0; padding: 0 4px 2px; font-size: 12px; color: var(--ink-faint); }
+.mri-status { margin: 0; padding: 8px 14px; border-radius: 8px; background: rgba(0, 0, 0, 0.6); color: var(--ink); }
+
+/* ------------------------------------------------------------------ phone */
+
+@media (max-width: 899px) {
+  .mri-workbench,
+  .mri-workbench[data-mode='3d'],
+  .mri-workbench[data-mode='mri'] {
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-rows: minmax(0, 1fr) auto auto;
+    grid-template-areas: 'view' 'info' 'note';
+  }
+
+  .mri-3d,
+  .mri-side,
+  .mri-status,
+  .mri-workbench[data-mode='mri'] .mri-status { grid-area: view; }
+
+  /* "Linked" on a phone: 3D above, planes below, in the one view cell. */
+  .mri-workbench[data-mode='linked'] { grid-template-rows: minmax(0, 0.8fr) minmax(0, 1fr) auto auto; grid-template-areas: 'three' 'view' 'info' 'note'; }
+  .mri-workbench[data-mode='linked'] .mri-3d { grid-area: three; }
+  .mri-workbench[data-mode='linked'] .mri-controls { display: none; }
+  /* Linked on a phone is the overview: the chips would cover the model. */
+  .mri-workbench[data-mode='linked'] .mri-3d-tools,
+  .mri-workbench[data-mode='linked'] .mri-3d-views,
+  .mri-workbench[data-mode='linked'] .mri-slice-position { display: none; }
+  .mri-settings-summary { min-height: 44px; display: flex; align-items: center; }
+  .mri-slices { min-height: 240px; }
+  .mri-3d-views .mri-chip, .mri-3d-tools .mri-chip { min-height: 44px; }
+  .mri-workbench[data-mode='linked'] .mri-slice-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); grid-template-rows: minmax(0, 1fr); }
+  .mri-workbench[data-mode='linked'] .mri-slice.is-axial { grid-row: auto; }
+
+  .mri-workbench[data-mode='mri'] .mri-slice-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); grid-template-rows: repeat(2, minmax(0, 1fr)); }
+  .mri-workbench[data-mode='mri'] .mri-slice.is-axial { grid-row: 1 / span 2; }
+
+  .mri-mode { min-height: 44px; }
+  .mri-mode.is-list { display: inline-flex; align-items: center; border-radius: 999px; }
+  .mri-chip { min-height: 44px; }
+  .mri-chip.is-icon { width: 44px; }
+  .mri-structure { min-height: 44px; }
+  .mri-control-row.is-sliders { grid-template-columns: minmax(0, 1fr); gap: 4px; }
+  .mri-range { min-height: 32px; }
+  .mri-info { max-height: 132px; }
+
+  /* The list is a sheet over the view, opened from the bar. */
+  .mri-list {
+    position: fixed;
+    inset: auto 0 0 0;
+    z-index: 30;
+    height: min(72svh, 560px);
+    border-radius: 16px 16px 0 0;
+    box-shadow: 0 -12px 40px rgba(0, 0, 0, 0.5);
+    transform: translateY(102%);
+    visibility: hidden;
+    transition: transform 200ms ease, visibility 200ms;
+  }
+  .mri-workbench[data-list='open'] .mri-list { transform: none; visibility: visible; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .mri-list { transition: none; }
+}

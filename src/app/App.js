@@ -148,6 +148,16 @@ export async function createApp({ stage, ui, onRetryModel = null }) {
     return mountLessonShell({ scene, SceneClass, meta, entry, ui });
   }
 
+  // An atlas is a workbench, not a canvas with panels over it: a list, a 3D
+  // view and image planes side by side (`AtlasShell.js`). Handed over before
+  // the renderer for the lesson's reason — its image planes need no WebGL, so
+  // it makes its own renderer, late, inside one column, and survives without.
+  if (meta.layout === 'atlas') {
+    const scene = new SceneClass({});
+    const { mountAtlasShell } = await import('./AtlasShell.js');
+    return mountAtlasShell({ scene, SceneClass, meta, entry, ui });
+  }
+
   const viewer = new Viewer(stage);
   const scene = new SceneClass({ viewer });
   viewer.scene.add(scene.build());

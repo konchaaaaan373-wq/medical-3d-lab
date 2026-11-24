@@ -45,6 +45,9 @@ import './styles/purpose.css';
 // surface sheet it restyles, before the touch floor, which still has the last
 // word on phone target sizes.
 import './styles/brand.css';
+// 3Dモデルラボ — the brain launch's surfaces and brand tokens (ADR 2026-11-24).
+// After brand.css, whose paper surfaces it restyles; before the touch floor.
+import './styles/lab.css';
 // Last, and deliberately: it is the one place that owns the 44 px touch floor
 // for phone widths, and it has to outrank every surface sheet that compacts —
 // the consultation view above included.

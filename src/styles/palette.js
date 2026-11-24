@@ -16,11 +16,11 @@
 
 /** The `:root` custom properties in `base.css`, by name without the `--`. */
 export const TOKENS = {
-  bg: '#121110',
-  ink: '#f1eee8',
-  'ink-dim': '#bcb6ac',
-  'ink-faint': '#8f887e',
-  accent: '#f0894a',
+  bg: '#171820',
+  ink: '#f2f1f6',
+  'ink-dim': '#b9bac6',
+  'ink-faint': '#8d8fa0',
+  accent: '#f08db4',
 };
 
 /**
@@ -31,23 +31,23 @@ export const TOKENS = {
  */
 export const SURFACES = {
   /** The page itself. */
-  page: '#121110',
-  /** `--panel`: rgba(28, 26, 24, 0.72) over the page. */
-  panel: composite('#1c1a18', 0.72, '#121110'),
-  /** `--panel-strong`: rgba(24, 22, 20, 0.9) over the page. */
-  panelStrong: composite('#181614', 0.9, '#121110'),
+  page: '#171820',
+  /** `--panel`: rgba(30, 31, 42, 0.72) over the page. */
+  panel: composite('#1e1f2a', 0.72, '#171820'),
+  /** `--panel-strong`: rgba(26, 27, 37, 0.9) over the page. */
+  panelStrong: composite('#1a1b25', 0.9, '#171820'),
   /**
    * The Trust page is a light editorial surface rather than an overlay on a
    * dark canvas, so it has its own palette and its own obligations. It is
    * declared here for the same reason the dark one is: a colour nobody
    * measured is a colour that can quietly stop being readable.
    */
-  trust: '#f5f3ee',
+  trust: '#faf9fc',
 };
 
 /** Ink used only on the light Trust surface. */
 export const TRUST_INK = {
-  body: '#292826',
+  body: '#252633',
   muted: '#425054',
   faint: '#657176',
   /** A review whose model has since changed. */

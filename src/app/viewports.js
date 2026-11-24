@@ -89,6 +89,7 @@ export const SURFACES = [
   // The patient-explanation entrance. In a release with no reviewed patient
   // explanation it is the page that says so; `verify:purpose` drives the rest.
   { id: 'patient', route: '#/patient', label: 'Patient explanation' },
+  { id: 'functions', route: '#/functions', label: 'Higher brain function (themes)' },
   { id: 'trust', route: '#/trust', label: 'Trust' },
   { id: 'terms', route: '#/terms', label: 'Terms' },
   { id: 'privacy', route: '#/privacy', label: 'Privacy' },

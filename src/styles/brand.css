@@ -24,10 +24,10 @@
    ========================================================================== */
 
 :root {
-  --bm-change: #e0662f;
+  --bm-change: #e879a6;
   /* Orange that is also text on paper: 5.3:1 on --reading-bg. */
-  --bm-change-ink: #b24a16;
-  --bm-stage: #121110;
+  --bm-change-ink: #a62f61;
+  --bm-stage: #171820;
   --bm-measure: 68ch;
   --bm-page: min(1180px, calc(100% - 32px));
   --bm-radius: 6px;
@@ -318,11 +318,11 @@ html[data-route='explorer'] body {
 
 .model-card-motif-line {
   fill: none;
-  stroke: rgba(241, 238, 232, 0.22);
+  stroke: rgba(242, 241, 246, 0.22);
   stroke-width: 1;
 }
 
-.model-card-motif-dot { fill: rgba(241, 238, 232, 0.55); }
+.model-card-motif-dot { fill: rgba(242, 241, 246, 0.55); }
 .model-card-motif-dot.is-change { fill: var(--bm-change); }
 
 .model-card-text {
@@ -1016,7 +1016,7 @@ html[data-route='explorer'] .public-models-actions .landing-demo-info {
   margin-top: 8px;
   padding: 8px 12px 10px;
   border-left: 2px solid var(--accent);
-  background: rgba(241, 238, 232, 0.035);
+  background: rgba(242, 241, 246, 0.035);
   border-radius: 0 8px 8px 0;
 }
 

@@ -107,6 +107,14 @@ export const ANATOMY_ROUTE = `#/${ANATOMY_SLUG}`;
  * (`src/access/patientPurpose.js`), so on a build with none it says so.
  */
 export const PATIENT_SLUG = 'patient';
+/**
+ * The higher-brain-function entrance (brain launch, ADR 2026-11-24): the
+ * learning themes — language, memory, attention, executive function — as a
+ * reading surface. It is a document, not a model: it is open whether or not the
+ * function model itself has been published, and says which it is.
+ */
+export const FUNCTIONS_SLUG = 'functions';
+export const FUNCTIONS_ROUTE = `#/${FUNCTIONS_SLUG}`;
 export const PATIENT_ROUTE = `#/${PATIENT_SLUG}`;
 
 /**

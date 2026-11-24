@@ -1367,6 +1367,43 @@ export const NEXT_BETA_CANDIDATE_STATUS = Object.freeze(
 );
 
 /**
+ * The launch scope: which organs this launch publishes at all.
+ *
+ * Decided by the owner on 2026-11-24 (ADR `adr-2026-11-24-brain-launch.md`,
+ * rule R-2026-11-24-01): the first launch is the brain and nothing else. The
+ * other organs and the disease models are **not deleted and not demoted** —
+ * their catalogue entries, publication decisions, reviews and tests all stay,
+ * and the beta gate above still answers for each of them exactly as it did.
+ * This is one more condition laid over that answer, so that widening the launch
+ * again is an edit to this list and not a reconstruction of four records.
+ *
+ * It is deliberately a scope and not a second gate: being in scope opens
+ * nothing. A brain scene still has to pass `betaPublicationProblems` — the
+ * named list, the claim rules, the asset gate, the decision record.
+ */
+export const LAUNCH_SCOPE = Object.freeze({
+  organs: Object.freeze(['brain']),
+  decidedAt: '2026-11-24',
+  record: 'docs/architecture/adr-2026-11-24-brain-launch.md',
+});
+
+/** Why the launch scope keeps this scene closed. Empty means it is in scope. */
+export function launchScopeProblems(candidate, { scope = LAUNCH_SCOPE, resolveScene = sceneById } = {}) {
+  const scene = typeof candidate === 'string' ? resolveScene(candidate) : candidate;
+  if (!scene) return [];
+  if (scope.organs.includes(scene.organ)) return [];
+  return [
+    `is outside the launch scope: this launch publishes ${scope.organs.join(', ')} only ` +
+      `(${scope.record}, decided ${scope.decidedAt}); organ "${scene.organ}" stays built and unpublished`,
+  ];
+}
+
+/** The beta gate with the launch scope laid over it. What `beta` publishes. */
+export function launchPublicationProblems(candidate, options = {}) {
+  return [...launchScopeProblems(candidate, options), ...betaPublicationProblems(candidate, options)];
+}
+
+/**
  * The publication policy for each channel that has one.
  *
  * A channel with no entry here opens nothing. That is the whole design: a
@@ -1377,7 +1414,7 @@ export const NEXT_BETA_CANDIDATE_STATUS = Object.freeze(
  * @type {Readonly<Record<string, (scene: object, options: object) => string[]>>}
  */
 export const RELEASE_POLICIES = Object.freeze({
-  beta: betaPublicationProblems,
+  beta: launchPublicationProblems,
   // Registered, and not selected: `RELEASE_CHANNEL` is still `beta`, so nothing
   // about what the product publishes changes by this existing. Switching the
   // channel is a release decision and is made in one place.
@@ -1481,7 +1518,7 @@ export const CRAWLABLE_SCENES = SCENES.filter(
  * prototype the beta is holding back. It stays reachable to a developer through
  * the unlock below.
  */
-const RELEASED_ROUTE_KINDS = new Set(['landing', 'explorer', 'pathology', 'about', 'patient', 'trust', 'legal']);
+const RELEASED_ROUTE_KINDS = new Set(['landing', 'explorer', 'pathology', 'about', 'patient', 'functions', 'trust', 'legal']);
 
 /**
  * @param {{kind:string, sceneId?:string}} route a `resolveRoute` result

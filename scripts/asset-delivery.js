@@ -120,6 +120,26 @@ export const SITE_SURFACE_PATHS = Object.freeze([
     reason: 'The same icon rendered at 180 px on its own ground, for home screens that do not take SVG.',
   }),
   Object.freeze({
+    path: 'favicon.ico',
+    reason: 'The 32 px render of the tab icon in a PNG-in-ICO container, for browsers that ignore SVG tab icons. Written by `npm run icons`.',
+  }),
+  Object.freeze({
+    path: 'icon-192.png',
+    reason: 'The product icon at 192 px for the web manifest. Written by `npm run icons` from src/components/brandIcon.js.',
+  }),
+  Object.freeze({
+    path: 'icon-512.png',
+    reason: 'The product icon at 512 px for the web manifest. Written by `npm run icons` from src/components/brandIcon.js.',
+  }),
+  Object.freeze({
+    path: 'icon-maskable-512.png',
+    reason: 'The maskable form of the product icon (mark inside the safe zone). Written by `npm run icons`.',
+  }),
+  Object.freeze({
+    path: 'site.webmanifest',
+    reason: 'The web app manifest: name, colours and the icons above. Written and checked by `npm run icons`.',
+  }),
+  Object.freeze({
     path: 'posters/',
     reason:
       'Model-card pictures: screenshots of our own built models, taken by scripts/capture-model-posters.mjs ' +

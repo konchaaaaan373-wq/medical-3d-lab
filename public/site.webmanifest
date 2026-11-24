@@ -1,0 +1,30 @@
+{
+  "name": "3Dモデルラボ",
+  "short_name": "3Dモデルラボ",
+  "description": "脳の解剖、神経回路、高次脳機能を、3DモデルとMRIでつなげて学ぶ。",
+  "lang": "ja",
+  "start_url": "./",
+  "display": "browser",
+  "background_color": "#FAF9FC",
+  "theme_color": "#FAF9FC",
+  "icons": [
+    {
+      "src": "./icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "./icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "./icon-maskable-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
+    }
+  ]
+}
