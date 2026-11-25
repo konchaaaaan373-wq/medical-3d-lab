@@ -58,9 +58,8 @@ html[data-route='locked'] .brand-icon { color: var(--brand-pink); }
 
 .shell-brand .wordmark.is-sm { font-size: 16px; }
 
-.shell-nav-link[aria-current='page'] {
-  box-shadow: inset 0 -2px 0 var(--brand-pink);
-}
+/* "You are here" is the product's pink — one line, the one the header already draws. */
+.shell-nav-link[aria-current='page']::after { background: var(--brand-pink); }
 
 /* -------------------------------------------------------- the front page */
 
@@ -427,3 +426,14 @@ html[data-route='locked'] .brand-icon { color: var(--brand-pink); }
 /* The model header's quiet text — the separators, the layer's kind, an organ
    chip — was 4.11:1 on the new stage. Lifted until it clears 4.5:1 there. */
 .global-scene-nav { --ink-faint: #a6a8b8; }
+
+/* In the front page's hero the model's box is half the page wide, and the two
+   hints — "click a part" bottom-left, "drag to turn" bottom-right — ran into
+   each other there. The gesture hint goes to the top corner, as it already
+   does on a phone. */
+.lab-hero-model .landing-demo-drag-hint {
+  top: 16px;
+  right: 18px;
+  bottom: auto;
+  max-width: 60%;
+}

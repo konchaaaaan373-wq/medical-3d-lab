@@ -72,7 +72,14 @@ const PUBLIC_PREFIX = 'public/';
  * each entry to an asset the scene's profile really names.
  */
 export const ON_REQUEST_ASSETS = Object.freeze({
-  'mri-atlas': Object.freeze(['mri-icbm152-t2']),
+  // T2: fetched when a reader presses 「T2」.
+  // The surfaces: fetched by the workbench *after* the T1 and label volumes
+  // have arrived, on purpose. The three planes need only those two files, and
+  // prefetching the 2.8 MB of surfaces beside them made them share the link:
+  // measured on an emulated 9 Mbps phone, the planes were usable at 8.1 s with
+  // the surfaces prefetched and the 3D arrived 0.5 s later — the reader waited
+  // for a file the first screen does not draw (2026-11-25).
+  'mri-atlas': Object.freeze(['mri-icbm152-t2', 'mri-cerebra-surfaces']),
 });
 
 /**

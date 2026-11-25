@@ -47,11 +47,15 @@ test('a file the scene fetches only on request is not downloaded on open', () =>
   // "every asset the profile names". The bundle budget's sentence about the
   // atlas ("T2 is fetched on request") is only true while this holds.
   const urls = (table['mri-atlas'] ?? []).map((file) => file.url);
-  assert.deepEqual(urls, ['assets/mri/t1.u8.gz', 'assets/mri/labels.u8.gz', 'assets/mri/cerebra.glb']);
+  // The surfaces are not prefetched either: the planes need only T1 and the
+  // labels, and a 2.8 MB file fetched beside them made the first screen wait
+  // for something it does not draw (8.1 s → planes on a 9 Mbps phone).
+  assert.deepEqual(urls, ['assets/mri/t1.u8.gz', 'assets/mri/labels.u8.gz']);
+  assert.equal(urls.includes('assets/mri/cerebra.glb'), false, 'the 3D surfaces are prefetched beside the volumes');
   assert.equal(urls.includes('assets/mri/t2.u8.gz'), false, 'the T2 volume is prefetched on open');
   // The bar's total is what will actually arrive.
   const total = table['mri-atlas'].reduce((sum, file) => sum + file.bytes, 0);
-  assert.equal(total, ['mri-icbm152-t1', 'mri-cerebra-labels', 'mri-cerebra-surfaces'].reduce((sum, id) => sum + assetById(id).output.bytes, 0));
+  assert.equal(total, ['mri-icbm152-t1', 'mri-cerebra-labels'].reduce((sum, id) => sum + assetById(id).output.bytes, 0));
 
   // Every declared exception is real: a scene in the catalogue, an asset its
   // profile names, and a file that is delivered. A stale entry would silently
