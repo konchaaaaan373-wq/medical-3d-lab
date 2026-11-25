@@ -161,6 +161,8 @@ export const SCENE_MANIFEST = [
     descriptionJa:
       '標準脳 MRI を軸位・冠状・矢状の三断面で読み、ラベルの付いた構造を同じ座標の 3D と行き来します。',
     tags: ['anatomy', 'interactive', 'mri', 'cross-sectional'],
+    /** What the loading veil calls it: not "the brain's 3D model" — that is the anatomy atlas. */
+    openingName: { en: 'the brain MRI atlas', ja: '脳 MRI アトラス' },
     load: () => import('../scenes/nervous/scenes/mriAtlas/index.js'),
   },
   {
