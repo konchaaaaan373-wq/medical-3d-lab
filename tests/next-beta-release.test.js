@@ -31,13 +31,13 @@ test('next-beta: registering the policy changes nothing about what is published'
   // it still selects `beta`; a policy that is registered and not selected
   // publishes nothing by existing.
   assert.equal(RELEASE_CHANNEL, 'beta');
-  assert.deepEqual(
-    RELEASED_SCENES.map((scene) => scene.id),
-    ['brain-anatomy', 'heart-anatomy', 'cardiac-output', 'lung-anatomy', 'liver-anatomy']
-  );
-  // `cardiac-output` is open on the **beta**, by the owner's decision of
-  // 2026-09-22, and not because this channel exists. The four disease
-  // candidates below are still closed, which is what this test is about.
+  // The brain and its MRI atlas: the launch scope of 2026-11-24 laid over the
+  // beta gate. Nothing here is open because this channel exists, and the four
+  // disease candidates below are still closed, which is what this test is about.
+  assert.deepEqual(RELEASED_SCENES.map((scene) => scene.id), ['brain-anatomy', 'mri-atlas']);
+  for (const id of NEXT_BETA_DISEASE_CANDIDATES) {
+    assert.equal(RELEASED_SCENES.some((scene) => scene.id === id), false, `${id} is published`);
+  }
 });
 
 test('next-beta ⊇ beta: switching the channel can only ever add', () => {

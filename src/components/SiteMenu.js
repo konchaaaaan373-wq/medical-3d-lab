@@ -605,7 +605,18 @@ export function modelShelfList(models, { systemOf = () => null, currentSceneId =
     ),
     shelf(
       { en: 'Anatomy', ja: '解剖' },
-      anatomy.map((model) => row(model, { en: model.organLabel, ja: model.organLabelJa }, { en: 'Anatomy', ja: '解剖' }))
+      // 「脳 解剖」 names a row only while the organ has one anatomy model. With
+      // two — the brain's 3D anatomy and its MRI atlas — both rows read 脳 解剖
+      // and led to different places, so each is named by its own title.
+      anatomy.map((model) =>
+        row(
+          model,
+          { en: model.organLabel, ja: model.organLabelJa },
+          anatomy.filter((other) => other.organId === model.organId).length > 1
+            ? { en: model.titleEn ?? model.titleJa, ja: model.titleJa }
+            : { en: 'Anatomy', ja: '解剖' }
+        )
+      )
     ),
   ].filter(Boolean));
 }

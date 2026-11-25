@@ -29,7 +29,7 @@
   --menu-rule: var(--border);
   --menu-accent: var(--accent);
   --menu-accent-soft: var(--accent-soft);
-  --menu-surface: rgba(21, 20, 18, 0.98);
+  --menu-surface: rgba(26, 27, 36, 0.98);
   --menu-hover: rgba(255, 255, 255, 0.06);
 }
 
@@ -47,14 +47,14 @@
 /* The locked surface is the one dark reading ground left; the landing page
    moved to paper with the rest (BYOKI MOTION, 2026-09-30). */
 html[data-route='locked'] .shell-header.has-site-menu {
-  --menu-surface: #191816;
-  --menu-on-accent: #191816;
+  --menu-surface: #1e1f2a;
+  --menu-on-accent: #1e1f2a;
 }
 
 /* Text on an accent ground: dark on the scene's cyan and the landing's coral,
    white on the reading pages' teal. */
 .global-scene-nav.has-site-menu {
-  --menu-on-accent: #161513;
+  --menu-on-accent: #1b1c25;
 }
 
 .shell-header.has-site-menu {
@@ -118,7 +118,7 @@ html[data-route='locked'] .shell-header.has-site-menu {
 .global-scene-nav.has-site-menu {
   height: auto;
   min-height: 52px;
-  background: rgba(18, 17, 15, 0.86);
+  background: rgba(23, 24, 32, 0.86);
   backdrop-filter: none;
   -webkit-backdrop-filter: none;
   isolation: isolate;
@@ -443,7 +443,7 @@ html[data-route='locked'] .shell-header.has-site-menu {
   position: fixed;
   inset: 0;
   z-index: 1;
-  background: rgba(11, 10, 8, 0.4);
+  background: rgba(16, 17, 23, 0.4);
 }
 
 .site-menu-backdrop[hidden],
@@ -458,7 +458,7 @@ html[data-route='locked'] .shell-header.has-site-menu {
    every page's stacking as well; the fallback element is for browsers without
    popovers, where it sits in the header's stacking context. */
 .site-menu-panel::backdrop {
-  background: rgba(11, 10, 8, 0.4);
+  background: rgba(16, 17, 23, 0.4);
 }
 
 @supports selector(:popover-open) {

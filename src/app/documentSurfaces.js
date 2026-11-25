@@ -51,6 +51,8 @@ const ROUTE_ELEMENT_STATE = Object.freeze({
   // A list of models, like the explorer, and on the explorer's ground.
   pathology: 'explorer',
   patient: 'explorer',
+  // The higher-brain-function entrance: a document on the landing ground.
+  functions: 'landing',
   // A document on the landing page's ground: what the product is, not a list.
   about: 'landing',
   trust: 'trust',
@@ -64,6 +66,7 @@ const TELEMETRY_SURFACE = Object.freeze({
   lab: 'lab',
   pathology: 'explorer',
   patient: 'explorer',
+  functions: 'landing',
   about: 'landing',
   trust: 'trust',
   legal: 'landing',
@@ -189,6 +192,9 @@ export async function mountDocumentSurface({
   } else if (kind === 'about') {
     const { createAbout } = await import('./About.js');
     surface = createAbout({ ui, accountButton, focusId: route.focusId ?? null });
+  } else if (kind === 'functions') {
+    const { createFunctionsIndex } = await import('./FunctionsIndex.js');
+    surface = createFunctionsIndex({ ui, accountButton, focusId: route.focusId ?? null });
   } else if (kind === 'patient') {
     const { createPatientIndex } = await import('./PatientIndex.js');
     surface = await createPatientIndex({ ui, accountButton });

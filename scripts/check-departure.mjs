@@ -115,6 +115,9 @@ const ask = (page, script, ms = 8000) =>
 /** The published scene, and a route the release does not open. */
 const OPEN = '#/brain-anatomy';
 const LOCKED = '#/copd';
+/** Another published model, and a word its veil must say. */
+const OTHER_OPEN = '#/mri-atlas';
+const OTHER_OPEN_NAME = 'MRI';
 
 const results = [];
 const record = (name, ok, detail) => {
@@ -658,12 +661,30 @@ try {
   // ------------------------------------------------- the veil says where to
   {
     const context = await browser.newContext();
+    await context.addInitScript(() => {
+      // Everything the veil says in this document, in order. The markup's own
+      // sentence is generic on purpose (`index.html`); the bundle replaces it
+      // with the model's name the moment it knows — so what is asked is whether
+      // the name was *ever* said before the veil left, not what it says at a
+      // moment the check picked.
+      window.__arrivingVeil = [];
+      const note = () => {
+        const veil = document.querySelector('.loading');
+        const text = veil && !veil.hidden ? veil.textContent.replace(/\s+/g, ' ').trim() : null;
+        if (text && window.__arrivingVeil.at(-1) !== text) window.__arrivingVeil.push(text);
+      };
+      new MutationObserver(note).observe(document, { subtree: true, childList: true, characterData: true, attributes: true });
+      document.addEventListener('DOMContentLoaded', note);
+    });
     const page = await openScene(context);
     // Raised, and read before the reload commits.
-    await page.evaluate(() => { window.location.hash = '#/heart-anatomy'; });
+    // A second published model to leave for. It was the heart until the brain
+    // launch (2026-11-24) took the heart out of the release: a check that
+    // navigates to a withheld model measures the closed door, not the veil.
+    await page.evaluate((to) => { window.location.hash = to; }, OTHER_OPEN);
     await sleep(160);
     const during = await ask(page, VEIL);
-    const named = typeof during.veilText === 'string' && during.veilText.includes('心臓');
+    const named = typeof during.veilText === 'string' && during.veilText.includes(OTHER_OPEN_NAME);
     record(
       'the veil names the model it is opening, not just that it is opening one',
       // `null` — skipped — when the page could not be read at all, rather than
@@ -682,14 +703,18 @@ try {
     // And the arriving document says the same thing, from `index.html`, before
     // the bundle has run. Two documents, one sentence: a veil that changed its
     // wording half a second in reads as a false start.
-    await page.waitForTimeout(900);
-    const arriving = await ask(page, `(() => {
-      const veil = document.querySelector('.loading');
-      return { text: veil ? veil.innerText.replace(/\\s+/g, ' ').trim() : null };
-    })()`);
+    // Read as the arriving document painted it, not at a moment afterwards:
+    // each new document records its veil's words when its markup has been
+    // parsed. This used to look 900 ms after the navigation, which worked
+    // while the destination took seconds to load (the heart) and reported
+    // `null` for one that is on screen sooner than that (the MRI atlas) — the
+    // veil had said its sentence and gone. A fixed wait measures the clock.
+    // Arrived = the destination's own page is up (a state, not a delay).
+    await page.waitForFunction(() => location.hash.includes('mri-atlas') && Boolean(window.__app), null, { timeout: 30000 }).catch(() => {});
+    const arriving = await ask(page, `({ text: (window.__arrivingVeil ?? []).join(' → ') || null })`);
     record(
       'the arriving document carries the same sentence',
-      arriving.unreadable ? null : typeof arriving.text === 'string' && arriving.text.includes('心臓'),
+      arriving.unreadable ? null : typeof arriving.text === 'string' && arriving.text.includes(OTHER_OPEN_NAME),
       arriving.unreadable
         ? `the page could not be read: ${arriving.unreadable}`
         : `arriving veil said ${JSON.stringify(arriving.text)}`

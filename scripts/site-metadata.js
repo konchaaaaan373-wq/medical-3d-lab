@@ -272,21 +272,21 @@ ${jsonLd}
     </script>
     <style>
       :root { color-scheme: light; }
-      body { margin: 0; padding: 6vh 5vw; background: #f6f4ef; color: #1f1e1c;
+      body { margin: 0; padding: 6vh 5vw; background: #faf9fc; color: #252633;
         font-family: system-ui, -apple-system, 'Hiragino Sans', 'Noto Sans JP', sans-serif;
         line-height: 1.75; }
       main { max-width: 720px; margin: 0 auto; }
-      .brand { font-size: 13px; font-weight: 600; letter-spacing: 0.12em; color: #1f1e1c; text-decoration: none; }
+      .brand { font-size: 13px; font-weight: 600; letter-spacing: 0.12em; color: #252633; text-decoration: none; }
       h1 { font-size: clamp(26px, 5vw, 40px); font-weight: 600; line-height: 1.2; margin: 28px 0 6px; }
-      h1 small { display: block; font-size: 0.5em; font-weight: 400; color: #5f5b54; margin-top: 8px; }
-      p { color: #3d3b37; }
+      h1 small { display: block; font-size: 0.5em; font-weight: 400; color: #6b7280; margin-top: 8px; }
+      p { color: #4b4e5c; }
       .badges { display: flex; flex-wrap: wrap; gap: 8px 16px; margin: 18px 0 24px; }
-      .badge { font-size: 13px; color: #5f5b54; }
+      .badge { font-size: 13px; color: #6b7280; }
       .open { display: inline-block; margin: 8px 0 28px; padding: 12px 22px; border-radius: 6px;
-        background: #1f1e1c; color: #f6f4ef; text-decoration: none; font-weight: 600; }
-      nav a { color: #1f1e1c; margin-right: 18px; font-size: 14px; }
+        background: #252633; color: #faf9fc; text-decoration: none; font-weight: 600; }
+      nav a { color: #252633; margin-right: 18px; font-size: 14px; }
       footer { margin-top: 36px; padding-top: 18px; border-top: 1px solid rgba(31,30,28,0.14);
-        color: #6f6b63; font-size: 13px; }
+        color: #6b7280; font-size: 13px; }
     </style>
   </head>
   <body>

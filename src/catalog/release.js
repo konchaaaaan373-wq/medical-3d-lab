@@ -155,6 +155,11 @@ export const BETA_ORGANS = Object.freeze(['brain', 'heart', 'lungs', 'liver']);
  */
 export const BETA_ANATOMY_CANDIDATES = Object.freeze([
   'brain-anatomy',
+  // Added 2026-11-24 for the brain launch (ADR `adr-2026-11-24-brain-launch.md`).
+  // An anatomy scene in the strict sense this list means: a standard-brain MRI
+  // and the labels on it, with no statement about function — its profile's
+  // mechanism level is `none`, and `anatomyClaimProblems` holds it to that.
+  'mri-atlas',
   'heart-anatomy',
   // Added 2026-09-16, on the repository owner's decision to widen the beta a
   // few organs at a time rather than all at once. These three are procedural:
@@ -333,6 +338,64 @@ export const DECISION_ROLES = Object.freeze(['engineering', 'anatomy-expert', 'c
  * with. `src/catalog/modelRevisions.js` says what is in scope and why.
  */
 export const BETA_PUBLICATION_DECISIONS = Object.freeze([
+  Object.freeze({
+    sceneId: 'mri-atlas',
+    decidedAt: '2026-11-24',
+    decidedBy: Object.freeze({
+      name:
+        "Claude Code (AI engineering agent), preparing the brain launch the repository owner directed on 2026-11-24; it takes effect only if the owner merges the pull request that carries it",
+      role: 'engineering',
+    }),
+    record: 'docs/beta-publication/mri-atlas.md',
+    assetRevisions: Object.freeze({
+      'mri-icbm152-t1': 'f9ef53ec96b483c3584dcc03ac2cb1322485c6c9d3e3dacdc6eb313cbdd24430',
+      'mri-icbm152-t2': 'cc8ba7ee6f96d6b07b1df2d9f040d52efe950b3cebe3290d0a5bbe6326755489',
+      'mri-cerebra-labels': '33260a01ffdfce839945739efcac3fe2ec7019969739bbd9264bf5b2617a403e',
+      'mri-cerebra-surfaces': '0794d7c2e1332d818caf34d87e2c250cdea7bc3882ac93e14e1c62ed4212f4be',
+    }),
+    sceneRevision: Object.freeze({ cardRevision: 1, modelDigest: 'fc1841d24db09fbd' }),
+    scope: Object.freeze({
+      structures: Object.freeze([
+        'Left hippocampus',
+        'Right caudate',
+        'Left lateral ventricle',
+        'Right precentral gyrus',
+        'Right putamen',
+      ]),
+      views: Object.freeze([
+        'axial, coronal and sagittal planes in both display conventions (radiological and neurological), with their edge letters',
+        'the 3D model from its left and from its right, and the opening oblique',
+        'the linked, 3D-only and MRI-only layouts at 1440x900, and the phone layout at 390x844',
+      ]),
+      interactions: Object.freeze([
+        'choosing a structure from the list puts the crosshair inside its own label, on the correct side of the screen',
+        'a click on a plane selects the structure under it and the 3D model highlights the same one',
+        'a click on the 3D model selects a structure of the hemisphere facing the camera and the planes move into it',
+        'the wheel steps one plane and leaves the other two on their slice',
+        'T2 loads on request; brightness, contrast, label opacity and zoom change the display and nothing else',
+        'a link naming a structure opens on it, and the address follows the selection',
+        'in a browser with no WebGL the three planes still open and say the 3D view is unavailable',
+      ]),
+    }),
+    evidence: Object.freeze([
+      'scripts/check-mri-atlas.mjs',
+      'scripts/build-mri-atlas.mjs',
+      'tests/mri-atlas-model.test.js',
+      'tests/mri-atlas-assets.test.js',
+      'tests/mri-atlas-data.test.js',
+      'docs/asset-qa/mri-atlas.md',
+    ]),
+    unverified: Object.freeze([
+      'no anatomist or radiologist has judged the labels as drawn, their Japanese names or the extracted surfaces — the borders are the CerebrA authors\u2019 manual correction, which is their review and not one of this product',
+      'no clinician has reviewed this scene; the registry records it as pending',
+      'left and right rest on the atlas\u2019s own hemisphere table and the NIfTI headers: a symmetric template offers no independent anatomical landmark to confirm a side against',
+      'the inputs were retrieved from TemplateFlow and not compared with the publishers\u2019 own downloads, and CerebrA\u2019s CC0 statement was not read at its source (F-281)',
+      '98 of the 102 structures were not individually opened in a browser',
+      'one browser engine on software GL, desktop and an emulated phone: no real phone, Safari, Firefox or screen reader (F-282)',
+      'no reader with a colour-vision difference has looked at the label overlay (F-283)',
+      'time to first image on a real mobile connection was not measured (F-284)',
+    ]),
+  }),
   Object.freeze({
     sceneId: 'lung-anatomy',
     decidedAt: '2026-09-21',
@@ -1367,6 +1430,43 @@ export const NEXT_BETA_CANDIDATE_STATUS = Object.freeze(
 );
 
 /**
+ * The launch scope: which organs this launch publishes at all.
+ *
+ * Decided by the owner on 2026-11-24 (ADR `adr-2026-11-24-brain-launch.md`,
+ * rule R-2026-11-24-01): the first launch is the brain and nothing else. The
+ * other organs and the disease models are **not deleted and not demoted** —
+ * their catalogue entries, publication decisions, reviews and tests all stay,
+ * and the beta gate above still answers for each of them exactly as it did.
+ * This is one more condition laid over that answer, so that widening the launch
+ * again is an edit to this list and not a reconstruction of four records.
+ *
+ * It is deliberately a scope and not a second gate: being in scope opens
+ * nothing. A brain scene still has to pass `betaPublicationProblems` — the
+ * named list, the claim rules, the asset gate, the decision record.
+ */
+export const LAUNCH_SCOPE = Object.freeze({
+  organs: Object.freeze(['brain']),
+  decidedAt: '2026-11-24',
+  record: 'docs/architecture/adr-2026-11-24-brain-launch.md',
+});
+
+/** Why the launch scope keeps this scene closed. Empty means it is in scope. */
+export function launchScopeProblems(candidate, { scope = LAUNCH_SCOPE, resolveScene = sceneById } = {}) {
+  const scene = typeof candidate === 'string' ? resolveScene(candidate) : candidate;
+  if (!scene) return [];
+  if (scope.organs.includes(scene.organ)) return [];
+  return [
+    `is outside the launch scope: this launch publishes ${scope.organs.join(', ')} only ` +
+      `(${scope.record}, decided ${scope.decidedAt}); organ "${scene.organ}" stays built and unpublished`,
+  ];
+}
+
+/** The beta gate with the launch scope laid over it. What `beta` publishes. */
+export function launchPublicationProblems(candidate, options = {}) {
+  return [...launchScopeProblems(candidate, options), ...betaPublicationProblems(candidate, options)];
+}
+
+/**
  * The publication policy for each channel that has one.
  *
  * A channel with no entry here opens nothing. That is the whole design: a
@@ -1377,11 +1477,16 @@ export const NEXT_BETA_CANDIDATE_STATUS = Object.freeze(
  * @type {Readonly<Record<string, (scene: object, options: object) => string[]>>}
  */
 export const RELEASE_POLICIES = Object.freeze({
-  beta: betaPublicationProblems,
+  beta: launchPublicationProblems,
   // Registered, and not selected: `RELEASE_CHANNEL` is still `beta`, so nothing
   // about what the product publishes changes by this existing. Switching the
   // channel is a release decision and is made in one place.
-  'next-beta': nextBetaPublicationProblems,
+  // The launch scope is laid over this one too: switching the channel is a
+  // decision about *which rule*, never a way round the scope.
+  'next-beta': (candidate, options = {}) => [
+    ...launchScopeProblems(candidate, options),
+    ...nextBetaPublicationProblems(candidate, options),
+  ],
 });
 
 /**
@@ -1481,7 +1586,7 @@ export const CRAWLABLE_SCENES = SCENES.filter(
  * prototype the beta is holding back. It stays reachable to a developer through
  * the unlock below.
  */
-const RELEASED_ROUTE_KINDS = new Set(['landing', 'explorer', 'pathology', 'about', 'patient', 'trust', 'legal']);
+const RELEASED_ROUTE_KINDS = new Set(['landing', 'explorer', 'pathology', 'about', 'patient', 'functions', 'trust', 'legal']);
 
 /**
  * @param {{kind:string, sceneId?:string}} route a `resolveRoute` result

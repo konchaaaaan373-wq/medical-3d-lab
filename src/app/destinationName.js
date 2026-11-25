@@ -41,6 +41,7 @@ const SURFACE_NAMES = {
   lab: { en: 'the experimental models', ja: '実験モデル' },
   pathology: { en: 'the disease models', ja: '病態モデル' },
   patient: { en: 'patient explanation', ja: '患者説明' },
+  functions: { en: 'higher brain function', ja: '高次脳機能' },
   trust: { en: 'the publication and review record', ja: '公開状態と医学レビュー' },
 };
 
@@ -61,6 +62,10 @@ export function destinationSubject(hash, language = 'ja') {
     // recognises gets no name rather than the wrong one.
     const scene = sceneBySlug(slugOf(hash));
     if (!scene) return null;
+    // A scene that is not "the organ's 3D model" says what it is: opening the
+    // MRI atlas under the words 「脳の3Dモデルを開いています」 named the wrong
+    // thing, and with two brain models published it named neither.
+    if (scene.openingName) return ja ? scene.openingName.ja : scene.openingName.en;
     const organ = organById(scene.organ);
     const name = organ ? (ja ? organ.labelJa : organ.label) : (ja ? scene.titleJa : scene.titleEn);
     return ja ? `${name}の3Dモデル` : `the ${String(name).toLowerCase()} model`;

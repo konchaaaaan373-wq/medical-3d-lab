@@ -34,6 +34,8 @@ npm run build      # vite build
   Engine を調べた結果と、なぜまだ何も繋いでいないか
 - `docs/follow-ups.md` — **マージ済みだが未確認・未決定・先送りの残課題台帳**。
   一区切りの PR を出すときはここに書き足し、解決したら Resolved へ移す
+- `docs/reviews/2026-11-24-brain-launch-medical-review.md` — 脳特化ローンチで**医学レビューが必要な項目**と、
+  所有者の公開判断の一覧（構造名 51 件の確認表・高次脳機能の正常／病変の分離検討）
 - `docs/rules.md` — **運用ルール台帳**。開発中に決まったルール・こだわりを日付つきで持つ。
   本書は要約で、あちらが時系列の記録。**新しい日付が勝つ**
 
@@ -90,6 +92,9 @@ CLAUDE.md が禁じる「中身のない網羅」の、インフラ版です。
 | 患者説明／医学教育の目的（入口・ヘッダーの切替と現在地・直接 URL・再読み込み・戻る・キーボード・公開ゲート） | `npm run verify:purpose`（preview は `-- --dist dist-preview --preview`） |
 | ページの離れ方（読む面のその場差し替え・転送が住所欄まで直るか・モデルは別文書・veil・戻る）。**ルートや転送を変えたら走らせる** | `npm run verify:departure` |
 | hero のタッチとキーボード | `npm run verify:hero-input` |
+| MRI アトラス（左右・十字線の下のラベル・3D ⇄ 断面の双方向選択・表示規約・T2・スマホ幅・**WebGL 無しでも三断面が開くか**）。**絵ではなくページから数で読む**——対称な標準脳は鏡像でも同じに見える（L-185） | `npm run verify:mri`（preview は `-- --dist dist-preview --preview`） |
+| MRI アトラスの asset が script の出力と一致するか（入力の SHA-256・グリッド・左右） | `npm run mri:build -- --src <入力> --check`（`--fetch` で取得から） |
+| ブランドマークのラスタ（favicon・ICO・Apple Touch・web manifest） | `npm run icons`（`--check` で描画との一致だけ検査） |
 | ログイン周り | `npm run verify:auth` |
 | 静的サーバ（range・traversal ガード・mount） | `scripts/lib/serve-dist.mjs` |
 | Chromium の実行ファイル解決 | `scripts/lib/browser.mjs` |
@@ -181,7 +186,11 @@ CLAUDE.md が禁じる「中身のない網羅」の、インフラ版です。
   **公開シーン一覧や公開判断が動く**とき（`betaPublicationProblems()` が
   空でなくなるとき）です。それ以外は出す
 
-ルーティングはハッシュ 1 本です。`#/<slug>` が 1 シーン、`#/models` がモデル一覧
+ルーティングはハッシュ 1 本です。ヘッダーの行き先は `src/catalog/launch.js` の 3 つ
+（`#/functions` 高次脳機能・`#/brain-anatomy` 脳解剖・`#/mri-atlas` MRIアトラス。2026-11-24）。
+`#/functions` は高次脳機能の入口で、**常に開いている文書**です（学習テーマを問いとして並べ、
+機能モデルが公開されているかを公開一覧から読んで言葉で伝える。`src/app/FunctionsIndex.js`）。
+`#/<slug>` が 1 シーン、`#/models` がモデル一覧
 （病態モデルが主、解剖は下の棚。機序シーンのパンくず「病態モデル」の戻り先。
 載るのは公開ゲートが開けたものだけ。旧 `#/pathology` は `#/models` へ正規化）、
 `#/about` が製品の説明・モデル採用ルール・運営、`#/anatomy`（= `#/organs`・`#/explore`）が
@@ -216,17 +225,24 @@ export する。例: `#/cardiac-output` は入門教材、`#/cardiac-output?view
 
 ## Product definition
 
-> **BYOKI MOTION — 病態を、動かして理解する。**
-> Interactive models for understanding pathophysiology.
-> （旧名 Medical 3D Lab。2026-09-30 改名、[ADR](docs/architecture/adr-2026-09-30-byoki-motion.md)）
+> **3Dモデルラボ — 脳を、立体的に理解する。**
+> 脳の解剖、神経回路、高次脳機能を、3DモデルとMRIでつなげて学ぶ。
+> （2026-11-24 改名・脳特化ローンチ、[ADR](docs/architecture/adr-2026-11-24-brain-launch.md)。
+> その前は BYOKI MOTION（2026-09-30、[ADR](docs/architecture/adr-2026-09-30-byoki-motion.md)）、
+> さらに前は Medical 3D Lab）
 
 > **Make invisible physiology visible, interactive, and understandable.**
 > 見えない病態生理を、3D で動かし、触って理解する。
 
 製品名・タグライン・説明は [`src/data/brand.js`](src/data/brand.js) の 1 か所だけが持ちます。
 画面・メタデータ・リンクプレビューに名前を書き写さないでください（`tests/brand.test.js`）。
-**主役は病態モデル、解剖は補助、3D は手段**です。見る → 動かす → 状態が変わる →
-なぜ変わったかが分かる、が中核の体験で、新しいモデルを作る条件は
+**初期ローンチは脳だけを公開します**（`LAUNCH_SCOPE`、R-2026-11-24-01）。中心は高次脳機能、
+それを支えるのが脳解剖と MRI アトラスで、**3D は手段**です。ほかの臓器と病態モデルは
+消していません——記録ごと残っており、範囲を広げれば戻ります。
+**「高次脳機能を中心に置く」は「機能モデルを開ける」ではありません**（R-2026-11-24-02）:
+`higher-brain-function` は医学レビューが記録されるまで閉じたままで、開いている面に
+「どの構造がどの機能を担うか」を書きません。
+見る → 動かす → 状態が変わる → なぜ変わったかが分かる、が病態層の中核の体験で、新しいモデルを作る条件は
 「操作や時間変化によって、静止画や文章より理解がはっきり深まるか」です
 （`docs/adding-a-scene.md` の 0 問目）。
 
@@ -306,6 +322,8 @@ pathology / disease progression / treatment mechanism を臓器横断的に扱�
 `ventricleGeometry.js`（モデルが解いた壁厚と内腔から生成）、`organs/kidney.js`
 （臓器レベル、4 シーンが使用）と `organs/nephron.js`（ネフロン 1 本）、
 `organs/brain.js`（形だけ）と `scenes/brainAnatomy/`（標本由来アトラス）。
+`scenes/mriAtlas/` もこの例です——`brain.glb` とは別に、MRI のラベルボリュームから作った
+面を持ちます（MRI と同じ座標であることが目的。R-2026-11-24-03）。
 **片方を「重複」と見て消さないでください。** 各ファイルの冒頭が、自分が何であって
 何ではないかを述べています。
 
@@ -321,6 +339,14 @@ pathology / disease progression / treatment mechanism を臓器横断的に扱�
 現在は **β 公開中**です。公開するのは**解剖モデル**と、
 **`BETA_MECHANISM_CANDIDATES` に名指しで載せた機序シーン**だけ。
 それ以外はルートもカタログのカードも「TO BE UPDATED / 準備中」で止めています。
+
+**2026-11-24 から、その上に「ローンチスコープ」が 1 枚重なっています。**
+`src/catalog/release.js` の `LAUNCH_SCOPE` が公開する臓器を脳に絞っており、
+`beta` チャネルの方針は `launchPublicationProblems`（スコープ ＋ 従来のゲート）です。
+**スコープは 2 枚目のゲートではありません**——スコープ内であることは何も開けず、
+スコープ外のシーンの記録も `betaPublicationProblems` の答えも変えていません
+（心臓の解剖は「記録は揃っているが、スコープの外」）。広げるのは `LAUNCH_SCOPE.organs` の
+編集で、所有者の判断です（[ADR](docs/architecture/adr-2026-11-24-brain-launch.md)）。
 
 2026-09-22 まで、ここは「公開するのは解剖モデルだけ」でした。所有者の判断で
 そのルールを外しています（[ADR](docs/architecture/adr-2026-09-22-mechanism-scene-in-beta.md)）。
@@ -380,10 +406,11 @@ UI が読む公開一覧は [`src/catalog/publicManifest.js`](src/catalog/public
 効かず、非公開シーンのコードはそもそもバンドルに入りません。
 詳細と β の終わらせ方は [`docs/beta-release.md`](docs/beta-release.md)。
 
-トップページは臓器を表示しません（BYOKI MOTION、2026-09-30）。名前と約束と
-1 つの CTA、公開病態モデルのカード（実モデルの写真・名前・問い——`src/data/modelShowcase.js`、
-写真は `npm run posters`）、考え方、読み手、footer です。臓器を 1 つ実表示し日替わりで
-入れ替わる hero は解剖の棚（`#/anatomy`）に移りました。順序と対応するシーンは
+トップページは実物の脳モデルを表示します（3Dモデルラボ、2026-11-24）。約束（h1）と
+操作できる脳、3 つの入口（`src/catalog/launch.js`）、4 つの学習テーマ（**問い**——
+`src/data/brainFunctionThemes.js`）、学び方、根拠と注意、footer です。モデルは動的 import で、
+文字と入口はモデルを待たずに出ます。**MRI のボリュームはトップでは読みません。**
+同じ hero の仕組みは解剖の棚（`#/anatomy`）も使っています。順序と対応するシーンは
 `src/data/landingHero.js`（`HERO_ORGANS` が目標、`HERO_ROTATION` が実際に見せる分）。
 
 ### Scene status

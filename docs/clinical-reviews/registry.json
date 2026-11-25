@@ -29,6 +29,31 @@
     ]
   },
   {
+    "sceneId": "mri-atlas",
+    "reviewStatus": "pending",
+    "reviewerRole": "no completed clinical sign-off recorded",
+    "reviewedAt": null,
+    "reviewedCommit": null,
+    "scope": [
+      "standard-brain MRI (MNI ICBM 152 2009c) in three planes with the CerebrA label overlay and label-derived 3D surfaces, prepared for future anatomist/radiologist sign-off"
+    ],
+    "sources": [
+      "docs/model-cards/mri-atlas.md",
+      "docs/model-evidence/mri-atlas.md",
+      "public/assets/mri/ATTRIBUTION.md",
+      "docs/asset-qa/mri-atlas.md",
+      "tests/mri-atlas-assets.test.js",
+      "docs/reviews/2026-11-24-brain-launch-medical-review.md"
+    ],
+    "unresolvedLimitations": [
+      "No anatomist, radiologist or clinician has reviewed the labels as drawn, their Japanese names, or the extracted surfaces. The label borders are the CerebrA authors' manual correction, which is their review and not one of this product. An AI reading of the literature is not a medical review and is not recorded as one.",
+      "The inputs were retrieved from TemplateFlow and were not compared byte-for-byte with the publishers' own downloads; CerebrA's CC0 statement was not read at its source (F-281).",
+      "A symmetric population-average template: no individual variation, no pathology, no normal asymmetry. It must not be compared with a patient's image.",
+      "DKT parcels are labelling conventions; midline structures are divided left/right by the atlas with unequal halves; the optic chiasm and inferior horn labels are approximate at 1 mm.",
+      "Left/right is verified by measurement against the atlas's own hemisphere table, not by an independent anatomical landmark — a symmetric template offers none."
+    ]
+  },
+  {
     "sceneId": "heart-anatomy",
     "reviewStatus": "pending",
     "reviewerRole": "no completed clinical sign-off recorded",

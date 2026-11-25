@@ -49,7 +49,8 @@ import { ASSET_MANIFEST } from '../src/catalog/assetManifest.js';
 import { modelProfileForScene } from '../src/catalog/modelProfiles.js';
 import { PUBLIC_MANIFEST } from '../src/catalog/publicManifest.js';
 import { CRAWLABLE_SCENES, RELEASED_SCENES, betaPublicationProblems } from '../src/catalog/release.js';
-import { assetDeliveryProblems, requiredAssetIdsFor } from './asset-delivery.js';
+import { assetDeliveryProblems, requiredAssetIdsFor, withheldPosterFiles } from './asset-delivery.js';
+import { MODEL_SHOWCASE } from '../src/data/modelShowcase.js';
 import { originOf, selfDeclaredUrls } from './read-page-metadata.js';
 import { scenePagePath } from './site-metadata.js';
 
@@ -198,6 +199,7 @@ problems.push(
     publicFiles,
     assets: ASSET_MANIFEST,
     requiredAssetIds: requiredAssetIdsFor(RELEASED_SCENES, modelProfileForScene),
+    withheldFiles: withheldPosterFiles(MODEL_SHOWCASE, RELEASED_SCENES),
   })
 );
 

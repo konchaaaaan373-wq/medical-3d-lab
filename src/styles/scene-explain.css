@@ -205,7 +205,7 @@
   align-items: center;
   justify-content: center;
   padding: 16px;
-  background: rgba(13, 12, 10, 0.52);
+  background: rgba(18, 19, 26, 0.52);
   /* #ui lets pointer events through to the canvas; this card takes them. */
   pointer-events: auto;
 }

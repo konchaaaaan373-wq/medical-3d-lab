@@ -142,6 +142,30 @@ export const SCENE_MANIFEST = [
     load: () => import('../scenes/nervous/scenes/higherBrainFunction/index.js'),
   },
   {
+    id: 'mri-atlas',
+    slug: 'mri-atlas',
+    titleEn: 'MRI atlas of the brain',
+    titleJa: '脳 MRI アトラス',
+    system: 'nervous',
+    organ: 'brain',
+    disease: null,
+    conditions: [
+      'brain MRI', 'MRI anatomy', 'axial', 'coronal', 'sagittal', 'MNI152', 'T1-weighted', 'T2-weighted',
+      '脳MRI', 'MRI解剖', '断面解剖', '軸位断', '冠状断', '矢状断', '標準脳', '海馬 MRI',
+    ],
+    status: 'alpha',
+    modelCard: 'docs/model-cards/mri-atlas.md',
+    modelProfile: 'mri-atlas-standard-brain',
+    description:
+      'A standard-brain MRI in three planes, with every labelled structure linked to the same structure in 3D.',
+    descriptionJa:
+      '標準脳 MRI を軸位・冠状・矢状の三断面で読み、ラベルの付いた構造を同じ座標の 3D と行き来します。',
+    tags: ['anatomy', 'interactive', 'mri', 'cross-sectional'],
+    /** What the loading veil calls it: not "the brain's 3D model" — that is the anatomy atlas. */
+    openingName: { en: 'the brain MRI atlas', ja: '脳 MRI アトラス' },
+    load: () => import('../scenes/nervous/scenes/mriAtlas/index.js'),
+  },
+  {
     id: 'heart-anatomy',
     slug: 'heart-anatomy',
     titleEn: 'Interactive heart anatomy',

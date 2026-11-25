@@ -53,6 +53,16 @@ jobs:
       - run: npm run verify:site
       - run: npm run cards:check
       - run: npm run type-floor
+      # The tab icon and the web manifest are written from one drawing
+      # (`src/components/brandIcon.js`); this fails when either drifted from it.
+      - run: npm run icons -- --check
+      # The MRI atlas's files, rebuilt from the pinned inputs and compared with
+      # what is committed (decompressed bytes). It downloads the inputs from
+      # TemplateFlow and verifies their SHA-256 first, so a changed upstream
+      # file is a red build here and not a silently different brain. The side
+      # of every label (left/right) is measured during the build; a mirrored
+      # atlas stops it.
+      - run: npm run mri:build -- --fetch --check
 
   # A real browser, on every pull request. Until 2026-09-15 this was kept out of
   # ordinary pushes because the repository was private and Actions minutes were
@@ -102,6 +112,14 @@ jobs:
       # attempt spent four review rounds on exactly them. About 40 seconds, most
       # of it waiting out a 12-second backstop on purpose.
       - run: npm run verify:departure
+      # The MRI atlas, read from the page: which side of the screen is the
+      # patient's left, which label is under the crosshair, and that choosing in
+      # 3D moves the planes and choosing on a plane lights the 3D. A symmetric
+      # standard brain looks identical mirrored, so none of this can be judged
+      # from a screenshot (L-185). It runs on the production build because the
+      # atlas is published; if the release ever withholds it, this step must
+      # move to the preview build rather than be deleted.
+      - run: npm run verify:mri
       # The paid surfaces, which nobody could look at until now. A second build,
       # because the entitlements are granted by `VITE_ALLOW_PREVIEW=1` and a
       # production bundle has no such capability — see

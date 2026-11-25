@@ -1,0 +1,439 @@
+/* ==========================================================================
+   3Dモデルラボ — the brain launch's own surfaces (ADR 2026-11-24)
+   ==========================================================================
+
+   What lives here: the brand tokens, the mark, the front page (`.lab-*`), the
+   higher-brain-function entrance, and the MRI atlas workbench (further down).
+
+   What does not: the paper and stage tokens themselves, which stay where they
+   were (`--reading-*` in shell-header.css, the stage in base.css, mirrored in
+   palette.js) — the launch re-tinted them in place rather than adding a
+   second set, so every existing surface moved with it.
+
+   The brief, in the rules below:
+   - Warm off-white paper, cool ink, and one pink. Pink is the brand: the mark,
+     the primary action, the "you are here". It is **never** a region colour —
+     the atlases keep their own palettes and pink is absent from them where a
+     choice exists, so a pink thing on screen is always the product talking.
+   - A thin pink line is not text. `--brand-ink` is the pink that carries
+     words (6.3:1 on paper); `--brand-pink` fills and marks only.
+   - Space before boxes: sections are separated by a rule and air, not by
+     cards. No gradients, no shadows under content.
+   ========================================================================== */
+
+:root {
+  --brand-pink: #e879a6;
+  --brand-pink-deep: #c94c80;
+  --brand-pink-pale: #fce7f0;
+  /* Pink that is also text on paper. */
+  --brand-ink: #a62f61;
+  /* The dark ground a model or an MRI is drawn on. */
+  --brand-stage: #171820;
+}
+
+/* ------------------------------------------------------------- the mark */
+
+.brand-icon { color: var(--brand-pink-deep); }
+
+/* On a dark ground the mark is the lighter pink — the deep one sinks. */
+.global-scene-nav .brand-icon,
+html[data-route='locked'] .brand-icon { color: var(--brand-pink); }
+
+.wordmark.has-mark {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.wordmark .wordmark-mark {
+  width: 1.75em;
+  height: 1.75em;
+}
+
+.wordmark-type { gap: 0; }
+.wordmark-first { font-weight: 700; letter-spacing: 0.01em; }
+.wordmark-second { font-weight: 600; letter-spacing: 0.02em; }
+.wordmark.is-xl .wordmark-second,
+.wordmark.is-lg .wordmark-second { color: inherit; }
+
+.shell-brand .wordmark.is-sm { font-size: 16px; }
+
+/* "You are here" is the product's pink — one line, the one the header already draws. */
+.shell-nav-link[aria-current='page']::after { background: var(--brand-pink); }
+
+/* -------------------------------------------------------- the front page */
+
+.lab-landing { line-height: 1.8; }
+
+.lab-hero {
+  width: var(--bm-page);
+  margin: 0 auto;
+  padding: clamp(24px, 5vh, 56px) 0 clamp(32px, 6vh, 64px);
+  display: grid;
+  gap: clamp(24px, 4vw, 56px);
+  align-items: center;
+}
+
+.lab-hero:focus { outline: none; }
+
+@media (min-width: 900px) {
+  .lab-hero { grid-template-columns: minmax(0, 0.9fr) minmax(0, 1.1fr); }
+}
+
+.lab-hero-kicker {
+  margin: 0 0 16px;
+  font-size: 13px;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  color: var(--brand-ink);
+}
+
+.lab-hero-title {
+  margin: 0;
+  font-size: clamp(28px, 4.6vw + 12px, 56px);
+  line-height: 1.28;
+  font-weight: 700;
+  letter-spacing: 0.01em;
+  /* Break between phrases where the browser can find them, and balance the
+     lines so the full stop is never left on a line of its own (it was, at
+     320 px). `strict` keeps 。 and 、 off the start of a line everywhere. */
+  word-break: auto-phrase;
+  line-break: strict;
+  text-wrap: balance;
+}
+
+.lab-hero-lead {
+  margin: 20px 0 0;
+  max-width: 30em;
+  font-size: 17px;
+  color: var(--reading-muted);
+}
+
+.lab-hero-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin-top: clamp(24px, 4vh, 36px);
+}
+
+.lab-cta {
+  display: inline-flex;
+  align-items: center;
+  gap: 12px;
+  min-height: 48px;
+  padding: 0 22px;
+  border: 1px solid transparent;
+  border-radius: 999px;
+  background: var(--reading-ink);
+  color: #fff;
+  font-size: 15px;
+  font-weight: 600;
+  text-decoration: none;
+  transition: background-color 160ms ease, border-color 160ms ease;
+}
+
+.bm-landing a.lab-cta,
+.bm-page a.lab-cta { color: #fff; text-decoration: none; }
+
+.lab-cta:hover { background: #000; }
+.lab-cta:focus-visible { outline: 3px solid var(--brand-pink); outline-offset: 3px; }
+.lab-cta-arrow { color: var(--brand-pink); transition: transform 180ms ease; }
+.lab-cta:hover .lab-cta-arrow { transform: translateX(3px); }
+
+.lab-cta.is-quiet,
+.bm-landing a.lab-cta.is-quiet,
+.bm-page a.lab-cta.is-quiet {
+  background: transparent;
+  border-color: var(--reading-rule-strong);
+  color: var(--reading-ink);
+}
+
+.lab-cta.is-quiet:hover { background: var(--brand-pink-pale); border-color: var(--brand-pink); }
+
+.lab-hero-model { min-width: 0; }
+
+.lab-hero-model .landing-demo {
+  border: 0;
+  border-radius: 20px;
+  overflow: hidden;
+  box-shadow: none;
+  background: var(--brand-stage);
+}
+
+.lab-hero-model .landing-demo-stage {
+  height: clamp(300px, 52svh, 480px);
+  min-height: 300px;
+}
+
+.lab-hero-model.is-mark {
+  display: grid;
+  place-items: center;
+  min-height: 240px;
+  border-radius: 20px;
+  background: var(--brand-pink-pale);
+}
+
+.lab-hero-mark { width: 120px; height: 120px; }
+
+/* --------------------------------------------------------------- sections */
+
+.lab-section {
+  width: var(--bm-page);
+  margin: 0 auto;
+  padding: clamp(36px, 6vh, 64px) 0;
+  border-top: 1px solid var(--reading-rule);
+}
+
+.lab-section-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 20px;
+}
+
+.lab-section-title {
+  margin: 0 0 20px;
+  font-size: 22px;
+  line-height: 1.4;
+  font-weight: 700;
+}
+
+.lab-section-head .lab-section-title { margin: 0; }
+
+.lab-section-link { font-size: 14px; color: var(--reading-muted); }
+
+/* The three entrances: columns under one rule, not three cards. */
+.lab-areas { border-top: 0; padding-top: 0; }
+
+.lab-area-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 0;
+}
+
+@media (min-width: 760px) {
+  .lab-area-list { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: clamp(20px, 3vw, 40px); }
+}
+
+.lab-area { border-top: 2px solid var(--reading-ink); }
+.lab-area.is-functions { border-top-color: var(--brand-pink); }
+
+.bm-landing a.lab-area-link,
+.lab-area-link {
+  display: grid;
+  gap: 6px;
+  min-height: 100%;
+  padding: 18px 0 22px;
+  color: inherit;
+  text-decoration: none;
+}
+
+.lab-area-index {
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: 0.08em;
+  color: var(--reading-faint);
+}
+
+.lab-area-name { font-size: 24px; line-height: 1.35; font-weight: 700; }
+.lab-area-line { font-size: 15px; color: var(--reading-muted); }
+.lab-area-go { margin-top: 6px; font-size: 20px; color: var(--brand-pink-deep); transition: transform 180ms ease; }
+.lab-area-link:hover .lab-area-go { transform: translateX(4px); }
+.lab-area-link:hover .lab-area-name { color: var(--brand-ink); }
+.lab-area-link:focus-visible { outline: 3px solid var(--brand-pink); outline-offset: 4px; border-radius: 4px; }
+
+.lab-area-status {
+  justify-self: start;
+  margin-top: 6px;
+  padding: 2px 10px;
+  border-radius: 999px;
+  background: var(--reading-surface-raised);
+  font-size: 13px;
+  color: var(--reading-muted);
+}
+
+/* Themes: a question per row. */
+.lab-theme-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 0 clamp(24px, 4vw, 56px);
+}
+
+@media (min-width: 760px) {
+  .lab-theme-list { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+
+.lab-theme { border-top: 1px solid var(--reading-rule); }
+
+.bm-landing a.lab-theme-link,
+.lab-theme-link {
+  display: grid;
+  gap: 4px;
+  padding: 16px 0 18px;
+  color: inherit;
+  text-decoration: none;
+}
+
+.lab-theme-name { font-size: 17px; font-weight: 700; }
+.lab-theme-question { font-size: 15px; color: var(--reading-muted); }
+.lab-theme-link:hover .lab-theme-name { color: var(--brand-ink); }
+.lab-theme-link:focus-visible { outline: 3px solid var(--brand-pink); outline-offset: 2px; border-radius: 4px; }
+
+.lab-feature-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 24px clamp(24px, 4vw, 56px);
+}
+
+@media (min-width: 760px) {
+  .lab-feature-list { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+}
+
+.lab-feature-name { margin: 0 0 6px; font-size: 17px; font-weight: 700; }
+.lab-feature-body { margin: 0; font-size: 15px; color: var(--reading-muted); }
+
+.lab-grounds-body { max-width: var(--bm-measure); font-size: 15px; color: var(--reading-muted); }
+.lab-grounds-body p { margin: 0 0 12px; }
+.lab-grounds-links { display: flex; flex-wrap: wrap; gap: 6px 20px; }
+
+/* --------------------------------------- the higher-brain-function entrance */
+
+.lab-fn-status {
+  width: var(--bm-page);
+  margin: 0 auto clamp(24px, 4vh, 40px);
+  padding: 20px 24px;
+  border-left: 3px solid var(--brand-pink);
+  background: var(--reading-surface);
+  font-size: 15px;
+}
+
+.lab-fn-status p { margin: 0 0 12px; max-width: var(--bm-measure); }
+.lab-fn-status p:last-child { margin-bottom: 0; }
+.lab-fn-status-title { font-size: 17px; font-weight: 700; }
+.lab-fn-status-links { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 16px; }
+
+.lab-fn-theme-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 0 clamp(24px, 4vw, 56px);
+}
+
+@media (min-width: 760px) {
+  .lab-fn-theme-list { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+
+.lab-fn-theme {
+  padding: 18px 0 20px;
+  border-top: 1px solid var(--reading-rule);
+}
+
+.lab-fn-theme.is-priority { border-top: 2px solid var(--reading-ink); }
+.lab-fn-theme:focus { outline: none; }
+.lab-fn-theme:target,
+.lab-fn-theme:focus-visible { box-shadow: inset 3px 0 0 var(--brand-pink); padding-left: 14px; }
+.lab-fn-theme-name { margin: 0 0 4px; font-size: 19px; font-weight: 700; }
+.lab-fn-theme-question { margin: 0 0 8px; font-size: 15px; }
+.lab-fn-theme-state { margin: 0; font-size: 13px; color: var(--reading-faint); }
+
+.lab-fn-limit-list {
+  margin: 0;
+  padding-left: 1.2em;
+  max-width: var(--bm-measure);
+  font-size: 15px;
+  color: var(--reading-muted);
+}
+
+.lab-fn-limit-list li { margin-bottom: 8px; }
+
+@media (prefers-reduced-motion: reduce) {
+  .lab-cta-arrow,
+  .lab-area-go { transition: none; }
+}
+
+/* ------------------------------------- anatomy panel: the way to the MRI */
+
+.anatomy-related {
+  display: grid;
+  gap: 2px;
+  margin: 10px 0 0;
+  font-size: 13px;
+}
+
+.anatomy-related-link {
+  justify-self: start;
+  min-height: 24px;
+  font-weight: 600;
+  color: var(--accent);
+}
+
+.anatomy-related-note { font-size: 12px; color: var(--ink-faint); }
+
+/* ---------------------------------------- the reading header on a phone */
+
+/* Three destinations do not fit beside the name and the menu on one phone
+   row (at 320 px the menu was pushed off the screen and the name was gone).
+   So: identity and the menu on top, the three places to go underneath, each a
+   full thumb target. The one-row arrangement in site-header.css was written
+   for a header with a single destination. */
+@media (max-width: 620px) {
+  .shell-header.has-site-menu { flex-wrap: wrap; row-gap: 0; }
+  .shell-header.has-site-menu .shell-brand { order: 1; flex: 1 1 auto; min-height: 44px; }
+  .shell-header.has-site-menu > .site-menu-trigger { order: 2; }
+
+  .shell-header.has-site-menu .shell-nav {
+    order: 3;
+    flex: 1 0 100%;
+    margin-left: 0;
+    justify-content: space-between;
+    flex-wrap: nowrap;
+  }
+
+  .shell-header.has-site-menu .shell-nav-link {
+    flex: 1 1 0;
+    justify-content: center;
+    min-height: 44px;
+    padding: 0 4px;
+    font-size: 0.86rem;
+    white-space: nowrap;
+  }
+
+  /* With a row of its own the name no longer has to give way. */
+  .shell-header.has-site-menu .shell-brand-name {
+    position: static;
+    width: auto;
+    height: auto;
+    overflow: visible;
+    clip-path: none;
+  }
+
+  .lab-grounds-links a,
+  .lab-section-link {
+    display: inline-flex;
+    align-items: center;
+    min-height: 44px;
+  }
+}
+
+/* The model header's quiet text — the separators, the layer's kind, an organ
+   chip — was 4.11:1 on the new stage. Lifted until it clears 4.5:1 there. */
+.global-scene-nav { --ink-faint: #a6a8b8; }
+
+/* In the front page's hero the model's box is half the page wide, and the two
+   hints — "click a part" bottom-left, "drag to turn" bottom-right — ran into
+   each other there. The gesture hint goes to the top corner, as it already
+   does on a phone. */
+.lab-hero-model .landing-demo-drag-hint {
+  top: 16px;
+  right: 18px;
+  bottom: auto;
+  max-width: 60%;
+}

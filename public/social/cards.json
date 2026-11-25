@@ -4,32 +4,17 @@
     "brain-anatomy": {
       "bodyChars": 82,
       "titleScale": 1,
-      "html": "8b4912e5fd4bd450"
+      "html": "5815e2deee5ec5fc"
     },
-    "cardiac-output": {
-      "bodyChars": 64,
-      "titleScale": 1,
-      "html": "fded539014a073a8"
-    },
-    "heart-anatomy": {
+    "mri-atlas": {
       "bodyChars": 82,
       "titleScale": 1,
-      "html": "ef8e0d0d2c1f8ebb"
-    },
-    "liver-anatomy": {
-      "bodyChars": 82,
-      "titleScale": 1,
-      "html": "66b79be6246f17fe"
-    },
-    "lung-anatomy": {
-      "bodyChars": 82,
-      "titleScale": 1,
-      "html": "a5afe4c25ebce088"
+      "html": "4e458dc082a17b62"
     },
     "site": {
       "bodyChars": 82,
       "titleScale": 1,
-      "html": "425bf88b98ec21f8"
+      "html": "6af7d77cd5175d82"
     }
   }
 }

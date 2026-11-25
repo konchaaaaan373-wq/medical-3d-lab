@@ -166,6 +166,9 @@ test('every solver scene is mechanistic, amyloid is illustrative and the brain a
     'uterus-anatomy': MECHANISM_LEVEL.NONE,
     'prostate-anatomy': MECHANISM_LEVEL.NONE,
     'male-tract-anatomy': MECHANISM_LEVEL.NONE,
+    // The MRI atlas (2026-11-24): a template and the labels on it. Slices and
+    // surfaces, no state — `none` is what puts it on the anatomy list.
+    'mri-atlas': MECHANISM_LEVEL.NONE,
     'knee-anatomy': MECHANISM_LEVEL.NONE,
     'shoulder-anatomy': MECHANISM_LEVEL.NONE,
     'hip-anatomy': MECHANISM_LEVEL.NONE,
@@ -244,10 +247,12 @@ test('every scene with a paid patient capability declares patient-explanation', 
 
 test('atlas-backed geometry is exactly the scenes that load a shipped asset, and each names a real file', () => {
   const backed = NON_PROTOTYPE.filter((scene) => modelProfileForScene(scene).geometryBasis !== GEOMETRY_BASIS.PROCEDURAL);
-  // Three scenes, two files: the higher-function scene stands on the same brain
-  // atlas as the anatomy scene, which is why it carries the same geometry basis
-  // and the same prohibitions rather than a softer pair of its own.
-  assert.deepEqual(backed.map((scene) => scene.id), ['brain-anatomy', 'higher-brain-function', 'heart-anatomy']);
+  // Four scenes: the higher-function scene stands on the same brain atlas as
+  // the anatomy scene, which is why it carries the same geometry basis and the
+  // same prohibitions rather than a softer pair of its own; the MRI atlas
+  // (2026-11-24) stands on four files of its own — two templates, the label
+  // volume, and the surfaces extracted from it.
+  assert.deepEqual(backed.map((scene) => scene.id), ['brain-anatomy', 'higher-brain-function', 'mri-atlas', 'heart-anatomy']);
   for (const scene of backed) {
     const profile = modelProfileForScene(scene);
     assert.equal(profile.geometryBasis, GEOMETRY_BASIS.REFERENCE_ATLAS);
@@ -267,6 +272,15 @@ test('atlas-backed geometry is exactly the scenes that load a shipped asset, and
     for (const id of profile.assets) assert.ok(assetById(id), `${scene.id}: ${id} is in the asset manifest`);
     assert.deepEqual(profileCandidateAssets(profile), [], `${scene.id}: something published rests on a candidate`);
   }
+
+  // Every file the MRI atlas draws, volumes and surfaces alike: a slice with
+  // nobody credited for it is the same failure as a mesh with nobody credited.
+  assert.deepEqual(modelProfileForScene(sceneById('mri-atlas')).assets, [
+    'mri-icbm152-t1',
+    'mri-icbm152-t2',
+    'mri-cerebra-labels',
+    'mri-cerebra-surfaces',
+  ]);
 
   // Both files the heart loads. It draws the heart and the great-vessel
   // geometry, and a profile that lists one of them leaves the other on screen

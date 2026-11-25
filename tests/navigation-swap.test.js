@@ -237,6 +237,10 @@ test('the veil names where it is going, in the reader’s language', () => {
   assert.equal(openingMessage('#/heart-anatomy', 'ja'), '心臓の3Dモデルを開いています');
   assert.equal(openingMessage('#/heart-anatomy', 'en'), 'Opening the heart model');
   assert.equal(openingMessage('#/brain-anatomy', 'ja'), '脳の3Dモデルを開いています');
+  // Two models of one organ: the one that is not "the organ's 3D model" is named for what it is.
+  assert.equal(openingMessage('#/mri-atlas', 'ja'), '脳 MRI アトラスを開いています');
+  assert.equal(openingMessage('#/mri-atlas', 'en'), 'Opening the brain MRI atlas');
+  assert.equal(openingMessage('#/functions', 'ja'), '高次脳機能を開いています');
 
   // The organ, not the scene's name for itself: the reader chose "the heart",
   // and `触れて学ぶ心臓の解剖` is a title, not an answer to "did I press the

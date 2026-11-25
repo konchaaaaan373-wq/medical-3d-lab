@@ -89,29 +89,39 @@ export const SURFACES = [
   // The patient-explanation entrance. In a release with no reviewed patient
   // explanation it is the page that says so; `verify:purpose` drives the rest.
   { id: 'patient', route: '#/patient', label: 'Patient explanation' },
+  { id: 'functions', route: '#/functions', label: 'Higher brain function (themes)' },
   { id: 'trust', route: '#/trust', label: 'Trust' },
   { id: 'terms', route: '#/terms', label: 'Terms' },
   { id: 'privacy', route: '#/privacy', label: 'Privacy' },
   { id: 'commerce', route: '#/commerce', label: 'Commercial disclosure' },
   { id: 'support', route: '#/support', label: 'Support' },
   { id: 'locked', route: '#/copd', label: 'To be updated', locked: true },
-  { id: 'scene', route: '#/brain-anatomy', label: 'Scene', needsRenderer: true },
-  // An organ with more than one layer, so the header's second row — the
-  // organ's layers — is measured at every width. With only the brain here the
-  // matrix never saw it: its links shipped at 36–40 px, under the phone floor,
-  // with every run green.
-  { id: 'scene-layers', route: '#/heart-anatomy', label: 'Scene (organ with layers)', needsRenderer: true },
-  // A disease model — the product's centre since 2026-09-30: the model shell's
-  // header (mark, name, Models · About), its title line, 「このモデルについて」,
-  // 「解剖を確認」 and the two console cards, at every width. On cardiac-output
-  // that shell is the full model, one view in (`?view=detail`): the bare route
-  // opens the introductory lesson, measured on its own below.
-  { id: 'scene-disease', route: '#/cardiac-output?view=detail', label: 'Disease model', needsRenderer: true },
-  // The introductory lesson (`layout: 'lesson'`): a figure between a question
-  // and its buttons, with nothing over it — so no "hide controls" to measure
-  // (`scripts/check-viewports.mjs` says why in its note) — and everything
-  // else every scene owes, at every width.
-  { id: 'scene-lesson', route: '#/cardiac-output', label: 'Disease model, introductory lesson', needsRenderer: true },
+  // A link that used to open a model. The heart, the lungs, the liver and
+  // cardiac output were published until the brain launch narrowed the scope
+  // (2026-11-24, `LAUNCH_SCOPE`), so their addresses are out in the world; a
+  // reader who follows one lands on the closed door, and that is the page
+  // measured here. One of the four is enough — they render the same surface.
+  { id: 'locked-out-of-scope', route: '#/heart-anatomy', label: 'To be updated (built, outside the launch scope)', locked: true },
+  // The brain has two published models since the launch, so this is also the
+  // scene whose header carries the second row — the organ's layers
+  // (脳の解剖 · MRIアトラス). That row used to be measured on the heart
+  // (`scene-layers`), after its links shipped at 36–40 px, under the phone
+  // floor, with every run green because only the brain was in the matrix.
+  { id: 'scene', route: '#/brain-anatomy', label: 'Scene (organ with layers)', needsRenderer: true },
+  // The MRI atlas (`layout: 'atlas'`): three slice canvases, the linked 3D
+  // view, the structure list and the sequence controls. A different shell from
+  // every other scene (`src/app/AtlasShell.js`, `src/styles/atlas-layout.css`),
+  // so nothing measured on the brain model says anything about it.
+  { id: 'scene-atlas', route: '#/mri-atlas', label: 'MRI atlas', needsRenderer: true },
+  // **Not measured while the launch scope holds: the disease-model shell and
+  // the introductory lesson.** Both were here on `#/cardiac-output` (and its
+  // `?view=detail`), which the release no longer opens, and this matrix runs
+  // against a production build — where a withheld scene's code is not in the
+  // bundle at all. Listing them as `locked` would measure the closed door a
+  // third and fourth time under their names. They come back with the scope:
+  //   { id: 'scene-disease', route: '#/cardiac-output?view=detail', … }
+  //   { id: 'scene-lesson',  route: '#/cardiac-output', … }
+  // Until then `npm run verify:disease` (preview build) is what drives them.
 ];
 
 /**

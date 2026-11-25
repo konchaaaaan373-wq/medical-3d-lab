@@ -17,6 +17,9 @@
  */
 export const LANDING_MODEL_ORDER = Object.freeze([
   'brain-anatomy',
+  // Published 2026-11-24 with the brain launch. The open models lead, and
+  // since the launch scope these two are all of them.
+  'mri-atlas',
   'heart-anatomy',
   'lung-anatomy',
   // Published 2026-09-16. The open models lead the page, so it sits above the
@@ -447,6 +450,12 @@ export const LANDING_MODEL_PRESENTATION = Object.freeze({
     '脳回・脳溝、島皮質、深部核の位置関係を3Dで確認。',
     ['CORTEX', 'INSULA', 'DEEP NUCLEI'],
     ['皮質', '島皮質', '深部核']
+  ),
+  'mri-atlas': presentation(
+    'Read a standard-brain MRI in three planes and find the same structure in 3D.',
+    '標準脳MRIを三断面で読み、同じ構造を3Dで確認。',
+    ['THREE PLANES', 'LABELS', 'SAME SPACE IN 3D'],
+    ['三断面', 'ラベル', '3Dと同じ座標']
   ),
   'heart-anatomy': presentation(
     'Name the chambers, the septum, the valves and the papillary muscles on one heart.',

@@ -18,13 +18,13 @@
   /* The navigation is a fixed dark instrument even when the renderer moves to
      a pale inspection background. Keep its own contrast tokens instead of
      inheriting the scene chrome's light-theme ink. */
-  --ink: #f1eee8;
-  --ink-dim: #bcb6ac;
-  --ink-faint: #9a9389;
-  --border: rgba(241, 238, 232, 0.15);
-  --accent: #f0894a;
-  --accent-soft: rgba(240, 137, 74, 0.12);
-  --accent-border: rgba(240, 137, 74, 0.55);
+  --ink: #f2f1f6;
+  --ink-dim: #b9bac6;
+  --ink-faint: #8d8fa0;
+  --border: rgba(242, 241, 246, 0.15);
+  --accent: #f08db4;
+  --accent-soft: rgba(232, 121, 166, 0.12);
+  --accent-border: rgba(232, 121, 166, 0.55);
   position: fixed;
   top: max(10px, env(safe-area-inset-top));
   left: max(14px, env(safe-area-inset-left));
@@ -38,7 +38,7 @@
   pointer-events: auto;
   border: 1px solid var(--border);
   border-radius: 15px;
-  background: rgba(18, 17, 15, 0.86);
+  background: rgba(23, 24, 32, 0.86);
   box-shadow: 0 14px 38px rgba(0, 0, 0, 0.38);
   backdrop-filter: blur(16px) saturate(1.15);
   -webkit-backdrop-filter: blur(16px) saturate(1.15);
@@ -360,9 +360,9 @@
 .global-nav-models {
   margin: 0 0 12px;
   padding: 10px 11px;
-  border: 1px solid rgba(240, 137, 74, 0.18);
+  border: 1px solid rgba(232, 121, 166, 0.18);
   border-radius: 11px;
-  background: rgba(240, 137, 74, 0.035);
+  background: rgba(232, 121, 166, 0.035);
 }
 
 .global-nav-models[hidden] {

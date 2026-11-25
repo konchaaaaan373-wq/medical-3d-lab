@@ -66,16 +66,37 @@ function withDom(run) {
   }
 }
 
-test('public UI: zero models renders a stable empty state without a model link or WebGL', () => {
+test('public UI: zero models renders a stable page — no WebGL, no button to a model, every area closed in words', () => {
   withDom(() => {
     const ui = new FakeElement('div');
     const mounted = createLanding({ ui, manifest: manifest([]) });
-    const hrefs = linksOf(mounted.element).map((link) => link.getAttribute('href'));
 
     assert.equal(findByClass(mounted.element, 'landing-demo-viewport').length, 0);
     assert.equal(findByClass(mounted.element, 'model-card').length, 0);
-    assert.equal(hrefs.some((href) => /^#\/(brain|heart)-anatomy$/.test(href ?? '')), false);
-    assert.match(textOf(mounted.element), /公開した病態モデルから、ここに表示します/);
+    // The page still has its heading and its three entrances: the areas are the
+    // product's shape, and they do not vanish because nothing is published.
+    assert.equal(findByClass(mounted.element, 'lab-hero-title').length, 1);
+    const areas = findByClass(mounted.element, 'lab-area-link');
+    assert.equal(areas.length, 3);
+    // What must not exist with nothing open is an invitation to open something.
+    // (Until the brain launch this was "no link to a model route at all". An
+    // area's link to its own route stays — it arrives at the closed door, which
+    // says so — and so the promise is held where it is made: the button, the
+    // arrow, and the words.)
+    assert.deepEqual(findByClass(mounted.element, 'lab-cta'), [], 'a button that says "open" with nothing open');
+    for (const area of areas) {
+      assert.equal(findByClass(area, 'lab-area-go').length, 0, `${area.getAttribute('href')}: an arrow onto a closed model`);
+      const [status] = findByClass(area, 'lab-area-status');
+      assert.ok(status, `${area.getAttribute('href')}: closed, and nothing says so`);
+      assert.match(textOf(status), /\p{L}{2,}/u);
+    }
+    // And no link to any model the fixture did not publish, outside the two
+    // places that name the areas themselves: the three entrances, and the
+    // header row that carries the same three on every screen.
+    const elsewhere = linksOf(mounted.element)
+      .filter((link) => !link.classList.contains('lab-area-link') && !link.classList.contains('shell-nav-link'))
+      .map((link) => link.getAttribute('href'));
+    assert.equal(elsewhere.some((href) => /^#\/(brain|heart|lung|liver)-anatomy$|^#\/mri-atlas$/.test(href ?? '')), false);
 
     // The anatomy page says the same thing about the organs, without WebGL.
     const anatomy = createPublicModelsExplorer({ ui: new FakeElement('div'), manifest: manifest([]) });
@@ -84,21 +105,22 @@ test('public UI: zero models renders a stable empty state without a model link o
   });
 });
 
-test('public UI: an anatomy-only release lists the organ under the models, and the organ lives on the anatomy page', () => {
+test('public UI: a brain-only release puts the live brain on the front door, and the same organ on the anatomy page', () => {
   withDom(() => {
     const ui = new FakeElement('div');
     const mounted = createLanding({ ui, manifest: manifest([BRAIN]) });
     const hrefs = linksOf(mounted.element).map((link) => link.getAttribute('href'));
 
-    // BYOKI MOTION's front door has no organ in 3D (ADR 2026-09-30): the brain
-    // is a link on the anatomy line, not a model on the page.
-    assert.equal(findByClass(mounted.element, 'landing-demo-viewport').length, 0);
+    // The front door is the brain (ADR 2026-11-24): its own model, live, once.
+    // From 2026-09-30 until then this asserted the opposite — no organ in 3D
+    // on the page, the brain as one link on an anatomy line.
+    assert.equal(findByClass(mounted.element, 'landing-demo-viewport').length, 1);
+    assert.equal(mounted.organHero.organ, 'brain');
+    assert.equal(findByClass(mounted.element, 'landing-demo-state').length, 0, 'one organ, no chooser');
     assert.equal(findByClass(mounted.element, 'model-card').length, 0, 'an anatomy model is not a disease-model card');
-    // The hero's field is decoration, and says so to assistive tech.
-    for (const field of findByClass(mounted.element, 'bm-hero-motion')) {
-      assert.equal(field.getAttribute('aria-hidden'), 'true');
-    }
     assert.ok(hrefs.includes('#/brain-anatomy'));
+    // The hero's one button is to the model that is open, and to no other.
+    assert.deepEqual(findByClass(mounted.element, 'lab-cta').map((cta) => cta.getAttribute('href')), ['#/brain-anatomy']);
 
     const anatomy = createPublicModelsExplorer({ ui: new FakeElement('div'), manifest: manifest([BRAIN]) });
     assert.match(textOf(anatomy.element), /脳を回転・拡大し、色分けされた部位の位置関係/);

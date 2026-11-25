@@ -212,6 +212,24 @@ export const MODEL_PROFILES = Object.freeze([
       'The review registry forbids diagnosis, lesion localisation, operative planning and navigation.',
   },
   {
+    profileId: 'mri-atlas-standard-brain',
+    schemaVersion: 1,
+    geometryBasis: GEOMETRY_BASIS.REFERENCE_ATLAS,
+    mechanismLevel: MECHANISM_LEVEL.NONE,
+    personalization: PERSONALIZATION.REPRESENTATIVE,
+    intendedUses: [INTENDED_USE.GENERAL_EDUCATION, INTENDED_USE.MEDICAL_EDUCATION],
+    prohibitedUses: [...CORE_PROHIBITED_USES, PROHIBITED_USE.PROGNOSIS, PROHIBITED_USE.PROCEDURE_PLANNING],
+    assets: ['mri-icbm152-t1', 'mri-icbm152-t2', 'mri-cerebra-labels', 'mri-cerebra-surfaces'],
+    validationRecords: [],
+    basis:
+      'The MNI ICBM 152 (2009c nonlinear symmetric) T1- and T2-weighted templates and the CerebrA label volume ' +
+      'defined on that template, quantised to 8 bits and otherwise unchanged; the 3D surfaces are extracted from the ' +
+      'same label volume, so slice and surface share one coordinate space by construction. It has no state and no ' +
+      'mechanism — a coloured region is an anatomical label and nothing is said about function. A population average ' +
+      'of 152 young adults, not one person: comparison with a patient image, lesion localisation, procedure planning ' +
+      'and any measurement are prohibited.',
+  },
+  {
     profileId: 'higher-brain-function-route-network',
     schemaVersion: 1,
     geometryBasis: GEOMETRY_BASIS.REFERENCE_ATLAS,

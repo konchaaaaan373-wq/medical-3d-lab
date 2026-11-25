@@ -210,7 +210,7 @@
 }
 
 .anatomy-scope-switch[aria-checked='true'] .anatomy-scope-track {
-  background: var(--accent, #006b74);
+  background: var(--accent, #a62f61);
 }
 
 .anatomy-scope-switch[aria-checked='true'] .anatomy-scope-thumb {

@@ -152,27 +152,43 @@ const rowFor = (scene) => {
   });
 };
 
+/**
+ * The manifest a given set of scenes would make — the projection, as a function.
+ *
+ * **This publishes nothing.** `PUBLIC_MANIFEST` below is this applied to
+ * `RELEASED_SCENES`, and that constant is the only manifest a surface reads.
+ * The function exists for the tests: since the brain launch (2026-11-24) the
+ * real release holds one organ, and every surface that lays out several organs,
+ * or an organ with two models, or a mechanism scene beside its anatomy, would
+ * otherwise have gone untested the day the scope narrowed. A test builds the
+ * wider manifest here, from real catalogue rows, and hands it to the surface.
+ *
+ * @param {ReadonlyArray<object>} scenes catalogue entries, in the order to list them
+ */
+export function publicManifestOf(scenes) {
+  const models = Object.freeze(scenes.map(rowFor));
+  return Object.freeze({
+    schemaVersion: PUBLIC_MANIFEST_SCHEMA_VERSION,
+    revision: revisionOf(models),
+    channel: RELEASE_CHANNEL,
+    models,
+    // The organs that have at least one open model, in catalogue order.
+    organs: Object.freeze([...new Set(models.map((model) => model.organId))]),
+    // `count` is here rather than being left to `models.length` because more
+    // than one surface prints it and the build checks it: a header saying
+    // "5 open models" over one card is the failure this field makes testable.
+    count: models.length,
+  });
+}
+
+/** The manifest, as one object a consumer can hold. */
+export const PUBLIC_MANIFEST = publicManifestOf(RELEASED_SCENES);
+
 /** @type {ReadonlyArray<PublicModel>} */
-export const PUBLIC_MODELS = Object.freeze(RELEASED_SCENES.map(rowFor));
+export const PUBLIC_MODELS = PUBLIC_MANIFEST.models;
 
 /** The organs that have at least one open model, in catalogue order. */
-export const PUBLIC_ORGANS = Object.freeze([...new Set(PUBLIC_MODELS.map((model) => model.organId))]);
-
-/**
- * The manifest, as one object a consumer can hold.
- *
- * `count` is here rather than being left to `models.length` because more than
- * one surface prints it and the build checks it: a header saying "5 open
- * models" over one card is the failure this field exists to make testable.
- */
-export const PUBLIC_MANIFEST = Object.freeze({
-  schemaVersion: PUBLIC_MANIFEST_SCHEMA_VERSION,
-  revision: revisionOf(PUBLIC_MODELS),
-  channel: RELEASE_CHANNEL,
-  models: PUBLIC_MODELS,
-  organs: PUBLIC_ORGANS,
-  count: PUBLIC_MODELS.length,
-});
+export const PUBLIC_ORGANS = PUBLIC_MANIFEST.organs;
 
 /**
  * Where "show me a model that is open" has to go, and what to call it.

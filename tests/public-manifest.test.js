@@ -7,6 +7,7 @@ import {
   PUBLIC_MANIFEST,
   PUBLIC_MANIFEST_SCHEMA_VERSION,
   PUBLIC_MODELS,
+  PUBLIC_ORGANS,
   organIsPublished,
   publicManifestProblems,
   publicModelById,
@@ -15,9 +16,24 @@ import {
 import { RELEASED_SCENES, isSceneReleased } from '../src/catalog/release.js';
 import { SCENES, sceneById } from '../src/catalog/index.js';
 import { resolveRoute, trustFocusOf } from '../src/app/router.js';
+import { organById } from '../src/catalog/taxonomy.js';
+import { WIDE_MANIFEST } from './helpers/wide-release.js';
 
 const read = (path) => readFileSync(new URL(`../${path}`, import.meta.url), 'utf8');
 const fileExists = (path) => existsSync(new URL(`../${path}`, import.meta.url));
+
+/** Every `.js`/`.mjs` file under a repository directory, repository-relative. */
+function filesIn(dir) {
+  const out = [];
+  const walk = (at) => {
+    for (const entry of readdirSync(new URL(`../${at}`, import.meta.url), { withFileTypes: true })) {
+      if (entry.isDirectory()) walk(`${at}/${entry.name}`);
+      else if (/\.m?js$/.test(entry.name)) out.push(`${at}/${entry.name}`);
+    }
+  };
+  walk(dir);
+  return out;
+}
 
 /**
  * The contract the public-UI work is built against.
@@ -107,26 +123,54 @@ test('public manifest: it publishes what is open and cannot publish anything els
   }
 
   // No "ready: false" row, no placeholder for work in progress. An organ with
-  // nothing finished is absent, and `organIsPublished` is the honest test for
-  // "may I offer this organ" — the question the landing hero asks. The heart
-  // was the absent case until 2026-09-15; it is present now because a model
-  // was finished, and the rule that produced both answers is the same one.
+  // nothing published is absent, and `organIsPublished` is the honest test for
+  // "may I offer this organ" — the question the landing hero asks.
+  //
+  // The heart has been on both sides of this. Absent until 2026-09-15; present
+  // once its model was finished; absent again since 2026-11-24, when the launch
+  // scope narrowed to the brain with the heart's record intact. The rule that
+  // produced all three answers is the same one: is a model of it released.
   assert.equal(organIsPublished('brain'), true);
-  assert.equal(organIsPublished('heart'), true);
-  // Two since 2026-09-22 — the atlas and one mechanism scene. `organIsPublished`
-  // answers about the organ; this answers about its models, and the two are
-  // different questions as soon as an organ has more than one.
+  // `organIsPublished` answers about the organ; this answers about its models,
+  // and the two are different questions as soon as an organ has more than one.
   assert.deepEqual(
-    publicModelsForOrgan('heart').map((model) => model.sceneId),
+    publicModelsForOrgan('brain').map((model) => model.sceneId),
+    ['brain-anatomy', 'mri-atlas']
+  );
+  // Organs with nothing published are absent, and answer no — by their real
+  // ids. (This asked about `'lung'`, which is not an organ id; the organ is
+  // `'lungs'`, so the assertion was true of a name nothing uses.)
+  for (const organId of ['heart', 'lungs', 'liver', 'kidney']) {
+    assert.ok(organById(organId), `"${organId}" is not an organ in the taxonomy`);
+    assert.equal(organIsPublished(organId), false, `${organId} is offered`);
+    assert.deepEqual(publicModelsForOrgan(organId), [], `${organId} has a published model`);
+  }
+  // The same projection over the wider set the gate clears: an organ with two
+  // models lists both, anatomy first — what the heart looked like while it was
+  // published, held on real rows so it is true again the day the scope widens.
+  assert.deepEqual(
+    WIDE_MANIFEST.models.filter((model) => model.organId === 'heart').map((model) => model.sceneId),
     ['heart-anatomy', 'cardiac-output']
   );
-  // An organ with nothing published is still absent, and still answers no.
-  assert.equal(organIsPublished('lung'), false);
-  assert.deepEqual(publicModelsForOrgan('lung'), []);
+  assert.deepEqual([...WIDE_MANIFEST.organs], ['brain', 'heart', 'lungs', 'liver']);
+
   const source = read('src/catalog/publicManifest.js');
   const code = source.replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$/gm, '');
   assert.doesNotMatch(code, /ready:\s*(true|false)|comingSoon|placeholder:/);
-  assert.match(source, /RELEASED_SCENES\.map\(rowFor\)/, 'the rows are derived from the gate, not listed');
+  // The rows are derived from the gate, not listed: the one manifest a surface
+  // reads is the projection applied to `RELEASED_SCENES`, and to nothing else.
+  assert.match(code, /export const PUBLIC_MANIFEST = publicManifestOf\(RELEASED_SCENES\);/);
+  assert.equal((code.match(/publicManifestOf\(/g) ?? []).length, 2, 'the projection is applied somewhere other than to the released scenes');
+  assert.match(code, /const models = Object\.freeze\(scenes\.map\(rowFor\)\);/);
+  assert.equal(PUBLIC_MODELS, PUBLIC_MANIFEST.models);
+  assert.equal(PUBLIC_ORGANS, PUBLIC_MANIFEST.organs);
+  // And no application code applies it: a surface that built its own manifest
+  // would be publishing by itself.
+  for (const dir of ['src/app', 'src/components', 'src/data', 'src/scenes', 'scripts']) {
+    for (const path of filesIn(dir)) {
+      assert.doesNotMatch(read(path), /publicManifestOf/, `${path} builds a manifest of its own`);
+    }
+  }
 });
 
 test('public manifest: the revision changes when the published set changes, and not otherwise', () => {

@@ -6,14 +6,19 @@ import { join, relative, sep } from 'node:path';
 import {
   MODEL_ASSET_EXTENSIONS,
   SHARED_RUNTIME_FILES,
+  ASSET_COMPANION_FILES,
   SITE_SURFACE_PATHS,
   assetDeliveryProblems,
   deliveryPathOf,
   requiredAssetIdsFor,
+  withheldDeliveryPaths,
+  withheldPosterFiles,
 } from '../scripts/asset-delivery.js';
+import { MODEL_SHOWCASE } from '../src/data/modelShowcase.js';
 import { ASSET_MANIFEST, assetById } from '../src/catalog/assetManifest.js';
 import { modelProfileForScene } from '../src/catalog/modelProfiles.js';
-import { RELEASED_SCENES } from '../src/catalog/release.js';
+import { RELEASED_SCENES, betaPublicationProblems } from '../src/catalog/release.js';
+import { sceneById } from '../src/catalog/index.js';
 
 const read = (path) => readFileSync(new URL(`../${path}`, import.meta.url), 'utf8');
 
@@ -35,10 +40,22 @@ const CORRECT_PUBLIC = [
   'assets/brain/ATTRIBUTION.md',
   'assets/brain/draco/draco_decoder.wasm',
   'assets/brain/draco/draco_wasm_wrapper.js',
+  // The MRI atlas: three volumes, the label surfaces, one notice for all four,
+  // and the index — which is no manifest entry of its own and ships because
+  // the assets it indexes do (`ASSET_COMPANION_FILES`).
+  'assets/mri/t1.u8.gz',
+  'assets/mri/t2.u8.gz',
+  'assets/mri/labels.u8.gz',
+  'assets/mri/cerebra.glb',
+  'assets/mri/ATTRIBUTION.md',
+  'assets/mri/atlas.json',
   // The heart's two files and their notice. The notice is accounted for by the
   // obligation it discharges rather than by a `decisionRecord` in `public/` —
   // the heart records its licence decision under `docs/` — which is the case
   // the brain could not show, because the brain names one file in both places.
+  //
+  // Since the brain launch (2026-11-24) no published model uses them: they are
+  // in `public/` and must **not** be in the build (`WITHHELD` below).
   'assets/heart/VH_M_Heart.glb',
   'assets/heart/VH_M_Blood_Vasculature.glb',
   'assets/heart/ATTRIBUTION.md',
@@ -47,9 +64,12 @@ const CORRECT_PUBLIC = [
   'social/cards.json',
 ];
 
-/** A build that ships exactly what it should: `public/` plus Vite's own output. */
+/** What a production build drops from `public/`, derived the way the build derives it. */
+const WITHHELD = withheldDeliveryPaths({ assets: ASSET_MANIFEST, requiredAssetIds: required });
+
+/** A build that ships exactly what it should: `public/` less the withheld files, plus Vite's own output. */
 const CORRECT_BUILD = [
-  ...CORRECT_PUBLIC,
+  ...CORRECT_PUBLIC.filter((file) => !WITHHELD.includes(file)),
   'index.html',
   'robots.txt',
   'assets/index-abc123.js',
@@ -57,6 +77,15 @@ const CORRECT_BUILD = [
   'assets/index-apGb.css',
   's/brain-anatomy/index.html',
 ];
+
+/**
+ * The same tree as the release stood before the launch scope: the heart
+ * published beside the brain. Built explicitly so the "a second organ's assets
+ * ship with it" path stays tested while the real release has one organ.
+ */
+const HEART_IDS = ['hubmap-vh-m-heart', 'hubmap-vh-m-blood-vasculature'];
+const requiredWithHeart = new Set([...required, ...HEART_IDS]);
+const BUILD_WITH_HEART = [...CORRECT_BUILD, ...CORRECT_PUBLIC.filter((file) => file.startsWith('assets/heart/'))];
 
 const problemsFor = (emitted, options = {}) =>
   assetDeliveryProblems({
@@ -75,7 +104,8 @@ test('asset delivery: the control — a correct build passes, shared files inclu
   // stops the check being tightened into something that fails on the decoder.
   for (const file of [
     'assets/brain/ATTRIBUTION.md', // the licence notice the manifest points at
-    'assets/heart/ATTRIBUTION.md', // a notice named by an obligation rather than by decisionRecord
+    'assets/mri/ATTRIBUTION.md', // one notice shared by four assets
+    'assets/mri/atlas.json', // the index of those four, declared as their companion
     'assets/brain/draco/draco_decoder.wasm', // a declared shared runtime file
     'assets/brain/draco/draco_wasm_wrapper.js', // and its wrapper, declared too
     'social/site.png', // a link-preview card, owned by check-social-cards.js
@@ -88,6 +118,116 @@ test('asset delivery: the control — a correct build passes, shared files inclu
     assert.ok(CORRECT_BUILD.includes(file));
     assert.deepEqual(problemsFor(CORRECT_BUILD).filter((line) => line.includes(file)), [], file);
   }
+
+  // A second organ published beside the brain: its meshes ship, and so does a
+  // notice named by an obligation rather than by `decisionRecord`.
+  assert.deepEqual(problemsFor(BUILD_WITH_HEART, { requiredAssetIds: requiredWithHeart }), []);
+  assert.ok(BUILD_WITH_HEART.includes('assets/heart/ATTRIBUTION.md'));
+});
+
+test('asset delivery: a withheld model\'s assets are in public/ and not in the build', () => {
+  // The brain launch closed the heart with its record complete — the beta gate
+  // still answers [] for it — and its two meshes went on shipping to everyone,
+  // because `public/` is copied whole. What is withheld is derived, not listed.
+  assert.deepEqual(betaPublicationProblems(sceneById('heart-anatomy')), [], 'the heart is withheld by scope, not by a defect');
+  assert.ok(!RELEASED_SCENES.some((scene) => scene.id === 'heart-anatomy'));
+  assert.deepEqual(WITHHELD, [
+    'assets/heart/ATTRIBUTION.md',
+    'assets/heart/VH_M_Blood_Vasculature.glb',
+    'assets/heart/VH_M_Heart.glb',
+  ]);
+  for (const file of WITHHELD) assert.ok(CORRECT_PUBLIC.includes(file), `${file} is still in public/ for dev and preview`);
+
+  // Absent from the build is correct, and is not "did not reach the build".
+  assert.deepEqual(problemsFor(CORRECT_BUILD), []);
+
+  // Each one that ships is named — the mesh as the asset it is…
+  for (const [file, id] of [
+    ['assets/heart/VH_M_Heart.glb', 'hubmap-vh-m-heart'],
+    ['assets/heart/VH_M_Blood_Vasculature.glb', 'hubmap-vh-m-blood-vasculature'],
+  ]) {
+    const problems = problemsFor([...CORRECT_BUILD, file]);
+    assert.deepEqual(problems, [`${id}: no published model uses it, but ${file} shipped`]);
+  }
+  // …and the notice as a file with nothing left to describe.
+  const notice = problemsFor([...CORRECT_BUILD, 'assets/heart/ATTRIBUTION.md']);
+  assert.equal(notice.length, 1, JSON.stringify(notice));
+  assert.match(notice[0], /^assets\/heart\/ATTRIBUTION\.md: belongs only to assets no published model uses \(hubmap-vh-m-heart, hubmap-vh-m-blood-vasculature\), but it shipped/);
+
+  // A notice shared with a published asset is not withheld by the withheld one.
+  const onlyT1 = withheldDeliveryPaths({ assets: ASSET_MANIFEST, requiredAssetIds: new Set(['mri-icbm152-t1']) });
+  assert.ok(onlyT1.includes('assets/mri/t2.u8.gz'));
+  assert.ok(!onlyT1.includes('assets/mri/ATTRIBUTION.md'), 'the notice still has a published asset to speak for');
+  assert.ok(!onlyT1.includes('assets/mri/atlas.json'), 'and so does the index');
+
+  // Publishing nothing withholds every delivered file an asset accounts for.
+  const none = withheldDeliveryPaths({ assets: ASSET_MANIFEST, requiredAssetIds: new Set() });
+  for (const file of CORRECT_PUBLIC.filter((entry) => /^assets\/(brain|mri|heart)\/[^/]+$/.test(entry))) {
+    assert.ok(none.includes(file), `${file} would ship with nothing published`);
+  }
+  // The decoder is shared runtime code, not an asset, and is never in the set.
+  assert.ok(!none.some((file) => file.includes('/draco/')));
+});
+
+test('asset delivery: the picture of a withheld model is in public/ and not in the build', () => {
+  // `posters/` is excused as a folder, so the photograph of `cardiac-output`
+  // went on shipping after the launch scope closed the model it is a picture of.
+  const posters = withheldPosterFiles(MODEL_SHOWCASE, RELEASED_SCENES);
+  assert.deepEqual(posters.map((entry) => entry.path), ['posters/cardiac-output.jpg']);
+  assert.match(posters[0].why, /"cardiac-output", which the release does not open/);
+  // Published, it is not withheld — and a model with no picture names no file.
+  assert.deepEqual(withheldPosterFiles(MODEL_SHOWCASE, [...RELEASED_SCENES, sceneById('cardiac-output')]), []);
+  assert.deepEqual(withheldPosterFiles({ a: { poster: null }, b: {} }, []), []);
+
+  const withPoster = [...CORRECT_PUBLIC, 'posters/cardiac-output.jpg'];
+  // Absent from the build: correct, and not "did not reach the build".
+  assert.deepEqual(problemsFor(CORRECT_BUILD, { publicFiles: withPoster, withheldFiles: posters }), []);
+  // Shipped: named, with whose picture it is.
+  const shipped = problemsFor([...CORRECT_BUILD, 'posters/cardiac-output.jpg'], { publicFiles: withPoster, withheldFiles: posters });
+  assert.deepEqual(shipped, [
+    'posters/cardiac-output.jpg: is the model-card picture of "cardiac-output", which the release does not open, but it shipped',
+  ]);
+  // And without being told it is withheld, the folder's excuse lets it through
+  // — which is the hole, kept visible here so nobody mistakes the folder for a rule.
+  assert.deepEqual(problemsFor([...CORRECT_BUILD, 'posters/cardiac-output.jpg'], { publicFiles: withPoster }), []);
+});
+
+test('asset delivery: an index travels with the assets it indexes, both ways', () => {
+  for (const entry of ASSET_COMPANION_FILES) {
+    assert.ok(entry.reason?.trim().length > 20, `${entry.path} is declared without a reason`);
+    assert.doesNotMatch(entry.path, /\/$/, `${entry.path} is a directory`);
+    assert.ok(entry.assets.length > 0, `${entry.path} names no asset`);
+    for (const id of entry.assets) assert.ok(assetById(id), `${entry.path}: "${id}" is not in the manifest`);
+    assert.ok(CORRECT_PUBLIC.includes(entry.path));
+  }
+
+  // Published, and missing from the build.
+  const without = CORRECT_BUILD.filter((file) => file !== 'assets/mri/atlas.json');
+  assert.ok(
+    problemsFor(without).some((line) => /assets\/mri\/atlas\.json: is in public\/ and did not reach the build/.test(line)),
+    JSON.stringify(problemsFor(without))
+  );
+  const gone = problemsFor(without, { publicFiles: CORRECT_PUBLIC.filter((file) => file !== 'assets/mri/atlas.json') });
+  assert.ok(
+    gone.some((line) => /assets\/mri\/atlas\.json: a published model needs it/.test(line)),
+    JSON.stringify(gone)
+  );
+
+  // Withheld with everything it indexes, and shipped anyway.
+  const brainOnly = new Set(['brain-atlas-glb']);
+  const shippedIndex = problemsFor(
+    CORRECT_BUILD.filter((file) => !file.startsWith('assets/mri/') || file === 'assets/mri/atlas.json'),
+    { requiredAssetIds: brainOnly }
+  );
+  assert.equal(shippedIndex.length, 1, JSON.stringify(shippedIndex));
+  assert.match(shippedIndex[0], /^assets\/mri\/atlas\.json: belongs only to assets no published model uses/);
+
+  // And undeclared, it is one more file nobody accounted for.
+  const undeclared = problemsFor(CORRECT_BUILD, { companionFiles: [] });
+  assert.ok(
+    undeclared.some((line) => /^assets\/mri\/atlas\.json: is in no manifest entry/.test(line)),
+    JSON.stringify(undeclared)
+  );
 });
 
 test('asset delivery: an unregistered mesh or texture that shipped is caught', () => {
@@ -174,7 +314,7 @@ test('asset delivery: a registered asset no published model uses must not ship',
   const brain = assetById('brain-atlas-glb');
   assert.ok(brain, 'the brain mesh is the asset this case is built on');
 
-  const withheld = problemsFor(CORRECT_BUILD, { requiredAssetIds: new Set() });
+  const withheld = problemsFor(BUILD_WITH_HEART, { requiredAssetIds: new Set() });
   assert.ok(
     withheld.some((line) => /brain-atlas-glb: no published model uses it, but assets\/brain\/brain\.glb shipped/.test(line)),
     JSON.stringify(withheld)
@@ -252,7 +392,10 @@ test('asset delivery: the real build agrees, when there is one', (t) => {
   };
   const publicRoot = new URL('../public', import.meta.url).pathname;
   assert.deepEqual(
-    problemsFor(walkFrom(dist.pathname), { publicFiles: walkFrom(publicRoot) }),
+    problemsFor(walkFrom(dist.pathname), {
+      publicFiles: walkFrom(publicRoot),
+      withheldFiles: withheldPosterFiles(MODEL_SHOWCASE, RELEASED_SCENES),
+    }),
     []
   );
 });

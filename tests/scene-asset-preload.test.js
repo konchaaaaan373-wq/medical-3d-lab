@@ -1,8 +1,8 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { existsSync, statSync } from 'node:fs';
+import { existsSync, readFileSync, statSync } from 'node:fs';
 
-import { describeAssetProgress, prefetchSceneAssets, sceneAssetUrls } from '../src/app/sceneAssetPreload.js';
+import { ON_REQUEST_ASSETS, describeAssetProgress, prefetchSceneAssets, sceneAssetUrls } from '../src/app/sceneAssetPreload.js';
 import { assetById } from '../src/catalog/assetManifest.js';
 import { modelProfileForScene } from '../src/catalog/modelProfiles.js';
 import { SCENES } from '../src/catalog/index.js';
@@ -16,7 +16,11 @@ const table = buildScenePreloads({ scenes: RELEASED_SCENES, profileFor: modelPro
 
 test('every released scene that loads a model file has it preloaded', () => {
   for (const scene of RELEASED_SCENES) {
-    const assets = modelProfileForScene(scene)?.assets ?? [];
+    // What it loads **on open**: its profile's assets, less the ones it
+    // fetches only when asked (the next test).
+    const assets = (modelProfileForScene(scene)?.assets ?? []).filter(
+      (id) => !(ON_REQUEST_ASSETS[scene.id] ?? []).includes(id)
+    );
     if (!assets.length) {
       assert.equal(table[scene.id], undefined, `${scene.id} loads no asset and must not preload one`);
       continue;
@@ -34,6 +38,47 @@ test('every released scene that loads a model file has it preloaded', () => {
       }
     }
   }
+});
+
+test('a file the scene fetches only on request is not downloaded on open', () => {
+  // The MRI atlas opens on the T1 volume, the labels and the surfaces. Its T2
+  // volume (2.6 MB) arrives when a reader presses 「T2」 — and was being
+  // prefetched on every direct visit all the same, because this table was
+  // "every asset the profile names". The bundle budget's sentence about the
+  // atlas ("T2 is fetched on request") is only true while this holds.
+  const urls = (table['mri-atlas'] ?? []).map((file) => file.url);
+  // The surfaces are not prefetched either: the planes need only T1 and the
+  // labels, and a 2.8 MB file fetched beside them made the first screen wait
+  // for something it does not draw (8.1 s → planes on a 9 Mbps phone).
+  assert.deepEqual(urls, ['assets/mri/t1.u8.gz', 'assets/mri/labels.u8.gz']);
+  assert.equal(urls.includes('assets/mri/cerebra.glb'), false, 'the 3D surfaces are prefetched beside the volumes');
+  assert.equal(urls.includes('assets/mri/t2.u8.gz'), false, 'the T2 volume is prefetched on open');
+  // The bar's total is what will actually arrive.
+  const total = table['mri-atlas'].reduce((sum, file) => sum + file.bytes, 0);
+  assert.equal(total, ['mri-icbm152-t1', 'mri-cerebra-labels'].reduce((sum, id) => sum + assetById(id).output.bytes, 0));
+
+  // Every declared exception is real: a scene in the catalogue, an asset its
+  // profile names, and a file that is delivered. A stale entry would silently
+  // stop a file being prefetched that the scene now does load on open.
+  for (const [sceneId, ids] of Object.entries(ON_REQUEST_ASSETS)) {
+    const scene = SCENES.find((entry) => entry.id === sceneId);
+    assert.ok(scene, `${sceneId} is not a scene`);
+    for (const id of ids) {
+      assert.ok(modelProfileForScene(scene).assets.includes(id), `${sceneId}: its profile does not name ${id}`);
+      assert.match(assetById(id).output.path, /^public\//, `${id} is not a delivered file`);
+    }
+  }
+  // And the scene itself agrees about which file that is: its opening load
+  // asks for T1 and the labels by name, and T2 only from the modality switch.
+  const workbench = readFileSync(new URL('../src/scenes/nervous/scenes/mriAtlas/MriAtlasWorkbench.js', import.meta.url), 'utf8');
+  assert.match(workbench, /loaders\.loadVolume\(atlas\.volumes\.t1,/);
+  assert.match(workbench, /loaders\.loadVolume\(atlas\.volumes\.labels,/);
+  assert.doesNotMatch(workbench, /loadVolume\(atlas\.volumes\.t2\b/, 'the workbench loads T2 on open; take it off ON_REQUEST_ASSETS');
+  assert.match(workbench, /async function setModality\(id\) \{[\s\S]*?pendingVolumes\[id\] \?\?= loaders\.loadVolume\(atlas\.volumes\[id\]/);
+
+  // Without the declaration the table is the profile again — the old behaviour.
+  const eager = sceneAssetUrls(RELEASED_SCENES, modelProfileForScene, assetById, { onRequest: {} });
+  assert.ok(eager['mri-atlas'].some((file) => file.url === 'assets/mri/t2.u8.gz'));
 });
 
 test('every preloaded file ships with the build', () => {

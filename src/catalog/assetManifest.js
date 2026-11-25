@@ -43,6 +43,13 @@ export const ASSET_KIND = Object.freeze({
   MESH: 'mesh',
   /** A texture, material definition or similar that a mesh consumes. Has no geometry of its own. */
   MATERIAL: 'material',
+  /**
+   * A voxel grid: an MRI intensity volume or a label volume (2026-11-24, the
+   * MRI atlas). It has geometry — a grid, a spacing, an orientation, and with
+   * them a left and a right — so it carries the same geometry and semantic-part
+   * records a mesh does, and every QA gate applies. It has no triangles.
+   */
+  VOLUME: 'volume',
 });
 
 /** Where an asset's content ultimately came from. Decides which conditional block is required. */
@@ -129,6 +136,7 @@ export const QA_GATE_IDS = Object.freeze(Object.values(QA_GATE));
  */
 export const QA_APPLIES = Object.freeze({
   [ASSET_KIND.MESH]: Object.freeze(QA_GATE_IDS),
+  [ASSET_KIND.VOLUME]: Object.freeze(QA_GATE_IDS),
   [ASSET_KIND.MATERIAL]: Object.freeze([QA_GATE.FORMAT_VALIDATION, QA_GATE.VISUAL_REVIEW]),
 });
 
@@ -273,7 +281,370 @@ export const RELEASE_STATUS_IDS = values(RELEASE_STATUS);
  *
  * @type {readonly AssetManifestEntry[]}
  */
+
+/**
+ * The MRI atlas's four files (2026-11-24).
+ *
+ * They share a source, a pipeline, a licence position and a review state, and
+ * differ in what they are — so the shared record is written once and each file
+ * states only its own part. They are four entries rather than one because the
+ * manifest pins one output hash per entry, and a decision that rests on the T1
+ * volume must not survive a change to the label volume unnoticed.
+ *
+ * ## Where the bytes came from, and what was not verified
+ *
+ * The template and CerebrA are published by the MNI (McGill) and on G-Node.
+ * Neither host could be reached from the environment this was built in, so the
+ * bytes were taken from **TemplateFlow**, the neuroimaging community's curated
+ * archive of the same template (`tpl-MNI152NLin2009cSym`), whose files and
+ * LICENSE are pinned by hash in `scripts/build-mri-atlas.mjs`. Two things
+ * follow and are recorded rather than assumed:
+ *
+ * - the inputs were **not compared byte-for-byte with the publishers' own
+ *   downloads** (F-281);
+ * - CerebrA's CC0 dedication is the publisher's statement as relayed in the
+ *   owner's brief; it was **not read from the G-Node record** here. The licence
+ *   in hand is the one TemplateFlow ships with the files — the MNI permissive
+ *   notice — which already permits commercial redistribution with the notice
+ *   kept. The decision below rests on that notice and needs nothing from CC0.
+ */
+const MRI_ATLAS_NOTICE = 'public/assets/mri/ATTRIBUTION.md';
+const MRI_ATLAS_QA = 'docs/asset-qa/mri-atlas.md';
+const TEMPLATEFLOW_BASE = 'https://templateflow.s3.amazonaws.com/tpl-MNI152NLin2009cSym/';
+
+function mriAtlasAsset({
+  assetId, kind, format, structureScope, sourceFile, sourceSha256, sourceBytes, cerebra,
+  output, geometry, semanticParts, steps, acceptedSimplifications, knownDefects, budget, formatValidation,
+}) {
+  const components = [
+    {
+      id: 'mni-icbm152-2009c',
+      name: 'MNI ICBM 152 Nonlinear atlases version 2009 (2009c symmetric), McConnell Brain Imaging Centre, McGill University',
+      url: 'https://www.mcgill.ca/bic/icbm152-152-nonlinear-atlases-version-2009',
+      license: 'LicenseRef-MNI-ICBM152',
+      role: 'The T1- and T2-weighted population templates, and the space every file here is in.',
+      additionalTerms:
+        'Permissive notice: use, copy, modify and distribute for any purpose without fee, provided the copyright notice appears in all copies. ' +
+        'The notice is reproduced verbatim in the asset notice.',
+    },
+    {
+      id: 'templateflow',
+      name: 'TemplateFlow archive, tpl-MNI152NLin2009cSym (Ciric et al. 2022, Nat Methods 19:1568–1571)',
+      url: 'https://www.templateflow.org/',
+      license: 'LicenseRef-MNI-ICBM152',
+      role: 'The distribution the bytes were retrieved from: the same template, curated to BIDS naming, with its LICENSE file.',
+      additionalTerms: null,
+    },
+    ...(cerebra
+      ? [{
+          id: 'cerebra',
+          name: 'CerebrA atlas (Manera, Dadar, Fonov & Collins 2020, Sci Data 7:237)',
+          url: 'https://doi.org/10.12751/g-node.be5e62',
+          license: 'CC0-1.0',
+          role: 'The label volume: Mindboggle-101 (DKT) labels registered to the ICBM 152 2009c template and manually corrected.',
+          additionalTerms:
+            'CC0 as stated for the G-Node record; not re-read from the publisher in this environment (F-281). ' +
+            'As distributed by TemplateFlow the file sits under the template\'s MNI notice, which is the licence this record relies on.',
+        }]
+      : []),
+  ];
+  const pending = (scope) => ({ status: QA_STATUS.PENDING, reference: 'docs/clinical-reviews/registry.json', scope });
+  return {
+    assetId,
+    schemaVersion: 1,
+    kind,
+    sourceType: ASSET_SOURCE_TYPE.REFERENCE_ATLAS,
+    format,
+    organs: ['brain'],
+    structureScope,
+    source: {
+      name: `TemplateFlow tpl-MNI152NLin2009cSym: ${sourceFile}`,
+      url: 'https://www.templateflow.org/',
+      fileUrl: `${TEMPLATEFLOW_BASE}${sourceFile}`,
+      revision: `sha256:${sourceSha256}`,
+      retrievedAt: '2026-11-24',
+      introducedAt: '2026-11-24',
+      introducedIn: null,
+      introducedInNote:
+        'Filed in the pull request that adds the MRI atlas; the repository squash-merges, so the commit that puts this file on the default branch does not exist yet.',
+    },
+    license: {
+      spdx: cerebra ? 'CC0-1.0 AND LicenseRef-MNI-ICBM152' : 'LicenseRef-MNI-ICBM152',
+      url: 'https://www.mcgill.ca/bic/icbm152-152-nonlinear-atlases-version-2009',
+      attribution:
+        'MNI ICBM 152 Nonlinear atlases (2009), © 1993–2004 Louis Collins, McConnell Brain Imaging Centre, Montreal Neurological Institute, McGill University' +
+        (cerebra ? '; CerebrA atlas, Manera AL, Dadar M, Fonov V, Collins DL (2020).' : '.'),
+      redistribution: LICENSE_DECISION.ALLOWED,
+      commercialUse: LICENSE_DECISION.ALLOWED,
+      assessment: ASSESSMENT_BASIS.ENGINEERING,
+      assessedAt: '2026-11-24',
+      decisionRecord: MRI_ATLAS_NOTICE,
+      decisionNote:
+        'The LICENSE file distributed with these files (hash pinned in scripts/build-mri-atlas.mjs) grants permission to use, copy, modify ' +
+        'and distribute "for any purpose and without fee" provided the copyright notice appears in all copies; that permits modified, ' +
+        'commercial redistribution, and the notice is kept verbatim beside the files. This is an engineering reading of that text, not a ' +
+        'legal review. Not verified here: the publishers\' own pages (mcgill.ca and gin.g-node.org were unreachable from the build ' +
+        'environment), so the inputs were not compared with the publishers\' downloads and the CC0 statement for CerebrA was not read at ' +
+        'its source (F-281). The decision does not depend on CC0.',
+      obligations: [
+        {
+          id: 'mni-notice',
+          kind: OBLIGATION_KIND.NOTICE_RETENTION,
+          components: ['mni-icbm152-2009c', 'templateflow'],
+          requirement: 'The MNI copyright and permission notice must appear in all copies.',
+          status: OBLIGATION_STATUS.SATISFIED,
+          satisfiedBy: MRI_ATLAS_NOTICE,
+          displayedVia: 'Served beside the files; generated verbatim from the pinned LICENSE by the build script; linked from the model card and the Trust page.',
+        },
+        {
+          id: 'attribution',
+          kind: OBLIGATION_KIND.ATTRIBUTION,
+          components: components.map((component) => component.id),
+          requirement:
+            'Credit the template and atlas and cite their papers (Fonov et al. 2011, 2009; Manera et al. 2020; Ciric et al. 2022). ' +
+            'Not a licence condition of CC0 or of the MNI notice beyond the notice itself — recorded because the product promises it.',
+          status: OBLIGATION_STATUS.SATISFIED,
+          satisfiedBy: MRI_ATLAS_NOTICE,
+          displayedVia: 'The asset notice, the model card §4 and the scope panel\'s sources in the scene.',
+        },
+      ],
+    },
+    components,
+    sources: [
+      {
+        path: `${TEMPLATEFLOW_BASE}${sourceFile}`,
+        sha256: sourceSha256,
+        bytes: sourceBytes,
+        verifiedAt: '2026-11-24T20:10:00Z',
+        note: 'Downloaded from TemplateFlow and hashed; the build script refuses any input whose hash differs. Not compared with the publisher\'s own download (F-281).',
+      },
+    ],
+    output,
+    geometry,
+    pipeline: {
+      tools: ['scripts/build-mri-atlas.mjs (Node, no dependencies)', 'node:zlib gzip level 9'],
+      generator: 'scripts/build-mri-atlas.mjs',
+      steps,
+    },
+    semanticParts,
+    acceptedSimplifications,
+    knownDefects,
+    budget,
+    qa: {
+      formatValidation,
+      semanticIntegrity: {
+        status: QA_STATUS.PASSED,
+        assetSha256: output.sha256,
+        reference: 'tests/mri-atlas-assets.test.js',
+        scope:
+          'The committed file hashes to this record; the grid is 193×229×193 at 1 mm, RAS+; all 102 labels are present; every structure the ' +
+          'atlas calls right has its centroid at x > 0 and every left one at x < 0; every interior point lies inside its own label; every ' +
+          'mesh is named for a label the volume has. A test of the files and their index, not of the anatomy.',
+      },
+      anatomyExpertReview: pending(
+        'No anatomist or radiologist has judged the labels as drawn here, their Japanese names, or the extracted surfaces. The labels are the CerebrA authors\' manual correction; that is their review, not one of this product.'
+      ),
+      visualReview: {
+        status: QA_STATUS.PASSED,
+        assetSha256: output.sha256,
+        reference: MRI_ATLAS_QA,
+        browser: 'Chromium (Playwright build, headless, SwiftShader WebGL2)',
+        viewport: '1440x900 and 390x844',
+        scene: 'mri-atlas',
+        commit: 'ab8982829d608ecff9790e22d1576c3919710ddf',
+        reviewedAt: '2026-11-24',
+        scope:
+          'Engineering render verification: the scene loads this file; the three planes draw with their edge letters; selecting the left ' +
+          'hippocampus in the list moves the crosshair to x −31, y −19, z −17 mm and outlines the label on the patient\'s left (screen right ' +
+          'in the radiological view); the 3D surfaces draw in recognisable lobes with the frontal lobe anterior in the left lateral view. ' +
+          'Not an anatomical judgement.',
+      },
+      clinicianReview: pending('The mri-atlas review record is `pending`; this gate follows it.'),
+    },
+    replacement: {
+      replaces: null,
+      rollback: 'git revert of the commit that changes this file; `npm run mri:build -- --check` says whether the committed files match the script.',
+    },
+    release: {
+      status: RELEASE_STATUS.RELEASED,
+      note:
+        'Releasable with the alpha mri-atlas scene only: the expert and clinician reviews are pending, and the inputs were not ' +
+        'compared with the publishers\' own downloads (F-281).',
+    },
+    atlas: {
+      sourceObjectId: `TemplateFlow tpl-MNI152NLin2009cSym/${sourceFile} @ sha256:${sourceSha256}`,
+      derivativeTerms:
+        'The MNI notice must accompany any copy or modification. No ShareAlike condition applies.',
+    },
+  };
+}
+
+const MRI_GRID_GEOMETRY = {
+  coordinateSystem: 'MNI ICBM 152 2009c space; voxels reoriented to RAS+ (i → right, j → anterior, k → superior), x fastest',
+  units: 'millimetres; 1 mm isotropic voxels; voxel [0,0,0] is at (−96, −132, −78) mm',
+  extent: '193 × 229 × 193 voxels: x −96…+96, y −132…+96, z −78…+114 mm',
+  scaleNote:
+    'A population-average template: its size is the template\'s, not any person\'s, and nothing in the product reports a measurement from it.',
+};
+
+const MRI_VOLUME_VALIDATION = (sha256) => ({
+  status: QA_STATUS.PASSED,
+  tool: 'scripts/build-mri-atlas.mjs --check',
+  toolVersion: 'as committed',
+  assetSha256: sha256,
+  checkedAt: '2026-11-24T20:26:00Z',
+  errors: 0,
+  warnings: 0,
+  infos: 0,
+  scope:
+    'There is no third-party validator for a raw voxel file, so the check is the build\'s own: the inputs hash to their pins, the NIfTI ' +
+    'headers agree on one grid, and the committed bytes equal a fresh build after decompression. The browser loader additionally refuses ' +
+    'a volume whose decompressed length is not the grid\'s.',
+  reference: MRI_ATLAS_QA,
+});
+
+const MRI_NO_PARTS = {
+  partIdSource: 'none — an intensity volume names nothing; structures come from mri-cerebra-labels on the same grid',
+  mappingModule: null,
+  partCount: 0,
+};
+
 export const ASSET_MANIFEST = Object.freeze([
+  mriAtlasAsset({
+    assetId: 'mri-icbm152-t1',
+    kind: ASSET_KIND.VOLUME,
+    format: 'raw-u8-gzip',
+    structureScope: 'T1-weighted MRI of the whole head, as a population average of 152 young adults. Skull and scalp included; nothing is skull-stripped.',
+    sourceFile: 'tpl-MNI152NLin2009cSym_res-1_T1w.nii.gz',
+    sourceSha256: '317e112c49d086b971e4a26cba853b041ee210faf750a6fe02e04f15909b6b6b',
+    sourceBytes: 4589929,
+    cerebra: false,
+    output: { path: 'public/assets/mri/t1.u8.gz', sha256: 'f9ef53ec96b483c3584dcc03ac2cb1322485c6c9d3e3dacdc6eb313cbdd24430', bytes: 2910307 },
+    geometry: MRI_GRID_GEOMETRY,
+    semanticParts: MRI_NO_PARTS,
+    steps: [
+      'Read the NIfTI-1 volume, verify its hash, reorient to RAS+ (a no-op for this file) and assert the 1 mm grid and origin.',
+      'Quantise to 8 bits: linear from 0 to the 99.9th percentile of in-head voxels (93 in source units), clipped above.',
+      'Set to zero the scanner noise outside the head: voxels at or below the noise ceiling that connect to the volume edge through such voxels. The rule is skipped if that region touches the brain mask; it touched none.',
+      'Write x-fastest uint8 and gzip.',
+    ],
+    acceptedSimplifications: [
+      '8-bit intensities: the source has about 100 distinct levels, so the steps are the source\'s own; values are display values with no unit.',
+      'A symmetric template: left and right are mirror images by construction, so it cannot show normal asymmetry.',
+    ],
+    knownDefects: [],
+    budget: { triangles: null, materials: 0, textures: 0, bytes: 2910307, targetDevices: 'Desktop and current phones; 8.5 MB decompressed, fetched only when the atlas is opened.' },
+    formatValidation: MRI_VOLUME_VALIDATION('f9ef53ec96b483c3584dcc03ac2cb1322485c6c9d3e3dacdc6eb313cbdd24430'),
+  }),
+  mriAtlasAsset({
+    assetId: 'mri-icbm152-t2',
+    kind: ASSET_KIND.VOLUME,
+    format: 'raw-u8-gzip',
+    structureScope: 'T2-weighted MRI of the whole head, the same population template and grid as the T1 volume.',
+    sourceFile: 'tpl-MNI152NLin2009cSym_res-1_T2w.nii.gz',
+    sourceSha256: '1c8750fabbbe132aa582eec9f923ed7493da66be6d5ec3902caf6eefe6a2bb5a',
+    sourceBytes: 4362698,
+    cerebra: false,
+    output: { path: 'public/assets/mri/t2.u8.gz', sha256: 'cc8ba7ee6f96d6b07b1df2d9f040d52efe950b3cebe3290d0a5bbe6326755489', bytes: 2569520 },
+    geometry: MRI_GRID_GEOMETRY,
+    semanticParts: MRI_NO_PARTS,
+    steps: [
+      'Read the NIfTI-1 volume, verify its hash, reorient to RAS+ (a no-op for this file) and assert the 1 mm grid and origin.',
+      'Quantise to 8 bits: linear from 0 to the 99.9th percentile of in-head voxels (100 in source units), clipped above.',
+      'Zero the noise outside the head by the same rule as the T1 volume.',
+      'Write x-fastest uint8 and gzip.',
+    ],
+    acceptedSimplifications: ['8-bit intensities with no unit; a symmetric population average.'],
+    knownDefects: [],
+    budget: { triangles: null, materials: 0, textures: 0, bytes: 2569520, targetDevices: 'Fetched only when a reader switches to T2.' },
+    formatValidation: MRI_VOLUME_VALIDATION('cc8ba7ee6f96d6b07b1df2d9f040d52efe950b3cebe3290d0a5bbe6326755489'),
+  }),
+  mriAtlasAsset({
+    assetId: 'mri-cerebra-labels',
+    kind: ASSET_KIND.VOLUME,
+    format: 'raw-u8-gzip',
+    structureScope:
+      'The CerebrA label volume: 51 structures per hemisphere (DKT cortical parcels, subcortical nuclei, ventricles, cerebellum, brainstem). ' +
+      'No cerebral white-matter label.',
+    sourceFile: 'tpl-MNI152NLin2009cSym_res-1_atlas-CerebrA_dseg.nii.gz',
+    sourceSha256: 'c05df93e85b8f1c1446e56f45f0b6a28fdf6e5c8263ea8f365617254bf79ecbf',
+    sourceBytes: 564070,
+    cerebra: true,
+    output: { path: 'public/assets/mri/labels.u8.gz', sha256: '33260a01ffdfce839945739efcac3fe2ec7019969739bbd9264bf5b2617a403e', bytes: 262955 },
+    geometry: MRI_GRID_GEOMETRY,
+    semanticParts: {
+      partIdSource: 'voxel value = CerebrA label 1–102 (right 1–51, left = right + 51); names from the atlas\'s own label table',
+      mappingModule: 'src/data/mriAtlas.js',
+      partCount: 102,
+    },
+    steps: [
+      'Read the label volume and its label table, verify both hashes, reorient to RAS+ and assert the grid.',
+      'Measure each label\'s centroid and compare its side (x > 0 is the subject\'s right) with the table\'s hemisphere column; the build stops if any disagree. All 102 agree.',
+      'For each label compute the voxel deepest inside it (distance transform) as the point the crosshair jumps to, and assert it carries that label.',
+      'Write labels unchanged as x-fastest uint8 and gzip; write the index (public/assets/mri/atlas.json).',
+    ],
+    acceptedSimplifications: [
+      'Parcels are a labelling protocol (DKT), not borders a textbook would draw; the Japanese names in src/data/mriAtlas.js say where the extents differ.',
+      'Midline structures (third and fourth ventricle, brainstem, vermis) are divided left/right by the atlas at the midline.',
+    ],
+    knownDefects: [
+      'The x = 0 voxel plane carries only right-hemisphere labels (3,748 voxels), so the two halves of each midline structure differ in size — third ventricle 1,100 vs 613 voxels. An artefact of dividing an odd-width grid, recorded in atlas.json under `sides`.',
+      '4,531 labelled voxels lie outside the TemplateFlow brain mask.',
+      'The label the table calls "Optic Chiasm" is about 1.5 mL — intracranial optic nerve, chiasm and the start of the optic tract — although the upstream table\'s own notes call it "almost inexistent". It is shown as a midline parcel under a name that says what it contains.',
+      'Most labels have small stray islands (2–35 six-connected components per label): a few voxels apart from the main body, which a click will name. Published as the atlas has them (F-292).',
+      '"Ventral Diencephalon" includes upper-midbrain tissue (red nucleus, substantia nigra); voxels near (0, −10, −12) mm are labelled Brainstem.',
+    ],
+    budget: { triangles: null, materials: 0, textures: 0, bytes: 262955, targetDevices: 'Desktop and current phones; fetched with the T1 volume.' },
+    formatValidation: MRI_VOLUME_VALIDATION('33260a01ffdfce839945739efcac3fe2ec7019969739bbd9264bf5b2617a403e'),
+  }),
+  mriAtlasAsset({
+    assetId: 'mri-cerebra-surfaces',
+    kind: ASSET_KIND.MESH,
+    format: 'glb',
+    structureScope: 'One closed surface per CerebrA label (102), extracted from the label volume, in MNI millimetres.',
+    sourceFile: 'tpl-MNI152NLin2009cSym_res-1_atlas-CerebrA_dseg.nii.gz',
+    sourceSha256: 'c05df93e85b8f1c1446e56f45f0b6a28fdf6e5c8263ea8f365617254bf79ecbf',
+    sourceBytes: 564070,
+    cerebra: true,
+    output: { path: 'public/assets/mri/cerebra.glb', sha256: '0794d7c2e1332d818caf34d87e2c250cdea7bc3882ac93e14e1c62ed4212f4be', bytes: 2840260 },
+    geometry: {
+      coordinateSystem: 'Vertex positions are MNI millimetres (RAS: +x right, +y anterior, +z superior), stored as written — the file is not rotated into glTF\'s +Y-up convention; the scene applies that rotation (src/models/mriAtlas.js, mniToScene)',
+      units: 'millimetres, float32',
+      extent: 'within the label volume\'s extent; every mesh lies inside its label\'s bounding box ± 0.83 mm',
+      scaleNote: 'The scene scales millimetres to scene units by one constant; no absolute size is claimed for any person.',
+    },
+    semanticParts: {
+      partIdSource: 'glTF node name `cerebra-<label>` and node extras {cerebraLabel, name, hemi}, written by the build script from the label table',
+      mappingModule: 'src/data/mriAtlas.js',
+      partCount: 102,
+    },
+    steps: [
+      'Per label: binary mask → light binomial blur → surface nets at 1 mm (deep structures) or 2 mm (cortical and cerebellar grey matter).',
+      'Choose the iso level per label by bisection so the enclosed volume matches the voxel volume (ratio 0.969–1.025 across labels).',
+      'Quadric edge-collapse decimation to 45% (deep) or 35% (cortical) of vertices; 486k → 198k triangles.',
+      'Fail the build if a mesh is open, inverted, escapes its label\'s bounding box by more than 3 mm, or its solid centroid is more than 1 mm from the label\'s.',
+      'Write a GLB with KHR_mesh_quantization (int8 normals), no materials and no Draco.',
+    ],
+    acceptedSimplifications: [
+      'Surfaces are smoothed and decimated: sulcal detail finer than about 2 mm is not represented, and a surface is a rendering of a label, not of tissue.',
+      'Cortical parcels are grey-matter ribbons with nothing beneath them — CerebrA has no cerebral white-matter label — so a section through the 3D model is hollow where white matter would be.',
+      'Neighbouring labels are separate shells that do not share vertices, so hairline gaps and overlaps of under a millimetre exist between them.',
+    ],
+    knownDefects: [],
+    budget: { triangles: 198298, materials: 0, textures: 0, bytes: 2840260, targetDevices: 'Desktop and current phones; fetched after the volumes, and the planes work without it.' },
+    formatValidation: {
+      status: QA_STATUS.PASSED,
+      tool: 'Khronos glTF Validator (npm gltf-validator)',
+      toolVersion: '2.0.0-dev.3.10',
+      assetSha256: '0794d7c2e1332d818caf34d87e2c250cdea7bc3882ac93e14e1c62ed4212f4be',
+      checkedAt: '2026-11-24T20:36:25Z',
+      errors: 0,
+      warnings: 0,
+      infos: 0,
+      scope: '0 errors, 0 warnings, 0 infos, 0 hints. 102 draw calls, 98,246 vertices, 198,298 triangles; KHR_mesh_quantization required.',
+      reference: MRI_ATLAS_QA,
+    },
+  }),
   {
     assetId: 'brain-atlas-glb',
     schemaVersion: 1,
@@ -1351,14 +1722,14 @@ export function validateAssetManifest(assets = ASSET_MANIFEST, { organIds } = {}
     if (isObject(asset.output) && asset.output.sha256 === null) problems.push(`${where}: output.sha256 is required`);
 
     // Geometry and semantic parts: meshes only.
-    if (asset.kind === ASSET_KIND.MESH) {
-      if (!isObject(asset.geometry)) problems.push(`${where}: a mesh asset needs a geometry block`);
+    if (asset.kind === ASSET_KIND.MESH || asset.kind === ASSET_KIND.VOLUME) {
+      if (!isObject(asset.geometry)) problems.push(`${where}: a ${asset.kind} asset needs a geometry block`);
       else {
         for (const field of ['coordinateSystem', 'units', 'extent', 'scaleNote']) {
           if (!nonEmpty(asset.geometry[field])) problems.push(`${where}: geometry.${field} is missing`);
         }
       }
-      if (!isObject(asset.semanticParts)) problems.push(`${where}: a mesh asset needs a semanticParts block`);
+      if (!isObject(asset.semanticParts)) problems.push(`${where}: a ${asset.kind} asset needs a semanticParts block`);
       else {
         if (!nonEmpty(asset.semanticParts.partIdSource)) problems.push(`${where}: semanticParts.partIdSource is missing`);
         if (asset.semanticParts.mappingModule !== null && !isRepositoryPath(asset.semanticParts.mappingModule)) {

@@ -353,8 +353,20 @@ export const BUNDLE_BUDGET_KB = {
    * the guides and the COPD/asthma teaching data in behind them.
    * `tests/eager-entry-graph.test.js` now names the payloads that must stay
    * lazy, so that mistake fails as itself rather than as a number.
+   *
+   * 90 → 95 with the brain launch (2026-11-24). Measured 85.2 kB on main and
+   * 92.1 kB with the launch: +5.8 kB is the chunk that carries the asset
+   * manifest and the release gate, which gained the MRI atlas's four asset
+   * records and its publication decision — provenance, licence reasoning and
+   * the list of what was not verified, as prose — and +1.5 kB is the shell
+   * (the launch areas, the atlas link table, the new mark). No scene, model or
+   * teaching payload entered the entry; `tests/eager-entry-graph.test.js`
+   * still holds that. The prose is the cost: every visitor downloads the
+   * manifest's sentences so the gate can read its fields. Splitting the
+   * manifest into the fields the gate needs and the record a person reads is
+   * the real fix, and is F-293 — raising this line is not a substitute for it.
    */
-  entry: 90,
+  entry: 95,
   /** The single largest lazily-loaded JS chunk (a scene, or the renderer). */
   largestChunk: 260,
   /** All CSS, which is loaded eagerly today. */
@@ -403,8 +415,26 @@ export const BUNDLE_BUDGET_KB = {
    *
    * The number is unchanged at 6000. What changed is that it now measures what
    * its own sentence promised.
+   *
+   * 6000 → 8000 with the MRI atlas (2026-11-24, brain launch). The heaviest
+   * folder is now `assets/mri/`, which measures 7841 kB. On disk it is the T1
+   * volume 2.9 MB, the label volume 0.26 MB and the CerebrA surfaces
+   * (`cerebra.glb`) 2.8 MB, plus the T2 volume 2.6 MB and a 67 kB index. The
+   * three volumes are committed already gzipped, so this line's gzip takes
+   * almost nothing more off them; only the surfaces shrink (to 2.2 MB). 8000
+   * is the smallest round number that passes.
+   *
+   * **This line overstates what a reader of the atlas downloads, and that is
+   * why it was raised rather than argued with.** The measure is a folder; a
+   * visit is not. Opening the atlas fetches T1, the labels and the surfaces —
+   * 6.0 MB on disk, 5322 kB by this line's measure, inside the old 6000. The
+   * T2 volume (2507 kB) is fetched only when a reader presses 「T2」
+   * (`MriAtlasWorkbench.js`), and is not prefetched on a direct visit either
+   * (`ON_REQUEST_ASSETS` in `sceneAssetPreload.js`;
+   * `tests/scene-asset-preload.test.js` holds it). If T2 ever moves into the
+   * opening load, this line is the wrong one to be passing.
    */
-  media: 6000,
+  media: 8000,
   /**
    * Every model's media together — the repository's total specimen weight.
    *

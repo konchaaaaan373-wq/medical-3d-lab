@@ -13,15 +13,17 @@
     <!-- Replaced at start-up with the scene or the explorer; this is what a
          crawler or a JS-less browser sees. Japanese is the product default;
          LanguageToggle changes `lang` together with the visible copy. -->
-    <title>BYOKI MOTION — 病態を、動かして理解する。</title>
+    <title>3Dモデルラボ — 脳を、立体的に理解する。</title>
     <meta
       name="description"
-      content="病態生理の因果関係を、操作と動きで理解するインタラクティブ医学モデル集。Interactive models for understanding pathophysiology."
+      content="脳の解剖、神経回路、高次脳機能を、3DモデルとMRIでつなげて学ぶ。Brain anatomy, neural circuits and higher brain function, learned by linking 3D models with MRI."
     />
-    <meta name="theme-color" content="#f6f4ef" />
+    <meta name="theme-color" content="#faf9fc" />
     <!-- The product icon. Same drawing as the header mark (src/components/brandIcon.js). -->
     <link rel="icon" type="image/svg+xml" href="./favicon.svg" />
+    <link rel="icon" href="./favicon.ico" sizes="32x32" />
     <link rel="apple-touch-icon" href="./apple-touch-icon.png" />
+    <link rel="manifest" href="./site.webmanifest" />
   </head>
   <body>
     <!-- The renderer canvas is appended here; all UI lives in #ui as an overlay. -->
@@ -53,7 +55,7 @@
     </div>
     <script>
       (function () {
-        var DOCUMENT_ROUTES = ['', 'about', 'anatomy', 'commerce', 'evidence', 'experimental', 'explore', 'home', 'lab', 'models', 'organs', 'pathology', 'patient', 'privacy', 'support', 'terms', 'trust'];
+        var DOCUMENT_ROUTES = ['', 'about', 'anatomy', 'commerce', 'evidence', 'experimental', 'explore', 'functions', 'higher-function', 'home', 'lab', 'models', 'organs', 'pathology', 'patient', 'privacy', 'support', 'terms', 'trust'];
         var slug = String(location.hash || '').replace(/^#\/?/, '').split('?')[0].trim();
         if (DOCUMENT_ROUTES.indexOf(slug) !== -1) return;
         var veil = document.getElementById('boot-veil');

@@ -29,3 +29,6 @@ node_modules
 # Scratch output from the capture scripts. Evidence that is worth keeping goes
 # to docs/screenshots/<tag>/ with a README, which is the reviewable form.
 shots/
+
+# Inputs `npm run mri:build -- --fetch` downloads (pinned by sha256 in the script).
+.cache/

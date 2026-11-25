@@ -5,7 +5,8 @@ import { readFileSync } from 'node:fs';
 import { redirectFor } from '../src/app/routeRedirects.js';
 import { resolveRoute } from '../src/app/router.js';
 import { SHELL_DESTINATIONS } from '../src/components/ShellHeader.js';
-import { ANATOMY_ROUTE, EXPLORER_ROUTE, LANDING_ROUTE, MODELS_ROUTE } from '../src/catalog/index.js';
+import { ANATOMY_ROUTE, EXPLORER_ROUTE, LANDING_ROUTE, MODELS_ROUTE, sceneById } from '../src/catalog/index.js';
+import { LAUNCH_AREAS } from '../src/catalog/launch.js';
 
 const read = (path) => readFileSync(new URL(`../${path}`, import.meta.url), 'utf8');
 
@@ -36,6 +37,7 @@ test('and corrects nothing else — the anatomy page included', () => {
   for (const unlocked of [false, true]) {
     for (const hash of ['#/', '#/models', '#/about', '#/anatomy', '#/organs', '#/explore', '#/trust',
       '#/trust?model=brain-anatomy', '#/terms', '#/privacy', '#/support', '#/commerce', '#/lab',
+      '#/functions', '#/higher-function', '#/functions?theme=aphasia', '#/mri-atlas',
       '#/brain-anatomy', '#/heart-anatomy', '#/cardiac-output', '#/copd', '#content']) {
       assert.equal(redirectFor(hash, { unlocked }), null, `${hash} (unlocked=${unlocked})`);
     }
@@ -64,9 +66,33 @@ test('the header offers no destination that redirects', () => {
       `unlocked=${unlocked}: the header offers a destination that redirects`
     );
   }
-  const models = SHELL_DESTINATIONS.find((item) => item.id === 'models');
-  assert.equal(models.route, MODELS_ROUTE);
-  assert.notEqual(models.gated, true, 'Models is the product\'s top level on every build');
+  // The header's destinations since 2026-11-24 are the launch's three areas
+  // (`src/catalog/launch.js`) and the gated lab — Models and About left the
+  // row. Each has to be somewhere that renders *as itself*: a slug nothing
+  // resolves to falls through to the default 3D model, so an area pointed at a
+  // typo would open the brain under another area's name.
+  assert.deepEqual(
+    SHELL_DESTINATIONS.map((item) => [item.id, item.route, item.gated === true]),
+    [
+      ...LAUNCH_AREAS.map((area) => [area.id, area.route, false]),
+      ['lab', '#/lab', true],
+    ]
+  );
+  assert.deepEqual(SHELL_DESTINATIONS.map((item) => item.id), ['functions', 'anatomy', 'mri', 'lab']);
+  const kinds = Object.fromEntries(SHELL_DESTINATIONS.map((item) => [item.id, resolveRoute(item.route)]));
+  assert.equal(kinds.functions.kind, 'functions');
+  assert.equal(kinds.lab.kind, 'lab');
+  for (const id of ['anatomy', 'mri']) {
+    const area = LAUNCH_AREAS.find((item) => item.id === id);
+    assert.equal(kinds[id].kind, 'scene', `${id} opens a model`);
+    assert.equal(kinds[id].sceneId, area.sceneId, `${id} opens its own model, not the default one`);
+    assert.equal(area.route, `#/${sceneById(area.sceneId).slug}`);
+  }
+  // Models is no longer a header destination, and is still a page: the menu,
+  // the footer and every disease model's breadcrumb go there.
+  assert.equal(SHELL_DESTINATIONS.some((item) => item.route === MODELS_ROUTE), false);
+  assert.equal(resolveRoute(MODELS_ROUTE).kind, 'pathology');
+  for (const unlocked of [false, true]) assert.equal(redirectFor(MODELS_ROUTE, { unlocked }), null);
 });
 
 test('both places that resolve a route apply the correction', () => {

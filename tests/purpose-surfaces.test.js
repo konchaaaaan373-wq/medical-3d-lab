@@ -112,12 +112,14 @@ test('the reading header names the two readers only when both exist', () => with
 }));
 
 test('no entrance to patient explanation where none is open', () => {
-  // The landing page describes the two readers and links neither: the switch
-  // is in the header, where it exists only when a model offers both. Where
-  // none does, it says patient explanations open after review.
+  // The landing page links neither reader's side: the switch is in the header,
+  // where it exists only when a model offers both. Until the brain launch the
+  // page also carried a paragraph about the two readers, which chose its
+  // wording from `patientScenes.length`; the launch page (2026-11-24) has no
+  // such paragraph, so what is held is the half that was the rule — no route
+  // to patient explanation from here, by constant, by literal or by query.
   const landing = read('src/app/Landing.js');
-  assert.doesNotMatch(landing, /PATIENT_ROUTE|'#\/patient'/);
-  assert.match(landing, /const offered = patientScenes\.length > 0;/);
+  assert.doesNotMatch(landing, /PATIENT_ROUTE|'#\/patient'|purpose=patient|patientExplanationScenes/);
   const header = read('src/components/ShellHeader.js');
   assert.match(header, /patientExplanationScenes\(\)\.length > 0/);
   const explorer = read('src/app/Explorer.js');

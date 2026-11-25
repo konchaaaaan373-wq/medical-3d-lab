@@ -114,7 +114,7 @@ html[data-route='trust'] :focus-visible,
 html[data-route='legal'] :focus-visible {
   /* These reading pages are light surfaces; the luminous scene accent
      disappears on them. */
-  outline-color: #292826;
+  outline-color: #252633;
 }
 
 html[data-route='explorer'] :focus-visible {

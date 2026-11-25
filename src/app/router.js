@@ -6,6 +6,7 @@ import {
   MODELS_SLUG,
   PATHOLOGY_SLUG,
   PATIENT_SLUG,
+  FUNCTIONS_SLUG,
   resolveSceneId,
   sceneBySlug,
 } from '../catalog/index.js';
@@ -32,6 +33,7 @@ const PATHOLOGY_ALIASES = new Set([MODELS_SLUG, PATHOLOGY_SLUG]);
 const ABOUT_ALIASES = new Set([ABOUT_SLUG]);
 /** The patient-explanation entrance: questions, each opening a model in that purpose. */
 const PATIENT_ALIASES = new Set([PATIENT_SLUG]);
+const FUNCTIONS_ALIASES = new Set([FUNCTIONS_SLUG, 'higher-function']);
 const LANDING_ALIASES = new Set(['', 'home']);
 /** One slug per legal document, declared in `src/data/legal.js`. */
 const LEGAL_ALIASES = new Set(LEGAL_SLUGS);
@@ -170,6 +172,7 @@ export function resolveRoute(hash = '') {
   if (PATHOLOGY_ALIASES.has(slug)) return { kind: 'pathology' };
   if (ABOUT_ALIASES.has(slug)) return { kind: 'about', focusId: queryValue(hash, 'section') };
   if (PATIENT_ALIASES.has(slug)) return { kind: 'patient' };
+  if (FUNCTIONS_ALIASES.has(slug)) return { kind: 'functions', focusId: queryValue(hash, 'theme') };
   if (TRUST_ALIASES.has(slug)) return { kind: 'trust', focusId: trustFocusOf(hash) };
   if (LEGAL_ALIASES.has(slug)) return { kind: 'legal', docId: slug };
   const view = viewOf(hash);
@@ -202,6 +205,7 @@ export const DOCUMENT_ROUTE_SLUGS = Object.freeze([
   ...PATHOLOGY_ALIASES,
   ...ABOUT_ALIASES,
   ...PATIENT_ALIASES,
+  ...FUNCTIONS_ALIASES,
   ...TRUST_ALIASES,
   ...LEGAL_ALIASES,
 ].sort());
@@ -223,6 +227,7 @@ export const DOCUMENT_ROUTE_KINDS = Object.freeze([
   'pathology',
   'about',
   'patient',
+  'functions',
   'trust',
   'legal',
 ]);

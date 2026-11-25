@@ -62,6 +62,7 @@ export const CLINICAL_REVIEW_STATES = Object.freeze({
   'lymph-node-anatomy': 'pending',
   'lymphatic-drainage': 'pending',
   'male-tract-anatomy': 'pending',
+  'mri-atlas': 'pending',
   'multinodular-goitre': 'pending',
   'myocardial-ischemia': 'pending',
   'neck-anatomy': 'pending',

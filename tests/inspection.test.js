@@ -1,4 +1,5 @@
 import test from 'node:test';
+import { CONTRAST_MINIMUM, SURFACES, TOKENS, contrastRatio } from '../src/styles/palette.js';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import * as THREE from 'three';
@@ -213,13 +214,26 @@ test('fixed dark instruments retain their own contrast on pale renderer backgrou
     controls.indexOf('.model-controls.is-tactile {'),
     controls.indexOf('.model-controls.is-tactile .model-controls-title')
   );
-  // The stage's own ink and orange (BYOKI MOTION, 2026-09-30), declared as
-  // values — a token that names itself (`--accent: var(--accent)`) is invalid
-  // at computed-value time and silently drops the colour (L-153).
-  for (const block of [navigationTokens, tactileTokens]) {
-    assert.match(block, /--ink:\s*#f1eee8/);
-    assert.match(block, /--ink-dim:\s*#bcb6ac/);
-    assert.match(block, /--accent:\s*#f0894a/);
+  // The stage's own ink and accent, declared as values — a token that names
+  // itself (`--accent: var(--accent)`) is invalid at computed-value time and
+  // silently drops the colour (L-153).
+  //
+  // *Which* values is read from `palette.js`, not typed: this pinned the three
+  // hexes of the palette before the 2026-11-24 re-tint, and the re-tint then
+  // left `--ink-faint` behind in both blocks at the old warm grey, because the
+  // list here stopped at three. All four now, and each has to be legible on
+  // the dark stage these instruments keep.
+  for (const [name, block] of [['navigation', navigationTokens], ['tactile controls', tactileTokens]]) {
+    for (const token of ['ink', 'ink-dim', 'ink-faint', 'accent']) {
+      const declared = block.match(new RegExp(`--${token}:\\s*([^;]+);`))?.[1]?.trim();
+      assert.ok(declared, `${name}: --${token} is not declared, so a pale theme's value is inherited`);
+      assert.match(declared, /^#[0-9a-f]{6}$/i, `${name}: --${token} is "${declared}", not a value`);
+      assert.equal(declared.toLowerCase(), TOKENS[token], `${name}: --${token} is not the stage's ${token}`);
+      assert.ok(
+        contrastRatio(declared, SURFACES.page) >= CONTRAST_MINIMUM.body,
+        `${name}: --${token} ${declared} is ${contrastRatio(declared, SURFACES.page).toFixed(2)}:1 on the stage`
+      );
+    }
   }
 });
 
