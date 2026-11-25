@@ -91,13 +91,16 @@ html[data-route='locked'] .brand-icon { color: var(--brand-pink); }
 
 .lab-hero-title {
   margin: 0;
-  font-size: clamp(32px, 4.6vw, 56px);
+  font-size: clamp(28px, 4.6vw + 12px, 56px);
   line-height: 1.28;
   font-weight: 700;
   letter-spacing: 0.01em;
-  /* Japanese breaks anywhere; keep the phrase from splitting mid-word. */
-  word-break: keep-all;
-  overflow-wrap: anywhere;
+  /* Break between phrases where the browser can find them, and balance the
+     lines so the full stop is never left on a line of its own (it was, at
+     320 px). `strict` keeps 。 and 、 off the start of a line everywhere. */
+  word-break: auto-phrase;
+  line-break: strict;
+  text-wrap: balance;
 }
 
 .lab-hero-lead {
@@ -374,3 +377,53 @@ html[data-route='locked'] .brand-icon { color: var(--brand-pink); }
 }
 
 .anatomy-related-note { font-size: 12px; color: var(--ink-faint); }
+
+/* ---------------------------------------- the reading header on a phone */
+
+/* Three destinations do not fit beside the name and the menu on one phone
+   row (at 320 px the menu was pushed off the screen and the name was gone).
+   So: identity and the menu on top, the three places to go underneath, each a
+   full thumb target. The one-row arrangement in site-header.css was written
+   for a header with a single destination. */
+@media (max-width: 620px) {
+  .shell-header.has-site-menu { flex-wrap: wrap; row-gap: 0; }
+  .shell-header.has-site-menu .shell-brand { order: 1; flex: 1 1 auto; min-height: 44px; }
+  .shell-header.has-site-menu > .site-menu-trigger { order: 2; }
+
+  .shell-header.has-site-menu .shell-nav {
+    order: 3;
+    flex: 1 0 100%;
+    margin-left: 0;
+    justify-content: space-between;
+    flex-wrap: nowrap;
+  }
+
+  .shell-header.has-site-menu .shell-nav-link {
+    flex: 1 1 0;
+    justify-content: center;
+    min-height: 44px;
+    padding: 0 4px;
+    font-size: 0.86rem;
+    white-space: nowrap;
+  }
+
+  /* With a row of its own the name no longer has to give way. */
+  .shell-header.has-site-menu .shell-brand-name {
+    position: static;
+    width: auto;
+    height: auto;
+    overflow: visible;
+    clip-path: none;
+  }
+
+  .lab-grounds-links a,
+  .lab-section-link {
+    display: inline-flex;
+    align-items: center;
+    min-height: 44px;
+  }
+}
+
+/* The model header's quiet text — the separators, the layer's kind, an organ
+   chip — was 4.11:1 on the new stage. Lifted until it clears 4.5:1 there. */
+.global-scene-nav { --ink-faint: #a6a8b8; }

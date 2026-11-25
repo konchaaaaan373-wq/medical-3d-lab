@@ -75,6 +75,17 @@
   display: flex;
 }
 
+/* A window too short for the workbench scrolls instead of crushing it. At
+   844 × 390 (a phone on its side) the planes were drawn 7 px tall, and at
+   320 px wide two of them were clipped with no way to reach them. The
+   workbench keeps a height it can be read at and the page moves under it. */
+@media (max-width: 899px), (max-height: 620px) {
+  /* The host scrolls, not the page: the site header is fixed over the page,
+     and a plane scrolled under it would be a plane nobody can tap. */
+  .atlas-host { overflow-y: auto; overscroll-behavior: contain; align-items: flex-start; }
+  .atlas-host > .mri-workbench { flex: 1 0 auto; min-height: 560px; align-self: stretch; }
+}
+
 .mri-workbench {
   flex: 1 1 auto;
   min-width: 0;
@@ -358,11 +369,15 @@
     overflow: hidden;
     clip-path: inset(50%);
     white-space: nowrap;
+    /* Clipped to nothing, and not in the pointer's way either: it sat over a
+       plane at 320 px and would have taken the tap meant for the image. */
+    pointer-events: none;
+    margin: -1px;
   }
   .atlas-top { gap: 4px 12px; }
   .mri-bar { flex: 1 1 100%; justify-content: flex-start; }
   .mri-info { max-height: 128px; }
-  .mri-mode { min-height: 44px; }
+  .mri-mode { min-height: 44px; white-space: nowrap; padding: 0 12px; }
   .mri-mode.is-list { display: inline-flex; align-items: center; border-radius: 999px; }
   .mri-chip { min-height: 44px; min-width: 44px; }
   .mri-mode { min-width: 44px; }
