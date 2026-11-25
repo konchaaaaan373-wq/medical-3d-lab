@@ -20,7 +20,9 @@ import {
 } from '../src/catalog/clinicalReview.js';
 import {
   BODY_BUDGET,
+  CARD_COLOURS,
   CARD_HEIGHT,
+  CARD_TONES,
   CARD_WIDTH,
   clip,
   siteCardHtml,
@@ -30,6 +32,10 @@ import {
 } from '../scripts/social-card.js';
 import { renderScenePage } from '../scripts/site-metadata.js';
 import { pngSize, socialCardProblems } from '../scripts/check-social-cards.js';
+import { BRAND } from '../src/data/brand.js';
+import { BRAND_ICON_SVG, BRAND_PINK } from '../src/components/brandIcon.js';
+import { CONTRAST_MINIMUM, SURFACES, TRUST_INK, contrastRatio } from '../src/styles/palette.js';
+import { declaration, rulesOf } from '../scripts/lib/css.mjs';
 
 const systemById = new Map(SYSTEMS.map((system) => [system.id, system]));
 const cardFor = (scene) =>
@@ -59,6 +65,65 @@ test('cards: the educational boundary is on every card, in both languages', () =
   // And on the site card, which is the one most likely to be shared.
   assert.match(siteCardHtml(), /教育目的の概念モデル/);
   assert.match(siteCardHtml(), /not for patient diagnosis or treatment/);
+});
+
+test('cards: the card wears the brand — paper, ink, the pink brain, the name as one word, and nothing glossy', () => {
+  // 3Dモデルラボ (2026-11-24). A card is the product seen with no page around
+  // it, so it is held to the same few things the page is: the product's own
+  // ground and ink (read from the palette, so a re-tint reaches the cards and
+  // `cards:check` then says the PNGs are stale), the mark drawn once in
+  // `brandIcon.js` and not redrawn here, and no gradient or shadow.
+  assert.equal(CARD_COLOURS.ground, SURFACES.trust);
+  assert.equal(CARD_COLOURS.ink, TRUST_INK.body);
+  assert.equal(CARD_COLOURS.mark, BRAND_PINK);
+
+  const scene = CRAWLABLE_SCENES[0];
+  for (const [name, html] of [[scene.slug, cardFor(scene)], ['site', siteCardHtml({ sceneCount: CRAWLABLE_SCENES.length })]]) {
+    const css = html.match(/<style>([\s\S]*?)<\/style>/)?.[1] ?? '';
+    const rules = [...rulesOf(css)];
+    const body = rules.find((rule) => rule.selectors === 'body');
+    assert.equal(declaration(body.body, 'background'), CARD_COLOURS.ground, `${name}: the ground`);
+    assert.equal(declaration(body.body, 'color'), CARD_COLOURS.ink, `${name}: the ink`);
+    assert.doesNotMatch(css, /gradient|box-shadow|text-shadow|filter:/, `${name}: the card is flat`);
+
+    // The mark: the header's own SVG string, once, decorative, in the pink.
+    assert.equal(html.split(BRAND_ICON_SVG).length - 1, 1, `${name}: the mark is not the drawing in brandIcon.js, exactly once`);
+    assert.equal((html.match(/<svg/g) ?? []).length, 1, `${name}: a second drawing`);
+    assert.ok(html.includes(`<div class="mark" aria-hidden="true">${BRAND_ICON_SVG}</div>`), `${name}: the mark is announced`);
+    const mark = rules.find((rule) => rule.selectors === '.mark');
+    assert.equal(declaration(mark.body, 'color'), BRAND_PINK, `${name}: the mark is not the brand pink`);
+
+    // The name: both parts, adjacent, with nothing between them — one word.
+    assert.ok(
+      html.includes(`aria-label="${BRAND.name}"><b>${BRAND.words[0]}</b><span>${BRAND.words[1]}</span></div>`),
+      `${name}: the wordmark is not ${BRAND.name} set as one word`
+    );
+    const wordmark = rules.find((rule) => rule.selectors === '.wordmark');
+    assert.equal(declaration(wordmark.body, 'gap'), null, `${name}: a gap splits the name in two`);
+
+    // Every ink a rule sets clears AA on the card's ground.
+    for (const rule of rules) {
+      const ink = declaration(rule.body, 'color');
+      if (!ink || !/^#/.test(ink) || rule.selectors === '.mark') continue; // the mark is line art, not text
+      const ratio = contrastRatio(ink, CARD_COLOURS.ground);
+      assert.ok(ratio >= CONTRAST_MINIMUM.body, `${name}: ${rule.selectors} ${ink} is ${ratio.toFixed(2)}:1 on the card`);
+    }
+  }
+  // And the badge inks, which are set inline per tone.
+  for (const [tone, colours] of Object.entries(CARD_TONES)) {
+    const ratio = contrastRatio(colours.ink, CARD_COLOURS.ground);
+    assert.ok(ratio >= CONTRAST_MINIMUM.body, `the ${tone} badge ${colours.ink} is ${ratio.toFixed(2)}:1 on the card`);
+  }
+});
+
+test('cards: the site card leads with the tagline, in Japanese, and counts what is published', () => {
+  const html = siteCardHtml({ sceneCount: CRAWLABLE_SCENES.length });
+  assert.ok(html.includes(`<h1>${BRAND.tagline.ja}</h1>`), 'the site card does not open on the tagline');
+  assert.equal(BRAND.tagline.ja, '脳を、立体的に理解する。');
+  assert.ok(html.includes(BRAND.tagline.en));
+  assert.ok(html.includes(BRAND.descriptionJa));
+  assert.ok(html.includes(`${CRAWLABLE_SCENES.length} public models`));
+  assert.doesNotMatch(html, /class="eyebrow"/, 'the name is already above it');
 });
 
 test('cards: maturity and clinical review are shown as two separate claims', () => {

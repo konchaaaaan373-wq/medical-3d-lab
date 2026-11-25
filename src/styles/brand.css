@@ -166,22 +166,6 @@ html[data-route='explorer'] body {
 
 .bm-models { scroll-margin-top: 12px; }
 
-.bm-hero-motion {
-  position: absolute;
-  inset: 0;
-  pointer-events: none;
-}
-
-.bm-hero-motion-slot,
-.bm-hero-motion .landing-flow-field {
-  display: block;
-  position: absolute;
-  inset: 0;
-  width: 100%;
-  height: 100%;
-  opacity: 1;
-}
-
 .bm-hero-copy {
   position: relative;
   max-width: 760px;

@@ -4,6 +4,7 @@ import { readFileSync } from 'node:fs';
 
 import { PUBLIC_SCENES } from '../src/catalog/index.js';
 import { renderScenePage } from '../scripts/site-metadata.js';
+import { declaration, rulesOf } from '../scripts/lib/css.mjs';
 import {
   CONTRAST_MINIMUM,
   CONTRAST_PAIRS,
@@ -304,13 +305,20 @@ test('generated pages: mark the English text inside a Japanese document', () => 
   assert.match(html, /lang="en"/);
 });
 
-/** The generated page's own stylesheet, as `selector → declarations`. */
+/**
+ * The generated page's own stylesheet: each rule's selector, ink and ground.
+ *
+ * Read with the shared rule reader (`scripts/lib/css.mjs`) — the first version
+ * of this tokenised the sheet itself, which `tests/css-reading.test.js` exists
+ * to refuse (L-04).
+ */
 function pageRules(html) {
   const css = html.match(/<style>([\s\S]*?)<\/style>/)?.[1] ?? '';
-  return [...css.matchAll(/([^{}]+)\{([^}]*)\}/g)].map(([, selector, body]) => ({
-    selector: selector.trim(),
-    color: body.match(/(?:^|[;\s])color:\s*(#[0-9a-f]{3,6})/i)?.[1] ?? null,
-    background: body.match(/background:\s*(#[0-9a-f]{3,6})/i)?.[1] ?? null,
+  const hex = (value) => (value && /^#[0-9a-f]{3,6}$/i.test(value) ? value : null);
+  return [...rulesOf(css)].map((rule) => ({
+    selector: rule.selectors.trim(),
+    color: hex(declaration(rule.body, 'color')),
+    background: hex(declaration(rule.body, 'background')),
   }));
 }
 

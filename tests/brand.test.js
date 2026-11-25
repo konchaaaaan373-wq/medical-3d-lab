@@ -16,6 +16,7 @@ import {
 import { createWordmark } from '../src/components/Wordmark.js';
 import { CONTRAST_MINIMUM, contrastRatio } from '../src/styles/palette.js';
 import { findByClass, installFakeDocument } from './helpers/fake-dom.js';
+import { declaration, rulesNaming } from '../scripts/lib/css.mjs';
 import { SITE_NAME, SITE_TAGLINE_EN, SITE_TAGLINE_JA, headTags, siteJsonLd } from '../scripts/site-metadata.js';
 
 const ROOT = fileURLToPath(new URL('..', import.meta.url));
@@ -106,9 +107,8 @@ test('brand: the wordmark is the name once for a screen reader, and its two part
   assert.ok(order.includes('brand.css') && order.includes('lab.css'), 'main.js imports both stylesheets');
   const gaps = [];
   for (const file of order) {
-    const css = stripComments(read(`src/styles/${file}`));
-    for (const [, body] of css.matchAll(/(?:^|\})\s*\.wordmark-type\s*\{([^}]*)\}/g)) {
-      const gap = body.match(/(?:^|[;\s])(?:column-)?gap:\s*([^;]+);/)?.[1]?.trim();
+    for (const rule of rulesNaming(read(`src/styles/${file}`), '.wordmark-type')) {
+      const gap = declaration(rule.body, 'gap') ?? declaration(rule.body, 'column-gap');
       if (gap != null) gaps.push({ file, gap });
     }
   }

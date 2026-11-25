@@ -1986,6 +1986,11 @@ try {
             const layout = await page.evaluate(() => document.getElementById('ui')?.dataset.layout ?? null);
             if (rendererDown()) notes.push(`${missing} — the renderer did not start on this engine`);
             else if (layout === 'lesson') notes.push(`${missing} — a lesson: nothing stands over its figure, and its caveat stays on screen`);
+            // The MRI atlas (`layout: 'atlas'`, `AtlasShell.js`) is a workbench:
+            // the three slices, the 3D view and the structure list sit side by
+            // side, and no panel is drawn over a slice for "hide controls" to
+            // take away. Everything else a scene owes is still measured here.
+            else if (layout === 'atlas') notes.push(`${missing} — the MRI atlas: its panes sit beside each other, nothing stands over a slice`);
             else problems.push(missing);
           } else if (!hideUi.offered) {
             notes.push(`${where}: the "hide controls" control is not offered here — ${hideUi.why}`);

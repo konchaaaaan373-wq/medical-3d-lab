@@ -54,6 +54,28 @@
 const PUBLIC_PREFIX = 'public/';
 
 /**
+ * Assets a scene's profile names and the scene does **not** fetch on open.
+ *
+ * The table below was "every asset in the scene's profile", which was the same
+ * thing as "every file the scene loads when it opens" until the MRI atlas
+ * (2026-11-24). Its profile names four files and it opens on three: the T2
+ * volume is fetched when a reader presses 「T2」 and not before
+ * (`MriAtlasWorkbench.js`, `setModality`). Prefetching by profile downloaded
+ * those 2.6 MB on every direct visit to `#/mri-atlas` anyway — a third of the
+ * page's weight, for a view most readers never switch to — put them in the
+ * progress bar's total, and left the `fetch` wrapper installed for the life of
+ * the page, because it steps aside only once every prefetched file has been
+ * asked for and nobody ever asked for that one.
+ *
+ * Keyed by scene, not by asset: whether a file is needed on open is a fact
+ * about the scene that loads it. `tests/scene-asset-preload.test.js` holds
+ * each entry to an asset the scene's profile really names.
+ */
+export const ON_REQUEST_ASSETS = Object.freeze({
+  'mri-atlas': Object.freeze(['mri-icbm152-t2']),
+});
+
+/**
  * Scene id → the model files it loads, relative to the base URL, with their
  * size from the asset manifest — and, when `decoderFor` says an asset needs
  * one, the decoder files that must arrive before it can be read (once per
@@ -66,13 +88,16 @@ const PUBLIC_PREFIX = 'public/';
  * @param {object[]} scenes the scenes to cover — the released ones in a build
  * @param {(scene: object) => ({ assets?: string[] } | null)} profileFor
  * @param {(id: string) => ({ output?: { path?: string, bytes?: number } } | null)} assetFor
- * @param {{ decoderFor?: (asset: object) => { url: string, bytes: number }[] }} [options]
+ * @param {{ decoderFor?: (asset: object) => { url: string, bytes: number }[],
+ *   onRequest?: Readonly<Record<string, readonly string[]>> }} [options]
  * @returns {Record<string, { url: string, bytes: number }[]>}
  */
-export function sceneAssetUrls(scenes, profileFor, assetFor, { decoderFor = () => [] } = {}) {
+export function sceneAssetUrls(scenes, profileFor, assetFor, { decoderFor = () => [], onRequest = ON_REQUEST_ASSETS } = {}) {
   const table = {};
   for (const scene of scenes) {
+    const later = new Set(onRequest[scene.id] ?? []);
     const assets = (profileFor(scene)?.assets ?? [])
+      .filter((id) => !later.has(id))
       .map((id) => assetFor(id))
       .filter((asset) => typeof asset?.output?.path === 'string' && asset.output.path.startsWith(PUBLIC_PREFIX));
     const files = assets.map((asset) => ({

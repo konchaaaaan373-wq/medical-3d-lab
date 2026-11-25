@@ -8,13 +8,9 @@ import { BRAND } from '../src/data/brand.js';
 import { createLandingOrganHero } from '../src/app/landingOrganHero.js';
 import { nameNearestToCentre } from '../src/app/landingOrganViewport.js';
 import { mountLandingOrganViewport, shouldLoadDetail } from '../src/app/landingOrganViewport.js';
-import {
-  LANDING_FLOW_BUDGETS,
-  createLandingFlowField,
-  landingFlowConfig,
-} from '../src/app/landingFlowField.js';
 import { SCENES, organById, sceneById } from '../src/catalog/index.js';
-import { RELEASED_SCENES, isSceneReleased } from '../src/catalog/release.js';
+import { RELEASED_SCENES, betaPublicationProblems, isSceneReleased } from '../src/catalog/release.js';
+import { LAUNCH_AREAS } from '../src/catalog/launch.js';
 import { hasOrganModel } from '../src/app/organModels.js';
 import { createLanguageToggle } from '../src/components/LanguageToggle.js';
 import {
@@ -22,8 +18,9 @@ import {
   orderLandingScenes,
   validateLandingPresentation,
 } from '../src/data/landing.js';
-import { HERO_ORGANS, HERO_ROTATION, featuredHeroOrgan, heroRotationDay } from '../src/data/landingHero.js';
-import { PUBLIC_MANIFEST } from '../src/catalog/publicManifest.js';
+import { HERO_ORGANS, HERO_ROTATION, featuredHeroOrgan, heroOrgansForModels, heroRotationDay } from '../src/data/landingHero.js';
+import { PUBLIC_MANIFEST, publicManifestOf } from '../src/catalog/publicManifest.js';
+import { SCOPED_OUT_SCENES, WIDE_MANIFEST } from './helpers/wide-release.js';
 import { FakeElement, findByClass, installFakeDocument } from './helpers/fake-dom.js';
 
 const read = (path) => readFileSync(new URL(`../${path}`, import.meta.url), 'utf8');
@@ -77,21 +74,26 @@ test('landing hero: every rotation entry is a real organ that opens a released m
     HERO_ORGANS.filter((entry) => isSceneReleased(sceneById(entry.sceneId))).map((entry) => entry.organ)
   );
   assert.ok(HERO_ROTATION.length > 0, 'the hero has to have something to show');
+  // The launch (2026-11-24) is the brain, so the rotation is the brain.
+  assert.deepEqual(HERO_ROTATION.map((entry) => entry.organ), ['brain']);
+
   const heart = HERO_ORGANS.find((entry) => entry.organ === 'heart');
   assert.equal(heart.sceneId, 'heart-anatomy', 'the heart entry names an anatomy scene');
   // What the filter asks is whether the release *opens* the scene, not whether
-  // it was written. The heart spent weeks on the declared list and off the
-  // rotation for exactly that reason, and joined it on 2026-09-15 without the
-  // hero being edited — which is the mechanism working, in the direction it is
-  // harder to test. The distinction still holds for the organs behind it.
+  // it was written — or even whether its record is complete. The heart spent
+  // weeks on the declared list and off the rotation, joined it on 2026-09-15
+  // without the hero being edited, and left it on 2026-11-24 the same way: the
+  // launch scope closed the scene with the beta gate still clearing it. The
+  // mechanism working in all three directions, on one entry.
   assert.ok(sceneById(heart.sceneId), 'the scene is registered');
-  assert.equal(isSceneReleased(sceneById(heart.sceneId)), true);
+  assert.deepEqual(betaPublicationProblems(heart.sceneId), [], 'its record is complete');
+  assert.equal(isSceneReleased(sceneById(heart.sceneId)), false, 'and the launch does not open it');
   // By organ, not by identity: `HERO_ROTATION` rebuilds each entry with the
   // route attached, so `includes(entry)` compares against a different object
   // and is false whatever the release says. It read as passing while the answer
   // was meant to be false.
   const shownOrgans = new Set(HERO_ROTATION.map((entry) => entry.organ));
-  assert.equal(shownOrgans.has('heart'), true, 'the release opened it, so the hero shows it');
+  assert.equal(shownOrgans.has('heart'), false, 'the release does not open it, so the hero does not show it');
 
   for (const entry of HERO_ORGANS.filter((item) => !isSceneReleased(sceneById(item.sceneId)))) {
     assert.equal(
@@ -99,6 +101,17 @@ test('landing hero: every rotation entry is a real organ that opens a released m
       false,
       `${entry.organ} is declared and not open, and must not be shown`
     );
+  }
+
+  // And the direction that is harder to test now that one organ is open: given
+  // a manifest that has them, every declared organ is shown, each at the route
+  // the manifest gives it — dropped or kept, never repointed.
+  const wide = heroOrgansForModels(WIDE_MANIFEST.models);
+  assert.deepEqual(wide.map((entry) => entry.organ), HERO_ORGANS.map((entry) => entry.organ));
+  for (const entry of wide) {
+    assert.equal(entry.route, WIDE_MANIFEST.models.find((model) => model.sceneId === entry.sceneId).route);
+    assert.equal(sceneById(entry.sceneId).organ, entry.organ, `${entry.organ} is shown through another organ's scene`);
+    assert.equal(sceneById(entry.sceneId).disease, null, `${entry.organ} is shown through a disease model`);
   }
 
   for (const entry of HERO_ROTATION) {
@@ -130,102 +143,14 @@ test('landing hero: every rotation entry is a real organ that opens a released m
   }
 });
 
-test('landing: ambient particles have explicit device, data and motion budgets', () => {
-  const phone = landingFlowConfig({ width: 390, height: 844, devicePixelRatio: 3 });
-  const phoneBoundary = landingFlowConfig({ width: 720, height: 900, devicePixelRatio: 3 });
-  const tabletBoundary = landingFlowConfig({ width: 721, height: 900, devicePixelRatio: 3 });
-  const tablet = landingFlowConfig({ width: 900, height: 900, devicePixelRatio: 3 });
-  const desktop = landingFlowConfig({ width: 1440, height: 900, devicePixelRatio: 3 });
-  const largeDesktop = landingFlowConfig({ width: 1920, height: 1080, devicePixelRatio: 3 });
-  const tallTablet = landingFlowConfig({ width: 1200, height: 1400, devicePixelRatio: 3 });
-  const saveData = landingFlowConfig({ width: 1440, height: 900, devicePixelRatio: 3, saveData: true });
-  const reduced = landingFlowConfig({ width: 390, height: 844, reducedMotion: true });
-
-  assert.equal(phone.deviceClass, 'phone');
-  assert.equal(phoneBoundary.deviceClass, 'phone');
-  assert.equal(tabletBoundary.deviceClass, 'tablet');
-  assert.equal(tablet.deviceClass, 'tablet');
-  assert.equal(desktop.deviceClass, 'desktop');
-  assert.ok(phone.particleCount <= LANDING_FLOW_BUDGETS.phone.maxParticles);
-  assert.ok(tablet.particleCount <= LANDING_FLOW_BUDGETS.tablet.maxParticles);
-  assert.ok(desktop.particleCount <= LANDING_FLOW_BUDGETS.desktop.maxParticles);
-  assert.equal(largeDesktop.particleCount, LANDING_FLOW_BUDGETS.desktop.maxParticles);
-  assert.equal(tallTablet.particleCount, LANDING_FLOW_BUDGETS.tablet.maxParticles);
-  assert.ok(saveData.particleCount < desktop.particleCount);
-  assert.ok(saveData.fps <= 20);
-  assert.equal(saveData.pixelRatio, 1);
-  assert.equal(reduced.animate, false);
-});
-
-test('landing: switching to reduced motion cancels the already queued frame', () => {
-  let motionChanged = null;
-  let nextFrame = 0;
-  const cancelled = [];
-  const motionQuery = {
-    matches: false,
-    addEventListener: (_type, listener) => { motionChanged = listener; },
-    removeEventListener() {},
-  };
-  const context = {
-    setTransform() {},
-    clearRect() {},
-    save() {},
-    translate() {},
-    rotate() {},
-    beginPath() {},
-    ellipse() {},
-    arc() {},
-    moveTo() {},
-    lineTo() {},
-    stroke() {},
-    fill() {},
-    restore() {},
-  };
-  const canvas = {
-    className: '',
-    dataset: {},
-    setAttribute() {},
-    getContext: () => context,
-    remove() {},
-  };
-  const doc = {
-    visibilityState: 'visible',
-    createElement: () => canvas,
-    addEventListener() {},
-    removeEventListener() {},
-  };
-  const win = {
-    innerWidth: 390,
-    innerHeight: 844,
-    devicePixelRatio: 3,
-    navigator: {},
-    matchMedia: () => motionQuery,
-    requestAnimationFrame: () => ++nextFrame,
-    cancelAnimationFrame: (frame) => cancelled.push(frame),
-    addEventListener() {},
-    removeEventListener() {},
-  };
-
-  const field = createLandingFlowField({ win, doc, random: () => 0.5 });
-  assert.equal(nextFrame, 1);
-
-  motionQuery.matches = true;
-  motionChanged();
-  assert.deepEqual(cancelled, [1]);
-  assert.equal(nextFrame, 1, 'reduced-motion mode must not queue a replacement frame');
-
-  field.destroy();
-});
-
 test('landing: the shell stays readable while the hero dynamically mounts a real organ model', () => {
   const landing = read('src/app/Landing.js');
   const hero = read('src/app/landingOrganHero.js');
   const main = read('src/main.js');
   const viewport = read('src/app/landingOrganViewport.js');
-  const flow = read('src/app/landingFlowField.js');
   const css = read('src/styles/landing.css');
 
-  for (const source of [landing, hero, flow]) {
+  for (const source of [landing, hero]) {
     assert.doesNotMatch(source, /from ['"]three['"]|\/scenes\//);
   }
   assert.match(hero, /featuredHeroOrgan/);
@@ -259,81 +184,201 @@ test('landing: the shell stays readable while the hero dynamically mounts a real
   assert.match(css, /\.landing-demo-state-grid\.is-organs/);
 });
 
-test('landing: BYOKI MOTION opens on its disease models, not on an organ', () => {
-  // ADR 2026-09-30. The front door says what the product is and puts a
-  // disease model a press away; the anatomy is one line under the models.
-  // The literals are kept rather than read from the manifest on both sides,
-  // so that widening the release has to come here and be looked at.
+/** Mount the landing page in the fake DOM and hand it to `run`. */
+function withLanding(options, run) {
   const restoreDocument = installFakeDocument();
   const previousWindow = globalThis.window;
   globalThis.window = {};
-
   try {
-    const ui = new FakeElement('div');
-    const mounted = createLanding({ ui });
-    assert.equal(PUBLIC_MANIFEST.count, 5);
-    assert.equal(PUBLIC_MANIFEST.organs.length, 4);
-
-    // The name, the promise and one action.
-    const title = findByClass(mounted.element, 'bm-hero-title');
-    assert.equal(title.length, 1);
-    assert.ok(collectText(title[0]).includes(BRAND.name), 'the h1 says BYOKI MOTION to assistive tech');
-    const ctas = findByClass(mounted.element, 'bm-cta');
-    assert.equal(ctas.length, 1, 'one primary action, not a row of them');
-    assert.equal(ctas[0].getAttribute('href'), '#/models');
-
-    // The disease models the release opens, each a card that is one link.
-    const cards = findByClass(mounted.element, 'model-card');
-    const disease = PUBLIC_MANIFEST.models.filter((model) => model.layer !== 'anatomy');
-    assert.deepEqual(cards.map((card) => card.getAttribute('href')), disease.map((model) => model.route));
-    assert.deepEqual(cards.map((card) => card.getAttribute('href')), ['#/cardiac-output']);
-
-    // No organ in 3D on the front door, and no anatomy model as a card.
-    assert.equal(findByClass(mounted.element, 'landing-demo-viewport').length, 0);
-    assert.equal(findByClass(mounted.element, 'landing-demo-state').length, 0);
-
-    // The anatomy is still reachable from here — as a shelf, not the subject.
-    const organs = findByClass(mounted.element, 'bm-anatomy-link');
-    assert.deepEqual(
-      organs.map((link) => link.getAttribute('href')),
-      PUBLIC_MANIFEST.models.filter((model) => model.layer === 'anatomy').map((model) => model.route)
-    );
-    assert.equal(organs.length, 4);
-
-    // Neco is the operator, named once at the foot — not a section of the page.
-    assert.equal(findByClass(mounted.element, 'landing-neco').length, 0);
-    assert.equal(findByClass(mounted.element, 'site-footer-operator').length, 1);
+    return run(createLanding({ ui: new FakeElement('div'), ...options }));
   } finally {
     restoreDocument();
     if (previousWindow === undefined) delete globalThis.window;
     else globalThis.window = previousWindow;
   }
+}
+
+const byTag = (node, tag, out = []) => {
+  if (node.tagName === tag) out.push(node);
+  for (const child of node.children ?? []) byTag(child, tag, out);
+  return out;
+};
+const hrefsIn = (node) => byTag(node, 'A').map((link) => link.getAttribute('href'));
+const langText = (node, lang) => findByClass(node, `lang-${lang}`).map((part) => part.textContent).join(' ');
+
+test('landing: the page opens on the brain — the promise, the live model, and three ways in, in order', () => {
+  // ADR 2026-11-24. Until then this test read "BYOKI MOTION opens on its
+  // disease models, not on an organ": a wordmark, one action, a card per
+  // published disease model and no 3D on the page. The launch is one organ, so
+  // the front door is that organ. The literals are kept rather than read from
+  // the catalogue on both sides, so that widening the release, or reordering
+  // the areas, has to come here and be looked at.
+  withLanding({}, (mounted) => {
+    assert.equal(PUBLIC_MANIFEST.count, 2);
+    assert.deepEqual([...PUBLIC_MANIFEST.organs], ['brain']);
+
+    // One h1, and it is the promise — in both languages, read from the brand.
+    const headings = byTag(mounted.element, 'H1');
+    assert.equal(headings.length, 1, 'one h1 on the page');
+    assert.ok(headings[0].classList.contains('lab-hero-title'));
+    assert.equal(langText(headings[0], 'ja'), BRAND.tagline.ja);
+    assert.equal(langText(headings[0], 'en'), BRAND.tagline.en);
+    assert.equal(langText(headings[0], 'ja'), '脳を、立体的に理解する。');
+
+    // The brain's own model, live: one viewport, and no chooser — a page about
+    // one organ does not offer a row of them.
+    assert.equal(findByClass(mounted.element, 'landing-demo-viewport').length, 1);
+    assert.equal(findByClass(mounted.element, 'landing-demo-state').length, 0, 'no organ chooser on the front door');
+    assert.equal(mounted.organHero.organ, 'brain');
+    assert.equal(findByClass(mounted.element, 'lab-hero-model')[0].classList.contains('is-mark'), false);
+
+    // Two actions, both to models that are open: the primary to the anatomy.
+    const ctas = findByClass(mounted.element, 'lab-cta');
+    assert.deepEqual(ctas.map((cta) => cta.getAttribute('href')), ['#/brain-anatomy', '#/mri-atlas']);
+    assert.equal(ctas[0].classList.contains('is-quiet'), false, 'the anatomy is the primary action');
+    assert.equal(ctas[1].classList.contains('is-quiet'), true);
+
+    // Three entrances, in the product's order: function first.
+    const areas = findByClass(mounted.element, 'lab-area');
+    assert.equal(areas.length, 3);
+    for (const [index, id] of ['functions', 'anatomy', 'mri'].entries()) {
+      assert.ok(areas[index].classList.contains(`is-${id}`), `entrance ${index + 1} is not ${id}`);
+    }
+    const links = areas.map((area) => findByClass(area, 'lab-area-link')[0]);
+    assert.deepEqual(links.map((link) => link.getAttribute('href')), ['#/functions', '#/brain-anatomy', '#/mri-atlas']);
+    assert.deepEqual(links.map((link) => langText(findByClass(link, 'lab-area-name')[0], 'ja')), ['高次脳機能', '脳解剖', 'MRIアトラス']);
+    assert.deepEqual(
+      links.map((link) => link.getAttribute('href')),
+      LAUNCH_AREAS.map((area) => area.route),
+      'the entrances are the catalogue\'s launch areas, not a second list'
+    );
+    // They are an ordered list, because the order is a statement.
+    assert.equal(findByClass(mounted.element, 'lab-area-list')[0].tagName, 'OL');
+
+    // The two whose model is open say "go"; the one whose model is closed says
+    // so **in words**, inside the link, in both languages — and is still a link,
+    // because the area's own page is open.
+    for (const [index, open] of [[0, false], [1, true], [2, true]]) {
+      const go = findByClass(links[index], 'lab-area-go');
+      const status = findByClass(links[index], 'lab-area-status');
+      assert.equal(go.length, open ? 1 : 0, `${links[index].getAttribute('href')}: the arrow`);
+      assert.equal(status.length, open ? 0 : 1, `${links[index].getAttribute('href')}: the status`);
+      for (const node of status) {
+        for (const lang of ['ja', 'en']) {
+          assert.match(langText(node, lang), /\p{L}{2,}/u, `the closed area's status says nothing in ${lang}`);
+        }
+        assert.notEqual(node.getAttribute('aria-hidden'), 'true', 'the words are for everyone, not decoration');
+      }
+      for (const node of go) assert.equal(node.getAttribute('aria-hidden'), 'true', 'the arrow is decoration');
+    }
+    assert.equal(isSceneReleased(sceneById('higher-brain-function')), false, 'the function model is closed, which is what the first area says');
+
+    // The themes are questions that lead to the entrance, never to the model.
+    const themes = findByClass(mounted.element, 'lab-theme-link').map((link) => link.getAttribute('href'));
+    assert.ok(themes.length >= 3);
+    for (const href of themes) assert.match(href, /^#\/functions\?theme=[a-z0-9-]+$/);
+
+    // Nothing on the page — header, menu, body, footer — leads to a scene the
+    // release withholds: not the function model, not the four the launch scope
+    // closed, not any disease model.
+    const hrefs = hrefsIn(mounted.element).filter(Boolean).map((href) => href.split('?')[0]);
+    const open = new Set(RELEASED_SCENES.map((scene) => `#/${scene.slug}`));
+    for (const scene of SCENES) {
+      if (open.has(`#/${scene.slug}`)) continue;
+      assert.equal(hrefs.includes(`#/${scene.slug}`), false, `the front door links to ${scene.id}, which is closed`);
+    }
+    // What it stopped being: no disease-model cards, no anatomy shelf line.
+    assert.equal(findByClass(mounted.element, 'model-card').length, 0);
+    assert.equal(findByClass(mounted.element, 'bm-anatomy-link').length, 0);
+    assert.equal(findByClass(mounted.element, 'bm-hero-title').length, 0);
+
+    // Neco is the operator, named once at the foot — not a section of the page.
+    assert.equal(findByClass(mounted.element, 'landing-neco').length, 0);
+    assert.equal(findByClass(mounted.element, 'site-footer-operator').length, 1);
+  });
+});
+
+test('landing: an area is always listed, and a model is offered only while it is open', () => {
+  const brainOnly = publicManifestOf([sceneById('brain-anatomy')]);
+  const nothing = publicManifestOf([]);
+
+  // The MRI atlas withheld: its area is still the third entrance and still a
+  // link, it says it is closed in words, and the hero does not offer to open it.
+  withLanding({ manifest: brainOnly }, (mounted) => {
+    const [, anatomy, mri] = findByClass(mounted.element, 'lab-area-link');
+    assert.equal(mri.getAttribute('href'), '#/mri-atlas');
+    assert.equal(findByClass(mri, 'lab-area-go').length, 0);
+    assert.match(langText(findByClass(mri, 'lab-area-status')[0], 'ja'), /\p{L}{2,}/u);
+    assert.equal(findByClass(anatomy, 'lab-area-go').length, 1);
+    assert.deepEqual(findByClass(mounted.element, 'lab-cta').map((cta) => cta.getAttribute('href')), ['#/brain-anatomy']);
+    assert.equal(findByClass(mounted.element, 'landing-demo-viewport').length, 1);
+  });
+
+  // Nothing published: three areas, all three closed in words, no button that
+  // says "open", and no WebGL — the mark stands where the model would be.
+  withLanding({ manifest: nothing }, (mounted) => {
+    const links = findByClass(mounted.element, 'lab-area-link');
+    assert.equal(links.length, 3);
+    for (const link of links) {
+      assert.equal(findByClass(link, 'lab-area-go').length, 0, `${link.getAttribute('href')} says go with nothing open`);
+      assert.equal(findByClass(link, 'lab-area-status').length, 1);
+    }
+    assert.deepEqual(findByClass(mounted.element, 'lab-cta'), [], 'a button to open a model that is closed');
+    assert.equal(findByClass(mounted.element, 'landing-demo-viewport').length, 0);
+    assert.equal(mounted.organHero, null);
+    const [mark] = findByClass(mounted.element, 'lab-hero-model');
+    assert.ok(mark.classList.contains('is-mark'));
+    assert.equal(mark.getAttribute('aria-hidden'), 'true');
+    assert.equal(findByClass(mark, 'brand-icon').length, 1);
+  });
+
+  // A wider release than the launch: the hero is still the brain and still has
+  // no chooser. The front door is about one organ whatever else is published.
+  withLanding({ manifest: WIDE_MANIFEST }, (mounted) => {
+    assert.equal(mounted.organHero.organ, 'brain');
+    assert.equal(findByClass(mounted.element, 'landing-demo-viewport').length, 1);
+    assert.equal(findByClass(mounted.element, 'landing-demo-state').length, 0);
+    assert.equal(findByClass(mounted.element, 'lab-area').length, 3);
+  });
 });
 
 test('anatomy page: the published organs are one live model and a chooser, not a card index', () => {
-  // What the landing hero used to guarantee, kept where the organ hero now
+  // What the landing hero used to guarantee, kept where the organ chooser
   // lives (`#/anatomy`): **one organ, live**, never a grid of cards as the
-  // published set grows. The chooser is over *organs* — five models sit on
-  // four organs since `cardiac-output` became the heart's second model.
+  // published set grows. The chooser is over *organs*, not models.
+  //
+  // On the wider fixture — six models on four organs — because the launch
+  // publishes one organ and a chooser of one is not a chooser.
   const restoreDocument = installFakeDocument();
   const previousWindow = globalThis.window;
   globalThis.window = {};
 
   try {
-    const ui = new FakeElement('div');
-    const mounted = createPublicModelsExplorer({ ui, manifest: PUBLIC_MANIFEST });
+    const mounted = createPublicModelsExplorer({ ui: new FakeElement('div'), manifest: WIDE_MANIFEST });
     const controls = findByClass(mounted.element, 'landing-demo-state');
     const viewports = findByClass(mounted.element, 'landing-demo-viewport');
     const links = findByClass(mounted.element, 'landing-cta');
 
     assert.equal(findByClass(mounted.element, 'landing-scene-card').length, 0);
     assert.equal(viewports.length, 1, 'one organ on screen, however many are published');
-    assert.equal(controls.length, PUBLIC_MANIFEST.organs.length);
+    assert.equal(controls.length, WIDE_MANIFEST.organs.length);
     assert.equal(controls.length, 4);
+    assert.ok(WIDE_MANIFEST.count > controls.length, 'the fixture has more models than organs');
     const shown = mounted.organHero.organ;
-    const entry = HERO_ROTATION.find((item) => item.organ === shown);
-    assert.ok(entry, `${shown} is on screen but not in the rotation`);
+    const entry = HERO_ORGANS.find((item) => item.organ === shown);
+    assert.ok(entry, `${shown} is on screen but not a declared hero organ`);
     assert.ok(links.some((link) => link.getAttribute('href') === `#/${entry.sceneId}`));
+
+    // The launch as published: the brain, live, and nothing to choose between.
+    const real = createPublicModelsExplorer({ ui: new FakeElement('div'), manifest: PUBLIC_MANIFEST });
+    assert.equal(findByClass(real.element, 'landing-demo-viewport').length, 1);
+    assert.equal(findByClass(real.element, 'landing-demo-state').length, 0, 'a chooser with one organ on it');
+    assert.equal(real.organHero.organ, 'brain');
+    assert.ok(findByClass(real.element, 'landing-cta').some((link) => link.getAttribute('href') === '#/brain-anatomy'));
+    const realHrefs = hrefsIn(real.element).filter(Boolean).map((href) => href.split('?')[0]);
+    for (const scene of SCOPED_OUT_SCENES) {
+      assert.equal(realHrefs.includes(`#/${scene.slug}`), false, `#/anatomy links to ${scene.id}, which the launch withholds`);
+    }
   } finally {
     restoreDocument();
     if (previousWindow === undefined) delete globalThis.window;
